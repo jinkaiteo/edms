@@ -1,0 +1,427 @@
+"""
+Serializers for Document Management (O1).
+
+Provides REST API serialization for documents, types, dependencies,
+and related models with validation and security considerations.
+"""
+
+from rest_framework import serializers
+from django.contrib.auth import get_user_model
+from django.utils import timezone
+
+from .models import (
+    DocumentType, DocumentSource, Document, DocumentVersion,
+    DocumentDependency, DocumentAccessLog, DocumentComment,
+    DocumentAttachment
+)
+
+
+User = get_user_model()
+
+
+class DocumentTypeSerializer(serializers.ModelSerializer):
+    """Serializer for Document Type model."""
+    
+    document_count = serializers.SerializerMethodField()
+    created_by_display = serializers.CharField(source='created_by.get_full_name', read_only=True)
+    
+    class Meta:
+        model = DocumentType
+        fields = [
+            'id', 'uuid', 'name', 'code', 'description',
+            'template_required', 'template_path', 'approval_required', 'review_required',
+            'retention_years', 'numbering_prefix', 'numbering_format',
+            'is_active', 'created_at', 'updated_at', 'created_by_display',
+            'document_count', 'metadata'
+        ]
+        read_only_fields = ['id', 'uuid', 'created_at', 'updated_at', 'document_count']
+    
+    def get_document_count(self, obj):
+        """Return the number of documents of this type."""
+        return obj.documents.filter(is_active=True).count()
+    
+    def create(self, validated_data):
+        """Set created_by when creating new document type."""
+        validated_data['created_by'] = self.context['request'].user
+        return super().create(validated_data)
+
+
+class DocumentSourceSerializer(serializers.ModelSerializer):
+    """Serializer for Document Source model."""
+    
+    document_count = serializers.SerializerMethodField()
+    source_type_display = serializers.CharField(source='get_source_type_display', read_only=True)
+    
+    class Meta:
+        model = DocumentSource
+        fields = [
+            'id', 'uuid', 'name', 'source_type', 'source_type_display',
+            'description', 'requires_verification', 'requires_signature',
+            'is_active', 'created_at', 'document_count'
+        ]
+        read_only_fields = ['id', 'uuid', 'created_at', 'document_count']
+    
+    def get_document_count(self, obj):
+        """Return the number of documents from this source."""
+        return obj.documents.filter(is_active=True).count()
+
+
+class DocumentVersionSerializer(serializers.ModelSerializer):
+    """Serializer for Document Version model."""
+    
+    version_string = serializers.CharField(read_only=True)
+    created_by_display = serializers.CharField(source='created_by.get_full_name', read_only=True)
+    status_display = serializers.CharField(source='get_status_display', read_only=True)
+    
+    class Meta:
+        model = DocumentVersion
+        fields = [
+            'id', 'uuid', 'document', 'version_major', 'version_minor',
+            'version_string', 'version_comment', 'file_name', 'file_path',
+            'file_size', 'file_checksum', 'created_at', 'created_by',
+            'created_by_display', 'status', 'status_display',
+            'change_summary', 'reason_for_change', 'metadata'
+        ]
+        read_only_fields = [
+            'id', 'uuid', 'created_at', 'version_string', 
+            'created_by', 'created_by_display'
+        ]
+
+
+class DocumentDependencySerializer(serializers.ModelSerializer):
+    """Serializer for Document Dependency model."""
+    
+    document_display = serializers.CharField(source='document.document_number', read_only=True)
+    depends_on_display = serializers.CharField(source='depends_on.document_number', read_only=True)
+    dependency_type_display = serializers.CharField(source='get_dependency_type_display', read_only=True)
+    created_by_display = serializers.CharField(source='created_by.get_full_name', read_only=True)
+    
+    class Meta:
+        model = DocumentDependency
+        fields = [
+            'id', 'uuid', 'document', 'document_display',
+            'depends_on', 'depends_on_display', 'dependency_type',
+            'dependency_type_display', 'description', 'is_critical',
+            'created_at', 'created_by', 'created_by_display',
+            'is_active', 'metadata'
+        ]
+        read_only_fields = ['id', 'uuid', 'created_at', 'created_by', 'created_by_display']
+    
+    def validate(self, data):
+        """Validate dependency to prevent circular references."""
+        if data['document'] == data['depends_on']:
+            raise serializers.ValidationError("Document cannot depend on itself")
+        
+        # Check for circular dependencies
+        if DocumentDependency.objects.filter(
+            document=data['depends_on'],
+            depends_on=data['document'],
+            is_active=True
+        ).exists():
+            raise serializers.ValidationError("Circular dependency detected")
+        
+        return data
+    
+    def create(self, validated_data):
+        """Set created_by when creating new dependency."""
+        validated_data['created_by'] = self.context['request'].user
+        return super().create(validated_data)
+
+
+class DocumentCommentSerializer(serializers.ModelSerializer):
+    """Serializer for Document Comment model."""
+    
+    author_display = serializers.CharField(source='author.get_full_name', read_only=True)
+    comment_type_display = serializers.CharField(source='get_comment_type_display', read_only=True)
+    resolved_by_display = serializers.CharField(source='resolved_by.get_full_name', read_only=True)
+    replies_count = serializers.SerializerMethodField()
+    
+    class Meta:
+        model = DocumentComment
+        fields = [
+            'id', 'uuid', 'document', 'author', 'author_display',
+            'comment_type', 'comment_type_display', 'subject', 'content',
+            'page_number', 'section', 'line_reference',
+            'created_at', 'updated_at', 'is_resolved', 'resolved_at',
+            'resolved_by', 'resolved_by_display', 'parent_comment',
+            'is_internal', 'requires_response', 'replies_count', 'metadata'
+        ]
+        read_only_fields = [
+            'id', 'uuid', 'created_at', 'updated_at', 
+            'author', 'author_display', 'replies_count'
+        ]
+    
+    def get_replies_count(self, obj):
+        """Return the number of replies to this comment."""
+        return obj.replies.count()
+    
+    def create(self, validated_data):
+        """Set author when creating new comment."""
+        validated_data['author'] = self.context['request'].user
+        return super().create(validated_data)
+
+
+class DocumentAttachmentSerializer(serializers.ModelSerializer):
+    """Serializer for Document Attachment model."""
+    
+    uploaded_by_display = serializers.CharField(source='uploaded_by.get_full_name', read_only=True)
+    attachment_type_display = serializers.CharField(source='get_attachment_type_display', read_only=True)
+    file_size_display = serializers.SerializerMethodField()
+    
+    class Meta:
+        model = DocumentAttachment
+        fields = [
+            'id', 'uuid', 'document', 'name', 'description',
+            'attachment_type', 'attachment_type_display',
+            'file_name', 'file_path', 'file_size', 'file_size_display',
+            'file_checksum', 'mime_type', 'uploaded_at', 'uploaded_by',
+            'uploaded_by_display', 'is_active', 'is_public',
+            'requires_signature', 'version', 'metadata'
+        ]
+        read_only_fields = [
+            'id', 'uuid', 'uploaded_at', 'uploaded_by', 
+            'uploaded_by_display', 'file_size_display', 'file_checksum'
+        ]
+    
+    def get_file_size_display(self, obj):
+        """Return human-readable file size."""
+        if not obj.file_size:
+            return '0 B'
+        
+        size = obj.file_size
+        for unit in ['B', 'KB', 'MB', 'GB']:
+            if size < 1024.0:
+                return f"{size:.1f} {unit}"
+            size /= 1024.0
+        return f"{size:.1f} TB"
+    
+    def create(self, validated_data):
+        """Set uploaded_by when creating new attachment."""
+        validated_data['uploaded_by'] = self.context['request'].user
+        return super().create(validated_data)
+
+
+class DocumentListSerializer(serializers.ModelSerializer):
+    """Simplified serializer for document lists."""
+    
+    version_string = serializers.CharField(read_only=True)
+    document_type_display = serializers.CharField(source='document_type.name', read_only=True)
+    author_display = serializers.CharField(source='author.get_full_name', read_only=True)
+    status_display = serializers.CharField(source='get_status_display', read_only=True)
+    
+    class Meta:
+        model = Document
+        fields = [
+            'uuid', 'document_number', 'title', 'version_string',
+            'status', 'status_display', 'document_type_display',
+            'author_display', 'created_at', 'effective_date',
+            'is_controlled', 'requires_training'
+        ]
+
+
+class DocumentDetailSerializer(serializers.ModelSerializer):
+    """Detailed serializer for document details."""
+    
+    version_string = serializers.CharField(read_only=True)
+    document_type = DocumentTypeSerializer(read_only=True)
+    document_source = DocumentSourceSerializer(read_only=True)
+    author_display = serializers.CharField(source='author.get_full_name', read_only=True)
+    reviewer_display = serializers.CharField(source='reviewer.get_full_name', read_only=True)
+    approver_display = serializers.CharField(source='approver.get_full_name', read_only=True)
+    status_display = serializers.CharField(source='get_status_display', read_only=True)
+    priority_display = serializers.CharField(source='get_priority_display', read_only=True)
+    
+    # Related objects
+    dependencies = DocumentDependencySerializer(many=True, read_only=True)
+    dependents = DocumentDependencySerializer(many=True, read_only=True)
+    comments = DocumentCommentSerializer(many=True, read_only=True)
+    attachments = DocumentAttachmentSerializer(many=True, read_only=True)
+    versions = DocumentVersionSerializer(many=True, read_only=True)
+    
+    # Permissions
+    can_edit = serializers.SerializerMethodField()
+    can_review = serializers.SerializerMethodField()
+    can_approve = serializers.SerializerMethodField()
+    
+    class Meta:
+        model = Document
+        fields = [
+            'uuid', 'document_number', 'title', 'description', 'keywords',
+            'version_major', 'version_minor', 'version_string',
+            'document_type', 'document_source', 'status', 'status_display',
+            'priority', 'priority_display', 'author', 'author_display',
+            'reviewer', 'reviewer_display', 'approver', 'approver_display',
+            'file_name', 'file_path', 'file_size', 'file_checksum', 'mime_type',
+            'is_encrypted', 'created_at', 'updated_at', 'review_date',
+            'approval_date', 'effective_date', 'review_due_date', 'obsolete_date',
+            'reason_for_change', 'change_summary', 'supersedes',
+            'is_active', 'requires_training', 'is_controlled',
+            'dependencies', 'dependents', 'comments', 'attachments', 'versions',
+            'can_edit', 'can_review', 'can_approve', 'metadata'
+        ]
+        read_only_fields = [
+            'uuid', 'document_number', 'created_at', 'updated_at',
+            'file_checksum', 'file_size', 'version_string',
+            'dependencies', 'dependents', 'comments', 'attachments', 'versions',
+            'can_edit', 'can_review', 'can_approve'
+        ]
+    
+    def get_can_edit(self, obj):
+        """Check if current user can edit this document."""
+        user = self.context['request'].user
+        return obj.can_edit(user)
+    
+    def get_can_review(self, obj):
+        """Check if current user can review this document."""
+        user = self.context['request'].user
+        return obj.can_review(user)
+    
+    def get_can_approve(self, obj):
+        """Check if current user can approve this document."""
+        user = self.context['request'].user
+        return obj.can_approve(user)
+
+
+class DocumentCreateSerializer(serializers.ModelSerializer):
+    """Serializer for creating new documents."""
+    
+    class Meta:
+        model = Document
+        fields = [
+            'title', 'description', 'keywords', 'document_type',
+            'document_source', 'priority', 'reviewer', 'approver',
+            'file_name', 'file_path', 'mime_type', 'effective_date',
+            'reason_for_change', 'requires_training', 'is_controlled'
+        ]
+    
+    def validate(self, data):
+        """Validate document creation data."""
+        document_type = data.get('document_type')
+        
+        # Check if template is required
+        if document_type and document_type.template_required and not data.get('file_path'):
+            raise serializers.ValidationError(
+                f"Template is required for document type: {document_type.name}"
+            )
+        
+        # Check if review is required
+        if document_type and document_type.review_required and not data.get('reviewer'):
+            raise serializers.ValidationError(
+                f"Reviewer is required for document type: {document_type.name}"
+            )
+        
+        # Check if approval is required
+        if document_type and document_type.approval_required and not data.get('approver'):
+            raise serializers.ValidationError(
+                f"Approver is required for document type: {document_type.name}"
+            )
+        
+        return data
+    
+    def create(self, validated_data):
+        """Create new document with proper defaults."""
+        validated_data['author'] = self.context['request'].user
+        return super().create(validated_data)
+
+
+class DocumentUpdateSerializer(serializers.ModelSerializer):
+    """Serializer for updating existing documents."""
+    
+    class Meta:
+        model = Document
+        fields = [
+            'title', 'description', 'keywords', 'priority',
+            'reviewer', 'approver', 'effective_date', 'review_due_date',
+            'reason_for_change', 'change_summary', 'requires_training'
+        ]
+    
+    def validate(self, data):
+        """Validate document update data."""
+        instance = self.instance
+        
+        # Only allow updates if document is in editable state
+        if instance and not instance.can_edit(self.context['request'].user):
+            raise serializers.ValidationError(
+                "Document cannot be edited in current state or by current user"
+            )
+        
+        return data
+
+
+class DocumentAccessLogSerializer(serializers.ModelSerializer):
+    """Serializer for Document Access Log (read-only)."""
+    
+    document_display = serializers.CharField(source='document.document_number', read_only=True)
+    user_display = serializers.CharField(source='user.get_full_name', read_only=True)
+    access_type_display = serializers.CharField(source='get_access_type_display', read_only=True)
+    
+    class Meta:
+        model = DocumentAccessLog
+        fields = [
+            'id', 'uuid', 'document', 'document_display', 'user', 'user_display',
+            'access_type', 'access_type_display', 'access_timestamp',
+            'ip_address', 'user_agent', 'success', 'failure_reason',
+            'document_version', 'file_downloaded', 'access_duration'
+        ]
+        read_only_fields = '__all__'
+
+
+# Action serializers for workflow operations
+class DocumentStatusChangeSerializer(serializers.Serializer):
+    """Serializer for document status change operations."""
+    
+    new_status = serializers.ChoiceField(choices=Document.DOCUMENT_STATUS_CHOICES)
+    comment = serializers.CharField(required=False, allow_blank=True)
+    effective_date = serializers.DateField(required=False)
+    
+    def validate_new_status(self, value):
+        """Validate status transition."""
+        current_status = self.context['document'].status
+        user = self.context['request'].user
+        
+        # Define valid transitions (simplified)
+        valid_transitions = {
+            'DRAFT': ['PENDING_REVIEW', 'TERMINATED'],
+            'PENDING_REVIEW': ['UNDER_REVIEW', 'DRAFT'],
+            'UNDER_REVIEW': ['REVIEW_COMPLETED', 'DRAFT'],
+            'REVIEW_COMPLETED': ['PENDING_APPROVAL', 'DRAFT'],
+            'PENDING_APPROVAL': ['UNDER_APPROVAL', 'REVIEW_COMPLETED'],
+            'UNDER_APPROVAL': ['APPROVED', 'REVIEW_COMPLETED'],
+            'APPROVED': ['EFFECTIVE'],
+            'EFFECTIVE': ['SUPERSEDED', 'OBSOLETE'],
+        }
+        
+        if value not in valid_transitions.get(current_status, []):
+            raise serializers.ValidationError(
+                f"Invalid status transition from {current_status} to {value}"
+            )
+        
+        return value
+
+
+class DocumentVersionCreateSerializer(serializers.Serializer):
+    """Serializer for creating new document versions."""
+    
+    major_increment = serializers.BooleanField(default=False)
+    version_comment = serializers.CharField(required=False, allow_blank=True)
+    change_summary = serializers.CharField(required=True)
+    reason_for_change = serializers.CharField(required=True)
+    
+    def validate(self, data):
+        """Validate version creation."""
+        document = self.context['document']
+        user = self.context['request'].user
+        
+        # Check if user can create new version
+        if not document.can_edit(user):
+            raise serializers.ValidationError(
+                "You don't have permission to create a new version of this document"
+            )
+        
+        # Check if document is in a state that allows versioning
+        if document.status not in ['DRAFT', 'EFFECTIVE']:
+            raise serializers.ValidationError(
+                "New versions can only be created from DRAFT or EFFECTIVE documents"
+            )
+        
+        return data

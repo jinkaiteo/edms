@@ -1,0 +1,848 @@
+"""
+Document Management Models (O1)
+
+This module contains the core document management models for the EDMS system,
+including documents, versions, dependencies, and file storage with 21 CFR Part 11 compliance.
+"""
+
+import uuid
+import os
+import hashlib
+from django.db import models
+from django.contrib.auth import get_user_model
+from django.core.validators import RegexValidator, MinValueValidator
+from django.utils.translation import gettext_lazy as _
+from django.conf import settings
+from django.core.exceptions import ValidationError
+
+
+User = get_user_model()
+
+
+class DocumentType(models.Model):
+    """
+    Document Type model for categorizing documents.
+    
+    Defines different types of documents with specific
+    requirements for templates, approval, and retention.
+    """
+    
+    uuid = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
+    name = models.CharField(max_length=100, unique=True)
+    code = models.CharField(max_length=10, unique=True, validators=[
+        RegexValidator(regex=r'^[A-Z0-9_]+$', message='Code must be uppercase letters, numbers, or underscores')
+    ])
+    description = models.TextField(blank=True)
+    
+    # Template and approval requirements
+    template_required = models.BooleanField(default=False)
+    template_path = models.CharField(max_length=500, blank=True)
+    approval_required = models.BooleanField(default=True)
+    review_required = models.BooleanField(default=True)
+    
+    # Retention and compliance
+    retention_years = models.IntegerField(
+        default=7,
+        validators=[MinValueValidator(1)],
+        help_text="Number of years to retain documents of this type"
+    )
+    
+    # Numbering scheme
+    numbering_prefix = models.CharField(max_length=10, blank=True)
+    numbering_format = models.CharField(
+        max_length=50,
+        default='{prefix}-{year}-{sequence:04d}',
+        help_text="Format for auto-generated document numbers"
+    )
+    
+    # Status and lifecycle
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    created_by = models.ForeignKey(
+        User, 
+        on_delete=models.PROTECT, 
+        related_name='created_document_types'
+    )
+    
+    # Additional metadata
+    metadata = models.JSONField(default=dict, blank=True)
+    
+    class Meta:
+        db_table = 'document_types'
+        verbose_name = _('Document Type')
+        verbose_name_plural = _('Document Types')
+        ordering = ['name']
+        indexes = [
+            models.Index(fields=['code']),
+            models.Index(fields=['is_active']),
+        ]
+    
+    def __str__(self):
+        return f"{self.name} ({self.code})"
+
+
+class DocumentSource(models.Model):
+    """
+    Document Source model for tracking origin of documents.
+    
+    Defines how documents entered the system for
+    compliance and audit purposes.
+    """
+    
+    SOURCE_TYPES = [
+        ('original_digital', 'Original Digital'),
+        ('scanned_paper', 'Scanned Paper Document'),
+        ('imported_system', 'Imported from Another System'),
+        ('email_attachment', 'Email Attachment'),
+        ('web_upload', 'Web Upload'),
+        ('api_creation', 'API Creation'),
+        ('template_generation', 'Generated from Template'),
+    ]
+    
+    uuid = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
+    name = models.CharField(max_length=100, unique=True)
+    source_type = models.CharField(max_length=30, choices=SOURCE_TYPES)
+    description = models.TextField(blank=True)
+    
+    # Validation requirements
+    requires_verification = models.BooleanField(default=False)
+    requires_signature = models.BooleanField(default=False)
+    
+    # Status
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    
+    class Meta:
+        db_table = 'document_sources'
+        verbose_name = _('Document Source')
+        verbose_name_plural = _('Document Sources')
+        ordering = ['name']
+    
+    def __str__(self):
+        return self.name
+
+
+class DocumentManager(models.Manager):
+    """Custom manager for Document model with additional query methods."""
+    
+    def active(self):
+        """Return only active documents."""
+        return self.filter(is_active=True)
+    
+    def by_status(self, status):
+        """Filter documents by status."""
+        return self.filter(status=status)
+    
+    def effective(self):
+        """Return documents that are currently effective."""
+        from django.utils import timezone
+        return self.filter(
+            status='EFFECTIVE',
+            effective_date__lte=timezone.now().date()
+        )
+    
+    def pending_approval(self):
+        """Return documents pending approval."""
+        return self.filter(status__in=['PENDING_REVIEW', 'PENDING_APPROVAL'])
+
+
+class Document(models.Model):
+    """
+    Main Document model for the EDMS system.
+    
+    Represents a controlled document with full lifecycle management,
+    version control, and compliance tracking.
+    """
+    
+    DOCUMENT_STATUS_CHOICES = [
+        ('DRAFT', 'Draft'),
+        ('PENDING_REVIEW', 'Pending Review'),
+        ('UNDER_REVIEW', 'Under Review'),
+        ('REVIEW_COMPLETED', 'Review Completed'),
+        ('PENDING_APPROVAL', 'Pending Approval'),
+        ('UNDER_APPROVAL', 'Under Approval'),
+        ('APPROVED', 'Approved'),
+        ('EFFECTIVE', 'Effective'),
+        ('SUPERSEDED', 'Superseded'),
+        ('OBSOLETE', 'Obsolete'),
+        ('TERMINATED', 'Terminated'),
+    ]
+    
+    PRIORITY_LEVELS = [
+        ('low', 'Low'),
+        ('normal', 'Normal'),
+        ('high', 'High'),
+        ('critical', 'Critical'),
+    ]
+    
+    # Primary identification
+    uuid = models.UUIDField(default=uuid.uuid4, editable=False, unique=True, db_index=True)
+    document_number = models.CharField(
+        max_length=50, 
+        unique=True, 
+        db_index=True,
+        help_text="Auto-generated unique document number"
+    )
+    
+    # Document content
+    title = models.CharField(max_length=255)
+    description = models.TextField(blank=True)
+    keywords = models.CharField(max_length=500, blank=True, help_text="Comma-separated keywords for search")
+    
+    # Version control
+    version_major = models.PositiveIntegerField(default=1)
+    version_minor = models.PositiveIntegerField(default=0)
+    
+    # Document classification
+    document_type = models.ForeignKey(
+        DocumentType, 
+        on_delete=models.PROTECT,
+        related_name='documents'
+    )
+    document_source = models.ForeignKey(
+        DocumentSource, 
+        on_delete=models.PROTECT,
+        related_name='documents'
+    )
+    
+    # Document lifecycle
+    status = models.CharField(
+        max_length=20, 
+        choices=DOCUMENT_STATUS_CHOICES, 
+        default='DRAFT',
+        db_index=True
+    )
+    priority = models.CharField(
+        max_length=10,
+        choices=PRIORITY_LEVELS,
+        default='normal'
+    )
+    
+    # People and roles
+    author = models.ForeignKey(
+        User, 
+        on_delete=models.PROTECT, 
+        related_name='authored_documents'
+    )
+    reviewer = models.ForeignKey(
+        User, 
+        on_delete=models.PROTECT, 
+        null=True, 
+        blank=True,
+        related_name='reviewed_documents'
+    )
+    approver = models.ForeignKey(
+        User, 
+        on_delete=models.PROTECT, 
+        null=True, 
+        blank=True,
+        related_name='approved_documents'
+    )
+    
+    # File information
+    file_name = models.CharField(max_length=255, blank=True)
+    file_path = models.CharField(max_length=500, blank=True)
+    file_size = models.BigIntegerField(null=True, blank=True)
+    file_checksum = models.CharField(max_length=64, blank=True, db_index=True)
+    mime_type = models.CharField(max_length=100, blank=True)
+    
+    # Encryption and security
+    is_encrypted = models.BooleanField(default=False)
+    encryption_metadata = models.JSONField(default=dict, blank=True)
+    
+    # Important dates
+    created_at = models.DateTimeField(auto_now_add=True, db_index=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    review_date = models.DateTimeField(null=True, blank=True)
+    approval_date = models.DateTimeField(null=True, blank=True)
+    effective_date = models.DateField(null=True, blank=True, db_index=True)
+    review_due_date = models.DateField(null=True, blank=True, db_index=True)
+    obsolete_date = models.DateField(null=True, blank=True)
+    
+    # Change management
+    reason_for_change = models.TextField(blank=True)
+    change_summary = models.TextField(blank=True)
+    supersedes = models.ForeignKey(
+        'self', 
+        on_delete=models.SET_NULL, 
+        null=True, 
+        blank=True,
+        related_name='superseded_by'
+    )
+    
+    # Compliance and audit
+    is_active = models.BooleanField(default=True, db_index=True)
+    requires_training = models.BooleanField(default=False)
+    is_controlled = models.BooleanField(default=True)
+    
+    # Search and indexing
+    search_vector = models.TextField(blank=True)  # For PostgreSQL full-text search
+    
+    # Additional metadata
+    metadata = models.JSONField(default=dict, blank=True)
+    
+    # Managers
+    objects = DocumentManager()
+    
+    class Meta:
+        db_table = 'documents'
+        verbose_name = _('Document')
+        verbose_name_plural = _('Documents')
+        ordering = ['-created_at']
+        indexes = [
+            models.Index(fields=['document_number']),
+            models.Index(fields=['status', 'effective_date']),
+            models.Index(fields=['author', 'status']),
+            models.Index(fields=['document_type', 'status']),
+            models.Index(fields=['created_at']),
+            models.Index(fields=['effective_date']),
+            models.Index(fields=['review_due_date']),
+            models.Index(fields=['file_checksum']),
+            models.Index(fields=['is_active', 'status']),
+        ]
+        constraints = [
+            models.CheckConstraint(
+                check=models.Q(version_major__gte=1),
+                name='version_major_positive'
+            ),
+            models.CheckConstraint(
+                check=models.Q(version_minor__gte=0),
+                name='version_minor_non_negative'
+            ),
+        ]
+    
+    def __str__(self):
+        return f"{self.document_number} - {self.title} (v{self.version_major}.{self.version_minor})"
+    
+    @property
+    def version_string(self):
+        """Return formatted version string."""
+        return f"{self.version_major}.{self.version_minor}"
+    
+    @property
+    def full_file_path(self):
+        """Return the full file path."""
+        if self.file_path:
+            return os.path.join(settings.MEDIA_ROOT, self.file_path)
+        return None
+    
+    def save(self, *args, **kwargs):
+        """Override save to handle auto-generation and validation."""
+        # Auto-generate document number if not set
+        if not self.document_number:
+            self.document_number = self.generate_document_number()
+        
+        # Calculate file checksum if file exists
+        if self.file_path and not self.file_checksum:
+            self.file_checksum = self.calculate_file_checksum()
+        
+        super().save(*args, **kwargs)
+    
+    def generate_document_number(self):
+        """Generate unique document number based on document type."""
+        from django.utils import timezone
+        
+        year = timezone.now().year
+        prefix = self.document_type.numbering_prefix or self.document_type.code
+        
+        # Find the next sequence number for this type and year
+        last_doc = Document.objects.filter(
+            document_type=self.document_type,
+            document_number__startswith=f"{prefix}-{year}-"
+        ).order_by('-document_number').first()
+        
+        if last_doc:
+            # Extract sequence number from last document
+            try:
+                last_seq = int(last_doc.document_number.split('-')[-1])
+                next_seq = last_seq + 1
+            except (ValueError, IndexError):
+                next_seq = 1
+        else:
+            next_seq = 1
+        
+        # Format using document type's numbering format
+        return self.document_type.numbering_format.format(
+            prefix=prefix,
+            year=year,
+            sequence=next_seq
+        )
+    
+    def calculate_file_checksum(self):
+        """Calculate SHA-256 checksum of the file."""
+        if not self.file_path:
+            return ''
+        
+        file_path = self.full_file_path
+        if not file_path or not os.path.exists(file_path):
+            return ''
+        
+        sha256_hash = hashlib.sha256()
+        try:
+            with open(file_path, 'rb') as f:
+                for chunk in iter(lambda: f.read(4096), b""):
+                    sha256_hash.update(chunk)
+            return sha256_hash.hexdigest()
+        except Exception:
+            return ''
+    
+    def verify_file_integrity(self):
+        """Verify file integrity using stored checksum."""
+        if not self.file_checksum:
+            return False
+        
+        current_checksum = self.calculate_file_checksum()
+        return current_checksum == self.file_checksum
+    
+    def get_next_version(self, major_increment=False):
+        """Get the next version numbers."""
+        if major_increment:
+            return self.version_major + 1, 0
+        else:
+            return self.version_major, self.version_minor + 1
+    
+    def can_edit(self, user):
+        """Check if user can edit this document."""
+        if not self.is_active:
+            return False
+        
+        # Author can edit in DRAFT status
+        if self.author == user and self.status == 'DRAFT':
+            return True
+        
+        # Admin users can always edit
+        if user.is_superuser:
+            return True
+        
+        # Check for document admin permissions
+        return user.user_roles.filter(
+            role__module='O1',
+            role__permission_level='admin',
+            is_active=True
+        ).exists()
+    
+    def can_approve(self, user):
+        """Check if user can approve this document."""
+        if self.status != 'PENDING_APPROVAL':
+            return False
+        
+        # Assigned approver can approve
+        if self.approver == user:
+            return True
+        
+        # Check for approval permissions
+        return user.user_roles.filter(
+            role__module='O1',
+            role__permission_level__in=['approve', 'admin'],
+            is_active=True
+        ).exists()
+    
+    def can_review(self, user):
+        """Check if user can review this document."""
+        if self.status not in ['PENDING_REVIEW', 'UNDER_REVIEW']:
+            return False
+        
+        # Assigned reviewer can review
+        if self.reviewer == user:
+            return True
+        
+        # Check for review permissions
+        return user.user_roles.filter(
+            role__module='O1',
+            role__permission_level__in=['review', 'approve', 'admin'],
+            is_active=True
+        ).exists()
+
+
+class DocumentVersion(models.Model):
+    """
+    Document Version History model.
+    
+    Maintains a complete history of all document versions
+    for compliance and audit purposes.
+    """
+    
+    uuid = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
+    document = models.ForeignKey(
+        Document, 
+        on_delete=models.CASCADE,
+        related_name='versions'
+    )
+    
+    # Version information
+    version_major = models.PositiveIntegerField()
+    version_minor = models.PositiveIntegerField()
+    version_comment = models.TextField(blank=True)
+    
+    # File information for this version
+    file_name = models.CharField(max_length=255, blank=True)
+    file_path = models.CharField(max_length=500, blank=True)
+    file_size = models.BigIntegerField(null=True, blank=True)
+    file_checksum = models.CharField(max_length=64, blank=True)
+    
+    # Version lifecycle
+    created_at = models.DateTimeField(auto_now_add=True)
+    created_by = models.ForeignKey(User, on_delete=models.PROTECT)
+    status = models.CharField(max_length=20, choices=Document.DOCUMENT_STATUS_CHOICES)
+    
+    # Change tracking
+    change_summary = models.TextField(blank=True)
+    reason_for_change = models.TextField(blank=True)
+    
+    # Additional metadata
+    metadata = models.JSONField(default=dict, blank=True)
+    
+    class Meta:
+        db_table = 'document_versions'
+        verbose_name = _('Document Version')
+        verbose_name_plural = _('Document Versions')
+        ordering = ['-version_major', '-version_minor', '-created_at']
+        unique_together = ['document', 'version_major', 'version_minor']
+        indexes = [
+            models.Index(fields=['document', 'version_major', 'version_minor']),
+            models.Index(fields=['created_at']),
+            models.Index(fields=['created_by']),
+        ]
+    
+    def __str__(self):
+        return f"{self.document.document_number} v{self.version_major}.{self.version_minor}"
+    
+    @property
+    def version_string(self):
+        """Return formatted version string."""
+        return f"{self.version_major}.{self.version_minor}"
+
+class DocumentDependency(models.Model):
+    """
+    Document Dependency model for tracking relationships between documents.
+    
+    Manages dependencies and relationships between documents
+    to ensure proper change control and impact analysis.
+    """
+    
+    DEPENDENCY_TYPES = [
+        ('REFERENCE', 'References'),
+        ('TEMPLATE', 'Uses as Template'),
+        ('SUPERSEDES', 'Supersedes'),
+        ('INCORPORATES', 'Incorporates'),
+        ('SUPPORTS', 'Supports'),
+        ('IMPLEMENTS', 'Implements'),
+    ]
+    
+    uuid = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
+    document = models.ForeignKey(
+        Document,
+        on_delete=models.CASCADE,
+        related_name='dependencies'
+    )
+    depends_on = models.ForeignKey(
+        Document,
+        on_delete=models.CASCADE,
+        related_name='dependents'
+    )
+    dependency_type = models.CharField(
+        max_length=20,
+        choices=DEPENDENCY_TYPES,
+        default='REFERENCE'
+    )
+    
+    # Dependency details
+    description = models.TextField(blank=True)
+    is_critical = models.BooleanField(
+        default=False,
+        help_text="Critical dependencies require notification on changes"
+    )
+    
+    # Lifecycle
+    created_at = models.DateTimeField(auto_now_add=True)
+    created_by = models.ForeignKey(User, on_delete=models.PROTECT)
+    is_active = models.BooleanField(default=True)
+    
+    # Additional metadata
+    metadata = models.JSONField(default=dict, blank=True)
+    
+    class Meta:
+        db_table = 'document_dependencies'
+        verbose_name = _('Document Dependency')
+        verbose_name_plural = _('Document Dependencies')
+        unique_together = ['document', 'depends_on', 'dependency_type']
+        ordering = ['-created_at']
+        indexes = [
+            models.Index(fields=['document', 'dependency_type']),
+            models.Index(fields=['depends_on', 'is_critical']),
+            models.Index(fields=['is_active']),
+        ]
+        constraints = [
+            models.CheckConstraint(
+                check=~models.Q(document=models.F('depends_on')),
+                name='no_self_dependency'
+            ),
+        ]
+    
+    def __str__(self):
+        return f"{self.document.document_number} {self.get_dependency_type_display()} {self.depends_on.document_number}"
+    
+    def clean(self):
+        """Validate dependency to prevent circular references."""
+        if self.document_id == self.depends_on_id:
+            raise ValidationError("Document cannot depend on itself")
+        
+        # Check for circular dependencies (basic check)
+        if DocumentDependency.objects.filter(
+            document=self.depends_on,
+            depends_on=self.document,
+            is_active=True
+        ).exists():
+            raise ValidationError("Circular dependency detected")
+
+
+class DocumentAccessLog(models.Model):
+    """
+    Document Access Log for tracking document access for compliance.
+    
+    Logs all access to documents for audit trail and
+    regulatory compliance requirements.
+    """
+    
+    ACCESS_TYPES = [
+        ('VIEW', 'View'),
+        ('DOWNLOAD', 'Download'),
+        ('PRINT', 'Print'),
+        ('EXPORT', 'Export'),
+        ('EDIT', 'Edit'),
+        ('DELETE', 'Delete'),
+        ('SHARE', 'Share'),
+        ('COMMENT', 'Comment'),
+    ]
+    
+    uuid = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
+    document = models.ForeignKey(
+        Document,
+        on_delete=models.CASCADE,
+        related_name='access_logs'
+    )
+    user = models.ForeignKey(
+        User,
+        on_delete=models.PROTECT,
+        related_name='document_accesses'
+    )
+    
+    # Access details
+    access_type = models.CharField(max_length=20, choices=ACCESS_TYPES)
+    access_timestamp = models.DateTimeField(auto_now_add=True, db_index=True)
+    
+    # Context information
+    ip_address = models.GenericIPAddressField(null=True, blank=True)
+    user_agent = models.TextField(blank=True)
+    session_id = models.CharField(max_length=40, blank=True)
+    
+    # Access result
+    success = models.BooleanField(default=True)
+    failure_reason = models.CharField(max_length=200, blank=True)
+    
+    # Additional context
+    document_version = models.CharField(max_length=20, blank=True)
+    file_downloaded = models.BooleanField(default=False)
+    access_duration = models.DurationField(null=True, blank=True)
+    
+    # Additional metadata
+    metadata = models.JSONField(default=dict, blank=True)
+    
+    class Meta:
+        db_table = 'document_access_logs'
+        verbose_name = _('Document Access Log')
+        verbose_name_plural = _('Document Access Logs')
+        ordering = ['-access_timestamp']
+        indexes = [
+            models.Index(fields=['document', 'access_timestamp']),
+            models.Index(fields=['user', 'access_timestamp']),
+            models.Index(fields=['access_type', 'access_timestamp']),
+            models.Index(fields=['ip_address', 'access_timestamp']),
+            models.Index(fields=['success']),
+        ]
+    
+    def __str__(self):
+        return f"{self.user.username} {self.access_type} {self.document.document_number} at {self.access_timestamp}"
+
+
+class DocumentComment(models.Model):
+    """
+    Document Comment model for review and collaboration.
+    
+    Allows reviewers and collaborators to add comments
+    during the document review process.
+    """
+    
+    COMMENT_TYPES = [
+        ('GENERAL', 'General Comment'),
+        ('REVIEW', 'Review Comment'),
+        ('APPROVAL', 'Approval Comment'),
+        ('REJECTION', 'Rejection Comment'),
+        ('QUESTION', 'Question'),
+        ('SUGGESTION', 'Suggestion'),
+        ('CORRECTION', 'Correction'),
+    ]
+    
+    uuid = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
+    document = models.ForeignKey(
+        Document,
+        on_delete=models.CASCADE,
+        related_name='comments'
+    )
+    author = models.ForeignKey(
+        User,
+        on_delete=models.PROTECT,
+        related_name='document_comments'
+    )
+    
+    # Comment content
+    comment_type = models.CharField(max_length=20, choices=COMMENT_TYPES, default='GENERAL')
+    subject = models.CharField(max_length=200, blank=True)
+    content = models.TextField()
+    
+    # Context and location
+    page_number = models.PositiveIntegerField(null=True, blank=True)
+    section = models.CharField(max_length=100, blank=True)
+    line_reference = models.CharField(max_length=50, blank=True)
+    
+    # Comment lifecycle
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    is_resolved = models.BooleanField(default=False)
+    resolved_at = models.DateTimeField(null=True, blank=True)
+    resolved_by = models.ForeignKey(
+        User,
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name='resolved_comments'
+    )
+    
+    # Threading support
+    parent_comment = models.ForeignKey(
+        'self',
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name='replies'
+    )
+    
+    # Status and visibility
+    is_internal = models.BooleanField(default=False)
+    requires_response = models.BooleanField(default=False)
+    
+    # Additional metadata
+    metadata = models.JSONField(default=dict, blank=True)
+    
+    class Meta:
+        db_table = 'document_comments'
+        verbose_name = _('Document Comment')
+        verbose_name_plural = _('Document Comments')
+        ordering = ['-created_at']
+        indexes = [
+            models.Index(fields=['document', 'created_at']),
+            models.Index(fields=['author', 'created_at']),
+            models.Index(fields=['comment_type', 'is_resolved']),
+            models.Index(fields=['requires_response', 'is_resolved']),
+        ]
+    
+    def __str__(self):
+        return f"Comment on {self.document.document_number} by {self.author.username}"
+
+
+class DocumentAttachment(models.Model):
+    """
+    Document Attachment model for supporting files.
+    
+    Manages additional files attached to documents
+    such as appendices, supporting data, or references.
+    """
+    
+    ATTACHMENT_TYPES = [
+        ('APPENDIX', 'Appendix'),
+        ('SUPPORTING_DATA', 'Supporting Data'),
+        ('REFERENCE', 'Reference Material'),
+        ('TEMPLATE', 'Template'),
+        ('FORM', 'Form'),
+        ('CHECKLIST', 'Checklist'),
+        ('WORKSHEET', 'Worksheet'),
+        ('IMAGE', 'Image'),
+        ('DIAGRAM', 'Diagram'),
+        ('OTHER', 'Other'),
+    ]
+    
+    uuid = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
+    document = models.ForeignKey(
+        Document,
+        on_delete=models.CASCADE,
+        related_name='attachments'
+    )
+    
+    # Attachment details
+    name = models.CharField(max_length=255)
+    description = models.TextField(blank=True)
+    attachment_type = models.CharField(max_length=20, choices=ATTACHMENT_TYPES)
+    
+    # File information
+    file_name = models.CharField(max_length=255)
+    file_path = models.CharField(max_length=500)
+    file_size = models.BigIntegerField()
+    file_checksum = models.CharField(max_length=64, db_index=True)
+    mime_type = models.CharField(max_length=100)
+    
+    # Upload information
+    uploaded_at = models.DateTimeField(auto_now_add=True)
+    uploaded_by = models.ForeignKey(User, on_delete=models.PROTECT)
+    
+    # Status and visibility
+    is_active = models.BooleanField(default=True)
+    is_public = models.BooleanField(default=True)
+    requires_signature = models.BooleanField(default=False)
+    
+    # Version information
+    version = models.PositiveIntegerField(default=1)
+    
+    # Additional metadata
+    metadata = models.JSONField(default=dict, blank=True)
+    
+    class Meta:
+        db_table = 'document_attachments'
+        verbose_name = _('Document Attachment')
+        verbose_name_plural = _('Document Attachments')
+        ordering = ['name']
+        indexes = [
+            models.Index(fields=['document', 'attachment_type']),
+            models.Index(fields=['file_checksum']),
+            models.Index(fields=['uploaded_at']),
+            models.Index(fields=['is_active']),
+        ]
+    
+    def __str__(self):
+        return f"{self.name} ({self.document.document_number})"
+    
+    @property
+    def full_file_path(self):
+        """Return the full file path."""
+        return os.path.join(settings.MEDIA_ROOT, self.file_path)
+    
+    def calculate_checksum(self):
+        """Calculate and update file checksum."""
+        if os.path.exists(self.full_file_path):
+            sha256_hash = hashlib.sha256()
+            with open(self.full_file_path, 'rb') as f:
+                for chunk in iter(lambda: f.read(4096), b""):
+                    sha256_hash.update(chunk)
+            self.file_checksum = sha256_hash.hexdigest()
+    
+    def verify_integrity(self):
+        """Verify file integrity using stored checksum."""
+        if not os.path.exists(self.full_file_path):
+            return False
+        
+        sha256_hash = hashlib.sha256()
+        with open(self.full_file_path, 'rb') as f:
+            for chunk in iter(lambda: f.read(4096), b""):
+                sha256_hash.update(chunk)
+        
+        return sha256_hash.hexdigest() == self.file_checksum
