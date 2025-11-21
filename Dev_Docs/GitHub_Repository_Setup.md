@@ -118,7 +118,7 @@ bash scripts/start-development.sh --init
 
 ```bash
 # Start all services with Docker Compose
-podman-compose up -d
+docker-compose up -d
 
 # Initialize database
 bash scripts/initialize-database.sh

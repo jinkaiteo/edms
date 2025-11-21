@@ -3,7 +3,7 @@ A 21 CFR Part 11 compliant electronic document management system (EDMS) web app 
 
 Preferred Architecture:
 - To be deployed in Ubuntu 20.04.6 LTS Server
-- Use podman containerization
+- Use Docker containerization
 - Use Django framework, Django REST
 - Use Django-River supporting dynamic, on-the-fly changes to workflows
 - Use Celery and Redis for Task Queues and asynchronous processing and caching

@@ -168,10 +168,10 @@ CSRF_COOKIE_SECURE=False
 
 ## Container Configuration
 
-### Podman Compose File
+### Docker Compose File
 
 ```yaml
-# podman-compose.yml
+# docker-compose.yml
 version: '3.8'
 
 services:
@@ -377,8 +377,8 @@ command_exists() {
 # Check prerequisites
 echo -e "${YELLOW}Checking prerequisites...${NC}"
 
-if ! command_exists podman; then
-    echo -e "${RED}Podman is not installed. Please install Podman first.${NC}"
+if ! command_exists docker; then
+    echo -e "${RED}Docker is not installed. Please install Docker first.${NC}"
     exit 1
 fi
 
@@ -436,14 +436,14 @@ chmod 600 storage/storage.key
 chmod 755 storage
 chmod 755 scripts/*.sh
 
-# Create Podman network
-echo -e "${YELLOW}Creating Podman network...${NC}"
-podman network create edms-network 2>/dev/null || echo "Network already exists"
+# Create Docker network
+echo -e "${YELLOW}Creating Docker network...${NC}"
+docker network create edms-network 2>/dev/null || echo "Network already exists"
 
 echo -e "${GREEN}Infrastructure setup completed successfully!${NC}"
 echo -e "${YELLOW}Next steps:${NC}"
 echo "1. Update .env file with your configurations"
-echo "2. Run: podman-compose up -d"
+echo "2. Run: docker-compose up -d"
 echo "3. Run: bash scripts/initialize-database.sh"
 echo "4. Run: bash scripts/create-test-users.sh"
 ```
@@ -460,7 +460,7 @@ echo "Initializing EDMS Database..."
 
 # Wait for database to be ready
 echo "Waiting for database to be ready..."
-until podman exec edms_postgres pg_isready -U ${DATABASE_USER} -d ${DATABASE_NAME}; do
+until docker exec edms_postgres pg_isready -U ${DATABASE_USER} -d ${DATABASE_NAME}; do
     sleep 2
 done
 
@@ -610,7 +610,7 @@ fi
 
 # Start services
 echo "Starting containers..."
-podman-compose up -d db redis elasticsearch
+docker-compose up -d db redis elasticsearch
 
 # Wait for services to be ready
 echo "Waiting for services to start..."
@@ -652,7 +652,7 @@ This comprehensive environment setup provides:
 
 1. **Complete project structure** with proper directory organization
 2. **Multi-environment configuration** (development, testing, production)
-3. **Container orchestration** with Podman Compose
+3. **Container orchestration** with Docker Compose
 4. **Automated setup scripts** for quick deployment
 5. **Database initialization** with migrations and test data
 6. **SSL certificate management** for security

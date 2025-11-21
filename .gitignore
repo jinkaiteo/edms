@@ -137,7 +137,7 @@ grafana/
 local.py
 local_settings.py
 docker-compose.override.yml
-podman-compose.override.yml
+docker-compose.override.yml
 
 # Documentation build
 docs/_build/

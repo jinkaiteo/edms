@@ -11,7 +11,7 @@ We are committed to providing a welcoming and inspiring community for all. Pleas
 ### Prerequisites
 - Python 3.11+
 - Node.js 18+
-- Podman or Docker
+- Docker
 - Git knowledge
 - Understanding of Django and React
 

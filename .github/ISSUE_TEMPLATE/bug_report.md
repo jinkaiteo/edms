@@ -30,7 +30,7 @@ If applicable, add screenshots to help explain your problem.
 - OS: [e.g. Ubuntu 20.04, Windows 10]
 - Browser [e.g. chrome, safari]
 - Version [e.g. 1.0.0]
-- Container Runtime [e.g. Docker, Podman]
+- Container Runtime [e.g. Docker]
 
 **Additional Context**
 Add any other context about the problem here.

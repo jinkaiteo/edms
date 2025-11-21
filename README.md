@@ -7,7 +7,7 @@
 
 ## 🎯 Overview
 
-A **21 CFR Part 11 compliant** Electronic Document Management System designed for regulated industries like pharmaceuticals. Built with Django, React, and containerized with Podman for secure, on-premise deployment.
+A **21 CFR Part 11 compliant** Electronic Document Management System designed for regulated industries like pharmaceuticals. Built with Django, React, and containerized with Docker for secure, on-premise deployment.
 
 ## ✨ Key Features
 
@@ -28,7 +28,7 @@ A **21 CFR Part 11 compliant** Electronic Document Management System designed fo
 - **Database**: PostgreSQL 18 with encryption
 - **Cache**: Redis for sessions and task queue
 - **Search**: Elasticsearch for document indexing
-- **Containers**: Podman/Docker with multi-container deployment
+- **Containers**: Docker with multi-container deployment
 - **Authentication**: Entra ID integration support
 
 ### System Modules
@@ -46,7 +46,7 @@ A **21 CFR Part 11 compliant** Electronic Document Management System designed fo
 ### Prerequisites
 - Python 3.11+
 - Node.js 18+
-- Podman or Docker
+- Docker
 - PostgreSQL 18
 - Redis 7+
 - Elasticsearch 8.11+
@@ -69,7 +69,7 @@ bash scripts/start-development.sh --init
 
 ```bash
 # Start all services
-podman-compose up -d
+docker-compose up -d
 
 # Initialize database
 bash scripts/initialize-database.sh
@@ -116,7 +116,7 @@ npx playwright test
 ## 🏭 Production Deployment
 
 The system supports multiple deployment options:
-- **Container orchestration** with Podman/Docker Compose
+- **Container orchestration** with Docker Compose
 - **Kubernetes** deployment with Helm charts
 - **CI/CD pipeline** with GitHub Actions
 

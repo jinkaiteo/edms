@@ -161,7 +161,7 @@ Develop a 21 CFR Part 11 compliant Electronic Document Management System (EDMS) 
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
-│                        Podman Pods                             │
+│                        Docker Containers                       │
 ├─────────────────────────────────────────────────────────────────┤
 │  ┌─────────────────┐ ┌─────────────────┐ ┌─────────────────┐   │
 │  │   Frontend      │ │    Backend      │ │   Task Queue    │   │
@@ -228,7 +228,7 @@ Build Tool: Vite
 #### Infrastructure
 ```yaml
 OS: Ubuntu 20.04.6 LTS
-Containerization: Podman 4.0
+Containerization: Docker 24.0+
 Load Balancer: HAProxy/Nginx
 SSL/TLS: Let's Encrypt/Custom CA
 Monitoring: Prometheus + Grafana
@@ -365,7 +365,7 @@ sudo apt install -y \
     build-essential python3-dev \
     postgresql-client \
     redis-tools \
-    podman podman-compose \
+    docker docker-compose \
     nginx certbot python3-certbot-nginx
 
 # Configure firewall
@@ -385,13 +385,13 @@ mkdir -p /opt/edms
 cd /opt/edms
 
 # Create container network
-podman network create edms-network
+docker network create edms-network
 
 # Create volumes for persistent data
-podman volume create edms-postgres-data
-podman volume create edms-redis-data
-podman volume create edms-elasticsearch-data
-podman volume create edms-file-storage
+docker volume create edms-postgres-data
+docker volume create edms-redis-data
+docker volume create edms-elasticsearch-data
+docker volume create edms-file-storage
 ```
 
 ### 5.2 Database Setup
@@ -399,7 +399,7 @@ podman volume create edms-file-storage
 #### 5.2.1 PostgreSQL Container
 ```bash
 # Create PostgreSQL container
-podman run -d \
+docker run -d \
     --name edms-postgres \
     --network edms-network \
     -e POSTGRES_DB=edms \
@@ -413,7 +413,7 @@ podman run -d \
 sleep 30
 
 # Create database and user
-podman exec -it edms-postgres psql -U postgres -c "
+docker exec -it edms-postgres psql -U postgres -c "
     CREATE DATABASE edms;
     CREATE USER edms_user WITH PASSWORD 'secure_password_here';
     GRANT ALL PRIVILEGES ON DATABASE edms TO edms_user;
@@ -424,7 +424,7 @@ podman exec -it edms-postgres psql -U postgres -c "
 #### 5.2.2 Redis Container
 ```bash
 # Create Redis container
-podman run -d \
+docker run -d \
     --name edms-redis \
     --network edms-network \
     -v edms-redis-data:/data \
@@ -435,7 +435,7 @@ podman run -d \
 #### 5.2.3 Elasticsearch Container
 ```bash
 # Create Elasticsearch container
-podman run -d \
+docker run -d \
     --name edms-elasticsearch \
     --network edms-network \
     -e "discovery.type=single-node" \
@@ -502,7 +502,7 @@ pillow==10.1.0
 EOF
 
 # Build backend container
-podman build -t edms-backend -f Dockerfile.backend .
+docker build -t edms-backend -f Dockerfile.backend .
 ```
 
 #### 5.3.2 Frontend Container
@@ -525,7 +525,7 @@ CMD ["nginx", "-g", "daemon off;"]
 EOF
 
 # Build frontend container
-podman build -t edms-frontend -f Dockerfile.frontend .
+docker build -t edms-frontend -f Dockerfile.frontend .
 ```
 
 ### 5.4 Docker Compose Configuration

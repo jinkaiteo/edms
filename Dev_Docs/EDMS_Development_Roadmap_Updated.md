@@ -12,7 +12,7 @@ This updated roadmap reflects the comprehensive requirements and architecture de
 ### Week 1: Environment & Infrastructure Setup
 **Deliverables:**
 - Ubuntu 20.04.6 LTS server configuration with security hardening
-- Podman installation and container network setup (`edms-network`)
+- Docker installation and container network setup (`edms-network`)
 - SSL/TLS certificates configuration (Let's Encrypt or Custom CA)
 - Firewall configuration (UFW) with required port access
 - Basic monitoring setup (system logs, resource monitoring)
@@ -42,7 +42,7 @@ This updated roadmap reflects the comprehensive requirements and architecture de
 
 ### Week 3: Containerization & Orchestration
 **Deliverables:**
-- Complete Docker/Podman compose configuration
+- Complete Docker compose configuration
 - Container networking and volume management
 - Load balancer configuration (HAProxy/Nginx)
 - Container health checks and restart policies
@@ -417,7 +417,7 @@ frontend/src/
 
 ### **Technology Stack Refinements**
 - **Specific Versions**: Updated with exact versions for reproducibility
-- **Container Strategy**: Enhanced Podman orchestration
+- **Container Strategy**: Enhanced Docker orchestration
 - **Security Framework**: Comprehensive security implementation plan
 - **Monitoring**: Integrated monitoring and health checking throughout
 

@@ -10,7 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### 🏗️ Architecture & Setup
 - Complete system architecture design
 - 21 CFR Part 11 compliance framework
-- Multi-container deployment with Podman/Docker
+- Multi-container deployment with Docker
 - GitHub repository setup with CI/CD pipeline
 
 ### 📚 Documentation
@@ -49,7 +49,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Database**: PostgreSQL 18
 - **Search**: Elasticsearch 8.11
 - **Cache**: Redis 7.0
-- **Containers**: Podman (with Docker compatibility)
+- **Containers**: Docker
 - **Workflow**: Django-River for dynamic workflows
 
 ### Compliance Features Planned
