@@ -32,7 +32,7 @@ This updated roadmap reflects the comprehensive requirements and architecture de
 **Deliverables:**
 - PostgreSQL 18 container with encryption and row-level security
 - Redis 7 container for caching and session management
-- Elasticsearch 8.11 cluster for document search
+- PostgreSQL full-text search configuration (simple, effective)
 - Database schema implementation with all compliance tables
 - Initial database migrations and security policies
 
@@ -59,10 +59,10 @@ This updated roadmap reflects the comprehensive requirements and architecture de
 
 ### Week 4: Security Framework Foundation
 **Deliverables:**
-- PKI infrastructure for digital signatures
+- Simple digital signature framework (PKI-ready for future)
 - File encryption system implementation
 - Network security configuration
-- Entra ID integration framework
+- Django built-in authentication with Entra ID preparation
 - Multi-factor authentication setup
 
 ---
@@ -96,7 +96,7 @@ backend/
 
 ### Week 6: User Management Module (S1) Implementation
 **Deliverables:**
-- Custom User model with Entra ID integration
+- Custom User model with Django auth (Entra ID-ready)
 - Role-based access control (RBAC) implementation
 - User profile management with permission assignment
 - Multi-factor authentication (MFA) integration
@@ -338,7 +338,7 @@ frontend/src/
 **Deliverables:**
 - Security vulnerability assessment
 - Penetration testing and remediation
-- SSL/TLS configuration optimization
+- Internal deployment security verification
 - Input validation and sanitization
 - Security headers implementation
 - Intrusion detection setup
@@ -395,6 +395,38 @@ frontend/src/
 ✓ Training materials ready
 ✓ Support procedures established
 ```
+
+---
+
+## Recent Updates for Simplified Internal Deployment
+
+### **🎯 SIMPLIFIED PHASED APPROACH (Updated 2024)**
+
+#### **Phase 1: Core EDMS (Weeks 1-12) - Priority Focus**
+**Essential Features for Initial Go-Live:**
+- ✅ **Document Management**: Upload, versioning, basic workflows
+- ✅ **User Management**: Django auth with role-based access
+- ✅ **Audit Trail**: Basic compliance logging
+- ✅ **Simple Search**: PostgreSQL full-text search
+- ✅ **Core Workflows**: Draft → Review → Approval → Effective
+- ✅ **Basic Electronic Signatures**: Simple digital signing
+- ✅ **File Encryption**: Secure document storage
+
+#### **Phase 2: Enhanced Features (Weeks 13-20) - Future Enhancements**
+**Advanced Features for Later Implementation:**
+- 🔄 **Entra ID Integration**: Enterprise authentication
+- 🔄 **Advanced Search**: Elasticsearch upgrade (if needed)
+- 🔄 **OCR Integration**: Document text extraction
+- 🔄 **PKI Infrastructure**: Full certificate authority
+- 🔄 **Advanced Analytics**: Reporting and dashboards
+- 🔄 **Mobile Interface**: Responsive design enhancements
+
+#### **Phase 3: Optimization (Weeks 21-26) - Performance & Scale**
+**Performance and Scaling Features:**
+- ⚡ **Performance Optimization**: Caching, query optimization
+- ⚡ **High Availability**: Load balancing, backup strategies
+- ⚡ **Integration APIs**: Third-party system connections
+- ⚡ **Advanced Compliance**: Additional regulatory features
 
 ---
 
