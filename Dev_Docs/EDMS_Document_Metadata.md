@@ -61,4 +61,4 @@ This metadata structure supports the 21 CFR Part 11 compliance requirements and 
 - **Document Annotation**: Metadata is used to replace placeholders in .docx files using python-docx-template
 - **Official PDF Generation**: Metadata is embedded when creating digitally signed official PDFs
 - **Audit Trail**: All metadata changes are tracked for compliance purposes
-- **Search & Filtering**: Elasticsearch integration enables searching across all metadata fields
+- **Search & Filtering**: PostgreSQL full-text search enables searching across all metadata fields

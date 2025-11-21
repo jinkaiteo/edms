@@ -393,8 +393,8 @@ azure_active_directory:
   
   # OAuth/OIDC Configuration
   authority: "https://login.microsoftonline.com/{tenant_id}"
-  redirect_uri: "https://edms.yourcompany.com/auth/azure/callback/"
-  post_logout_redirect_uri: "https://edms.yourcompany.com/auth/logout/"
+  redirect_uri: "http://edms.yourcompany.com/auth/azure/callback/"  # HTTP for internal
+  post_logout_redirect_uri: "http://edms.yourcompany.com/auth/logout/"  # HTTP for internal
   
   # Scopes
   scopes:
@@ -579,7 +579,7 @@ storage:
   
 external_services:
   redis_url: "redis://staging-redis.internal:6379/0"
-  elasticsearch_url: "http://staging-elasticsearch.internal:9200"
+# elasticsearch_url: "http://staging-elasticsearch.internal:9200"  # Removed
   email_backend: "smtp"
   email_host: "staging-smtp.yourcompany.com"
   
@@ -631,7 +631,7 @@ storage:
   
 external_services:
   redis_url: "redis://prod-redis.internal:6379/0"
-  elasticsearch_url: "http://prod-elasticsearch.internal:9200"
+# elasticsearch_url: "http://prod-elasticsearch.internal:9200"  # Removed
   email_backend: "smtp"
   email_host: "smtp.yourcompany.com"
   email_port: 587
@@ -840,7 +840,7 @@ security_configuration:
     
   # Communication Security
   communication:
-    force_https: true
+    force_https: false  # HTTP-only for internal deployment
     hsts_max_age: 31536000
     disable_http: true
     certificate_pinning: true
