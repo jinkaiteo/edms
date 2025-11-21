@@ -12,17 +12,19 @@ This updated roadmap reflects the comprehensive requirements and architecture de
 ### Week 1: Environment & Infrastructure Setup
 **Deliverables:**
 - Ubuntu 20.04.6 LTS server configuration with security hardening
-- Docker installation and container network setup (`edms-network`)
-- SSL/TLS certificates configuration (Let's Encrypt or Custom CA)
-- Firewall configuration (UFW) with required port access
+- Docker installation and container network setup (`edms_network`)
+- HTTP-only configuration for internal deployment
+- Firewall configuration (UFW) with single port access (8000)
+- Docker network isolation setup for multi-app server environment
 - Basic monitoring setup (system logs, resource monitoring)
 
 **Technical Tasks:**
 ```bash
 # Key scripts to create:
 - infrastructure-setup.sh
-- firewall-config.sh
-- ssl-setup.sh
+- firewall-config.sh  
+- deploy-internal.sh (simplified internal deployment)
+- docker-network-setup.sh (multi-app isolation)
 - monitoring-setup.sh
 ```
 
@@ -44,14 +46,14 @@ This updated roadmap reflects the comprehensive requirements and architecture de
 **Deliverables:**
 - Complete Docker compose configuration
 - Container networking and volume management
-- Load balancer configuration (HAProxy/Nginx)
+- Simplified Django + Gunicorn deployment (no reverse proxy needed)
 - Container health checks and restart policies
 - Backup volume configurations
 
 **Key Files:**
 ```yaml
 - docker-compose.yml (production-ready)
-- nginx.conf (with SSL and security headers)
+- Django static file serving with Whitenoise configuration
 - health-check scripts for all services
 ```
 
@@ -378,7 +380,7 @@ frontend/src/
 - Production deployment procedures
 - Database migration and optimization
 - Load balancer configuration
-- SSL certificate installation
+- HTTP-only internal deployment verification
 - Monitoring and alerting setup
 - User training materials
 
@@ -387,12 +389,29 @@ frontend/src/
 ✓ Production environment ready
 ✓ Database backups configured
 ✓ Monitoring and alerting active
-✓ SSL certificates installed
+✓ HTTP-only internal deployment configured
 ✓ User accounts and roles configured
 ✓ Documentation complete
 ✓ Training materials ready
 ✓ Support procedures established
 ```
+
+---
+
+## Recent Updates for Simplified Internal Deployment
+
+### **Architecture Simplification (Updated 2024)**
+1. **HTTP-Only Deployment**: Removed SSL/HTTPS complexity for internal firewall-protected deployment
+2. **No Reverse Proxy**: Eliminated Nginx complexity - Django serves everything directly via Gunicorn + Whitenoise  
+3. **Docker Network Isolation**: Added dedicated `edms_network` for multi-app server deployment
+4. **Single Port Exposure**: Only port 8000 exposed to host for simplified firewall management
+5. **Container Prefixing**: All containers/volumes prefixed with `edms_` to avoid naming conflicts
+
+### **Deployment Strategy Updates**
+- **Target Environment**: Internal server behind firewall with multiple Docker applications
+- **Network Isolation**: Complete container isolation using dedicated Docker networks
+- **Simplified Management**: Single service deployment with integrated static file serving
+- **Multi-App Compatibility**: Designed to coexist with other applications on same server
 
 ---
 
