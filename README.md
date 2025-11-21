@@ -55,8 +55,8 @@ A **21 CFR Part 11 compliant** Electronic Document Management System designed fo
 
 ```bash
 # Clone the repository
-git clone https://github.com/your-username/edms-system.git
-cd edms-system
+git clone https://github.com/jinkaiteo/edms.git
+cd edms
 
 # Run setup script
 bash scripts/infrastructure-setup.sh
@@ -81,7 +81,7 @@ bash scripts/create-test-users.sh
 ## 📁 Project Structure
 
 ```
-edms-system/
+edms/
 ├── backend/                # Django application
 │   ├── edms/              # Django project
 │   ├── apps/              # Django apps (documents, users, workflows)
@@ -175,9 +175,9 @@ For security concerns, please review our [Security Policy](SECURITY.md).
 
 ## 📞 Support
 
-- **Documentation**: [Project Wiki](https://github.com/your-username/edms-system/wiki)
-- **Issues**: [GitHub Issues](https://github.com/your-username/edms-system/issues)
-- **Discussions**: [GitHub Discussions](https://github.com/your-username/edms-system/discussions)
+- **Documentation**: [Project Wiki](https://github.com/jinkaiteo/edms/wiki)
+- **Issues**: [GitHub Issues](https://github.com/jinkaiteo/edms/issues)
+- **Discussions**: [GitHub Discussions](https://github.com/jinkaiteo/edms/discussions)
 
 ---
 

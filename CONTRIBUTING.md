@@ -19,8 +19,8 @@ We are committed to providing a welcoming and inspiring community for all. Pleas
 
 1. **Fork and Clone**
    ```bash
-   git clone https://github.com/your-username/edms-system.git
-   cd edms-system
+   git clone https://github.com/jinkaiteo/edms.git
+   cd edms
    ```
 
 2. **Set up Development Environment**
@@ -317,8 +317,8 @@ main (production)
 - **Pull Requests**: Code contributions
 
 ### Getting Help
-- Check existing [Issues](https://github.com/your-username/edms-system/issues)
-- Search [Discussions](https://github.com/your-username/edms-system/discussions)
+- Check existing [Issues](https://github.com/jinkaiteo/edms/issues)
+- Search [Discussions](https://github.com/jinkaiteo/edms/discussions)
 - Review [Documentation](Dev_Docs/)
 
 ## 🎉 Recognition

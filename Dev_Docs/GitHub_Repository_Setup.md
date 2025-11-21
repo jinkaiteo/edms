@@ -9,7 +9,7 @@ This guide provides step-by-step instructions for setting up GitHub to manage yo
 
 ```bash
 # Option 1: Create via GitHub CLI (if installed)
-gh repo create your-org/edms-system --public --description "21 CFR Part 11 Compliant Electronic Document Management System"
+gh repo create jinkaiteo/edms --public --description "21 CFR Part 11 Compliant Electronic Document Management System"
 
 # Option 2: Create via GitHub Web Interface
 # 1. Go to https://github.com/new
@@ -28,7 +28,7 @@ gh repo create your-org/edms-system --public --description "21 CFR Part 11 Compl
 git init
 
 # Add remote origin
-git remote add origin https://github.com/your-org/edms-system.git
+git remote add origin https://github.com/jinkaiteo/edms.git
 
 # Create and switch to main branch
 git checkout -b main
@@ -104,8 +104,8 @@ A 21 CFR Part 11 compliant Electronic Document Management System built with Djan
 
 ```bash
 # Clone the repository
-git clone https://github.com/your-org/edms-system.git
-cd edms-system
+git clone https://github.com/jinkaiteo/edms.git
+cd edms
 
 # Run setup script
 bash scripts/infrastructure-setup.sh
@@ -173,9 +173,9 @@ For security concerns, please review our [Security Policy](SECURITY.md).
 
 ## 📞 Support
 
-- **Documentation**: [Project Wiki](https://github.com/your-org/edms-system/wiki)
-- **Issues**: [GitHub Issues](https://github.com/your-org/edms-system/issues)
-- **Discussions**: [GitHub Discussions](https://github.com/your-org/edms-system/discussions)
+- **Documentation**: [Project Wiki](https://github.com/jinkaiteo/edms/wiki)
+- **Issues**: [GitHub Issues](https://github.com/jinkaiteo/edms/issues)
+- **Discussions**: [GitHub Discussions](https://github.com/jinkaiteo/edms/discussions)
 ```
 
 ### CONTRIBUTING.md Template
@@ -327,9 +327,9 @@ Closes #123
 
 ## Getting Help
 
-- Join our [Discussions](https://github.com/your-org/edms-system/discussions)
-- Check existing [Issues](https://github.com/your-org/edms-system/issues)
-- Review the [Wiki](https://github.com/your-org/edms-system/wiki)
+- Join our [Discussions](https://github.com/jinkaiteo/edms/discussions)
+- Check existing [Issues](https://github.com/jinkaiteo/edms/issues)
+- Review the [Wiki](https://github.com/jinkaiteo/edms/wiki)
 ```
 
 ### .gitignore Template

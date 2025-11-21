@@ -80,8 +80,8 @@ AZURE_CLIENT_SECRET=your-dev-client-secret
 AZURE_REDIRECT_URI=http://localhost:8000/auth/azure/callback/
 
 # File Storage Configuration
-STORAGE_ROOT=/path/to/edms-system/storage
-STORAGE_ENCRYPTION_KEY_PATH=/path/to/edms-system/storage/storage.key
+STORAGE_ROOT=/path/to/edms/storage
+STORAGE_ENCRYPTION_KEY_PATH=/path/to/edms/storage/storage.key
 MAX_FILE_SIZE_MB=100
 TEMP_RETENTION_HOURS=24
 

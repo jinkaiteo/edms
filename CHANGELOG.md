@@ -153,4 +153,4 @@ When contributing to the project, please:
 
 ---
 
-**Note**: This changelog will be actively maintained as development progresses. For the most up-to-date information, please refer to the [GitHub releases](https://github.com/your-username/edms-system/releases) page.
+**Note**: This changelog will be actively maintained as development progresses. For the most up-to-date information, please refer to the [GitHub releases](https://github.com/jinkaiteo/edms/releases) page.
