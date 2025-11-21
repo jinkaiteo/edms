@@ -535,7 +535,7 @@ storage:
   
 external_services:
   redis_url: "redis://localhost:6379/0"
-  elasticsearch_url: "http://localhost:9200"
+# elasticsearch_url: "http://localhost:9200"  # Removed for PostgreSQL search
   email_backend: "console"
   
 azure_ad:

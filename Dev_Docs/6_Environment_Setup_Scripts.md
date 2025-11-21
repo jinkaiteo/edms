@@ -32,7 +32,7 @@ mkdir -p frontend/src/{components,pages,services,hooks,utils,contexts}
 mkdir -p frontend/src/components/{common,documents,users,workflow,auth}
 
 # Infrastructure
-mkdir -p infrastructure/{containers,nginx,monitoring,backup}
+mkdir -p infrastructure/{containers,monitoring,backup}
 
 # Storage directories
 mkdir -p storage/{documents,temp,backups,logs}
@@ -118,8 +118,8 @@ DATABASE_PORT=5432
 # Redis Configuration
 REDIS_URL=redis://redis:6379/0
 
-# Elasticsearch Configuration
-ELASTICSEARCH_URL=http://elasticsearch:9200
+# PostgreSQL Full-Text Search (Elasticsearch removed)
+# ELASTICSEARCH_URL=http://elasticsearch:9200
 ELASTICSEARCH_INDEX_PREFIX=edms_prod
 
 # Django Settings
@@ -218,19 +218,7 @@ services:
       retries: 3
 
   # Elasticsearch
-  elasticsearch:
-    image: elasticsearch:8.11.0
-    container_name: edms_elasticsearch
-    environment:
-      - discovery.type=single-node
-      - "ES_JAVA_OPTS=-Xms1g -Xmx1g"
-      - xpack.security.enabled=false
-    volumes:
-      - elasticsearch_data:/usr/share/elasticsearch/data
-    ports:
-      - "9200:9200"
-    networks:
-      - edms-network
+# Elasticsearch service removed - using PostgreSQL full-text search instead
     restart: unless-stopped
     healthcheck:
       test: ["CMD-SHELL", "curl -f http://localhost:9200/_cluster/health || exit 1"]
@@ -305,20 +293,7 @@ services:
     restart: unless-stopped
 
   # Nginx Reverse Proxy
-  nginx:
-    image: nginx:alpine
-    container_name: edms_nginx
-    volumes:
-      - ./infrastructure/nginx/nginx.conf:/etc/nginx/nginx.conf
-      - ./infrastructure/nginx/conf.d:/etc/nginx/conf.d
-      - static_volume:/var/www/static
-      - media_volume:/var/www/media
-    ports:
-      - "80:80"
-    networks:
-      - edms-network
-    depends_on:
-      - web
+# Nginx service removed - Django serves static files directly with Whitenoise
     restart: unless-stopped
 
   # React Frontend (Development)
@@ -342,7 +317,7 @@ services:
 volumes:
   postgres_data:
   redis_data:
-  elasticsearch_data:
+# elasticsearch_data volume removed
   static_volume:
   media_volume:
 
@@ -490,8 +465,7 @@ python manage.py loaddata fixtures/initial_data.json
 echo "Setting up workflow states..."
 python manage.py setup_workflow
 
-# Create Elasticsearch indexes
-echo "Creating Elasticsearch indexes..."
+# Elasticsearch index creation removed - using PostgreSQL search
 python manage.py search_index --rebuild -f
 
 # Set up scheduled tasks

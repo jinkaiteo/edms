@@ -1,14 +1,15 @@
 # Authentication and Integration Setup
 
 ## Overview
-This document provides comprehensive authentication setup for the EDMS system, including Azure Entra ID integration, multi-factor authentication, and security configurations.
+This document provides comprehensive authentication setup for the EDMS system, with Django built-in authentication as primary and preparation for future Azure Entra ID integration.
 
 ## Authentication Architecture
 
 ### Core Components
 - **Django Authentication**: Base user management
 - **JWT Tokens**: API authentication
-- **Azure Entra ID**: Enterprise SSO integration
+- **Django Authentication**: Built-in user management (primary)
+- **Azure Entra ID**: Enterprise SSO integration (future enhancement)
 - **Multi-Factor Authentication**: Additional security layer
 - **Session Management**: Web application sessions
 
@@ -23,7 +24,7 @@ from datetime import timedelta
 
 # Authentication Backends
 AUTHENTICATION_BACKENDS = [
-    'edms.auth.backends.EntraIDBackend',
+    # 'edms.auth.backends.EntraIDBackend',  # Future enhancement
     'django.contrib.auth.backends.ModelBackend',
 ]
 

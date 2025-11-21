@@ -595,7 +595,7 @@ GET /search/?q=string&type=documents|users&page=1&page_size=20
 Authorization: Bearer {access_token}
 ```
 
-### Document Search (Elasticsearch)
+### Document Search (PostgreSQL Full-Text)
 ```http
 POST /documents/search/
 Authorization: Bearer {access_token}

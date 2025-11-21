@@ -11,14 +11,14 @@ This document provides comprehensive deployment configurations for the EDMS syst
 - **Production**: High-availability production deployment
 
 ### Infrastructure Components
-- **Load Balancer**: Nginx reverse proxy
+- **Web Server**: Django + Gunicorn + Whitenoise
 - **Application Servers**: Django/Gunicorn containers
 - **Database**: PostgreSQL cluster with replication
 - **Cache**: Redis cluster
-- **Search**: Elasticsearch cluster
+- **Search**: PostgreSQL Full-Text Search
 - **File Storage**: Encrypted file system with backup
 - **Monitoring**: Prometheus + Grafana
-- **Logging**: ELK Stack (Elasticsearch, Logstash, Kibana)
+- **Logging**: Simplified logging (Django + File logs)
 
 ## Container Configurations
 
@@ -151,7 +151,7 @@ data:
   DATABASE_PORT: "5432"
   DATABASE_NAME: "edms_prod"
   REDIS_URL: "redis://redis-service:6379/0"
-  ELASTICSEARCH_URL: "http://elasticsearch-service:9200"
+# ELASTICSEARCH_URL: "http://elasticsearch-service:9200"  # Removed
   CELERY_BROKER_URL: "redis://redis-service:6379/1"
   CELERY_RESULT_BACKEND: "redis://redis-service:6379/1"
   EMAIL_HOST: "smtp.company.com"
@@ -365,7 +365,7 @@ spec:
   type: ClusterIP
 ```
 
-### Nginx Ingress Configuration
+### Django Direct Service Configuration
 
 ```yaml
 # k8s/ingress.yaml

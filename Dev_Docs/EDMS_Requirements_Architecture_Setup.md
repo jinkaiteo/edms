@@ -127,7 +127,7 @@ Develop a 21 CFR Part 11 compliant Electronic Document Management System (EDMS) 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
 │                          Load Balancer                         │
-│                      (HAProxy/Nginx)                          │
+│                 (Django + Gunicorn + Whitenoise)              │
 └─────────────────────────┬───────────────────────────────────────┘
                           │
 ┌─────────────────────────┼───────────────────────────────────────┐
@@ -142,7 +142,7 @@ Develop a 21 CFR Part 11 compliant Electronic Document Management System (EDMS) 
 ┌─────────────────────────┼───────────────────────────────────────┐
 │                   Service Tier                                 │
 ├─────────────────────────┼───────────────────────────────────────┤
-│  Redis Cache            │        Elasticsearch                │
+│  Redis Cache            │    PostgreSQL Full-Text Search     │
 │  - Session Storage      │        - Document Search            │
 │  - Task Queue           │        - Full-text Indexing         │
 └─────────────────────────┼───────────────────────────────────────┘
@@ -204,13 +204,13 @@ Workflow: Django-River 3.4
 Task Queue: Celery 5.3
 Cache: Redis 7.0
 Database: PostgreSQL 18
-Search: Elasticsearch 8.11
+Search: PostgreSQL Full-Text Search
 File Storage: Django-storage
 Document Processing:
   - python-docx-template
   - PyPDF2
   - Tesseract OCR
-Authentication: Django-allauth + Entra ID
+Authentication: Django Built-in (Entra ID-ready)
 ```
 
 #### Frontend Technologies
@@ -229,8 +229,8 @@ Build Tool: Vite
 ```yaml
 OS: Ubuntu 20.04.6 LTS
 Containerization: Docker 24.0+
-Load Balancer: HAProxy/Nginx
-SSL/TLS: Let's Encrypt/Custom CA
+Web Server: Django + Gunicorn + Whitenoise
+Deployment: HTTP-only for Internal Use
 Monitoring: Prometheus + Grafana
 Logging: ELK Stack (Optional)
 ```
@@ -375,7 +375,7 @@ sudo ufw allow http
 sudo ufw allow https
 sudo ufw allow 5432/tcp  # PostgreSQL
 sudo ufw allow 6379/tcp  # Redis
-sudo ufw allow 9200/tcp  # Elasticsearch
+# Elasticsearch port removed - not needed
 ```
 
 #### 5.1.2 Container Setup
@@ -390,7 +390,7 @@ docker network create edms-network
 # Create volumes for persistent data
 docker volume create edms-postgres-data
 docker volume create edms-redis-data
-docker volume create edms-elasticsearch-data
+# Elasticsearch removed for simplified deployment
 docker volume create edms-file-storage
 ```
 
@@ -432,18 +432,7 @@ docker run -d \
     redis:7-alpine redis-server --appendonly yes
 ```
 
-#### 5.2.3 Elasticsearch Container
-```bash
-# Create Elasticsearch container
-docker run -d \
-    --name edms-elasticsearch \
-    --network edms-network \
-    -e "discovery.type=single-node" \
-    -e "ES_JAVA_OPTS=-Xms2g -Xmx2g" \
-    -e "xpack.security.enabled=false" \
-    -v edms-elasticsearch-data:/usr/share/elasticsearch/data \
-    -p 9200:9200 \
-    elasticsearch:8.11.0
+# Elasticsearch container removed - using PostgreSQL full-text search instead
 ```
 
 ### 5.3 Application Setup
@@ -577,7 +566,7 @@ services:
     environment:
       - DATABASE_URL=postgresql://edms_user:${DB_PASSWORD}@postgres:5432/edms
       - REDIS_URL=redis://redis:6379/0
-      - ELASTICSEARCH_URL=http://elasticsearch:9200
+      # Elasticsearch removed - using PostgreSQL search
       - SECRET_KEY=${SECRET_KEY}
     volumes:
       - file_storage:/app/media
@@ -586,7 +575,7 @@ services:
     depends_on:
       - postgres
       - redis
-      - elasticsearch
+      # elasticsearch dependency removed
     restart: unless-stopped
 
   celery:
@@ -636,7 +625,7 @@ services:
 volumes:
   postgres_data:
   redis_data:
-  elasticsearch_data:
+  # elasticsearch_data volume removed
   file_storage:
 
 networks:
@@ -661,8 +650,8 @@ ALLOWED_HOSTS=your-domain.com,localhost,127.0.0.1
 # Redis
 REDIS_URL=redis://redis:6379/0
 
-# Elasticsearch
-ELASTICSEARCH_URL=http://elasticsearch:9200
+# Elasticsearch removed - using PostgreSQL full-text search
+# ELASTICSEARCH_URL=http://elasticsearch:9200
 
 # Email (for notifications)
 EMAIL_BACKEND=django.core.mail.backends.smtp.EmailBackend
