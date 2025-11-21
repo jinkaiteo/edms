@@ -21,7 +21,7 @@ For critical security vulnerabilities that could affect production systems:
 
 1. **DO NOT** open a public GitHub issue
 2. **DO NOT** discuss the vulnerability publicly
-3. **Email us directly** at: security@yourcompany.com
+3. **Email us directly** at: security@edms-project.com
 4. **Include** the following information:
    - Description of the vulnerability
    - Steps to reproduce
@@ -53,7 +53,7 @@ For general security improvements or questions:
 - Use parameterized queries to prevent SQL injection
 - Validate all user inputs
 - Implement proper error handling (don't expose stack traces)
-- Use HTTPS in production (currently configured for HTTP for easy deployment)
+- Use HTTPS in production (development environment uses HTTP for simplicity)
 - Keep dependencies updated
 - Follow secure coding practices
 
@@ -132,9 +132,9 @@ Before submitting code that handles sensitive data:
 
 ## Security Contacts
 
-- **Security Team**: security@yourcompany.com
-- **Compliance Officer**: compliance@yourcompany.com
-- **Development Lead**: dev-lead@yourcompany.com
+- **Security Team**: security@edms-project.com
+- **Compliance Officer**: compliance@edms-project.com
+- **Development Lead**: dev@edms-project.com
 
 ## Security Resources
 
