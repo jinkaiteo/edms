@@ -1,0 +1,181 @@
+EDMS System
+A 21 CFR Part 11 compliant electronic document management system (EDMS) web app with adherence to ALCOA principles using compliant open-sourced components. It should be simple but robust and will be deployed on-premise.
+
+Preferred Architecture:
+- To be deployed in Ubuntu 20.04.6 LTS Server
+- Use podman containerization
+- Use Django framework, Django REST
+- Use Django-River supporting dynamic, on-the-fly changes to workflows
+- Use Celery and Redis for Task Queues and asynchronous processing and caching
+- Use Django-storage 
+- Use PostgreSQL 18 as backend db
+- Use REACT and Tailwind CSS for frontend
+- Elasticsearch for search capabilities
+- Use python-docx-template to find and replace placeholders in .docx files with document metadata
+- PyPDF2 and Tesseract for document processing
+- Use a modular approach
+- Appropriate load balancing strategy for multiple users 
+- Allow integration with Entra
+- Electronic Signature Service
+- Appropriate backup service
+
+Operational Modules
+- O1. Electronic Document Management System (EDMS)
+
+
+Other Service Modules
+- S1. User Management
+- S2. Audit Trail
+- S3. Scheduler
+- S4. Backup and Health check
+- S5. Workflow Setting
+- S6. Placeholder Management
+- S7. App Settings
+
+===== Service Modules ===============================================================================================================================
+Service modules are only accessible to superusers and meant to provide cross-module services.
+
+S1. User Management
+This module allows Admins for each Operational Modules to assign roles to users. Each operational module will have these permissions:
+- read: all user should have at a minimum read access.
+- write: allow user to create and edit entries + read
+- review: allow user to review document + write
+- approve: allow user to approve document + review
+- admin: assign roles, reset passwords, add or remove users + approve
+
+S2. Audit Trail
+In accordance to regulation, all modification to the database should be recorded. Add health check to ensure this essential function is online.
+
+S3. Scheduler
+The Scheduler modules facilitates time-based events for the various modules. The superuser should have access to this module interface to view past tasks or upcoming task, stop or manually trigger a task. Again, any action that modifies the database should be recorded in the audit trial. Add health check to ensure this essential function is online.
+
+S4. Backup and Health check
+The backup and health check module allows status check on the health of the various modules and the backup status of the database and essential env values to recreate the app in another instance. Ideally, the app should be backed up daily when usage is low. This module allows user to check various versions of the backups, and allow manual backup. This module allow superuser to load a backup file into a new instance to restore the app.
+
+S5. Workflow Setting
+This module allow admin to set up or modify various document workflows.
+
+S6. Placeholder Management
+This module allows admin to define or edit placeholder text to be replace with the corresponding document metadata.
+
+S5. App Settings
+The super user can change various settings in the app such as app banner, logo, etc.
+
+===== Operational Modules ===========================================================================================================================
+The operation module allows users to perform tasks for the various EDMS functions.
+
+----- O1. Electronic Document Management System (EDMS) -----------------------------------------------------------------------------------------------
+The EDMS provide a platform to (1) upload, (2) up-version and (3) obsoleting a document. The EDMS will also replace specific placeholders (such as document number, title, etc) in the document during workflow.
+
+- Roles:
+  1. Document Viewer (Base Permission: read)
+  2. Document Author (Base Permission: write)
+  3. Document Reviewer (Base Permission: review)
+  4. Document Approver (Base Permission: approval)
+  5. Document Admin (Base Permission: admin)
+
+- Document Types:
+  1. Policy
+  2. Manual
+  3. Procedures
+  4. Work Instructions (SOP)
+  5. Forms and Templates
+  6. Records
+
+- Document Source:
+  1. Original Digital Draft: Original draft uploaded to EDMS in which upon approval, a digitally signed official PDF will be created.
+  2. Scanned Original: A digital file created directly from the original physical document.
+  3. Scanned Copy: A digital file created by scanning a paper photocopy of the original document. 
+
+- Document Metadata:
+  1. Document Number
+  2. Version Number
+  3. Document Title
+  4. Document Type
+  5. Document Source
+  6. Document Dependencies
+  7. Author
+  8. Reviewer
+  9. Approver
+ 10. Approval Date
+ 11. Effective Date
+ 12. Document Status
+ 13. Download Date
+ 14. Revision History
+
+- Dashboard:
+  Section 1. Shows documents that belongs to the user that are still in the workflow.
+  Section 2. Shows approved documents, allow sorting and filltering, and allow viewing
+
+- Workflows:
+  
+  1. Review Workflow:
+     Start Review Workflow
+     └──A user with at least write permission (author)  create a document placeholder where a document number is generated. (Document status: DRAFT)
+        └──Author upload document and complete basic information such as (Title, Description, Document Type, Document Source, Document Dependencies (only approved and effective document), etc).
+           └──Author select a reviewer and route to document for review. (Document status: Pending Review)
+              └──Reviewer downloads document and provide comments.
+                 ├──Reviewer Rejects document
+                 │  └──Document return to Author for edit, re-upload, etc. (Document status: DRAFT)
+                 └──Reviewer Approve document (Document status: Reviewed)
+                    └──Author select an approver and route to document for approval. (Document status: Pending Approval)
+                       └──Approver downloads document and provide comments.
+                          ├──Approver Rejects document
+                          │  └──Document return to Author for edit, re-upload, etc. (Document status: DRAFT)
+                          └──Approver Approve document (Document status: Reviewed)
+                             └──Approver select an effective date. (Document status: Approved, Pending Effective)
+                                ├──End Workflow Review
+                                └──Scheduler checks if effective date =< today.  (Document status: Approved and Effective)
+
+  2. Up-versioning Workflow:
+     Start up-versioning workflow on an Approved and Effective Document
+     └──A user with at least write permission (author) initiate a up-versioning (increase minor version). Current approved and effective documents is still visible until workflow is completed.
+        └──Author provide reason for the up-versioning.
+        └──Author follows Review Workflow.
+           ├──End up-versioning workflow (increase major version). Author and approver of documents that depends on the prior version will receive notification to verify impact to dependent documents.
+           └──Scheduler checks if effective date =< today.  (Set prior version to: Superseded; New approved document to: Approved and Effective)
+
+  3. Obsolete Workflow:
+     App checks for other approved document(s) which depends on an Approved and Effective Document targeted to be absolute.
+     ├──If there are dependent documents, prevent any user from initiating Obsolete Workflow.
+     └──If there are no dependent documents, a user with at least write permission (author) enters reason to obsolete document.  
+        └──Start obsoleting workflow
+            └──Author initiate a absolute workflow. Current approved and effective documents is still visible until workflow is completed.
+               └──Author provide a reason for obsoleting document.
+                  └──Author select an approver and route to document for approval.
+                     └──Author select an approver and route to document for approval.
+                        ├──Approver Rejects Obsoleting
+                        │  └──No change to document.
+                        └──Approver Approve Obsoleting (Document status: Pending Obsoletion)
+                           └──Approver select an Obsoleting date. (Document status: Approved, Pending Effective)
+                              └──Do final check if there are no document depending on target document
+                                 ├──If there are dependent documents, terminate workflow.
+                                 └──If there are no dependent documents, change document status to Pending Obsoleting. This prevents other workflows such as up-versioning and obsolute workflow and linking as depending document.
+                                    └──Scheduler checks if effective date =< today.  (Document status: Obsolete)
+
+  4. Termination of Workflow:
+     Author may terminate any workflow before approval by providing a reason. The document status return to its last approved state.
+
+- Types of Downloads:
+  1) Original Document: The original unmodified draft
+  2) Annotated Document: The original document with appended meta data
+  3) Official PDF: The annotated approved document converted to PDF and digitally signed
+
+- Action Menu for Document Download
+  ├──Download Original Document
+  ├──Download Annotated Document
+  │  ├──For .docx files
+  │  │  └──find and replace special placeholders (indicated in the EDMS settings) with metadata of document such as document title, document number, version number, author, reviewer, approver, approved date, effective date, revision history, current status, downloaded date, etc.
+  │  └──For other files
+  │     └──download original document along with text file consisting of meta data.
+  └──Action when downloading Official PDF:
+     ├──For .docx files
+     │  └──Generate Annotated Document
+     │     └──Digitally Sign PDF for download
+     └──For other files
+        └──Convert file to PDF
+           └──Annotate meta data
+              └──Digitally Sign PDF for download
+
+- Misc:
+  A table of available metadata paired with the placeholder for search and replacement.  
