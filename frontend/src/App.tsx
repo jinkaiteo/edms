@@ -4,22 +4,64 @@ import './App.css';
 import Dashboard from './pages/Dashboard.tsx';
 import Login from './pages/Login.tsx';
 import DocumentList from './pages/DocumentList.tsx';
+import DocumentManagement from './pages/DocumentManagement.tsx';
+import AdminDashboard from './pages/AdminDashboard.tsx';
 import { AuthProvider } from './contexts/AuthContext.tsx';
+import { ToastProvider } from './contexts/ToastContext.tsx';
+import ErrorBoundary from './components/common/ErrorBoundary.tsx';
+import { useAnnouncer } from './hooks/useAccessibility.ts';
+
+function AppContent() {
+  const { announce } = useAnnouncer();
+
+  React.useEffect(() => {
+    // Announce page navigation for screen readers
+    const handleRouteChange = () => {
+      const pageTitle = document.title || 'Page loaded';
+      announce(`Navigated to ${pageTitle}`, 'polite');
+    };
+
+    // Listen for route changes
+    window.addEventListener('popstate', handleRouteChange);
+    
+    return () => {
+      window.removeEventListener('popstate', handleRouteChange);
+    };
+  }, [announce]);
+
+  return (
+    <div className="App min-h-screen bg-gray-50">
+      <Routes>
+        <Route path="/login" element={<Login />} />
+        <Route path="/dashboard" element={<Dashboard />} />
+        <Route path="/" element={<Navigate to="/dashboard" replace />} />
+        <Route path="/documents" element={<DocumentList />} />
+        <Route path="/document-management" element={<DocumentManagement />} />
+        <Route path="/admin" element={<AdminDashboard />} />
+      </Routes>
+    </div>
+  );
+}
 
 function App() {
   return (
-    <AuthProvider>
-      <Router>
-        <div className="App min-h-screen bg-gray-50">
-          <Routes>
-            <Route path="/login" element={<Login />} />
-            <Route path="/dashboard" element={<Dashboard />} />
-            <Route path="/" element={<Navigate to="/dashboard" replace />} />
-            <Route path="/documents" element={<DocumentList />} />
-          </Routes>
-        </div>
-      </Router>
-    </AuthProvider>
+    <ErrorBoundary
+      onError={(error, errorInfo) => {
+        // In production, you would send this to an error tracking service
+        if (process.env.NODE_ENV === 'production') {
+          console.error('Application Error:', error, errorInfo);
+          // Example: logErrorToService(error, errorInfo);
+        }
+      }}
+    >
+      <ToastProvider maxToasts={4}>
+        <AuthProvider>
+          <Router>
+            <AppContent />
+          </Router>
+        </AuthProvider>
+      </ToastProvider>
+    </ErrorBoundary>
   );
 }
 

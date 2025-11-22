@@ -13,11 +13,11 @@ INSTALLED_APPS = [
     'rest_framework',
     'corsheaders',
     'django_filters',
+    'django_extensions',
     'debug_toolbar',
 ]
 
-# Remove custom user model temporarily
-AUTH_USER_MODEL = None
+# Use Django's default User model for now
 
 # Override middleware to remove problematic ones
 MIDDLEWARE = [
@@ -66,16 +66,7 @@ DEBUG = True
 
 ALLOWED_HOSTS = ['localhost', '127.0.0.1', '0.0.0.0']
 
-# Development specific apps
-INSTALLED_APPS += [
-    'django_extensions',
-    'debug_toolbar',
-]
-
-# Development middleware
-MIDDLEWARE += [
-    'debug_toolbar.middleware.DebugToolbarMiddleware',
-]
+# Development middleware already included above
 
 # Debug Toolbar Configuration
 INTERNAL_IPS = [

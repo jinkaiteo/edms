@@ -38,7 +38,7 @@ class ApiService {
   private token: string | null = null;
 
   constructor() {
-    this.baseURL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:8000/api/v1';
+    this.baseURL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:8001/api/v1';
     
     this.client = axios.create({
       baseURL: this.baseURL,
@@ -121,6 +121,7 @@ class ApiService {
     return {
       user: response.data.user,
       token: '', // Not used with session auth
+      permissions: [], // Add empty permissions array
       message: response.data.message
     };
   }
@@ -288,7 +289,11 @@ class ApiService {
 
   // System Status
   async getApiStatus(): Promise<ApiStatus> {
-    const response = await this.client.get<ApiStatus>('/status/');
+    // Override base URL for this specific endpoint since it's at /api/status/ not /api/v1/status/
+    const response = await axios.get('http://localhost:8001/api/status/', {
+      withCredentials: true,
+      timeout: 5000
+    });
     return response.data;
   }
 

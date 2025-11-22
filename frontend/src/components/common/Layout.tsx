@@ -23,9 +23,9 @@ import {
   DocumentArrowUpIcon,
   ChartBarIcon
 } from '@heroicons/react/24/outline';
-import { useAuth } from '../../hooks/useApi';
+import { useAuth } from '../../contexts/AuthContext.tsx';
 import { ApiStatus } from '../../types/api';
-import { apiService } from '../../services/api';
+import { apiService } from '../../services/api.ts';
 
 interface LayoutProps {
   children?: React.ReactNode;
@@ -40,7 +40,7 @@ interface NavigationItem {
   badge?: number;
 }
 
-const Layout: React.FC<LayoutProps> = () => {
+const Layout: React.FC<LayoutProps> = ({ children }) => {
   const { user, authenticated, logout } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
@@ -72,23 +72,26 @@ const Layout: React.FC<LayoutProps> = () => {
     const baseItems: NavigationItem[] = [
       { name: 'Dashboard', href: '/dashboard', icon: HomeIcon },
       { name: 'Documents', href: '/documents', icon: DocumentTextIcon },
+      { name: 'Document Management', href: '/document-management', icon: DocumentArrowUpIcon },
       { name: 'Search', href: '/search', icon: MagnifyingGlassIcon },
-      { name: 'My Tasks', href: '/tasks', icon: ClipboardDocumentListIcon, badge: notifications },
+      { name: 'My Tasks', href: '/tasks', icon: ClipboardDocumentListIcon, badge: notifications > 0 ? notifications : undefined },
     ];
 
     // Add role-based items
     const adminItems: NavigationItem[] = [
+      { name: 'Administration', href: '/admin', icon: Cog6ToothIcon, roles: ['admin'] },
       { name: 'Workflows', href: '/workflows', icon: DocumentArrowUpIcon, roles: ['admin', 'approver'] },
       { name: 'Users', href: '/users', icon: UserGroupIcon, roles: ['admin'] },
       { name: 'Audit Trail', href: '/audit', icon: ShieldCheckIcon, roles: ['admin'] },
       { name: 'Reports', href: '/reports', icon: ChartBarIcon, roles: ['admin', 'approver'] },
-      { name: 'System', href: '/system', icon: Cog6ToothIcon, roles: ['admin'] },
     ];
 
     // Filter items based on user roles
-    const userRoles = user?.roles?.map(r => r.role.permission_level) || [];
+    // For now, show admin items if user is admin (is_staff or is_superuser)
+    const isAdmin = user?.is_staff || user?.is_superuser;
     const filteredAdminItems = adminItems.filter(item => 
-      !item.roles || item.roles.some(role => userRoles.includes(role))
+      !item.roles || (item.roles.includes('admin') && isAdmin) || 
+      (item.roles.includes('approver') && isAdmin)
     );
 
     return [...baseItems, ...filteredAdminItems];
@@ -275,11 +278,7 @@ const Layout: React.FC<LayoutProps> = () => {
 
         {/* Page content */}
         <main className="flex-1 overflow-y-auto">
-          <div className="py-6">
-            <div className="max-w-7xl mx-auto px-4 sm:px-6 md:px-8">
-              <Outlet />
-            </div>
-          </div>
+          {children || <Outlet />}
         </main>
       </div>
     </div>

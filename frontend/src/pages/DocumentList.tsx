@@ -1,8 +1,10 @@
 import React from 'react';
+import Layout from '../components/common/Layout.tsx';
 
 const DocumentList: React.FC = () => {
   return (
-    <div className="container mx-auto px-4 py-8">
+    <Layout>
+      <div className="container mx-auto px-4 py-8">
       <div className="bg-white shadow rounded-lg">
         <div className="px-6 py-4 border-b border-gray-200">
           <h1 className="text-2xl font-bold text-gray-900">Documents</h1>
@@ -46,6 +48,7 @@ const DocumentList: React.FC = () => {
         </div>
       </div>
     </div>
+    </Layout>
   );
 };
 
