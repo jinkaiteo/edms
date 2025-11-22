@@ -200,7 +200,7 @@ Develop a 21 CFR Part 11 compliant Electronic Document Management System (EDMS) 
 ```yaml
 Framework: Django 4.2 LTS
 API: Django REST Framework 3.14
-Workflow: Django-River 3.4
+Workflow: Enhanced Simple Workflow Engine (Pure Django)
 Task Queue: Celery 5.3
 Cache: Redis 7.0
 Database: PostgreSQL 18

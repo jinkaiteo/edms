@@ -28,7 +28,7 @@ INSTALLED_APPS = [
     'rest_framework',
     'corsheaders',
     'django_filters',
-    # 'river',  # Temporarily disabled due to Django 4.2 compatibility issues
+    'viewflow',  # Viewflow workflow engine
     
     # EDMS Core Apps
     'apps.users',

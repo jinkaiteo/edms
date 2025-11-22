@@ -124,7 +124,7 @@ CREATE TABLE document_versions (
 );
 ```
 
-### Workflow Management Tables (Django-River Integration)
+### Workflow Management Tables (Enhanced Simple Workflow Engine)
 
 ```sql
 -- Workflow States

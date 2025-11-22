@@ -1,3 +1,32 @@
+# DEPRECATED: Django-River Workflow Configuration
+
+> **⚠️ DEPRECATION NOTICE**: This document is deprecated as of January 2025. Django-River has been replaced with the **Enhanced Simple Workflow Engine** due to compatibility issues and maintenance concerns.
+> 
+> **Current Implementation**: See `WORKFLOW_ENGINE_DOCUMENTATION.md` for the operational workflow system.
+> 
+> **Status**: Django-River is NO LONGER USED in this project.
+
+---
+
+## Migration Decision
+
+**Why Django-River was replaced:**
+- ❌ Last updated January 2021 (4+ years without maintenance)  
+- ❌ Django 4.2 compatibility issues requiring workarounds
+- ❌ Complex dependency management and setup overhead
+- ❌ Limited community support and documentation
+
+**New Implementation - Enhanced Simple Workflow Engine:**
+- ✅ **Pure Django**: No external workflow library dependencies
+- ✅ **Production ready**: 11 states, 4 workflow types, fully operational
+- ✅ **21 CFR Part 11 compliant**: Built-in audit trails and validation
+- ✅ **Maintainable**: Clear code, easy debugging, full control
+- ✅ **Performance**: Direct database operations, no abstraction overhead
+
+---
+
+## Historical Documentation (DEPRECATED)
+
 # Django-River Workflow Configuration
 
 ## Overview

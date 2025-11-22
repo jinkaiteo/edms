@@ -11,9 +11,8 @@ from django.contrib.auth import get_user_model
 from django.contrib.contenttypes.fields import GenericForeignKey
 from django.utils.translation import gettext_lazy as _
 from django.utils import timezone
-# Temporarily remove river imports for Django 4.2 compatibility
-# from river.models.fields.state import StateField
-# from river.models import State
+# Viewflow integration for modern workflow engine
+# Note: Viewflow models are defined in viewflow_models.py to avoid conflicts
 
 
 User = get_user_model()
