@@ -8,10 +8,12 @@ management with 21 CFR Part 11 compliance.
 import uuid
 from django.db import models
 from django.contrib.auth import get_user_model
+from django.contrib.contenttypes.fields import GenericForeignKey
 from django.utils.translation import gettext_lazy as _
 from django.utils import timezone
-from river.models.fields.state import StateField
-from river.models import State
+# Temporarily remove river imports for Django 4.2 compatibility
+# from river.models.fields.state import StateField
+# from river.models import State
 
 
 User = get_user_model()
@@ -79,8 +81,8 @@ class WorkflowInstance(models.Model):
         related_name='instances'
     )
     
-    # River state field for workflow state management
-    state = StateField()
+    # Simple state field (replacing River StateField for now)
+    state = models.CharField(max_length=50, default='DRAFT')
     
     # Content object (typically Document)
     content_type = models.ForeignKey(
@@ -88,7 +90,7 @@ class WorkflowInstance(models.Model):
         on_delete=models.CASCADE
     )
     object_id = models.CharField(max_length=100)
-    content_object = models.GenericForeignKey('content_type', 'object_id')
+    content_object = GenericForeignKey('content_type', 'object_id')
     
     # Workflow context
     initiated_by = models.ForeignKey(
@@ -505,17 +507,148 @@ class WorkflowTemplate(models.Model):
         return f"{self.name} v{self.version}"
 
 
-# River workflow states for document management
+# Simplified workflow models (without River dependency)
+
+class DocumentState(models.Model):
+    """Document workflow states for simplified workflow system."""
+    
+    code = models.CharField(max_length=50, unique=True, primary_key=True)
+    name = models.CharField(max_length=100)
+    description = models.TextField(blank=True)
+    is_initial = models.BooleanField(default=False)
+    is_final = models.BooleanField(default=False)
+    
+    class Meta:
+        db_table = 'workflow_document_states'
+        ordering = ['name']
+    
+    def __str__(self):
+        return self.name
+
+
+class DocumentWorkflow(models.Model):
+    """Simplified Document Workflow model without River dependencies."""
+    
+    uuid = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
+    document = models.OneToOneField(
+        'documents.Document',
+        on_delete=models.CASCADE,
+        related_name='workflow'
+    )
+    
+    # Current state
+    current_state = models.ForeignKey(
+        DocumentState,
+        on_delete=models.PROTECT,
+        related_name='workflows'
+    )
+    
+    # Workflow context
+    initiated_by = models.ForeignKey(
+        User,
+        on_delete=models.PROTECT,
+        related_name='initiated_document_workflows'
+    )
+    current_assignee = models.ForeignKey(
+        User,
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name='assigned_document_workflows'
+    )
+    
+    # Timing
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    due_date = models.DateTimeField(null=True, blank=True)
+    
+    # Workflow data
+    workflow_data = models.JSONField(default=dict, blank=True)
+    
+    class Meta:
+        db_table = 'document_workflows'
+        ordering = ['-updated_at']
+    
+    def __str__(self):
+        return f"{self.document} - {self.current_state}"
+    
+    def transition_to(self, new_state_code, user, comment='', **kwargs):
+        """Transition document to new state."""
+        old_state = self.current_state
+        new_state = DocumentState.objects.get(code=new_state_code)
+        
+        # Create transition record
+        transition = DocumentTransition.objects.create(
+            workflow=self,
+            from_state=old_state,
+            to_state=new_state,
+            transitioned_by=user,
+            comment=comment,
+            transition_data=kwargs.get('transition_data', {})
+        )
+        
+        # Update workflow state
+        self.current_state = new_state
+        self.current_assignee = kwargs.get('assignee', self.current_assignee)
+        self.due_date = kwargs.get('due_date', self.due_date)
+        self.save()
+        
+        return transition
+
+
+class DocumentTransition(models.Model):
+    """Document state transitions for audit trail."""
+    
+    uuid = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
+    workflow = models.ForeignKey(
+        DocumentWorkflow,
+        on_delete=models.CASCADE,
+        related_name='transitions'
+    )
+    
+    # Transition details
+    from_state = models.ForeignKey(
+        DocumentState,
+        on_delete=models.PROTECT,
+        related_name='transitions_from'
+    )
+    to_state = models.ForeignKey(
+        DocumentState,
+        on_delete=models.PROTECT,
+        related_name='transitions_to'
+    )
+    
+    # Actor information
+    transitioned_by = models.ForeignKey(
+        User,
+        on_delete=models.PROTECT,
+        related_name='document_transitions'
+    )
+    transitioned_at = models.DateTimeField(auto_now_add=True)
+    
+    # Context
+    comment = models.TextField(blank=True)
+    transition_data = models.JSONField(default=dict, blank=True)
+    
+    class Meta:
+        db_table = 'document_transitions'
+        ordering = ['-transitioned_at']
+    
+    def __str__(self):
+        return f"{self.from_state} → {self.to_state} by {self.transitioned_by.username}"
+
+
+# River workflow states for document management (for reference)
 DOCUMENT_STATES = [
-    ('draft', 'Draft'),
-    ('pending_review', 'Pending Review'),
-    ('under_review', 'Under Review'),
-    ('review_completed', 'Review Completed'),
-    ('pending_approval', 'Pending Approval'),
-    ('under_approval', 'Under Approval'),
-    ('approved', 'Approved'),
-    ('effective', 'Effective'),
-    ('superseded', 'Superseded'),
-    ('obsolete', 'Obsolete'),
-    ('terminated', 'Terminated'),
+    ('DRAFT', 'Draft'),
+    ('PENDING_REVIEW', 'Pending Review'),
+    ('UNDER_REVIEW', 'Under Review'),
+    ('REVIEW_COMPLETED', 'Review Completed'),
+    ('PENDING_APPROVAL', 'Pending Approval'),
+    ('UNDER_APPROVAL', 'Under Approval'),
+    ('APPROVED', 'Approved'),
+    ('EFFECTIVE', 'Effective'),
+    ('SUPERSEDED', 'Superseded'),
+    ('OBSOLETE', 'Obsolete'),
+    ('TERMINATED', 'Terminated'),
 ]

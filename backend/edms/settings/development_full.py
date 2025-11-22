@@ -17,7 +17,7 @@ INSTALLED_APPS += [
     'apps.settings',
     'apps.scheduler',
     'apps.api',
-    # 'apps.workflows',  # Temporarily disabled due to django-river compatibility with Django 4.2
+    'apps.workflows',  # Re-enabled for workflow activation
 ]
 
 # Custom User Model
