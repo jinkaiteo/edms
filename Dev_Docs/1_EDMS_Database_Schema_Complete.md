@@ -513,7 +513,7 @@ This complete database schema provides:
 4. **Performance optimization** through strategic indexing
 5. **Initial data** for system startup
 6. **21 CFR Part 11 compliance** structure
-7. **Django-River integration** for workflow management
+7. **Enhanced Simple Workflow Engine** for workflow management
 8. **Electronic signature** support
 9. **Comprehensive tracking** of all user actions
 

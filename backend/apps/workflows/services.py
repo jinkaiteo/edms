@@ -2,7 +2,7 @@
 Workflow Services for EDMS.
 
 Provides workflow management services for document lifecycle
-management with Django-River integration.
+management with Enhanced Simple Workflow Engine.
 """
 
 from typing import Dict, List, Optional, Any

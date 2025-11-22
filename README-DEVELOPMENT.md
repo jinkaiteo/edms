@@ -225,7 +225,7 @@ docker-compose ps
 ## 📚 Next Steps
 
 1. **Implement Document Models**: Complete the document management models in `apps/documents/`
-2. **Add Workflow Engine**: Integrate Django-River for workflow management
+2. **Add Workflow Engine**: Integrate Enhanced Simple Workflow Engine for workflow management
 3. **Build API Endpoints**: Implement REST API endpoints for all modules
 4. **Create Frontend Components**: Build React components for document management
 5. **Add Authentication**: Implement JWT authentication and user management

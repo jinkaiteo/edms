@@ -19,6 +19,7 @@ from .views import (
     UserRoleViewSet,
     MFADeviceViewSet,
     UserProfileView,
+    LogoutView,
     ChangePasswordView,
     SetupMFAView,
     VerifyMFAView,
@@ -41,6 +42,7 @@ urlpatterns = [
     
     # User profile and management
     path('profile/', UserProfileView.as_view(), name='user_profile'),
+    path('logout/', LogoutView.as_view(), name='logout'),
     path('change-password/', ChangePasswordView.as_view(), name='change_password'),
     
     # Multi-Factor Authentication

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Document, DocumentStatus, DocumentType } from '../../types/api';
-import { apiService } from '../../services/api';
+import apiService from '../../services/api';
 
 interface DocumentListProps {
   onDocumentSelect?: (document: Document) => void;

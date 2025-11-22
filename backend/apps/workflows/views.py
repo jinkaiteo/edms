@@ -9,6 +9,7 @@ from django.db.models import Q, Count, Avg
 from django.utils import timezone
 from django.contrib.contenttypes.models import ContentType
 from rest_framework import viewsets, status, permissions
+from rest_framework.permissions import IsAuthenticated
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -18,12 +19,12 @@ from rest_framework.filters import SearchFilter, OrderingFilter
 from apps.users.permissions import CanManageDocuments, CanManageWorkflows
 from apps.documents.models import Document
 from .models import (
-    WorkflowType, WorkflowInstance, WorkflowTransition,
+    DocumentState, WorkflowType, WorkflowInstance, WorkflowTransition,
     WorkflowTask, WorkflowRule, WorkflowNotification,
     WorkflowTemplate
 )
 from .serializers import (
-    WorkflowTypeSerializer, WorkflowInstanceSerializer,
+    DocumentStateSerializer, WorkflowTypeSerializer, WorkflowInstanceSerializer,
     WorkflowTransitionSerializer, WorkflowTaskSerializer,
     WorkflowRuleSerializer, WorkflowNotificationSerializer,
     WorkflowTemplateSerializer, WorkflowTransitionActionSerializer,
@@ -32,6 +33,31 @@ from .serializers import (
     PendingTaskSummarySerializer, WorkflowMetricsSerializer
 )
 from .services import get_workflow_service, get_document_workflow_service
+
+
+class DocumentStateViewSet(viewsets.ReadOnlyModelViewSet):
+    """
+    ViewSet for document workflow states.
+    Provides read-only access to workflow states.
+    """
+    queryset = DocumentState.objects.all().order_by('name')
+    serializer_class = DocumentStateSerializer
+    permission_classes = [IsAuthenticated]
+    
+    def get_queryset(self):
+        """Filter states based on query parameters."""
+        queryset = super().get_queryset()
+        
+        # Filter by initial/final states
+        is_initial = self.request.query_params.get('is_initial')
+        if is_initial is not None:
+            queryset = queryset.filter(is_initial=is_initial.lower() == 'true')
+            
+        is_final = self.request.query_params.get('is_final')
+        if is_final is not None:
+            queryset = queryset.filter(is_final=is_final.lower() == 'true')
+            
+        return queryset
 
 
 class WorkflowTypeViewSet(viewsets.ModelViewSet):

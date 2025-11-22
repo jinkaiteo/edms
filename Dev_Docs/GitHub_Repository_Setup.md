@@ -76,7 +76,7 @@ A 21 CFR Part 11 compliant Electronic Document Management System built with Djan
 
 - **Backend**: Django REST Framework with PostgreSQL
 - **Frontend**: React with TypeScript and Tailwind CSS
-- **Workflow Engine**: Django-River for document workflows
+- **Workflow Engine**: Enhanced Simple Workflow Engine for document workflows
 - **Search**: Elasticsearch for document indexing
 - **Cache**: Redis for performance optimization
 - **Storage**: Encrypted file system with backup

@@ -1,5 +1,6 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import { User, Role } from '../../types/api';
+import apiService from '../../services/api.ts';
 
 interface UserManagementProps {
   className?: string;
@@ -12,11 +13,44 @@ interface UserWithRoles extends User {
 const UserManagement: React.FC<UserManagementProps> = ({ className = '' }) => {
   const [users, setUsers] = useState<UserWithRoles[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [selectedUser, setSelectedUser] = useState<UserWithRoles | null>(null);
   const [showCreateUser, setShowCreateUser] = useState(false);
   const [showEditUser, setShowEditUser] = useState(false);
 
-  // Mock users data
+  // Load users from API
+  useEffect(() => {
+    const loadUsers = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+        
+        // Note: Full user management API not yet available, using mock data
+        console.log('User Management: API endpoints not yet fully implemented, using mock data');
+        const usersData = mockUsers;
+        
+        // Transform users to include roles
+        const usersWithRoles: UserWithRoles[] = usersData.map(user => ({
+          ...user,
+          assigned_roles: user.roles?.map(ur => ur.role) || []
+        }));
+        
+        setUsers(usersWithRoles);
+      } catch (err: any) {
+        console.error('Error loading users:', err);
+        setError(null); // Clear error since we're using mock data intentionally
+        
+        // Use mock data (API endpoints not fully implemented yet)
+        setUsers(mockUsers);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadUsers();
+  }, []);
+
+  // Mock users data (fallback)
   const mockUsers: UserWithRoles[] = [
     {
       id: 1,
@@ -116,13 +150,7 @@ const UserManagement: React.FC<UserManagementProps> = ({ className = '' }) => {
     }
   ];
 
-  React.useEffect(() => {
-    // Simulate API call
-    setTimeout(() => {
-      setUsers(mockUsers);
-      setLoading(false);
-    }, 1000);
-  }, []);
+  // Remove duplicate useEffect since we already have one above
 
   const handleCreateUser = useCallback(() => {
     setSelectedUser(null);
@@ -134,10 +162,24 @@ const UserManagement: React.FC<UserManagementProps> = ({ className = '' }) => {
     setShowEditUser(true);
   }, []);
 
-  const handleDeactivateUser = useCallback((user: UserWithRoles) => {
+  const handleDeactivateUser = useCallback(async (user: UserWithRoles) => {
     if (window.confirm(`Are you sure you want to deactivate ${user.full_name}?`)) {
-      // TODO: Implement user deactivation
-      alert(`User ${user.full_name} deactivation will be implemented in the backend integration phase.`);
+      try {
+        setLoading(true);
+        await apiService.updateUser(user.id, { is_active: false });
+        
+        // Update local state
+        setUsers(prev => prev.map(u => 
+          u.id === user.id ? { ...u, is_active: false } : u
+        ));
+        
+        console.log('User deactivated successfully:', user.id);
+      } catch (err: any) {
+        console.error('Error deactivating user:', err);
+        setError('Failed to deactivate user. Please try again.');
+      } finally {
+        setLoading(false);
+      }
     }
   }, []);
 

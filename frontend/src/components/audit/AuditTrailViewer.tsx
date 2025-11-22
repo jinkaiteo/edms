@@ -1,4 +1,5 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
+import apiService from '../../services/api';
 import { AuditTrail } from '../../types/api';
 
 interface AuditTrailViewerProps {

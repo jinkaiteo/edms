@@ -9,6 +9,7 @@ from django.urls import path, include
 from rest_framework.routers import DefaultRouter
 
 from .views import (
+    DocumentStateViewSet,
     WorkflowTypeViewSet,
     WorkflowInstanceViewSet,
     WorkflowTaskViewSet,
@@ -24,6 +25,7 @@ from .views import (
 
 # Router for viewsets
 router = DefaultRouter()
+router.register(r'states', DocumentStateViewSet)
 router.register(r'types', WorkflowTypeViewSet)
 router.register(r'instances', WorkflowInstanceViewSet)
 router.register(r'tasks', WorkflowTaskViewSet)

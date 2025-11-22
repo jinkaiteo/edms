@@ -57,8 +57,10 @@ class ApiService {
     // Request interceptor
     this.client.interceptors.request.use(
       (config) => {
-        if (this.token) {
-          config.headers.Authorization = `Token ${this.token}`;
+        // Always get fresh token from localStorage
+        const accessToken = localStorage.getItem('accessToken');
+        if (accessToken) {
+          config.headers.Authorization = `Bearer ${accessToken}`;
         }
         
         // Temporarily disable request ID to avoid CORS issues
@@ -86,7 +88,8 @@ class ApiService {
   }
 
   private loadTokenFromStorage(): void {
-    this.token = localStorage.getItem('authToken');
+    // Updated to use correct localStorage key
+    this.token = localStorage.getItem('accessToken');
   }
 
   private handleUnauthorized(): void {
@@ -112,18 +115,86 @@ class ApiService {
     return apiError;
   }
 
+  // User Management methods  
+  async getUsers(params?: any): Promise<ApiResponse<User[]>> {
+    // Note: No direct users endpoint available, using auth endpoint for user data
+    const response = await this.client.get<User>('/auth/user/');
+    return { results: [response.data] } as ApiResponse<User[]>;
+  }
+
+  async getUser(id: number): Promise<User> {
+    const response = await this.client.get<User>(`/users/${id}/`);
+    return response.data;
+  }
+
+  async createUser(userData: any): Promise<User> {
+    const response = await this.client.post<User>('/users/', userData);
+    return response.data;
+  }
+
+  async updateUser(id: number, userData: any): Promise<User> {
+    const response = await this.client.patch<User>(`/users/${id}/`, userData);
+    return response.data;
+  }
+
+  async deleteUser(id: number): Promise<void> {
+    await this.client.delete(`/users/${id}/`);
+  }
+
+  async assignRole(userId: number, roleId: number): Promise<any> {
+    const response = await this.client.post(`/users/${userId}/assign_role/`, { role_id: roleId });
+    return response.data;
+  }
+
+  async removeRole(userId: number, roleId: number): Promise<any> {
+    const response = await this.client.post(`/users/${userId}/remove_role/`, { role_id: roleId });
+    return response.data;
+  }
+
+  async getRoles(params?: any): Promise<ApiResponse<Role[]>> {
+    const response = await this.client.get<ApiResponse<Role[]>>('/users/roles/', { params });
+    return response.data;
+  }
+
+  // System Settings methods
+  async getSystemSettings(params?: any): Promise<ApiResponse<SystemConfiguration[]>> {
+    const response = await this.client.get<ApiResponse<SystemConfiguration[]>>('/settings/', { params });
+    return response.data;
+  }
+
+  async updateSystemSetting(id: number, value: string): Promise<SystemConfiguration> {
+    const response = await this.client.patch<SystemConfiguration>(`/settings/${id}/`, { value });
+    return response.data;
+  }
+
+  // Workflow Management methods  
+  async getWorkflowTypes(params?: any): Promise<ApiResponse<any[]>> {
+    const response = await this.client.get<ApiResponse<any[]>>('/workflows/types/', { params });
+    return response.data;
+  }
+
+  async updateWorkflowType(id: number, data: any): Promise<any> {
+    const response = await this.client.patch(`/workflows/types/${id}/`, data);
+    return response.data;
+  }
+
+
   // Authentication methods
   async login(credentials: LoginRequest): Promise<LoginResponse> {
-    const response = await this.client.post<any>('/auth/login/', credentials);
-    
-    // Our Django backend doesn't use tokens, it uses sessions
-    // Just return the user data
-    return {
-      user: response.data.user,
-      token: '', // Not used with session auth
-      permissions: [], // Add empty permissions array
-      message: response.data.message
-    };
+    try {
+      const response = await this.client.post<any>('/auth/token/', credentials);
+      const loginData = response.data;
+      
+      // Set token for future requests
+      if (loginData.access) {
+        this.setAuthToken(loginData.access);
+      }
+      
+      return loginData;
+    } catch (error) {
+      console.error('Login failed:', error);
+      throw error;
+    }
   }
 
   async logout(): Promise<void> {
@@ -133,7 +204,21 @@ class ApiService {
       // Ignore logout errors
     } finally {
       this.token = null;
-      localStorage.removeItem('authToken');
+      localStorage.removeItem('accessToken');
+      localStorage.removeItem('refreshToken');
+    }
+  }
+
+  // Add method to set auth token
+  setAuthToken(token: string | null): void {
+    this.token = token;
+    if (token) {
+      localStorage.setItem('accessToken', token);
+      this.client.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+    } else {
+      localStorage.removeItem('accessToken');
+      localStorage.removeItem('refreshToken');
+      delete this.client.defaults.headers.common['Authorization'];
     }
   }
 
@@ -173,8 +258,11 @@ class ApiService {
       }
     });
 
-    const response = await this.client.post<Document>('/documents/', formData, {
-      headers: { 'Content-Type': 'multipart/form-data' }
+    // Use the correct endpoint and let interceptor handle auth
+    const response = await this.client.post<Document>('/documents/documents/', formData, {
+      headers: { 
+        // Don't set Content-Type for FormData - let browser set it with boundary
+      }
     });
     return response.data;
   }
@@ -328,11 +416,9 @@ class ApiService {
     return response.data;
   }
 
-  // Utility methods
+  // Check if authenticated
   isAuthenticated(): boolean {
-    // For session-based auth, we can't rely on token
-    // This should be checked via API call instead
-    return false; // Temporarily disabled
+    return !!this.token;
   }
 
   getToken(): string | null {

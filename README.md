@@ -23,7 +23,7 @@ A **21 CFR Part 11 compliant** Electronic Document Management System designed fo
 ## 🏗️ Architecture
 
 ### Technology Stack
-- **Backend**: Django 4.2 + Django REST Framework + Django-River
+- **Backend**: Django 4.2 + Django REST Framework + Custom Workflow Engine
 - **Frontend**: React 18 + TypeScript + Tailwind CSS
 - **Database**: PostgreSQL 18 with encryption
 - **Cache**: Redis for sessions and task queue

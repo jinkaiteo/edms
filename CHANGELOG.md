@@ -50,7 +50,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Search**: Elasticsearch 8.11
 - **Cache**: Redis 7.0
 - **Containers**: Docker
-- **Workflow**: Django-River for dynamic workflows
+- **Workflow**: Enhanced Simple Workflow Engine for dynamic workflows
 
 ### Compliance Features Planned
 - Electronic signatures with validation

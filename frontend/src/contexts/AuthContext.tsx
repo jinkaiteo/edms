@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 
 interface User {
   uuid: string;
@@ -24,9 +24,54 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [authenticated, setAuthenticated] = useState(false);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true); // Start with loading true
 
   console.log('🔄 AuthContext state:', { authenticated, user: user?.username, loading });
+
+  // Initialize auth state on mount - restore from localStorage
+  useEffect(() => {
+    const initializeAuth = async () => {
+      console.log('🔄 AuthContext: Initializing authentication...');
+      
+      try {
+        const accessToken = localStorage.getItem('accessToken');
+        const refreshToken = localStorage.getItem('refreshToken');
+        
+        if (accessToken && refreshToken) {
+          console.log('🔑 AuthContext: Found stored tokens, validating...');
+          
+          // Try to get user profile with stored token
+          const profileResponse = await fetch('http://localhost:8000/api/v1/auth/profile/', {
+            headers: {
+              'Authorization': `Bearer ${accessToken}`,
+              'Content-Type': 'application/json',
+            },
+          });
+          
+          if (profileResponse.ok) {
+            const userProfile = await profileResponse.json();
+            console.log('✅ AuthContext: Token valid, restoring user session');
+            setUser(userProfile);
+            setAuthenticated(true);
+          } else {
+            console.log('❌ AuthContext: Token expired, clearing storage');
+            localStorage.removeItem('accessToken');
+            localStorage.removeItem('refreshToken');
+          }
+        } else {
+          console.log('ℹ️ AuthContext: No stored tokens found');
+        }
+      } catch (error) {
+        console.error('❌ AuthContext: Error initializing auth:', error);
+        localStorage.removeItem('accessToken');
+        localStorage.removeItem('refreshToken');
+      }
+      
+      setLoading(false);
+    };
+    
+    initializeAuth();
+  }, []);
 
   const login = async (username: string, password: string) => {
     console.log('🔐 AuthContext: Starting login process...', { username });
@@ -89,21 +134,28 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const logout = async () => {
     console.log('🚪 AuthContext: Logging out...');
     try {
-      await fetch('http://localhost:8000/api/v1/auth/logout/', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        credentials: 'include',
-      });
+      const accessToken = localStorage.getItem('accessToken');
+      
+      if (accessToken) {
+        await fetch('http://localhost:8000/api/v1/auth/logout/', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${accessToken}`,
+            'Content-Type': 'application/json',
+          },
+        });
+      }
     } catch (error) {
       console.error('Logout error:', error);
       // Continue with logout even if API call fails
     }
     
+    // Clear stored tokens and state
+    localStorage.removeItem('accessToken');
+    localStorage.removeItem('refreshToken');
     setUser(null);
     setAuthenticated(false);
-    console.log('✅ AuthContext: Logged out, global state cleared');
+    console.log('🚪 AuthContext: User logged out successfully');
   };
 
   return (

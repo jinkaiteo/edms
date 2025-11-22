@@ -10,7 +10,7 @@ from django.contrib.auth import get_user_model
 from django.utils import timezone
 
 from .models import (
-    WorkflowType, WorkflowInstance, WorkflowTransition,
+    DocumentState, WorkflowType, WorkflowInstance, WorkflowTransition,
     WorkflowTask, WorkflowRule, WorkflowNotification,
     WorkflowTemplate
 )
@@ -358,6 +358,7 @@ class PendingTaskSummarySerializer(serializers.Serializer):
     initiated_by = serializers.CharField(read_only=True)
 
 
+
 class WorkflowMetricsSerializer(serializers.Serializer):
     """Serializer for workflow metrics and statistics."""
     
@@ -383,3 +384,13 @@ class WorkflowMetricsSerializer(serializers.Serializer):
     # Recent activity
     recent_completions = serializers.IntegerField(read_only=True)
     recent_initiations = serializers.IntegerField(read_only=True)
+class DocumentStateSerializer(serializers.ModelSerializer):
+    """Serializer for DocumentState model."""
+    
+    class Meta:
+        model = DocumentState
+        fields = [
+            'code', 'name', 'description', 
+            'is_initial', 'is_final'
+        ]
+        read_only_fields = ['code']

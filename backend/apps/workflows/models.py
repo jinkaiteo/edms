@@ -1,7 +1,7 @@
 """
 Workflow Management Models for EDMS.
 
-Implements Django-River workflow integration for document lifecycle
+Implements Enhanced Simple Workflow Engine for document lifecycle
 management with 21 CFR Part 11 compliance.
 """
 

@@ -10,8 +10,7 @@ from django.contrib.auth import get_user_model
 from django.contrib.contenttypes.models import ContentType
 from django.db import transaction
 
-# from river.models import State, Transition, TransitionApproval
-# River workflow engine removed - using custom workflow implementation
+from apps.workflows.models import DocumentState, WorkflowType, DocumentWorkflow
 from apps.documents.models import Document
 from apps.workflows.models import WorkflowType, WorkflowTemplate, DOCUMENT_STATES
 from apps.users.models import Role
@@ -75,7 +74,7 @@ class Command(BaseCommand):
         self.stdout.write('Creating workflow states...')
         
         for state_code, state_label in DOCUMENT_STATES:
-            state, created = State.objects.get_or_create(
+            state, created = DocumentState.objects.get_or_create(
                 slug=state_code,
                 defaults={'label': state_label}
             )

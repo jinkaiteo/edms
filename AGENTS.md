@@ -6,7 +6,7 @@
 21 CFR Part 11 compliant Electronic Document Management System (EDMS) for regulated industries like pharmaceuticals. Focuses on secure, on-premise deployment with complete document lifecycle management.
 
 ### Core Technologies
-- **Backend**: Django 4.2 + Django REST Framework + Django-River (workflows)
+- **Backend**: Django 4.2 + Django REST Framework + Enhanced Simple Workflow Engine
 - **Frontend**: React 18 + TypeScript + Tailwind CSS
 - **Database**: PostgreSQL 18 with encryption + full-text search
 - **Cache**: Redis 7+ for sessions and task queues
@@ -56,7 +56,7 @@ edms/
 ### Implementation Guides
 - `Dev_Docs/6_Environment_Setup_Scripts.md` - Setup automation scripts
 - `Dev_Docs/2_EDMS_API_Specifications.md` - REST API design
-- `Dev_Docs/3_Django_River_Workflow_Setup.md` - Workflow configuration
+- `Dev_Docs/3_Enhanced_Simple_Workflow_Setup.md` - Custom Workflow Engine configuration
 - `Dev_Docs/Missing_Configuration_Templates.md` - Config templates
 
 ### Security & Compliance
@@ -189,7 +189,7 @@ edms/
 4. **Document upload/storage** functionality
 
 ### Phase 2: Workflow Engine
-1. **Django-River integration** for workflow management
+1. **Enhanced Simple Workflow Engine integration** for workflow management
 2. **Document lifecycle** implementation (Draft → Effective)
 3. **Role-based permissions** system
 4. **Audit trail** logging (S2 module)

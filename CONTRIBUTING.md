@@ -54,7 +54,7 @@ We are committed to providing a welcoming and inspiring community for all. Pleas
 #### Django Conventions
 - Use Django's class-based views where appropriate
 - Follow Django REST Framework patterns for APIs
-- Use Django-River for workflow management
+- Use Enhanced Simple Workflow Engine for workflow management
 - Implement proper model validation and clean methods
 
 #### Example Structure

@@ -21,10 +21,13 @@ const DocumentUpload: React.FC<DocumentUploadProps> = ({
     title: '',
     description: '',
     document_type_id: 1,
-    metadata: {}
+    metadata: {},
+    reviewer: 1, // Default to admin user
+    approver: 1  // Default to admin user
   });
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [availableUsers, setAvailableUsers] = useState<any[]>([]);
   
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -37,6 +40,22 @@ const DocumentUpload: React.FC<DocumentUploadProps> = ({
   ];
 
   const availableDocumentTypes = documentTypes.length > 0 ? documentTypes : defaultDocumentTypes;
+
+  // Load available users for reviewer/approver selection
+  React.useEffect(() => {
+    const loadUsers = async () => {
+      try {
+        const response = await apiService.get('/auth/users/');
+        setAvailableUsers(response.results || []);
+      } catch (error) {
+        console.error('Failed to load users:', error);
+        // Fallback to admin user only
+        setAvailableUsers([{ id: 1, username: 'admin', first_name: 'Admin', last_name: 'User' }]);
+      }
+    };
+    
+    loadUsers();
+  }, []);
 
   const handleDragOver = useCallback((e: React.DragEvent) => {
     e.preventDefault();
@@ -114,6 +133,14 @@ const DocumentUpload: React.FC<DocumentUploadProps> = ({
       newErrors.file = 'Please select a file to upload';
     }
 
+    // Validate reviewer and approver for all documents
+    if (!formData.reviewer) {
+      newErrors.reviewer = 'Reviewer is required';
+    }
+    if (!formData.approver) {
+      newErrors.approver = 'Approver is required';
+    }
+
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -133,7 +160,9 @@ const DocumentUpload: React.FC<DocumentUploadProps> = ({
         description: formData.description!,
         document_type_id: formData.document_type_id!,
         metadata: formData.metadata || {},
-        file: selectedFile!
+        file: selectedFile!,
+        reviewer: formData.reviewer!,
+        approver: formData.approver!
       };
 
       const result = await apiService.createDocument(uploadData);
@@ -143,7 +172,9 @@ const DocumentUpload: React.FC<DocumentUploadProps> = ({
         title: '',
         description: '',
         document_type_id: 1,
-        metadata: {}
+        metadata: {},
+        reviewer: 1,
+        approver: 1
       });
       setSelectedFile(null);
       if (fileInputRef.current) {
@@ -287,6 +318,49 @@ const DocumentUpload: React.FC<DocumentUploadProps> = ({
             {errors.description && <p className="text-sm text-red-600 mt-1">{errors.description}</p>}
           </div>
 
+          {/* Reviewer and Approver fields for all documents */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div>
+              <label htmlFor="reviewer" className="block text-sm font-medium text-gray-700 mb-1">
+                Reviewer *
+              </label>
+              <select
+                id="reviewer"
+                value={formData.reviewer || 1}
+                onChange={(e) => handleInputChange('reviewer', parseInt(e.target.value))}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                required
+              >
+                {availableUsers.map(user => (
+                  <option key={user.id} value={user.id}>
+                    {user.first_name} {user.last_name} ({user.username})
+                  </option>
+                ))}
+              </select>
+              {errors.reviewer && <p className="text-sm text-red-600 mt-1">{errors.reviewer}</p>}
+            </div>
+
+            <div>
+              <label htmlFor="approver" className="block text-sm font-medium text-gray-700 mb-1">
+                Approver *
+              </label>
+              <select
+                id="approver"
+                value={formData.approver || 1}
+                onChange={(e) => handleInputChange('approver', parseInt(e.target.value))}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                required
+              >
+                {availableUsers.map(user => (
+                  <option key={user.id} value={user.id}>
+                    {user.first_name} {user.last_name} ({user.username})
+                  </option>
+                ))}
+              </select>
+              {errors.approver && <p className="text-sm text-red-600 mt-1">{errors.approver}</p>}
+            </div>
+          </div>
+
           {/* Error display */}
           {errors.general && (
             <div className="bg-red-50 border border-red-200 rounded-md p-4">
@@ -299,7 +373,7 @@ const DocumentUpload: React.FC<DocumentUploadProps> = ({
             <button
               type="button"
               onClick={() => {
-                setFormData({ title: '', description: '', document_type_id: 1, metadata: {} });
+                setFormData({ title: '', description: '', document_type_id: 1, metadata: {}, reviewer: 1, approver: 1 });
                 setSelectedFile(null);
                 setErrors({});
                 if (fileInputRef.current) fileInputRef.current.value = '';

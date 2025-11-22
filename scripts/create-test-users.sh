@@ -10,7 +10,7 @@ echo "👥 Creating EDMS Test Users"
 echo "==========================="
 
 # Check if backend service is running
-if ! docker-compose ps backend | grep -q "Up"; then
+if ! docker compose ps backend | grep -q "Up"; then
     echo "❌ Backend service is not running. Please start it first with ./scripts/start-development.sh"
     exit 1
 fi
@@ -18,7 +18,7 @@ fi
 # Create test users
 echo "📝 Creating test users..."
 
-docker-compose exec backend python manage.py shell << 'EOF'
+docker compose exec backend python manage.py shell << 'EOF'
 from apps.users.models import User, Role, UserRole
 from django.contrib.auth.hashers import make_password
 
@@ -26,7 +26,7 @@ from django.contrib.auth.hashers import make_password
 test_users = [
     {
         'username': 'docadmin',
-        'password': 'EDMSAdmin2024!',
+        'password': 'test123',
         'email': 'docadmin@edms-project.com',
         'first_name': 'Document',
         'last_name': 'Administrator',
@@ -36,7 +36,7 @@ test_users = [
     },
     {
         'username': 'author',
-        'password': 'AuthorPass2024!',
+        'password': 'test123',
         'email': 'author@edms-project.com',
         'first_name': 'Document',
         'last_name': 'Author',
@@ -45,7 +45,7 @@ test_users = [
     },
     {
         'username': 'reviewer',
-        'password': 'ReviewPass2024!',
+        'password': 'test123',
         'email': 'reviewer@edms-project.com',
         'first_name': 'Document',
         'last_name': 'Reviewer',
@@ -54,7 +54,7 @@ test_users = [
     },
     {
         'username': 'approver',
-        'password': 'ApprovePass2024!',
+        'password': 'test123',
         'email': 'approver@edms-project.com',
         'first_name': 'Document',
         'last_name': 'Approver',
@@ -63,7 +63,7 @@ test_users = [
     },
     {
         'username': 'placeholderadmin',
-        'password': 'PlaceholderAdmin2024!',
+        'password': 'test123',
         'email': 'placeholderadmin@edms-project.com',
         'first_name': 'Placeholder',
         'last_name': 'Admin',
@@ -119,11 +119,11 @@ echo ""
 echo "✅ Test users creation completed!"
 echo ""
 echo "👤 Available test accounts:"
-echo "   docadmin / EDMSAdmin2024!"
-echo "   author / AuthorPass2024!"
-echo "   reviewer / ReviewPass2024!"
-echo "   approver / ApprovePass2024!"
-echo "   placeholderadmin / PlaceholderAdmin2024!"
+echo "   docadmin / test123"
+echo "   author / test123"
+echo "   reviewer / test123"
+echo "   approver / test123"
+echo "   placeholderadmin / test123"
 echo ""
 echo "🌐 Login at: http://localhost:8000/admin"
 echo ""
