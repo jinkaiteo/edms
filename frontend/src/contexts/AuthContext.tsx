@@ -33,7 +33,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     setLoading(true);
     
     try {
-      const response = await fetch('http://localhost:8001/api/v1/auth/login/', {
+      const response = await fetch('http://localhost:8000/api/v1/auth/token/', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -51,14 +51,30 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       const data = await response.json();
       console.log('📥 AuthContext: Login response data:', data);
 
-      if (data.success) {
-        console.log('✅ AuthContext: Login successful, updating global state...');
-        setUser(data.user);
-        setAuthenticated(true);
-        console.log('🎯 AuthContext: Global auth state updated:', { authenticated: true, user: data.user.username });
-        return data;
+      if (data.access && data.refresh) {
+        console.log('✅ AuthContext: Login successful, storing tokens...');
+        localStorage.setItem('accessToken', data.access);
+        localStorage.setItem('refreshToken', data.refresh);
+        
+        // Fetch user profile with the token
+        const profileResponse = await fetch('http://localhost:8000/api/v1/auth/profile/', {
+          headers: {
+            'Authorization': `Bearer ${data.access}`,
+            'Content-Type': 'application/json',
+          },
+        });
+        
+        if (profileResponse.ok) {
+          const userProfile = await profileResponse.json();
+          setUser(userProfile);
+          setAuthenticated(true);
+          console.log('🎯 AuthContext: Global auth state updated:', { authenticated: true, user: userProfile.username });
+          return { success: true, user: userProfile, tokens: data };
+        } else {
+          throw new Error('Failed to fetch user profile');
+        }
       } else {
-        throw new Error(data.error || 'Login failed');
+        throw new Error('Invalid login response format');
       }
     } catch (error) {
       console.error('❌ AuthContext: Login error:', error);
@@ -73,7 +89,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const logout = async () => {
     console.log('🚪 AuthContext: Logging out...');
     try {
-      await fetch('http://localhost:8001/api/v1/auth/logout/', {
+      await fetch('http://localhost:8000/api/v1/auth/logout/', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

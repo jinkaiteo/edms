@@ -79,6 +79,7 @@ class SearchIndex(models.Model):
     last_accessed = models.DateTimeField(null=True, blank=True)
     
     class Meta:
+        app_label = "search"
         db_table = 'search_indices'
         verbose_name = _('Search Index')
         verbose_name_plural = _('Search Indices')
@@ -167,6 +168,7 @@ class SearchQuery(models.Model):
     executed_at = models.DateTimeField(auto_now_add=True)
     
     class Meta:
+        app_label = "search"
         db_table = 'search_queries'
         verbose_name = _('Search Query')
         verbose_name_plural = _('Search Queries')
@@ -224,6 +226,7 @@ class SearchResult(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     
     class Meta:
+        app_label = "search"
         db_table = 'search_results'
         verbose_name = _('Search Result')
         verbose_name_plural = _('Search Results')
@@ -305,6 +308,7 @@ class SavedSearch(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
     
     class Meta:
+        app_label = "search"
         db_table = 'saved_searches'
         verbose_name = _('Saved Search')
         verbose_name_plural = _('Saved Searches')
@@ -399,6 +403,7 @@ class SearchFacet(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
     
     class Meta:
+        app_label = "search"
         db_table = 'search_facets'
         verbose_name = _('Search Facet')
         verbose_name_plural = _('Search Facets')
@@ -474,6 +479,7 @@ class SearchSynonym(models.Model):
     )
     
     class Meta:
+        app_label = "search"
         db_table = 'search_synonyms'
         verbose_name = _('Search Synonym')
         verbose_name_plural = _('Search Synonyms')
@@ -571,6 +577,7 @@ class SearchConfiguration(models.Model):
     )
     
     class Meta:
+        app_label = "search"
         db_table = 'search_configurations'
         verbose_name = _('Search Configuration')
         verbose_name_plural = _('Search Configurations')

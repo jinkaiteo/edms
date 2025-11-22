@@ -102,6 +102,7 @@ class BackupConfiguration(models.Model):
     )
     
     class Meta:
+        app_label = "backup"
         db_table = 'backup_configurations'
         verbose_name = _('Backup Configuration')
         verbose_name_plural = _('Backup Configurations')
@@ -184,6 +185,7 @@ class BackupJob(models.Model):
     )
     
     class Meta:
+        app_label = "backup"
         db_table = 'backup_jobs'
         verbose_name = _('Backup Job')
         verbose_name_plural = _('Backup Jobs')
@@ -309,6 +311,7 @@ class RestoreJob(models.Model):
     )
     
     class Meta:
+        app_label = "backup"
         db_table = 'restore_jobs'
         verbose_name = _('Restore Job')
         verbose_name_plural = _('Restore Jobs')
@@ -378,6 +381,7 @@ class HealthCheck(models.Model):
     checked_at = models.DateTimeField(auto_now_add=True)
     
     class Meta:
+        app_label = "backup"
         db_table = 'health_checks'
         verbose_name = _('Health Check')
         verbose_name_plural = _('Health Checks')
@@ -445,6 +449,7 @@ class SystemMetric(models.Model):
     recorded_at = models.DateTimeField(auto_now_add=True)
     
     class Meta:
+        app_label = "backup"
         db_table = 'system_metrics'
         verbose_name = _('System Metric')
         verbose_name_plural = _('System Metrics')
@@ -547,6 +552,7 @@ class DisasterRecoveryPlan(models.Model):
     )
     
     class Meta:
+        app_label = "backup"
         db_table = 'disaster_recovery_plans'
         verbose_name = _('Disaster Recovery Plan')
         verbose_name_plural = _('Disaster Recovery Plans')

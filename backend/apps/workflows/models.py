@@ -56,6 +56,7 @@ class WorkflowType(models.Model):
     metadata = models.JSONField(default=dict, blank=True)
     
     class Meta:
+        app_label = "workflows"
         db_table = 'workflow_types'
         verbose_name = _('Workflow Type')
         verbose_name_plural = _('Workflow Types')
@@ -122,6 +123,7 @@ class WorkflowInstance(models.Model):
     metadata = models.JSONField(default=dict, blank=True)
     
     class Meta:
+        app_label = "workflows"
         db_table = 'workflow_instances'
         verbose_name = _('Workflow Instance')
         verbose_name_plural = _('Workflow Instances')
@@ -205,6 +207,7 @@ class WorkflowTransition(models.Model):
     metadata = models.JSONField(default=dict, blank=True)
     
     class Meta:
+        app_label = "workflows"
         db_table = 'workflow_transitions'
         verbose_name = _('Workflow Transition')
         verbose_name_plural = _('Workflow Transitions')
@@ -296,6 +299,7 @@ class WorkflowTask(models.Model):
     metadata = models.JSONField(default=dict, blank=True)
     
     class Meta:
+        app_label = "workflows"
         db_table = 'workflow_tasks'
         verbose_name = _('Workflow Task')
         verbose_name_plural = _('Workflow Tasks')
@@ -373,6 +377,7 @@ class WorkflowRule(models.Model):
     metadata = models.JSONField(default=dict, blank=True)
     
     class Meta:
+        app_label = "workflows"
         db_table = 'workflow_rules'
         verbose_name = _('Workflow Rule')
         verbose_name_plural = _('Workflow Rules')
@@ -444,6 +449,7 @@ class WorkflowNotification(models.Model):
     metadata = models.JSONField(default=dict, blank=True)
     
     class Meta:
+        app_label = "workflows"
         db_table = 'workflow_notifications'
         verbose_name = _('Workflow Notification')
         verbose_name_plural = _('Workflow Notifications')
@@ -496,6 +502,7 @@ class WorkflowTemplate(models.Model):
     metadata = models.JSONField(default=dict, blank=True)
     
     class Meta:
+        app_label = "workflows"
         db_table = 'workflow_templates'
         verbose_name = _('Workflow Template')
         verbose_name_plural = _('Workflow Templates')
@@ -518,6 +525,7 @@ class DocumentState(models.Model):
     is_final = models.BooleanField(default=False)
     
     class Meta:
+        app_label = "workflows"
         db_table = 'workflow_document_states'
         ordering = ['name']
     
@@ -565,6 +573,7 @@ class DocumentWorkflow(models.Model):
     workflow_data = models.JSONField(default=dict, blank=True)
     
     class Meta:
+        app_label = "workflows"
         db_table = 'document_workflows'
         ordering = ['-updated_at']
     
@@ -630,6 +639,7 @@ class DocumentTransition(models.Model):
     transition_data = models.JSONField(default=dict, blank=True)
     
     class Meta:
+        app_label = "workflows"
         db_table = 'document_transitions'
         ordering = ['-transitioned_at']
     

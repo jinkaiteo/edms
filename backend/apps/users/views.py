@@ -14,14 +14,13 @@ from rest_framework.views import APIView
 from rest_framework.permissions import IsAuthenticated
 from django_filters.rest_framework import DjangoFilterBackend
 
-from .models import User, Role, UserRole, MFADevice, UserSession
+from .models import User, Role, UserRole, MFADevice
 from .serializers import (
     UserSerializer,
     UserCreateSerializer,
     RoleSerializer,
     UserRoleSerializer,
     MFADeviceSerializer,
-    UserSessionSerializer,
     ChangePasswordSerializer,
     SetupMFASerializer,
 )
@@ -171,21 +170,7 @@ class MFADeviceViewSet(viewsets.ModelViewSet):
         return super().get_queryset().filter(user=self.request.user)
 
 
-class UserSessionViewSet(viewsets.ReadOnlyModelViewSet):
-    """Read-only ViewSet for viewing user sessions."""
-    
-    queryset = UserSession.objects.all()
-    serializer_class = UserSessionSerializer
-    permission_classes = [IsAuthenticated]
-    filter_backends = [DjangoFilterBackend]
-    filterset_fields = ['user', 'is_active', 'logout_reason']
-    ordering = ['-login_timestamp']
-    
-    def get_queryset(self):
-        """Filter sessions based on user permissions."""
-        if self.request.user.is_superuser:
-            return super().get_queryset()
-        return super().get_queryset().filter(user=self.request.user)
+# UserSessionViewSet removed - UserSession model moved to audit app
 
 
 class UserProfileView(APIView):

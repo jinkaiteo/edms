@@ -66,6 +66,7 @@ class EncryptionKey(models.Model):
     metadata = models.JSONField(default=dict, blank=True)
     
     class Meta:
+        app_label = "security"
         db_table = 'security_encryption_keys'
         verbose_name = _('Encryption Key')
         verbose_name_plural = _('Encryption Keys')
@@ -143,6 +144,7 @@ class DigitalSignature(models.Model):
     metadata = models.JSONField(default=dict, blank=True)
     
     class Meta:
+        app_label = "security"
         db_table = 'security_digital_signatures'
         verbose_name = _('Digital Signature')
         verbose_name_plural = _('Digital Signatures')
@@ -232,6 +234,7 @@ class SecurityEvent(models.Model):
     metadata = models.JSONField(default=dict, blank=True)
     
     class Meta:
+        app_label = "security"
         db_table = 'security_events'
         verbose_name = _('Security Event')
         verbose_name_plural = _('Security Events')
@@ -296,6 +299,7 @@ class CertificateAuthority(models.Model):
     metadata = models.JSONField(default=dict, blank=True)
     
     class Meta:
+        app_label = "security"
         db_table = 'security_certificate_authorities'
         verbose_name = _('Certificate Authority')
         verbose_name_plural = _('Certificate Authorities')

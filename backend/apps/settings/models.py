@@ -109,6 +109,7 @@ class SystemConfiguration(models.Model):
     )
     
     class Meta:
+        app_label = "settings"
         db_table = 'system_configurations'
         verbose_name = _('System Configuration')
         verbose_name_plural = _('System Configurations')
@@ -278,6 +279,7 @@ class UICustomization(models.Model):
     )
     
     class Meta:
+        app_label = "settings"
         db_table = 'ui_customizations'
         verbose_name = _('UI Customization')
         verbose_name_plural = _('UI Customizations')
@@ -368,6 +370,7 @@ class FeatureToggle(models.Model):
     )
     
     class Meta:
+        app_label = "settings"
         db_table = 'feature_toggles'
         verbose_name = _('Feature Toggle')
         verbose_name_plural = _('Feature Toggles')
@@ -453,6 +456,7 @@ class ConfigurationHistory(models.Model):
     ip_address = models.GenericIPAddressField(null=True, blank=True)
     
     class Meta:
+        app_label = "settings"
         db_table = 'configuration_history'
         verbose_name = _('Configuration History')
         verbose_name_plural = _('Configuration History')
@@ -538,6 +542,7 @@ class NotificationTemplate(models.Model):
     )
     
     class Meta:
+        app_label = "settings"
         db_table = 'notification_templates'
         verbose_name = _('Notification Template')
         verbose_name_plural = _('Notification Templates')

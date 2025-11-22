@@ -67,6 +67,7 @@ class User(AbstractUser):
     metadata = models.JSONField(default=dict, blank=True)
     
     class Meta:
+        app_label = 'users'
         db_table = 'users'
         verbose_name = _('User')
         verbose_name_plural = _('Users')
@@ -146,6 +147,7 @@ class Role(models.Model):
     metadata = models.JSONField(default=dict, blank=True)
     
     class Meta:
+        app_label = 'users'
         db_table = 'roles'
         verbose_name = _('Role')
         verbose_name_plural = _('Roles')
@@ -195,6 +197,7 @@ class UserRole(models.Model):
     metadata = models.JSONField(default=dict, blank=True)
     
     class Meta:
+        app_label = 'users'
         db_table = 'user_roles'
         verbose_name = _('User Role Assignment')
         verbose_name_plural = _('User Role Assignments')
@@ -245,6 +248,7 @@ class MFADevice(models.Model):
     metadata = models.JSONField(default=dict, blank=True)
     
     class Meta:
+        app_label = 'users'
         db_table = 'mfa_devices'
         verbose_name = _('MFA Device')
         verbose_name_plural = _('MFA Devices')

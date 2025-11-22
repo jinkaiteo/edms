@@ -31,7 +31,7 @@ from .serializers import (
     WorkflowStatusSerializer, WorkflowHistorySerializer,
     PendingTaskSummarySerializer, WorkflowMetricsSerializer
 )
-from .services import workflow_service, document_workflow_service
+from .services import get_workflow_service, get_document_workflow_service
 
 
 class WorkflowTypeViewSet(viewsets.ModelViewSet):

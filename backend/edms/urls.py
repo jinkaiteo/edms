@@ -46,7 +46,7 @@ urlpatterns = [
     path('api/v1/', include(api_urlpatterns)),
     
     # Health check endpoint
-    path('health/', include('apps.backup.urls', namespace='health')),
+    path('health/', include('apps.backup.urls')),
 ]
 
 # Serve media files in development

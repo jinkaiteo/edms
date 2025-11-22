@@ -10,7 +10,7 @@ from django.contrib.auth import authenticate
 from django.contrib.auth.password_validation import validate_password
 from django.core.exceptions import ValidationError
 
-from .models import User, Role, UserRole, MFADevice, UserSession
+from .models import User, Role, UserRole, MFADevice
 
 
 class UserSerializer(serializers.ModelSerializer):
@@ -24,7 +24,7 @@ class UserSerializer(serializers.ModelSerializer):
         fields = [
             'id', 'uuid', 'username', 'email', 'first_name', 'last_name',
             'full_name', 'employee_id', 'phone_number', 'department',
-            'position', 'is_active', 'is_validated', 'mfa_enabled',
+            'position', 'is_active', 'is_staff', 'is_superuser', 'is_validated', 'mfa_enabled',
             'date_joined', 'last_login', 'active_roles'
         ]
         read_only_fields = ['id', 'uuid', 'date_joined', 'last_login']
@@ -35,6 +35,7 @@ class UserSerializer(serializers.ModelSerializer):
     
     def get_active_roles(self, obj):
         """Return active roles for the user."""
+        # The related_name is correctly set to 'user_roles' in UserRole model
         active_roles = obj.user_roles.filter(is_active=True).select_related('role')
         return [
             {
@@ -160,29 +161,7 @@ class MFADeviceSerializer(serializers.ModelSerializer):
         }
 
 
-class UserSessionSerializer(serializers.ModelSerializer):
-    """Serializer for user sessions (read-only)."""
-    
-    user_display = serializers.CharField(source='user.username', read_only=True)
-    duration = serializers.SerializerMethodField()
-    
-    class Meta:
-        model = UserSession
-        fields = [
-            'id', 'uuid', 'user', 'user_display', 'ip_address',
-            'login_timestamp', 'last_activity', 'logout_timestamp',
-            'is_active', 'logout_reason', 'duration'
-        ]
-        read_only_fields = '__all__'
-    
-    def get_duration(self, obj):
-        """Calculate session duration."""
-        if obj.logout_timestamp:
-            delta = obj.logout_timestamp - obj.login_timestamp
-        else:
-            delta = obj.last_activity - obj.login_timestamp
-        
-        return int(delta.total_seconds())
+# UserSessionSerializer removed - UserSession model moved to audit app
 
 
 class ChangePasswordSerializer(serializers.Serializer):

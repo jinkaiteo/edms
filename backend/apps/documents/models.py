@@ -69,6 +69,7 @@ class DocumentType(models.Model):
     metadata = models.JSONField(default=dict, blank=True)
     
     class Meta:
+        app_label = "documents"
         db_table = 'document_types'
         verbose_name = _('Document Type')
         verbose_name_plural = _('Document Types')
@@ -114,6 +115,7 @@ class DocumentSource(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     
     class Meta:
+        app_label = "documents"
         db_table = 'document_sources'
         verbose_name = _('Document Source')
         verbose_name_plural = _('Document Sources')
@@ -286,6 +288,7 @@ class Document(models.Model):
     objects = DocumentManager()
     
     class Meta:
+        app_label = "documents"
         db_table = 'documents'
         verbose_name = _('Document')
         verbose_name_plural = _('Documents')
@@ -494,6 +497,7 @@ class DocumentVersion(models.Model):
     metadata = models.JSONField(default=dict, blank=True)
     
     class Meta:
+        app_label = "documents"
         db_table = 'document_versions'
         verbose_name = _('Document Version')
         verbose_name_plural = _('Document Versions')
@@ -563,6 +567,7 @@ class DocumentDependency(models.Model):
     metadata = models.JSONField(default=dict, blank=True)
     
     class Meta:
+        app_label = "documents"
         db_table = 'document_dependencies'
         verbose_name = _('Document Dependency')
         verbose_name_plural = _('Document Dependencies')
@@ -650,6 +655,7 @@ class DocumentAccessLog(models.Model):
     metadata = models.JSONField(default=dict, blank=True)
     
     class Meta:
+        app_label = "documents"
         db_table = 'document_access_logs'
         verbose_name = _('Document Access Log')
         verbose_name_plural = _('Document Access Logs')
@@ -736,6 +742,7 @@ class DocumentComment(models.Model):
     metadata = models.JSONField(default=dict, blank=True)
     
     class Meta:
+        app_label = "documents"
         db_table = 'document_comments'
         verbose_name = _('Document Comment')
         verbose_name_plural = _('Document Comments')
@@ -807,6 +814,7 @@ class DocumentAttachment(models.Model):
     metadata = models.JSONField(default=dict, blank=True)
     
     class Meta:
+        app_label = "documents"
         db_table = 'document_attachments'
         verbose_name = _('Document Attachment')
         verbose_name_plural = _('Document Attachments')

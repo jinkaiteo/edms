@@ -100,6 +100,7 @@ class ScheduledTask(models.Model):
     metadata = models.JSONField(default=dict, blank=True)
     
     class Meta:
+        app_label = "scheduler"
         db_table = 'scheduled_tasks'
         verbose_name = _('Scheduled Task')
         verbose_name_plural = _('Scheduled Tasks')
@@ -233,6 +234,7 @@ class TaskExecution(models.Model):
     metadata = models.JSONField(default=dict, blank=True)
     
     class Meta:
+        app_label = "scheduler"
         db_table = 'task_executions'
         verbose_name = _('Task Execution')
         verbose_name_plural = _('Task Executions')
@@ -342,6 +344,7 @@ class DocumentSchedule(models.Model):
     metadata = models.JSONField(default=dict, blank=True)
     
     class Meta:
+        app_label = "scheduler"
         db_table = 'document_schedules'
         verbose_name = _('Document Schedule')
         verbose_name_plural = _('Document Schedules')
@@ -418,6 +421,7 @@ class SystemHealthCheck(models.Model):
     metadata = models.JSONField(default=dict, blank=True)
     
     class Meta:
+        app_label = "scheduler"
         db_table = 'system_health_checks'
         verbose_name = _('System Health Check')
         verbose_name_plural = _('System Health Checks')
@@ -512,6 +516,7 @@ class NotificationQueue(models.Model):
     metadata = models.JSONField(default=dict, blank=True)
     
     class Meta:
+        app_label = "scheduler"
         db_table = 'notification_queue'
         verbose_name = _('Notification Queue')
         verbose_name_plural = _('Notification Queue')

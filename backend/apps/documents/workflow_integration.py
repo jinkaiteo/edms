@@ -9,8 +9,9 @@ from typing import Optional, Dict, Any, List
 from django.contrib.auth import get_user_model
 from django.db import transaction
 from django.utils import timezone
-from river.models import State
-from river.core.instanceworkflowobject import InstanceWorkflowObject
+# from river.models import State
+# from river.core.instanceworkflowobject import InstanceWorkflowObject
+# River workflow engine removed - using custom workflow implementation
 
 from .models import Document, DocumentVersion, ElectronicSignature
 from apps.workflows.models import WorkflowInstance, WorkflowType

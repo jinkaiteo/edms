@@ -1,4 +1,4 @@
-version: '3.8'
+# docker-compose.yml for EDMS
 
 services:
   # PostgreSQL Database
@@ -10,8 +10,7 @@ services:
       POSTGRES_USER: edms_user
       POSTGRES_PASSWORD: edms_password
     volumes:
-      - postgres_data:/var/lib/postgresql/data
-      - ./infrastructure/db/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+      - postgres_data:/var/lib/postgresql
     ports:
       - "5432:5432"
     networks:
@@ -43,7 +42,12 @@ services:
       - "8000:8000"
     environment:
       - DEBUG=True
+      - DJANGO_SETTINGS_MODULE=edms.settings.development
       - DB_HOST=db
+      - DB_NAME=edms_db
+      - DB_USER=edms_user
+      - DB_PASSWORD=edms_password
+      - DB_PORT=5432
       - REDIS_URL=redis://redis:6379/1
       - CELERY_BROKER_URL=redis://redis:6379/0
     depends_on:
@@ -52,7 +56,8 @@ services:
     networks:
       - edms_network
     command: >
-      sh -c "python manage.py migrate &&
+      sh -c "sleep 10 &&
+             python manage.py migrate --run-syncdb &&
              python manage.py collectstatic --noinput &&
              python manage.py runserver 0.0.0.0:8000"
 

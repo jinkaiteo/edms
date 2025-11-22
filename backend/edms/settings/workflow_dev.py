@@ -74,11 +74,18 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'edms.wsgi.application'
 
-# Database - SQLite for workflow development
+# Database - PostgreSQL in Docker container
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'edms_workflow_dev.sqlite3',
+        'ENGINE': 'django.db.backends.postgresql',
+        'NAME': config('DB_NAME', default='edms_db'),
+        'USER': config('DB_USER', default='edms_user'),
+        'PASSWORD': config('DB_PASSWORD', default='edms_password'),
+        'HOST': config('DB_HOST', default='localhost'),
+        'PORT': config('DB_PORT', default='5432'),
+        'OPTIONS': {
+            'charset': 'utf8',
+        },
     }
 }
 

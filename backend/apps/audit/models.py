@@ -55,6 +55,7 @@ class AuditConfiguration(models.Model):
     metadata = models.JSONField(default=dict, blank=True)
     
     class Meta:
+        app_label = "audit"
         db_table = 'audit_configurations'
         verbose_name = _('Audit Configuration')
         verbose_name_plural = _('Audit Configurations')
@@ -146,6 +147,7 @@ class AuditTrail(models.Model):
     metadata = models.JSONField(default=dict, blank=True)
     
     class Meta:
+        app_label = "audit"
         db_table = 'audit_trail'
         verbose_name = _('Audit Log Entry')
         verbose_name_plural = _('Audit Log Entries')
@@ -223,6 +225,7 @@ class AuditQueryLog(models.Model):
     metadata = models.JSONField(default=dict, blank=True)
     
     class Meta:
+        app_label = "audit"
         db_table = 'audit_query_logs'
         verbose_name = _('Audit Query Log')
         verbose_name_plural = _('Audit Query Logs')
@@ -297,6 +300,7 @@ class ComplianceReport(models.Model):
     metadata = models.JSONField(default=dict, blank=True)
     
     class Meta:
+        app_label = "audit"
         db_table = 'compliance_reports'
         verbose_name = _('Compliance Report')
         verbose_name_plural = _('Compliance Reports')
@@ -365,6 +369,7 @@ class DataIntegrityCheck(models.Model):
     metadata = models.JSONField(default=dict, blank=True)
     
     class Meta:
+        app_label = "audit"
         db_table = 'data_integrity_checks'
         verbose_name = _('Data Integrity Check')
         verbose_name_plural = _('Data Integrity Checks')
@@ -402,6 +407,7 @@ class SystemEvent(models.Model):
     severity = models.CharField(max_length=10, default='INFO')
     
     class Meta:
+        app_label = "audit"
         db_table = 'system_events'
         ordering = ['-timestamp']
 
@@ -424,6 +430,7 @@ class LoginAudit(models.Model):
     failure_reason = models.CharField(max_length=200, blank=True, null=True)
     
     class Meta:
+        app_label = "audit"
         db_table = 'login_audit'
         ordering = ['-timestamp']
 
@@ -448,6 +455,7 @@ class UserSession(models.Model):
     is_active = models.BooleanField(default=True)
     
     class Meta:
+        app_label = "audit"
         db_table = 'user_sessions_audit'
         ordering = ['-login_timestamp']
 
@@ -470,6 +478,7 @@ class DatabaseChangeLog(models.Model):
     new_values = models.JSONField(default=dict, blank=True)
     
     class Meta:
+        app_label = "audit"
         db_table = 'database_change_log'
         ordering = ['-timestamp']
 
@@ -498,6 +507,7 @@ class ComplianceEvent(models.Model):
     resolution_status = models.CharField(max_length=20, default='OPEN')
     
     class Meta:
+        app_label = "audit"
         db_table = 'compliance_events'
         ordering = ['-timestamp']
 
@@ -562,6 +572,7 @@ class AuditEvent(models.Model):
     metadata = models.JSONField(default=dict, blank=True)
     
     class Meta:
+        app_label = "audit"
         db_table = 'audit_events'
         verbose_name = _('Audit Event')
         verbose_name_plural = _('Audit Events')

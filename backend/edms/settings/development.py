@@ -2,22 +2,11 @@
 
 from .base import *
 
-# Temporarily disable apps until models are implemented
-INSTALLED_APPS = [
-    'django.contrib.admin',
-    'django.contrib.auth',
-    'django.contrib.contenttypes',
-    'django.contrib.sessions',
-    'django.contrib.messages',
-    'django.contrib.staticfiles',
-    'rest_framework',
-    'corsheaders',
-    'django_filters',
-    'django_extensions',
-    'debug_toolbar',
-]
+# Enable all apps now that models are implemented
+# INSTALLED_APPS will be inherited from base.py
 
-# Use Django's default User model for now
+# Re-enable custom User model
+AUTH_USER_MODEL = 'users.User'
 
 # Override middleware to remove problematic ones
 MIDDLEWARE = [
@@ -74,13 +63,7 @@ INTERNAL_IPS = [
     'localhost',
 ]
 
-# Database - override to use SQLite for development
-DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'edms_dev.sqlite3',
-    }
-}
+# Database - use PostgreSQL from base settings (no override needed)
 
 # Email backend for development (console)
 EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'

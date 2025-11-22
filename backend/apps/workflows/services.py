@@ -8,10 +8,12 @@ management with Django-River integration.
 from typing import Dict, List, Optional, Any
 from django.db import transaction
 from django.utils import timezone
+from datetime import date
 from django.contrib.auth import get_user_model
 from django.contrib.contenttypes.models import ContentType
-from river.models import State, Transition
-from river.core.instanceworkflowobject import InstanceWorkflowObject
+# from river.models import State, Transition
+# from river.core.instanceworkflowobject import InstanceWorkflowObject
+# River workflow engine removed - using custom workflow implementation
 
 from .models import (
     WorkflowType, WorkflowInstance, WorkflowTransition, 
@@ -33,7 +35,15 @@ class WorkflowService:
     """
     
     def __init__(self):
-        self.document_content_type = ContentType.objects.get_for_model(Document)
+        # Lazy initialization to avoid database access during import
+        self._document_content_type = None
+    
+    @property
+    def document_content_type(self):
+        if self._document_content_type is None:
+            from django.contrib.contenttypes.models import ContentType
+            self._document_content_type = ContentType.objects.get_for_model(Document)
+        return self._document_content_type
     
     def initiate_workflow(self, document: Document, workflow_type: str, 
                          initiated_by: User, **kwargs) -> WorkflowInstance:
@@ -544,7 +554,7 @@ class DocumentWorkflowService:
         )
     
     def make_effective(self, document: Document, user: User, 
-                      effective_date: timezone.date = None) -> bool:
+                      effective_date: date = None) -> bool:
         """Make document effective."""
         workflow = self._get_active_workflow(document)
         if not workflow:
@@ -612,6 +622,18 @@ class DocumentWorkflowService:
         return queryset.first()
 
 
-# Global service instances
-workflow_service = WorkflowService()
-document_workflow_service = DocumentWorkflowService()
+# Global service instances - initialize lazily to avoid database access during import
+workflow_service = None
+document_workflow_service = None
+
+def get_workflow_service():
+    global workflow_service
+    if workflow_service is None:
+        workflow_service = WorkflowService()
+    return workflow_service
+
+def get_document_workflow_service():
+    global document_workflow_service
+    if document_workflow_service is None:
+        document_workflow_service = DocumentWorkflowService()
+    return document_workflow_service

@@ -18,7 +18,6 @@ from .views import (
     RoleViewSet,
     UserRoleViewSet,
     MFADeviceViewSet,
-    UserSessionViewSet,
     UserProfileView,
     ChangePasswordView,
     SetupMFAView,
@@ -31,7 +30,6 @@ router.register(r'users', UserViewSet)
 router.register(r'roles', RoleViewSet)
 router.register(r'user-roles', UserRoleViewSet)
 router.register(r'mfa-devices', MFADeviceViewSet)
-router.register(r'sessions', UserSessionViewSet)
 
 app_name = 'users'
 

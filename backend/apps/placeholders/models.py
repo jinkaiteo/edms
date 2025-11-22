@@ -113,6 +113,7 @@ class PlaceholderDefinition(models.Model):
     )
     
     class Meta:
+        app_label = "placeholders"
         db_table = 'placeholder_definitions'
         verbose_name = _('Placeholder Definition')
         verbose_name_plural = _('Placeholder Definitions')
@@ -230,6 +231,7 @@ class DocumentTemplate(models.Model):
     )
     
     class Meta:
+        app_label = "placeholders"
         db_table = 'document_templates'
         verbose_name = _('Document Template')
         verbose_name_plural = _('Document Templates')
@@ -314,6 +316,7 @@ class TemplatePlaceholder(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     
     class Meta:
+        app_label = "placeholders"
         db_table = 'template_placeholders'
         verbose_name = _('Template Placeholder')
         verbose_name_plural = _('Template Placeholders')
@@ -394,6 +397,7 @@ class DocumentGeneration(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     
     class Meta:
+        app_label = "placeholders"
         db_table = 'document_generations'
         verbose_name = _('Document Generation')
         verbose_name_plural = _('Document Generations')
@@ -476,6 +480,7 @@ class PlaceholderCache(models.Model):
     hit_count = models.PositiveIntegerField(default=0)
     
     class Meta:
+        app_label = "placeholders"
         db_table = 'placeholder_cache'
         verbose_name = _('Placeholder Cache')
         verbose_name_plural = _('Placeholder Cache')
