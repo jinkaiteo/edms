@@ -18,7 +18,7 @@ from .models import (
     AuditTrail, SystemEvent, LoginAudit, UserSession,
     DatabaseChangeLog, ComplianceEvent
 )
-from .middleware import get_audit_context
+from .middleware import get_current_audit_context
 
 User = get_user_model()
 
@@ -51,7 +51,7 @@ class AuditService:
         Returns:
             AuditTrail: Created audit trail entry
         """
-        audit_context = get_audit_context()
+        audit_context = get_current_audit_context()
         
         with transaction.atomic():
             # Create audit trail entry
@@ -190,11 +190,12 @@ class AuditService:
         Returns:
             LoginAudit: Created login audit entry
         """
-        audit_context = get_audit_context()
+        audit_context = get_current_audit_context()
         
         return LoginAudit.objects.create(
             user=user,
-            login_successful=success,
+            username=user.username if user else None,
+            success=success,
             failure_reason=failure_reason,
             ip_address=audit_context.get('ip_address') if audit_context else None,
             user_agent=audit_context.get('user_agent') if audit_context else None
@@ -209,16 +210,28 @@ class AuditService:
             session_key: Django session key
             
         Returns:
-            UserSession: Created user session entry
+            UserSession: Created or existing user session entry
         """
-        audit_context = get_audit_context()
+        audit_context = get_current_audit_context()
         
-        return UserSession.objects.create(
-            user=user,
+        session, created = UserSession.objects.get_or_create(
             session_key=session_key,
-            ip_address=audit_context.get('ip_address') if audit_context else None,
-            user_agent=audit_context.get('user_agent') if audit_context else None
+            defaults={
+                'user': user,
+                'ip_address': audit_context.get('ip_address') if audit_context else None,
+                'user_agent': audit_context.get('user_agent') if audit_context else None,
+                'is_active': True
+            }
         )
+        
+        # If session exists but for different user, update it
+        if not created:
+            session.user = user
+            session.is_active = True
+            session.last_activity = timezone.now()
+            session.save(update_fields=['user', 'is_active', 'last_activity'])
+        
+        return session
 
     def end_user_session(self, session_key: str):
         """
@@ -252,7 +265,7 @@ class AuditService:
         Returns:
             DatabaseChangeLog: Created change log entry
         """
-        audit_context = get_audit_context()
+        audit_context = get_current_audit_context()
         
         with transaction.atomic():
             change_log = DatabaseChangeLog.objects.create(
@@ -291,7 +304,7 @@ class AuditService:
         Returns:
             ComplianceEvent: Created compliance event entry
         """
-        audit_context = get_audit_context()
+        audit_context = get_current_audit_context()
         
         with transaction.atomic():
             event = ComplianceEvent.objects.create(

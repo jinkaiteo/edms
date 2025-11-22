@@ -8,4 +8,4 @@ class UsersConfig(AppConfig):
     
     def ready(self):
         """Import signals when the app is ready."""
-        import apps.users.signals  # noqa
+        # import apps.users.signals  # noqa - Temporarily disabled for auth testing

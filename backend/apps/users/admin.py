@@ -11,7 +11,7 @@ from django.utils.html import format_html
 from django.urls import reverse
 from django.utils.translation import gettext_lazy as _
 
-from .models import User, Role, UserRole, MFADevice, UserSession
+from .models import User, Role, UserRole, MFADevice
 
 
 @admin.register(User)
@@ -181,53 +181,4 @@ class MFADeviceAdmin(admin.ModelAdmin):
         return super().get_queryset(request).select_related('user')
 
 
-@admin.register(UserSession)
-class UserSessionAdmin(admin.ModelAdmin):
-    """Admin for viewing user sessions (read-only for audit purposes)."""
-    
-    list_display = (
-        'user', 'ip_address', 'login_timestamp',
-        'last_activity', 'is_active', 'logout_reason'
-    )
-    list_filter = (
-        'is_active', 'logout_reason', 'login_timestamp',
-        'last_activity'
-    )
-    search_fields = ('user__username', 'ip_address', 'session_key')
-    readonly_fields = (
-        'uuid', 'user', 'session_key', 'ip_address', 'user_agent',
-        'login_timestamp', 'last_activity', 'logout_timestamp',
-        'is_active', 'logout_reason', 'location_data', 'security_flags'
-    )
-    
-    fieldsets = (
-        (None, {
-            'fields': ('user', 'session_key', 'is_active')
-        }),
-        (_('Session Details'), {
-            'fields': (
-                'login_timestamp', 'last_activity', 'logout_timestamp',
-                'logout_reason'
-            ),
-        }),
-        (_('Technical Information'), {
-            'fields': ('ip_address', 'user_agent'),
-        }),
-        (_('Additional Data'), {
-            'fields': ('location_data', 'security_flags'),
-        }),
-        (_('System Information'), {
-            'fields': ('uuid',),
-        }),
-    )
-    
-    def has_add_permission(self, request):
-        """Sessions are created automatically, no manual addition."""
-        return False
-    
-    def has_change_permission(self, request, obj=None):
-        """Sessions are read-only for audit purposes."""
-        return False
-    
-    def get_queryset(self, request):
-        return super().get_queryset(request).select_related('user')
+# UserSessionAdmin moved to audit app

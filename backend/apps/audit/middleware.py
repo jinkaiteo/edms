@@ -94,7 +94,7 @@ class AuditMiddleware(MiddlewareMixin):
     def _log_request_if_needed(self, context, response):
         """Log requests that meet certain criteria."""
         # Only import here to avoid circular imports
-        from .models import AuditLog
+        from .models import AuditTrail
         
         # Define what should be logged automatically
         should_log = (
@@ -112,7 +112,7 @@ class AuditMiddleware(MiddlewareMixin):
         
         if should_log and context.get('user'):
             try:
-                AuditLog.objects.create(
+                AuditTrail.objects.create(
                     action='VIEW' if context['request_method'] == 'GET' else context['request_method'],
                     user=context['user'],
                     user_display_name=context['user'].get_full_name() or context['user'].username,
@@ -136,10 +136,10 @@ class AuditMiddleware(MiddlewareMixin):
     
     def _log_exception(self, context, exception):
         """Log exceptions for audit trail."""
-        from .models import AuditLog
+        from .models import AuditTrail
         
         try:
-            AuditLog.objects.create(
+            AuditTrail.objects.create(
                 action='ERROR',
                 user=context.get('user'),
                 user_display_name=context['user'].get_full_name() if context.get('user') else 'Anonymous',

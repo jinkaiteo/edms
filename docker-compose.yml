@@ -1,0 +1,129 @@
+version: '3.8'
+
+services:
+  # PostgreSQL Database
+  db:
+    image: postgres:18
+    container_name: edms_db
+    environment:
+      POSTGRES_DB: edms_db
+      POSTGRES_USER: edms_user
+      POSTGRES_PASSWORD: edms_password
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./infrastructure/db/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    ports:
+      - "5432:5432"
+    networks:
+      - edms_network
+
+  # Redis Cache and Message Broker
+  redis:
+    image: redis:7-alpine
+    container_name: edms_redis
+    command: redis-server --appendonly yes
+    volumes:
+      - redis_data:/data
+    ports:
+      - "6379:6379"
+    networks:
+      - edms_network
+
+  # Django Backend
+  backend:
+    build:
+      context: ./backend
+      dockerfile: ../infrastructure/containers/Dockerfile.backend
+    container_name: edms_backend
+    volumes:
+      - ./backend:/app
+      - ./storage:/app/storage
+      - ./logs:/app/logs
+    ports:
+      - "8000:8000"
+    environment:
+      - DEBUG=True
+      - DB_HOST=db
+      - REDIS_URL=redis://redis:6379/1
+      - CELERY_BROKER_URL=redis://redis:6379/0
+    depends_on:
+      - db
+      - redis
+    networks:
+      - edms_network
+    command: >
+      sh -c "python manage.py migrate &&
+             python manage.py collectstatic --noinput &&
+             python manage.py runserver 0.0.0.0:8000"
+
+  # Celery Worker
+  celery_worker:
+    build:
+      context: ./backend
+      dockerfile: ../infrastructure/containers/Dockerfile.backend
+    container_name: edms_celery_worker
+    volumes:
+      - ./backend:/app
+      - ./storage:/app/storage
+      - ./logs:/app/logs
+    environment:
+      - DEBUG=True
+      - DB_HOST=db
+      - REDIS_URL=redis://redis:6379/1
+      - CELERY_BROKER_URL=redis://redis:6379/0
+    depends_on:
+      - db
+      - redis
+    networks:
+      - edms_network
+    command: celery -A edms worker -l info
+
+  # Celery Beat (Scheduler)
+  celery_beat:
+    build:
+      context: ./backend
+      dockerfile: ../infrastructure/containers/Dockerfile.backend
+    container_name: edms_celery_beat
+    volumes:
+      - ./backend:/app
+      - ./storage:/app/storage
+      - ./logs:/app/logs
+    environment:
+      - DEBUG=True
+      - DB_HOST=db
+      - REDIS_URL=redis://redis:6379/1
+      - CELERY_BROKER_URL=redis://redis:6379/0
+    depends_on:
+      - db
+      - redis
+    networks:
+      - edms_network
+    command: celery -A edms beat -l info
+
+  # React Frontend
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: ../infrastructure/containers/Dockerfile.frontend
+    container_name: edms_frontend
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    ports:
+      - "3000:3000"
+    environment:
+      - REACT_APP_API_URL=http://localhost:8000/api/v1
+      - CHOKIDAR_USEPOLLING=true
+    depends_on:
+      - backend
+    networks:
+      - edms_network
+    command: npm start
+
+volumes:
+  postgres_data:
+  redis_data:
+
+networks:
+  edms_network:
+    driver: bridge

@@ -10,20 +10,21 @@ from django.dispatch import receiver
 from django.contrib.auth.signals import user_logged_in, user_logged_out
 from django.utils import timezone
 
-from .models import User, UserRole, UserSession
+from .models import User, UserRole
+# UserSession moved to audit app
 
 
 @receiver(post_save, sender=User)
 def create_user_audit_record(sender, instance, created, **kwargs):
     """Create audit record when user is created or updated."""
-    from apps.audit.models import AuditLog
+    from apps.audit.models import AuditTrail
     
     action = 'CREATE' if created else 'UPDATE'
-    AuditLog.objects.create(
+    AuditTrail.objects.create(
         content_object=instance,
         action=action,
         user=getattr(instance, '_current_user', None),
-        changes=getattr(instance, '_field_changes', {}),
+        field_changes=getattr(instance, '_field_changes', {}),
         metadata={
             'model': 'User',
             'user_uuid': str(instance.uuid),
@@ -35,10 +36,10 @@ def create_user_audit_record(sender, instance, created, **kwargs):
 @receiver(post_save, sender=UserRole)
 def create_role_assignment_audit(sender, instance, created, **kwargs):
     """Create audit record for role assignments."""
-    from apps.audit.models import AuditLog
+    from apps.audit.models import AuditTrail
     
     if created:
-        AuditLog.objects.create(
+        AuditTrail.objects.create(
             content_object=instance,
             action='ROLE_ASSIGNED',
             user=instance.assigned_by,
@@ -56,9 +57,9 @@ def create_role_assignment_audit(sender, instance, created, **kwargs):
 @receiver(post_delete, sender=UserRole)
 def create_role_removal_audit(sender, instance, **kwargs):
     """Create audit record for role removals."""
-    from apps.audit.models import AuditLog
+    from apps.audit.models import AuditTrail
     
-    AuditLog.objects.create(
+    AuditTrail.objects.create(
         content_object=None,  # Object deleted
         action='ROLE_REMOVED',
         user=getattr(instance, '_removed_by', None),
@@ -76,6 +77,8 @@ def create_role_removal_audit(sender, instance, **kwargs):
 @receiver(user_logged_in)
 def create_login_session(sender, request, user, **kwargs):
     """Create session record when user logs in."""
+    from apps.audit.models import UserSession
+    
     # Get client IP
     x_forwarded_for = request.META.get('HTTP_X_FORWARDED_FOR')
     if x_forwarded_for:
@@ -107,6 +110,8 @@ def create_login_session(sender, request, user, **kwargs):
 @receiver(user_logged_out)
 def update_logout_session(sender, request, user, **kwargs):
     """Update session record when user logs out."""
+    from apps.audit.models import UserSession
+    
     if request and hasattr(request, 'session'):
         try:
             session = UserSession.objects.get(

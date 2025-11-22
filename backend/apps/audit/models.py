@@ -64,7 +64,7 @@ class AuditConfiguration(models.Model):
         return self.name
 
 
-class AuditLog(models.Model):
+class AuditTrail(models.Model):
     """
     Main audit log table for tracking all system changes.
     
@@ -146,7 +146,7 @@ class AuditLog(models.Model):
     metadata = models.JSONField(default=dict, blank=True)
     
     class Meta:
-        db_table = 'audit_logs'
+        db_table = 'audit_trail'
         verbose_name = _('Audit Log Entry')
         verbose_name_plural = _('Audit Log Entries')
         ordering = ['-timestamp']
@@ -379,6 +379,132 @@ class DataIntegrityCheck(models.Model):
         return f"{self.get_check_type_display()} - {self.status} ({self.started_at})"
 
 
+class SystemEvent(models.Model):
+    """
+    System-level events and automated actions.
+    """
+    
+    EVENT_TYPES = [
+        ('STARTUP', 'System Startup'),
+        ('SHUTDOWN', 'System Shutdown'),
+        ('ERROR', 'System Error'),
+        ('WARNING', 'System Warning'),
+        ('MAINTENANCE', 'Maintenance Event'),
+        ('BACKUP', 'Backup Event'),
+        ('UPDATE', 'System Update'),
+    ]
+    
+    uuid = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
+    event_type = models.CharField(max_length=20, choices=EVENT_TYPES)
+    timestamp = models.DateTimeField(auto_now_add=True)
+    description = models.TextField()
+    details = models.JSONField(default=dict, blank=True)
+    severity = models.CharField(max_length=10, default='INFO')
+    
+    class Meta:
+        db_table = 'system_events'
+        ordering = ['-timestamp']
+
+    def __str__(self):
+        return f"{self.event_type} at {self.timestamp}"
+
+
+class LoginAudit(models.Model):
+    """
+    Login and authentication audit records.
+    """
+    
+    uuid = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
+    user = models.ForeignKey(User, on_delete=models.PROTECT, null=True, blank=True)
+    username = models.CharField(max_length=150)
+    timestamp = models.DateTimeField(auto_now_add=True)
+    success = models.BooleanField()
+    ip_address = models.GenericIPAddressField(null=True, blank=True)
+    user_agent = models.TextField(blank=True)
+    failure_reason = models.CharField(max_length=200, blank=True, null=True)
+    
+    class Meta:
+        db_table = 'login_audit'
+        ordering = ['-timestamp']
+
+    def __str__(self):
+        status = "Success" if self.success else "Failed"
+        return f"{self.username} - {status} at {self.timestamp}"
+
+
+class UserSession(models.Model):
+    """
+    User session tracking for audit purposes.
+    """
+    
+    uuid = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    session_key = models.CharField(max_length=40, unique=True)
+    ip_address = models.GenericIPAddressField()
+    user_agent = models.TextField()
+    login_timestamp = models.DateTimeField(auto_now_add=True)
+    last_activity = models.DateTimeField(auto_now=True)
+    logout_timestamp = models.DateTimeField(null=True, blank=True)
+    is_active = models.BooleanField(default=True)
+    
+    class Meta:
+        db_table = 'user_sessions_audit'
+        ordering = ['-login_timestamp']
+
+    def __str__(self):
+        return f"{self.user.username} - {self.session_key}"
+
+
+class DatabaseChangeLog(models.Model):
+    """
+    Database change log for detailed tracking.
+    """
+    
+    uuid = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
+    timestamp = models.DateTimeField(auto_now_add=True)
+    table_name = models.CharField(max_length=100)
+    operation = models.CharField(max_length=20)
+    record_id = models.CharField(max_length=100)
+    user = models.ForeignKey(User, on_delete=models.PROTECT, null=True, blank=True)
+    old_values = models.JSONField(default=dict, blank=True)
+    new_values = models.JSONField(default=dict, blank=True)
+    
+    class Meta:
+        db_table = 'database_change_log'
+        ordering = ['-timestamp']
+
+    def __str__(self):
+        return f"{self.operation} on {self.table_name} at {self.timestamp}"
+
+
+class ComplianceEvent(models.Model):
+    """
+    Compliance-related events and violations.
+    """
+    
+    EVENT_TYPES = [
+        ('VALIDATION', 'Validation Event'),
+        ('VIOLATION', 'Compliance Violation'),
+        ('REVIEW', 'Compliance Review'),
+        ('AUDIT', 'Audit Event'),
+    ]
+    
+    uuid = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
+    event_type = models.CharField(max_length=20, choices=EVENT_TYPES)
+    timestamp = models.DateTimeField(auto_now_add=True)
+    description = models.TextField()
+    severity = models.CharField(max_length=10, default='INFO')
+    user = models.ForeignKey(User, on_delete=models.PROTECT, null=True, blank=True)
+    resolution_status = models.CharField(max_length=20, default='OPEN')
+    
+    class Meta:
+        db_table = 'compliance_events'
+        ordering = ['-timestamp']
+
+    def __str__(self):
+        return f"{self.event_type} - {self.description[:50]}"
+
+
 class AuditEvent(models.Model):
     """
     High-level audit events for business process tracking.
@@ -422,7 +548,7 @@ class AuditEvent(models.Model):
     )
     
     # Related objects
-    related_audit_logs = models.ManyToManyField(AuditLog, blank=True)
+    related_audit_logs = models.ManyToManyField(AuditTrail, blank=True)
     
     # Event outcome
     is_successful = models.BooleanField(default=True)
