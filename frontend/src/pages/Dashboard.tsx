@@ -3,15 +3,32 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext.tsx';
 import Layout from '../components/common/Layout.tsx';
 import LoadingSpinner from '../components/common/LoadingSpinner.tsx';
-import { apiService } from '../services/api.ts';
+import { useDashboardUpdates } from '../hooks/useDashboardUpdates.ts';
 import { DashboardStats, ActivityItem } from '../types/api.ts';
 
 const Dashboard: React.FC = () => {
-  const [stats, setStats] = useState<DashboardStats | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const { user, authenticated, logout } = useAuth();
   const navigate = useNavigate();
+  
+  // Use the new dashboard updates hook with auto-refresh and optional WebSocket
+  const {
+    dashboardStats: stats,
+    isLoading,
+    error,
+    connectionState,
+    refreshNow,
+    autoRefreshConfig
+  } = useDashboardUpdates({
+    enabled: authenticated,
+    autoRefreshInterval: 300000, // 5 minutes
+    useWebSocket: false, // Start with polling, can enable WebSocket later
+    onError: (error) => {
+      console.error('Dashboard update error:', error);
+    },
+    onUpdate: (stats) => {
+      console.log('Dashboard updated:', stats.timestamp);
+    }
+  });
 
   useEffect(() => {
     console.log('📊 Dashboard mounted - authenticated:', authenticated, 'user:', user?.username);
@@ -22,41 +39,7 @@ const Dashboard: React.FC = () => {
       return;
     }
     
-    console.log('✅ User authenticated, loading dashboard...');
-
-    // Load dashboard data
-    const loadDashboardData = async () => {
-      setIsLoading(true);
-      setError(null);
-      
-      try {
-        console.log('📊 Loading dashboard statistics from API...');
-        const dashboardData = await apiService.getDashboardStats();
-        console.log('✅ Dashboard data loaded successfully:', dashboardData);
-        
-        setStats(dashboardData);
-      } catch (err: any) {
-        console.error('❌ Failed to load dashboard data:', err);
-        setError('Failed to load dashboard data. Please try again.');
-        
-        // Fallback to basic stats if API fails
-        setStats({
-          total_documents: 0,
-          pending_reviews: 0,
-          active_workflows: 0,
-          active_users: 0,
-          placeholders: 0,
-          audit_entries_24h: 0,
-          recent_activity: [],
-          timestamp: new Date().toISOString(),
-          cache_duration: 0
-        });
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    loadDashboardData();
+    console.log('✅ User authenticated, dashboard auto-updates enabled');
   }, [authenticated, navigate, user]);
 
   const handleLogout = async () => {
@@ -100,10 +83,11 @@ const Dashboard: React.FC = () => {
             <h3 className="text-lg font-medium text-red-800 mb-2">Error Loading Dashboard</h3>
             <p className="text-red-600 mb-4">{error}</p>
             <button
-              onClick={() => window.location.reload()}
+              onClick={() => refreshNow()}
               className="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700"
+              disabled={isLoading}
             >
-              Retry
+              {isLoading ? 'Retrying...' : 'Retry'}
             </button>
           </div>
         </div>
@@ -137,6 +121,55 @@ const Dashboard: React.FC = () => {
               </p>
             </div>
             <div className="flex items-center space-x-4">
+              {/* Auto-refresh status and controls */}
+              <div className="flex items-center space-x-3 text-sm">
+                <div className="flex items-center space-x-1">
+                  <div className={`w-2 h-2 rounded-full ${
+                    autoRefreshConfig.isPaused ? 'bg-gray-400' : 
+                    autoRefreshConfig.isRefreshing ? 'bg-blue-500 animate-pulse' : 'bg-green-500'
+                  }`}></div>
+                  <span className="text-gray-600">
+                    {autoRefreshConfig.isPaused ? 'Paused' : 
+                     autoRefreshConfig.isRefreshing ? 'Refreshing...' : 'Auto-refresh'}
+                  </span>
+                </div>
+                
+                {autoRefreshConfig.lastRefresh && (
+                  <span className="text-gray-500">
+                    Updated: {autoRefreshConfig.lastRefresh.toLocaleTimeString()}
+                  </span>
+                )}
+                
+                {autoRefreshConfig.nextRefresh && !autoRefreshConfig.isPaused && (
+                  <span className="text-gray-400 text-xs">
+                    Next: {autoRefreshConfig.nextRefresh.toLocaleTimeString()}
+                  </span>
+                )}
+                
+                <div className="flex items-center space-x-1">
+                  <button
+                    onClick={autoRefreshConfig.toggle}
+                    className={`px-2 py-1 rounded text-xs font-medium ${
+                      autoRefreshConfig.isPaused 
+                        ? 'bg-green-100 text-green-700 hover:bg-green-200' 
+                        : 'bg-yellow-100 text-yellow-700 hover:bg-yellow-200'
+                    }`}
+                    title={autoRefreshConfig.isPaused ? 'Resume auto-refresh' : 'Pause auto-refresh'}
+                  >
+                    {autoRefreshConfig.isPaused ? '▶️' : '⏸️'}
+                  </button>
+                  
+                  <button
+                    onClick={() => refreshNow()}
+                    disabled={isLoading}
+                    className="px-2 py-1 rounded text-xs font-medium bg-blue-100 text-blue-700 hover:bg-blue-200 disabled:opacity-50"
+                    title="Refresh now"
+                  >
+                    🔄
+                  </button>
+                </div>
+              </div>
+              
               <div className="text-sm text-gray-500">
                 Last login: {user?.last_login ? new Date(user.last_login).toLocaleDateString() : 'Never'}
               </div>

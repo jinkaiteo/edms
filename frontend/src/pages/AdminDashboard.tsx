@@ -6,15 +6,32 @@ import PlaceholderManagement from '../components/placeholders/PlaceholderManagem
 import SystemSettings from '../components/settings/SystemSettings.tsx';
 import AuditTrailViewer from '../components/audit/AuditTrailViewer.tsx';
 import LoadingSpinner from '../components/common/LoadingSpinner.tsx';
-import { apiService } from '../services/api.ts';
+import { useDashboardUpdates } from '../hooks/useDashboardUpdates.ts';
 import { DashboardStats, ActivityItem } from '../types/api.ts';
 
 const AdminDashboard: React.FC = () => {
   console.log('📊 AdminDashboard: Component mounted');
   const [activeSection, setActiveSection] = useState<'overview' | 'users' | 'workflows' | 'placeholders' | 'settings' | 'audit' | 'tasks' | 'reports'>('overview');
-  const [dashboardStats, setDashboardStats] = useState<DashboardStats | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  
+  // Use dashboard updates hook for real-time data
+  const {
+    dashboardStats,
+    isLoading,
+    error,
+    connectionState,
+    refreshNow,
+    autoRefreshConfig
+  } = useDashboardUpdates({
+    enabled: activeSection === 'overview', // Only load when overview is active
+    autoRefreshInterval: 300000, // 5 minutes
+    useWebSocket: false, // Can enable WebSocket for admin dashboard later
+    onError: (error) => {
+      console.error('Admin dashboard update error:', error);
+    },
+    onUpdate: (stats) => {
+      console.log('Admin dashboard updated:', stats.timestamp);
+    }
+  });
 
   const adminSections = [
     {
@@ -68,43 +85,6 @@ const AdminDashboard: React.FC = () => {
     }
   ];
 
-  // Load dashboard statistics when overview section is active
-  useEffect(() => {
-    if (activeSection === 'overview') {
-      loadDashboardStats();
-    }
-  }, [activeSection]);
-
-  const loadDashboardStats = async () => {
-    setIsLoading(true);
-    setError(null);
-    
-    try {
-      console.log('📊 Loading admin dashboard statistics from API...');
-      const stats = await apiService.getDashboardStats();
-      console.log('✅ Admin dashboard data loaded successfully:', stats);
-      
-      setDashboardStats(stats);
-    } catch (err: any) {
-      console.error('❌ Failed to load admin dashboard data:', err);
-      setError('Failed to load dashboard statistics. Please try again.');
-      
-      // Fallback stats for admin dashboard
-      setDashboardStats({
-        total_documents: 0,
-        pending_reviews: 0,
-        active_workflows: 0,
-        active_users: 0,
-        placeholders: 0,
-        audit_entries_24h: 0,
-        recent_activity: [],
-        timestamp: new Date().toISOString(),
-        cache_duration: 0
-      });
-    } finally {
-      setIsLoading(false);
-    }
-  };
 
   const renderReportsInline = () => (
     <div className="space-y-6">
@@ -201,10 +181,11 @@ const AdminDashboard: React.FC = () => {
               <h3 className="text-lg font-medium text-red-800">Error Loading Dashboard</h3>
               <p className="text-red-600 mt-1">{error}</p>
               <button
-                onClick={loadDashboardStats}
+                onClick={() => refreshNow()}
                 className="mt-3 bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700"
+                disabled={isLoading}
               >
-                Retry
+                {isLoading ? 'Retrying...' : 'Retry'}
               </button>
             </div>
           </div>
@@ -227,14 +208,46 @@ const AdminDashboard: React.FC = () => {
         <p className="text-gray-600 mb-6">
           Manage users, configure workflows, and monitor system activities from this central admin dashboard.
         </p>
-        <div className="text-sm text-gray-500 mb-4">
-          Last updated: {new Date(dashboardStats.timestamp).toLocaleString()}
-          <button
-            onClick={loadDashboardStats}
-            className="ml-4 text-blue-600 hover:text-blue-800"
-          >
-            🔄 Refresh
-          </button>
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center space-x-4 text-sm text-gray-500">
+            <span>Last updated: {new Date(dashboardStats.timestamp).toLocaleString()}</span>
+            
+            {/* Auto-refresh status indicator */}
+            <div className="flex items-center space-x-1">
+              <div className={`w-2 h-2 rounded-full ${
+                autoRefreshConfig.isPaused ? 'bg-gray-400' : 
+                autoRefreshConfig.isRefreshing ? 'bg-blue-500 animate-pulse' : 'bg-green-500'
+              }`}></div>
+              <span className="text-xs">
+                {autoRefreshConfig.isPaused ? 'Auto-refresh paused' : 
+                 autoRefreshConfig.isRefreshing ? 'Refreshing...' : 'Auto-refresh enabled'}
+              </span>
+            </div>
+          </div>
+          
+          {/* Auto-refresh controls */}
+          <div className="flex items-center space-x-2">
+            <button
+              onClick={autoRefreshConfig.toggle}
+              className={`px-3 py-1 rounded text-xs font-medium ${
+                autoRefreshConfig.isPaused 
+                  ? 'bg-green-100 text-green-700 hover:bg-green-200' 
+                  : 'bg-yellow-100 text-yellow-700 hover:bg-yellow-200'
+              }`}
+              title={autoRefreshConfig.isPaused ? 'Resume auto-refresh' : 'Pause auto-refresh'}
+            >
+              {autoRefreshConfig.isPaused ? '▶️ Resume' : '⏸️ Pause'}
+            </button>
+            
+            <button
+              onClick={() => refreshNow()}
+              disabled={isLoading}
+              className="px-3 py-1 rounded text-xs font-medium bg-blue-100 text-blue-700 hover:bg-blue-200 disabled:opacity-50"
+              title="Refresh now"
+            >
+              {isLoading ? '⏳ Refreshing...' : '🔄 Refresh'}
+            </button>
+          </div>
         </div>
       </div>
 
