@@ -182,10 +182,11 @@ class ApiService {
   // Authentication methods
   async login(credentials: LoginRequest): Promise<LoginResponse> {
     try {
+      // Use the correct JWT token endpoint from URL configuration
       const response = await this.client.post<any>('/auth/token/', credentials);
       const loginData = response.data;
       
-      // Set token for future requests
+      // Set token for future requests if JWT is returned
       if (loginData.access) {
         this.setAuthToken(loginData.access);
       }
@@ -414,6 +415,23 @@ class ApiService {
       responseType: 'blob'
     });
     return response.data;
+  }
+
+  // Authentication state
+  private token: string | null = localStorage.getItem('accessToken');
+
+  // Set authentication token
+  setAuthToken(token: string) {
+    this.token = token;
+    localStorage.setItem('accessToken', token);
+    this.client.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+  }
+
+  // Clear authentication
+  clearAuth() {
+    this.token = null;
+    localStorage.removeItem('accessToken');
+    delete this.client.defaults.headers.common['Authorization'];
   }
 
   // Check if authenticated

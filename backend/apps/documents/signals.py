@@ -18,13 +18,13 @@ from .models import (
 @receiver(post_save, sender=Document)
 def create_document_audit_record(sender, instance, created, **kwargs):
     """Create audit record when document is created or updated."""
-    from apps.audit.models import AuditLog
+    from apps.audit.models import AuditTrail
     from apps.audit.middleware import get_current_user, get_current_ip_address
     
     action = 'CREATE' if created else 'UPDATE'
     current_user = get_current_user()
     
-    AuditLog.objects.create(
+    AuditTrail.objects.create(
         content_object=instance,
         action=action,
         user=current_user,
@@ -72,7 +72,7 @@ def create_access_audit_record(sender, instance, created, **kwargs):
         
         severity = 'WARNING' if not instance.success else 'INFO'
         
-        AuditLog.objects.create(
+        AuditTrail.objects.create(
             content_object=instance.document,
             action='VIEW' if instance.access_type == 'VIEW' else instance.access_type,
             user=instance.user,
@@ -102,7 +102,7 @@ def create_dependency_audit_record(sender, instance, created, **kwargs):
     if created:
         current_user = get_current_user()
         
-        AuditLog.objects.create(
+        AuditTrail.objects.create(
             content_object=instance.document,
             action='DEPENDENCY_ADDED',
             user=current_user or instance.created_by,
@@ -128,7 +128,7 @@ def create_dependency_removal_audit(sender, instance, **kwargs):
     
     current_user = get_current_user()
     
-    AuditLog.objects.create(
+    AuditTrail.objects.create(
         content_object=None,  # Object deleted
         action='DEPENDENCY_REMOVED',
         user=current_user,
@@ -151,7 +151,7 @@ def create_comment_audit_record(sender, instance, created, **kwargs):
     if created:
         from apps.audit.models import AuditLog
         
-        AuditLog.objects.create(
+        AuditTrail.objects.create(
             content_object=instance.document,
             action='COMMENT_ADDED',
             user=instance.author,
@@ -215,7 +215,7 @@ def create_attachment_audit_record(sender, instance, created, **kwargs):
     if created:
         from apps.audit.models import AuditLog
         
-        AuditLog.objects.create(
+        AuditTrail.objects.create(
             content_object=instance.document,
             action='ATTACHMENT_ADDED',
             user=instance.uploaded_by,
@@ -241,7 +241,7 @@ def create_attachment_removal_audit(sender, instance, **kwargs):
     
     current_user = get_current_user()
     
-    AuditLog.objects.create(
+    AuditTrail.objects.create(
         content_object=instance.document,
         action='ATTACHMENT_REMOVED',
         user=current_user,

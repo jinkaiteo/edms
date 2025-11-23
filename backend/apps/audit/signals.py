@@ -63,7 +63,7 @@ def audit_document_changes(sender, instance, created, **kwargs):
                 'title': instance.title,
                 'document_type': instance.document_type.name if instance.document_type else None,
                 'status': instance.status,
-                'version': str(instance.version)
+                'version': f'{instance.version_major}.{instance.version_minor}'
             }
         )
     else:
@@ -151,13 +151,7 @@ def audit_electronic_signature(sender, instance, created, **kwargs):
         audit_service.log_compliance_event(
             event_type='ELECTRONIC_SIGNATURE_APPLIED',
             description=f"Electronic signature applied by {instance.user.get_full_name()}",
-            user=instance.user,
-            object_type='Document',
-            object_id=instance.document.id,
-            additional_data={
-                'document_number': instance.document.document_number,
-                'signature_method': instance.signature_type
-            }
+            user=instance.user
         )
 
 
@@ -244,17 +238,7 @@ def audit_user_role_changes(sender, instance, created, **kwargs):
         audit_service.log_compliance_event(
             event_type='USER_ROLE_ASSIGNED',
             description=f"User role assignment: {instance.role.name} to {instance.user.username}",
-            user=user,
-            object_type='User',
-            object_id=instance.user.id,
-            additional_data={
-                'assigned_user': instance.user.username,
-                'role_details': {
-                    'name': instance.role.name,
-                    'module': instance.role.module,
-                    'permission_level': instance.role.permission_level
-                }
-            }
+            user=user
         )
 
 
@@ -291,11 +275,7 @@ def audit_user_login(sender, request, user, **kwargs):
     audit_service.log_compliance_event(
         event_type='USER_LOGIN_SUCCESS',
         description=f"Successful login for user {user.username}",
-        user=user,
-        additional_data={
-            'username': user.username,
-            'last_login': user.last_login.isoformat() if user.last_login else None
-        }
+        user=user
     )
 
 
@@ -336,11 +316,7 @@ def audit_failed_login(sender, credentials, request, **kwargs):
         event_type='USER_LOGIN_FAILED',
         description=f"Failed login attempt for username: {username}",
         user=user,
-        severity='WARNING',
-        additional_data={
-            'attempted_username': username,
-            'failure_reason': 'Invalid credentials'
-        }
+        severity='WARNING'
     )
 
 
@@ -363,10 +339,7 @@ def audit_compliance_violation(event_type, description, user=None,
         event_type=event_type,
         description=description,
         user=user,
-        object_type=object_type,
-        object_id=object_id,
-        severity='ERROR',
-        additional_data=kwargs
+        severity='ERROR'
     )
 
 
@@ -376,6 +349,5 @@ def audit_security_event(event_type, description, user=None, severity='WARNING',
         event_type=event_type,
         description=description,
         user=user,
-        severity=severity,
-        additional_data=kwargs
+        severity=severity
     )

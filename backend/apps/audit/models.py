@@ -426,7 +426,7 @@ class LoginAudit(models.Model):
     timestamp = models.DateTimeField(auto_now_add=True)
     success = models.BooleanField()
     ip_address = models.GenericIPAddressField(null=True, blank=True)
-    user_agent = models.TextField(blank=True)
+    user_agent = models.TextField(blank=True, null=True)
     failure_reason = models.CharField(max_length=200, blank=True, null=True)
     
     class Meta:

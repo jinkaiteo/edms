@@ -516,9 +516,32 @@ class WorkflowTemplate(models.Model):
 # Simplified workflow models (without River dependency)
 
 class DocumentState(models.Model):
-    """Document workflow states for simplified workflow system."""
+    """Document workflow states aligned with EDMS specification."""
     
-    code = models.CharField(max_length=50, unique=True, primary_key=True)
+    # Document states from EDMS_details_workflow.txt specification
+    DRAFT = 'DRAFT'
+    PENDING_REVIEW = 'PENDING_REVIEW'
+    REVIEWED = 'REVIEWED'
+    PENDING_APPROVAL = 'PENDING_APPROVAL'
+    APPROVED_PENDING_EFFECTIVE = 'APPROVED_PENDING_EFFECTIVE'
+    APPROVED_AND_EFFECTIVE = 'APPROVED_AND_EFFECTIVE'
+    SUPERSEDED = 'SUPERSEDED'
+    PENDING_OBSOLETION = 'PENDING_OBSOLETION'
+    OBSOLETE = 'OBSOLETE'
+    
+    STATE_CHOICES = [
+        (DRAFT, 'DRAFT'),
+        (PENDING_REVIEW, 'Pending Review'),
+        (REVIEWED, 'Reviewed'),
+        (PENDING_APPROVAL, 'Pending Approval'),
+        (APPROVED_PENDING_EFFECTIVE, 'Approved, Pending Effective'),
+        (APPROVED_AND_EFFECTIVE, 'Approved and Effective'),
+        (SUPERSEDED, 'Superseded'),
+        (PENDING_OBSOLETION, 'Pending Obsoletion'),
+        (OBSOLETE, 'Obsolete'),
+    ]
+    
+    code = models.CharField(max_length=50, choices=STATE_CHOICES, unique=True, primary_key=True)
     name = models.CharField(max_length=100)
     description = models.TextField(blank=True)
     is_initial = models.BooleanField(default=False)
@@ -534,7 +557,14 @@ class DocumentState(models.Model):
 
 
 class DocumentWorkflow(models.Model):
-    """Simplified Document Workflow model without River dependencies."""
+    """Document Workflow model aligned with EDMS specification."""
+    
+    WORKFLOW_TYPES = [
+        ('REVIEW', 'Review Workflow'),
+        ('UP_VERSION', 'Up-versioning Workflow'),
+        ('OBSOLETE', 'Obsolete Workflow'),
+        ('TERMINATION', 'Termination Workflow'),
+    ]
     
     uuid = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
     document = models.OneToOneField(
@@ -543,14 +573,15 @@ class DocumentWorkflow(models.Model):
         related_name='workflow'
     )
     
-    # Current state
+    # Workflow type and state
+    workflow_type = models.CharField(max_length=20, choices=WORKFLOW_TYPES, default='REVIEW')
     current_state = models.ForeignKey(
         DocumentState,
         on_delete=models.PROTECT,
         related_name='workflows'
     )
     
-    # Workflow context
+    # Workflow participants
     initiated_by = models.ForeignKey(
         User,
         on_delete=models.PROTECT,
@@ -563,14 +594,61 @@ class DocumentWorkflow(models.Model):
         blank=True,
         related_name='assigned_document_workflows'
     )
+    selected_reviewer = models.ForeignKey(
+        User,
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name='selected_reviewer_workflows'
+    )
+    selected_approver = models.ForeignKey(
+        User,
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name='selected_approver_workflows'
+    )
     
-    # Timing
+    # Timing and dates
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     due_date = models.DateTimeField(null=True, blank=True)
+    effective_date = models.DateField(
+        null=True, 
+        blank=True,
+        help_text="Date when approved document becomes effective"
+    )
+    obsoleting_date = models.DateField(
+        null=True,
+        blank=True, 
+        help_text="Date when document becomes obsolete"
+    )
     
-    # Workflow data
+    # Workflow context and reasons
     workflow_data = models.JSONField(default=dict, blank=True)
+    up_version_reason = models.TextField(
+        blank=True,
+        help_text="Reason for up-versioning (required for up-version workflow)"
+    )
+    obsoleting_reason = models.TextField(
+        blank=True,
+        help_text="Reason for obsoleting document"
+    )
+    termination_reason = models.TextField(
+        blank=True,
+        help_text="Reason for terminating workflow"
+    )
+    
+    # Workflow status
+    is_terminated = models.BooleanField(
+        default=False,
+        help_text="Whether workflow has been terminated by author"
+    )
+    last_approved_state = models.CharField(
+        max_length=50,
+        blank=True,
+        help_text="Last approved state before termination"
+    )
     
     class Meta:
         app_label = "workflows"

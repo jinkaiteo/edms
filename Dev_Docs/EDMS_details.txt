@@ -150,7 +150,7 @@ The EDMS provide a platform to (1) upload, (2) up-version and (3) obsoleting a d
                            └──Approver select an Obsoleting date. (Document status: Approved, Pending Effective)
                               └──Do final check if there are no document depending on target document
                                  ├──If there are dependent documents, terminate workflow.
-                                 └──If there are no dependent documents, change document status to Pending Obsoleting. This prevents other workflows such as up-versioning and obsolute workflow and linking as depending document.
+                                 └──If there are no dependent documents, change document status to Pending Obsoletion. This prevents other workflows such as up-versioning and obsolute workflow and linking as depending document.
                                     └──Scheduler checks if effective date =< today.  (Document status: Obsolete)
 
   4. Termination of Workflow:
@@ -176,6 +176,6 @@ The EDMS provide a platform to (1) upload, (2) up-version and (3) obsoleting a d
         └──Convert file to PDF
            └──Annotate meta data
               └──Digitally Sign PDF for download
-
+              
 - Misc:
   A table of available metadata paired with the placeholder for search and replacement.  

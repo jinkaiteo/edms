@@ -286,9 +286,7 @@ class AuditService:
             return change_log
 
     def log_compliance_event(self, event_type: str, description: str,
-                            user: User = None, object_type: str = None,
-                            object_id: int = None, severity: str = 'INFO',
-                            additional_data: Dict[str, Any] = None) -> ComplianceEvent:
+                            user: User = None, severity: str = 'INFO') -> ComplianceEvent:
         """
         Log compliance-related events.
         
@@ -311,16 +309,11 @@ class AuditService:
                 event_type=event_type,
                 description=description,
                 user=user,
-                object_type=object_type,
-                object_id=object_id,
-                severity=severity,
-                ip_address=audit_context.get('ip_address') if audit_context else None,
-                additional_data=additional_data or {}
+                severity=severity
             )
             
-            # Generate integrity hash
-            event.integrity_hash = self._generate_compliance_event_hash(event)
-            event.save(update_fields=['integrity_hash'])
+            # Note: ComplianceEvent doesn't have integrity_hash field
+            # Skip integrity hash for now
             
             return event
 
@@ -431,11 +424,8 @@ class AuditService:
             'event_type': event.event_type,
             'description': event.description,
             'user_id': event.user.id if event.user else None,
-            'object_type': event.object_type,
-            'object_id': event.object_id,
             'severity': event.severity,
-            'timestamp': event.timestamp.isoformat(),
-            'additional_data': event.additional_data
+            'timestamp': event.timestamp.isoformat()
         }
         
         hash_string = json.dumps(hash_data, sort_keys=True, default=str)
