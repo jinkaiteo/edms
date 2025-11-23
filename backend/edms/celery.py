@@ -21,48 +21,46 @@ app.config_from_object('django.conf:settings', namespace='CELERY')
 # Load task modules from all registered Django apps
 app.autodiscover_tasks()
 
-# Celery Beat Schedule for periodic tasks
+# S3 Scheduler Module - Celery Beat Schedule for automated tasks
 app.conf.beat_schedule = {
-    # Check for documents to make effective daily at 1 AM
-    'check-effective-documents': {
-        'task': 'apps.workflows.tasks.check_effective_documents',
-        'schedule': crontab(hour=1, minute=0),
+    # S3 Document Effective Date Processing - runs every hour
+    'process-document-effective-dates': {
+        'task': 'apps.scheduler.automated_tasks.process_document_effective_dates',
+        'schedule': crontab(minute=0),  # Every hour at minute 0
+        'options': {
+            'expires': 3600,  # Task expires after 1 hour
+            'priority': 8,    # High priority
+        }
     },
     
-    # Process scheduled obsolescence daily at 1:30 AM
-    'process-document-obsolescence': {
-        'task': 'apps.workflows.tasks.process_document_obsolescence',
-        'schedule': crontab(hour=1, minute=30),
+    # S3 Document Obsoletion Processing - runs every hour  
+    'process-document-obsoletion-dates': {
+        'task': 'apps.scheduler.automated_tasks.process_document_obsoletion_dates',
+        'schedule': crontab(minute=15),  # Every hour at minute 15
+        'options': {
+            'expires': 3600,
+            'priority': 8,
+        }
     },
     
-    # Clean up expired audit logs weekly on Sunday at 2 AM
-    'cleanup-audit-logs': {
-        'task': 'apps.audit.tasks.cleanup_expired_audit_logs',
-        'schedule': crontab(hour=2, minute=0, day_of_week=0),
+    # S3 Workflow Timeout Monitoring - runs every 4 hours
+    'check-workflow-timeouts': {
+        'task': 'apps.scheduler.automated_tasks.check_workflow_timeouts',
+        'schedule': crontab(minute=0, hour='*/4'),  # Every 4 hours
+        'options': {
+            'expires': 7200,  # Task expires after 2 hours
+            'priority': 6,    # Medium priority
+        }
     },
     
-    # Database backup daily at 3 AM
-    'database-backup': {
-        'task': 'apps.backup.tasks.create_database_backup',
-        'schedule': crontab(hour=3, minute=0),
-    },
-    
-    # Health check every 5 minutes
-    'system-health-check': {
-        'task': 'apps.backup.tasks.system_health_check',
-        'schedule': crontab(minute='*/5'),
-    },
-    
-    # Send workflow notifications every 30 minutes during business hours
-    'send-workflow-notifications': {
-        'task': 'apps.workflows.tasks.send_pending_notifications',
-        'schedule': crontab(minute='*/30', hour='8-18', day_of_week='1-5'),
-    },
-    
-    # Clean up temporary files daily at 4 AM
-    'cleanup-temporary-files': {
-        'task': 'apps.documents.tasks.cleanup_temporary_files',
-        'schedule': crontab(hour=4, minute=0),
+    # S3 System Health Check - runs every 30 minutes
+    'perform-system-health-check': {
+        'task': 'apps.scheduler.automated_tasks.perform_system_health_check',
+        'schedule': crontab(minute='*/30'),  # Every 30 minutes
+        'options': {
+            'expires': 1800,  # Task expires after 30 minutes
+            'priority': 4,    # Low priority
+        }
     },
 }
 

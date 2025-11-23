@@ -35,6 +35,7 @@ THIRD_PARTY_APPS = [
     'django_filters',
     'drf_spectacular',
     'django_redis',
+    'django_celery_beat',  # S3 Scheduler Module - Celery Beat integration
 ]
 
 LOCAL_APPS = [
