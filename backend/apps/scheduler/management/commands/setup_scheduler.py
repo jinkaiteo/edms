@@ -46,92 +46,72 @@ class Command(BaseCommand):
         # Create system user if not exists
         system_user = self._get_or_create_system_user()
         
-        # Define scheduled tasks
+        # Define scheduled tasks matching actual model fields
         scheduled_tasks = [
             {
                 'name': 'Document Effective Date Processing',
-                'task_name': 'process_document_effective_dates',
                 'description': 'Automatically process documents that have reached their effective date',
-                'schedule_type': 'HOURLY',
-                'is_active': True,
-                'task_data': {
-                    'task_type': 'document_automation',
+                'task_type': 'DOCUMENT_EFFECTIVE',
+                'task_module': 'apps.scheduler.automated_tasks',
+                'task_function': 'process_document_effective_dates',
+                'frequency_type': 'HOURLY',
+                'status': 'ACTIVE',
+                'timeout_seconds': 300,
+                'max_retries': 3,
+                'metadata': {
                     'priority': 'HIGH',
-                    'max_execution_time': 300,
-                    'retry_count': 3
+                    'description': 'Process documents that have reached effective date'
                 }
             },
             {
                 'name': 'Document Obsoletion Processing',
-                'task_name': 'process_document_obsoletion_dates',
                 'description': 'Automatically obsolete documents that have reached their obsoletion date',
-                'schedule_type': 'HOURLY',
-                'is_active': True,
-                'task_data': {
-                    'task_type': 'document_automation',
+                'task_type': 'DOCUMENT_OBSOLETE',
+                'task_module': 'apps.scheduler.automated_tasks',
+                'task_function': 'process_document_obsoletion_dates',
+                'frequency_type': 'HOURLY',
+                'status': 'ACTIVE',
+                'timeout_seconds': 300,
+                'max_retries': 3,
+                'metadata': {
                     'priority': 'HIGH',
-                    'max_execution_time': 300,
-                    'retry_count': 3
+                    'description': 'Process documents for obsoletion'
                 }
             },
             {
                 'name': 'Workflow Timeout Monitoring',
-                'task_name': 'check_workflow_timeouts',
                 'description': 'Monitor workflows for timeouts and send notifications',
-                'schedule_type': 'EVERY_4_HOURS',
-                'is_active': True,
-                'task_data': {
-                    'task_type': 'workflow_monitoring',
+                'task_type': 'WORKFLOW_TIMEOUT',
+                'task_module': 'apps.scheduler.automated_tasks',
+                'task_function': 'check_workflow_timeouts',
+                'frequency_type': 'HOURLY',
+                'interval_value': 4,
+                'status': 'ACTIVE',
+                'timeout_seconds': 600,
+                'max_retries': 2,
+                'metadata': {
                     'priority': 'MEDIUM',
-                    'max_execution_time': 600,
                     'notification_enabled': True
                 }
             },
             {
                 'name': 'System Health Check',
-                'task_name': 'perform_system_health_check',
                 'description': 'Comprehensive system health monitoring and reporting',
-                'schedule_type': 'EVERY_30_MINUTES',
-                'is_active': True,
-                'task_data': {
-                    'task_type': 'system_monitoring',
+                'task_type': 'HEALTH_CHECK',
+                'task_module': 'apps.scheduler.automated_tasks',
+                'task_function': 'perform_system_health_check',
+                'frequency_type': 'HOURLY',
+                'interval_value': 1,
+                'status': 'ACTIVE',
+                'timeout_seconds': 120,
+                'max_retries': 1,
+                'metadata': {
                     'priority': 'LOW',
-                    'max_execution_time': 120,
                     'health_thresholds': {
                         'cpu_threshold': 80,
                         'memory_threshold': 85,
                         'disk_threshold': 90
                     }
-                }
-            },
-            {
-                'name': 'Daily Processing Summary',
-                'task_name': 'generate_daily_summary',
-                'description': 'Generate daily summary of document and workflow processing',
-                'schedule_type': 'DAILY',
-                'schedule_time': '06:00',
-                'is_active': True,
-                'task_data': {
-                    'task_type': 'reporting',
-                    'priority': 'LOW',
-                    'email_recipients': ['admin@edms.local'],
-                    'include_metrics': True
-                }
-            },
-            {
-                'name': 'Weekly Workflow Report',
-                'task_name': 'generate_weekly_report',
-                'description': 'Generate weekly workflow performance and compliance report',
-                'schedule_type': 'WEEKLY',
-                'schedule_time': '20:00',
-                'schedule_day': 0,  # Sunday
-                'is_active': True,
-                'task_data': {
-                    'task_type': 'reporting',
-                    'priority': 'LOW',
-                    'email_recipients': ['admin@edms.local'],
-                    'include_compliance_metrics': True,
-                    'include_performance_analytics': True
                 }
             }
         ]
@@ -139,15 +119,18 @@ class Command(BaseCommand):
         created_count = 0
         for task_config in scheduled_tasks:
             task, created = ScheduledTask.objects.get_or_create(
-                task_name=task_config['task_name'],
+                name=task_config['name'],
                 defaults={
-                    'name': task_config['name'],
                     'description': task_config['description'],
-                    'schedule_type': task_config['schedule_type'],
-                    'schedule_time': task_config.get('schedule_time'),
-                    'schedule_day': task_config.get('schedule_day'),
-                    'is_active': task_config['is_active'],
-                    'task_data': task_config['task_data'],
+                    'task_type': task_config['task_type'],
+                    'task_module': task_config['task_module'],
+                    'task_function': task_config['task_function'],
+                    'frequency_type': task_config['frequency_type'],
+                    'interval_value': task_config.get('interval_value', 1),
+                    'status': task_config['status'],
+                    'timeout_seconds': task_config['timeout_seconds'],
+                    'max_retries': task_config['max_retries'],
+                    'metadata': task_config['metadata'],
                     'created_by': system_user
                 }
             )
@@ -161,7 +144,7 @@ class Command(BaseCommand):
         # Summary
         self.stdout.write(f'\n📊 Scheduler Setup Summary:')
         self.stdout.write(f'   • Created {created_count} new scheduled tasks')
-        self.stdout.write(f'   • Total active tasks: {ScheduledTask.objects.filter(is_active=True).count()}')
+        self.stdout.write(f'   • Total active tasks: {ScheduledTask.objects.filter(status="ACTIVE").count()}')
         
         # Validation
         self.stdout.write(f'\n🔍 Validating scheduler configuration...')
@@ -206,18 +189,18 @@ class Command(BaseCommand):
         """Validate scheduler configuration."""
         try:
             # Check active tasks
-            active_tasks = ScheduledTask.objects.filter(is_active=True)
+            active_tasks = ScheduledTask.objects.filter(status='ACTIVE')
             self.stdout.write(f'   ✅ {active_tasks.count()} active scheduled tasks')
             
             # Check task types
-            task_types = active_tasks.values_list('task_data__task_type', flat=True)
+            task_types = active_tasks.values_list('task_type', flat=True)
             unique_types = set(task_types)
             self.stdout.write(f'   ✅ Task types: {", ".join(unique_types)}')
             
-            # Check schedule types
-            schedule_types = active_tasks.values_list('schedule_type', flat=True)
-            unique_schedules = set(schedule_types)
-            self.stdout.write(f'   ✅ Schedule types: {", ".join(unique_schedules)}')
+            # Check frequency types
+            frequency_types = active_tasks.values_list('frequency_type', flat=True)
+            unique_frequencies = set(frequency_types)
+            self.stdout.write(f'   ✅ Frequency types: {", ".join(unique_frequencies)}')
             
             # Check system user
             system_users = User.objects.filter(username='system_scheduler')
