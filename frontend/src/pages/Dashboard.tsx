@@ -3,33 +3,13 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext.tsx';
 import Layout from '../components/common/Layout.tsx';
 import LoadingSpinner from '../components/common/LoadingSpinner.tsx';
-
-interface DashboardStats {
-  totalDocuments: number;
-  pendingReviews: number;
-  activeWorkflows: number;
-  recentActivity: ActivityItem[];
-}
-
-interface ActivityItem {
-  id: string;
-  type: 'document_created' | 'document_updated' | 'workflow_completed' | 'user_login' | 'document_signed';
-  title: string;
-  description: string;
-  timestamp: string;
-  user?: string;
-  icon: string;
-  iconColor: string;
-}
+import { apiService } from '../services/api.ts';
+import { DashboardStats, ActivityItem } from '../types/api.ts';
 
 const Dashboard: React.FC = () => {
-  const [stats, setStats] = useState<DashboardStats>({
-    totalDocuments: 0,
-    pendingReviews: 0,
-    activeWorkflows: 0,
-    recentActivity: []
-  });
+  const [stats, setStats] = useState<DashboardStats | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const { user, authenticated, logout } = useAuth();
   const navigate = useNavigate();
 
@@ -47,62 +27,33 @@ const Dashboard: React.FC = () => {
     // Load dashboard data
     const loadDashboardData = async () => {
       setIsLoading(true);
+      setError(null);
       
-      // Simulate API call delay
-      await new Promise(resolve => setTimeout(resolve, 800));
-      
-      // Mock data for demonstration
-      const mockStats: DashboardStats = {
-        totalDocuments: 12,
-        pendingReviews: 3,
-        activeWorkflows: 2,
-        recentActivity: [
-          {
-            id: '1',
-            type: 'document_created',
-            title: 'Quality Manual v2.1',
-            description: 'New quality manual document created',
-            timestamp: new Date().toISOString(),
-            user: user?.username || 'System',
-            icon: '📄',
-            iconColor: 'bg-blue-500'
-          },
-          {
-            id: '2',
-            type: 'workflow_completed',
-            title: 'SOP Review Completed',
-            description: 'Standard Operating Procedure #001 review workflow completed',
-            timestamp: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(),
-            user: 'reviewer',
-            icon: '✅',
-            iconColor: 'bg-green-500'
-          },
-          {
-            id: '3',
-            type: 'document_signed',
-            title: 'Policy Document Signed',
-            description: 'Company Policy document electronically signed',
-            timestamp: new Date(Date.now() - 4 * 60 * 60 * 1000).toISOString(),
-            user: 'approver',
-            icon: '✍️',
-            iconColor: 'bg-purple-500'
-          },
-          {
-            id: '4',
-            type: 'user_login',
-            title: 'User Login',
-            description: 'Successful login to EDMS',
-            timestamp: new Date(Date.now() - 6 * 60 * 60 * 1000).toISOString(),
-            user: user?.username || 'Unknown',
-            icon: '🔐',
-            iconColor: 'bg-indigo-500'
-          }
-        ]
-      };
-      
-      setStats(mockStats);
-      setIsLoading(false);
-      console.log('✅ Dashboard data loaded successfully');
+      try {
+        console.log('📊 Loading dashboard statistics from API...');
+        const dashboardData = await apiService.getDashboardStats();
+        console.log('✅ Dashboard data loaded successfully:', dashboardData);
+        
+        setStats(dashboardData);
+      } catch (err: any) {
+        console.error('❌ Failed to load dashboard data:', err);
+        setError('Failed to load dashboard data. Please try again.');
+        
+        // Fallback to basic stats if API fails
+        setStats({
+          total_documents: 0,
+          pending_reviews: 0,
+          active_workflows: 0,
+          active_users: 0,
+          placeholders: 0,
+          audit_entries_24h: 0,
+          recent_activity: [],
+          timestamp: new Date().toISOString(),
+          cache_duration: 0
+        });
+      } finally {
+        setIsLoading(false);
+      }
     };
 
     loadDashboardData();
@@ -132,9 +83,43 @@ const Dashboard: React.FC = () => {
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-gray-100">
-        <LoadingSpinner />
-      </div>
+      <Layout>
+        <div className="flex items-center justify-center min-h-screen">
+          <LoadingSpinner />
+        </div>
+      </Layout>
+    );
+  }
+
+  if (error) {
+    return (
+      <Layout>
+        <div className="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
+          <div className="bg-red-50 border border-red-200 rounded-lg p-6 text-center">
+            <div className="text-red-600 text-xl mb-2">⚠️</div>
+            <h3 className="text-lg font-medium text-red-800 mb-2">Error Loading Dashboard</h3>
+            <p className="text-red-600 mb-4">{error}</p>
+            <button
+              onClick={() => window.location.reload()}
+              className="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700"
+            >
+              Retry
+            </button>
+          </div>
+        </div>
+      </Layout>
+    );
+  }
+
+  if (!stats) {
+    return (
+      <Layout>
+        <div className="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
+          <div className="text-center">
+            <p className="text-gray-500">No dashboard data available.</p>
+          </div>
+        </div>
+      </Layout>
     );
   }
 
@@ -182,7 +167,7 @@ const Dashboard: React.FC = () => {
                   <div className="ml-5 w-0 flex-1">
                     <dl>
                       <dt className="text-sm font-medium text-gray-500 truncate">Total Documents</dt>
-                      <dd className="text-lg font-medium text-gray-900">{stats.totalDocuments}</dd>
+                      <dd className="text-lg font-medium text-gray-900">{stats.total_documents}</dd>
                     </dl>
                   </div>
                 </div>
@@ -208,7 +193,7 @@ const Dashboard: React.FC = () => {
                   <div className="ml-5 w-0 flex-1">
                     <dl>
                       <dt className="text-sm font-medium text-gray-500 truncate">Pending Reviews</dt>
-                      <dd className="text-lg font-medium text-gray-900">{stats.pendingReviews}</dd>
+                      <dd className="text-lg font-medium text-gray-900">{stats.pending_reviews}</dd>
                     </dl>
                   </div>
                 </div>
@@ -234,7 +219,7 @@ const Dashboard: React.FC = () => {
                   <div className="ml-5 w-0 flex-1">
                     <dl>
                       <dt className="text-sm font-medium text-gray-500 truncate">Active Workflows</dt>
-                      <dd className="text-lg font-medium text-gray-900">{stats.activeWorkflows}</dd>
+                      <dd className="text-lg font-medium text-gray-900">{stats.active_workflows}</dd>
                     </dl>
                   </div>
                 </div>
@@ -263,10 +248,16 @@ const Dashboard: React.FC = () => {
                     <button className="w-full inline-flex items-center justify-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
                       🔍 Search Documents
                     </button>
-                    <button className="w-full inline-flex items-center justify-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
-                      👥 Manage Users
+                    <button
+                      onClick={() => navigate('/my-tasks')}
+                      className="w-full inline-flex items-center justify-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+                    >
+                      ✅ My Tasks
                     </button>
-                    <button className="w-full inline-flex items-center justify-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                    <button
+                      onClick={() => navigate('/reports')}
+                      className="w-full inline-flex items-center justify-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+                    >
                       📊 View Reports
                     </button>
                   </div>
@@ -312,7 +303,7 @@ const Dashboard: React.FC = () => {
                   <h3 className="text-lg leading-6 font-medium text-gray-900">Recent Activity</h3>
                   <div className="mt-6 flow-root">
                     <ul className="-my-5 divide-y divide-gray-200">
-                      {stats.recentActivity.map((item) => (
+                      {stats.recent_activity.map((item) => (
                         <li key={item.id} className="py-5">
                           <div className="flex items-center space-x-4">
                             <div className="flex-shrink-0">

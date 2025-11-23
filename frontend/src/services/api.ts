@@ -29,7 +29,8 @@ import {
   AuditTrail,
   ApiStatus,
   ApiInfo,
-  DashboardMetrics
+  DashboardMetrics,
+  DashboardStats
 } from '../types/api';
 
 class ApiService {
@@ -515,6 +516,12 @@ class ApiService {
   // Generic DELETE method
   async delete(endpoint: string): Promise<void> {
     await this.client.delete(endpoint);
+  }
+
+  // Dashboard Statistics
+  async getDashboardStats(): Promise<DashboardStats> {
+    const response = await this.client.get<DashboardStats>('/dashboard/stats/');
+    return response.data;
   }
 }
 

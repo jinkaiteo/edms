@@ -19,7 +19,7 @@ from django.conf import settings
 
 from apps.documents.models import Document, DocumentType, DocumentVersion
 from apps.documents.serializers import (
-    DocumentSerializer, DocumentTypeSerializer, DocumentVersionSerializer
+    DocumentDetailSerializer, DocumentTypeSerializer, DocumentVersionSerializer
 )
 from apps.users.models import User, Role, UserRole
 from apps.users.serializers import UserSerializer, RoleSerializer, UserRoleSerializer
@@ -153,7 +153,7 @@ class DocumentViewSet(viewsets.ModelViewSet):
     """Document management API endpoints."""
     
     queryset = Document.objects.all()
-    serializer_class = DocumentSerializer
+    serializer_class = DocumentDetailSerializer
     permission_classes = [permissions.IsAuthenticated]
     pagination_class = StandardResultsSetPagination
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
@@ -527,6 +527,132 @@ class SystemMetricViewSet(viewsets.ReadOnlyModelViewSet):
     filter_backends = [DjangoFilterBackend, filters.OrderingFilter]
     filterset_fields = ['metric_type', 'status']
     ordering = ['-recorded_at']
+
+
+class DashboardStatsView(APIView):
+    """Dashboard statistics API endpoint."""
+    
+    permission_classes = [permissions.IsAuthenticated]
+    throttle_classes = [UserRateThrottle]
+    
+    def get(self, request):
+        """Get real-time dashboard statistics."""
+        from django.utils import timezone
+        from datetime import timedelta
+        
+        # Get real-time statistics from database
+        try:
+            # Active users count
+            active_users_count = User.objects.filter(is_active=True).count()
+            
+            # Active workflows count
+            active_workflows_count = WorkflowInstance.objects.filter(is_active=True).count()
+            
+            # Placeholders count
+            from apps.placeholders.models import PlaceholderDefinition
+            placeholders_count = PlaceholderDefinition.objects.count()
+            
+            # Audit entries in last 24 hours
+            twenty_four_hours_ago = timezone.now() - timedelta(hours=24)
+            audit_entries_24h = AuditTrail.objects.filter(
+                timestamp__gte=twenty_four_hours_ago
+            ).count()
+            
+            # Total documents count (for user dashboard)
+            total_documents_count = Document.objects.count()
+            
+            # Pending reviews count (documents in review state)
+            pending_reviews_count = WorkflowInstance.objects.filter(
+                state__icontains='review',
+                is_active=True
+            ).count()
+            
+            # Recent activity (last 10 audit entries)
+            recent_activities = AuditTrail.objects.select_related('user').order_by('-timestamp')[:10]
+            
+            activity_list = []
+            for audit in recent_activities:
+                activity_item = {
+                    'id': str(audit.uuid),
+                    'type': self._map_audit_action_to_type(audit.action),
+                    'title': self._generate_activity_title(audit),
+                    'description': audit.description,
+                    'timestamp': audit.timestamp.isoformat(),
+                    'user': audit.user_display_name if audit.user_display_name else 'System',
+                    'icon': self._get_activity_icon(audit.action),
+                    'iconColor': self._get_activity_color(audit.action)
+                }
+                activity_list.append(activity_item)
+            
+            return Response({
+                'total_documents': total_documents_count,
+                'pending_reviews': pending_reviews_count,
+                'active_workflows': active_workflows_count,
+                'active_users': active_users_count,
+                'placeholders': placeholders_count,
+                'audit_entries_24h': audit_entries_24h,
+                'recent_activity': activity_list,
+                'timestamp': timezone.now().isoformat(),
+                'cache_duration': 300  # 5 minutes cache suggestion
+            })
+            
+        except Exception as e:
+            return Response({
+                'error': 'Failed to fetch dashboard statistics',
+                'detail': str(e) if settings.DEBUG else 'Internal server error'
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+    
+    def _map_audit_action_to_type(self, action):
+        """Map audit action to activity type."""
+        action_mapping = {
+            'CREATE': 'document_created',
+            'UPDATE': 'document_updated', 
+            'DELETE': 'document_deleted',
+            'SIGN': 'document_signed',
+            'LOGIN': 'user_login',
+            'WORKFLOW_COMPLETE': 'workflow_completed',
+            'WORKFLOW_TRANSITION': 'workflow_updated'
+        }
+        return action_mapping.get(action, 'system_activity')
+    
+    def _generate_activity_title(self, audit):
+        """Generate human-readable activity title."""
+        action_titles = {
+            'CREATE': f"Document Created: {audit.object_representation}",
+            'UPDATE': f"Document Updated: {audit.object_representation}",
+            'DELETE': f"Document Deleted: {audit.object_representation}",
+            'SIGN': f"Document Signed: {audit.object_representation}",
+            'LOGIN': f"User Login: {audit.user_display_name}",
+            'WORKFLOW_COMPLETE': f"Workflow Completed: {audit.object_representation}",
+            'WORKFLOW_TRANSITION': f"Workflow Updated: {audit.object_representation}"
+        }
+        return action_titles.get(audit.action, f"{audit.action}: {audit.object_representation}")
+    
+    def _get_activity_icon(self, action):
+        """Get icon for activity type."""
+        icon_mapping = {
+            'CREATE': '📄',
+            'UPDATE': '✏️',
+            'DELETE': '🗑️',
+            'SIGN': '✍️',
+            'LOGIN': '🔐',
+            'WORKFLOW_COMPLETE': '✅',
+            'WORKFLOW_TRANSITION': '🔄'
+        }
+        return icon_mapping.get(action, '📊')
+    
+    def _get_activity_color(self, action):
+        """Get color for activity type."""
+        color_mapping = {
+            'CREATE': 'bg-green-500',
+            'UPDATE': 'bg-blue-500',
+            'DELETE': 'bg-red-500',
+            'SIGN': 'bg-purple-500',
+            'LOGIN': 'bg-indigo-500',
+            'WORKFLOW_COMPLETE': 'bg-emerald-500',
+            'WORKFLOW_TRANSITION': 'bg-orange-500'
+        }
+        return color_mapping.get(action, 'bg-gray-500')
 
 
 class SystemConfigurationViewSet(viewsets.ModelViewSet):

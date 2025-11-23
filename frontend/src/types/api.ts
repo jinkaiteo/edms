@@ -542,6 +542,29 @@ export interface DashboardMetrics {
   };
 }
 
+export interface ActivityItem {
+  id: string;
+  type: 'document_created' | 'document_updated' | 'document_deleted' | 'document_signed' | 'user_login' | 'workflow_completed' | 'workflow_updated' | 'system_activity';
+  title: string;
+  description: string;
+  timestamp: string;
+  user: string;
+  icon: string;
+  iconColor: string;
+}
+
+export interface DashboardStats {
+  total_documents: number;
+  pending_reviews: number;
+  active_workflows: number;
+  active_users: number;
+  placeholders: number;
+  audit_entries_24h: number;
+  recent_activity: ActivityItem[];
+  timestamp: string;
+  cache_duration: number;
+}
+
 // Notification types
 export interface Notification {
   id: number;

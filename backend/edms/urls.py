@@ -14,6 +14,7 @@ from drf_spectacular.views import (
     SpectacularRedocView,
     SpectacularSwaggerView,
 )
+from apps.api.dashboard_stats import DashboardStatsView
 
 # API URL patterns
 api_urlpatterns = [
@@ -24,6 +25,9 @@ api_urlpatterns = [
     
     # Authentication
     path('auth/', include('apps.users.urls')),
+    
+    # Dashboard statistics
+    path('dashboard/stats/', DashboardStatsView.as_view(), name='dashboard-stats'),
     
     # Core modules
     path('documents/', include('apps.documents.urls')),
