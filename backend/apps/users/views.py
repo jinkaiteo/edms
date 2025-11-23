@@ -131,6 +131,75 @@ class UserViewSet(viewsets.ModelViewSet):
                 {'error': 'Role assignment not found'},
                 status=status.HTTP_404_NOT_FOUND
             )
+    
+    @action(detail=True, methods=['post'])
+    def reset_password(self, request, pk=None):
+        """Admin-initiated password reset."""
+        user = self.get_object()
+        new_password = request.data.get('new_password')
+        reason = request.data.get('reason', '')
+        
+        if not new_password:
+            return Response(
+                {'error': 'New password is required'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        try:
+            # Validate password strength
+            from django.contrib.auth.password_validation import validate_password
+            validate_password(new_password, user)
+            
+            # Set new password
+            user.set_password(new_password)
+            user.password_changed_at = timezone.now()
+            user.save(update_fields=['password', 'password_changed_at'])
+            
+            # Log the password reset action (simplified for testing)
+            # TODO: Implement proper audit logging when UserAction model is available
+            print(f"AUDIT: Password reset for {user.username} by admin {request.user.username}. Reason: {reason}")
+            
+            return Response(
+                {'message': f'Password reset successfully for {user.username}'},
+                status=status.HTTP_200_OK
+            )
+            
+        except Exception as e:
+            return Response(
+                {'error': f'Password reset failed: {str(e)}'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+    
+    @action(detail=False, methods=['post'])
+    def create_user(self, request):
+        """Create a new user with role assignment."""
+        serializer = UserCreateSerializer(data=request.data)
+        
+        if serializer.is_valid():
+            user = serializer.save()
+            user.created_by = request.user
+            user.save(update_fields=['created_by'])
+            
+            # Assign initial role if provided
+            role_id = request.data.get('role_id')
+            if role_id:
+                try:
+                    role = Role.objects.get(id=role_id)
+                    UserRole.objects.create(
+                        user=user,
+                        role=role,
+                        assigned_by=request.user,
+                        assignment_reason='Initial role assignment during user creation'
+                    )
+                except Role.DoesNotExist:
+                    pass  # Continue without role assignment if role not found
+            
+            return Response(
+                UserSerializer(user).data,
+                status=status.HTTP_201_CREATED
+            )
+        
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
 class RoleViewSet(viewsets.ModelViewSet):

@@ -231,3 +231,24 @@ class SetupMFASerializer(serializers.ModelSerializer):
             validated_data['backup_codes'] = backup_codes
         
         return super().create(validated_data)
+
+
+class ResetPasswordSerializer(serializers.Serializer):
+    """Serializer for admin password reset requests."""
+    
+    new_password = serializers.CharField(required=True, min_length=8)
+    new_password_confirm = serializers.CharField(required=True)
+    reason = serializers.CharField(required=False, allow_blank=True, max_length=500)
+    
+    def validate(self, data):
+        """Validate password reset data."""
+        if data['new_password'] != data['new_password_confirm']:
+            raise serializers.ValidationError("New passwords don't match")
+        
+        # Validate password strength
+        try:
+            validate_password(data['new_password'])
+        except ValidationError as e:
+            raise serializers.ValidationError({"new_password": e.messages})
+        
+        return data

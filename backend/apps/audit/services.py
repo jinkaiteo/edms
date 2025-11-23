@@ -54,23 +54,46 @@ class AuditService:
         audit_context = get_current_audit_context()
         
         with transaction.atomic():
-            # Create audit trail entry
+            # Map object_type to content_type if provided
+            content_type = None
+            if object_type:
+                try:
+                    from django.contrib.contenttypes.models import ContentType
+                    from django.apps import apps
+                    # Try to get the model class for the object_type
+                    if object_type == 'User':
+                        model_class = apps.get_model('users', 'User')
+                    elif object_type == 'Role':
+                        model_class = apps.get_model('users', 'Role') 
+                    elif object_type == 'UserRole':
+                        model_class = apps.get_model('users', 'UserRole')
+                    elif object_type == 'Document':
+                        model_class = apps.get_model('documents', 'Document')
+                    else:
+                        model_class = None
+                    
+                    if model_class:
+                        content_type = ContentType.objects.get_for_model(model_class)
+                except:
+                    content_type = None
+            
+            # Create audit trail entry with mapped parameters
             audit_entry = AuditTrail.objects.create(
                 user=user,
                 action=action,
-                object_type=object_type,
-                object_id=object_id,
-                description=description or f"User {action.lower()} {object_type}",
-                ip_address=audit_context.get('ip_address') if audit_context else None,
-                user_agent=audit_context.get('user_agent') if audit_context else None,
-                session_id=audit_context.get('session_id') if audit_context else None,
-                request_id=audit_context.get('request_id') if audit_context else None,
-                additional_data=additional_data or {}
+                content_type=content_type,
+                object_id=str(object_id) if object_id else None,
+                description=description or f"User {action.lower()} {object_type or 'object'}",
+                ip_address=audit_context.get('ip_address') if audit_context else '127.0.0.1',
+                user_agent=audit_context.get('user_agent') if audit_context else 'API-Client',
+                session_id=audit_context.get('session_id') if audit_context else 'api-session',
+                user_display_name=user.get_full_name() if user else '',
+                metadata=additional_data or {}
             )
             
             # Generate integrity hash
-            audit_entry.integrity_hash = self._generate_integrity_hash(audit_entry)
-            audit_entry.save(update_fields=['integrity_hash'])
+            audit_entry.checksum = self._generate_integrity_hash(audit_entry)
+            audit_entry.save(update_fields=['checksum'])
             
             return audit_entry
 
@@ -93,15 +116,12 @@ class AuditService:
         with transaction.atomic():
             event = SystemEvent.objects.create(
                 event_type=event_type,
-                object_type=object_type,
-                object_id=object_id,
                 description=description or f"System {event_type}",
-                additional_data=additional_data or {}
+                details=additional_data or {}
             )
             
-            # Generate integrity hash
-            event.integrity_hash = self._generate_system_event_hash(event)
-            event.save(update_fields=['integrity_hash'])
+            # Note: SystemEvent model doesn't have integrity_hash field
+            # Skip integrity hash for system events
             
             return event
 
@@ -378,12 +398,12 @@ class AuditService:
         hash_data = {
             'user_id': audit_entry.user.id if audit_entry.user else None,
             'action': audit_entry.action,
-            'object_type': audit_entry.object_type,
+            'content_type_id': audit_entry.content_type.id if audit_entry.content_type else None,
             'object_id': audit_entry.object_id,
             'description': audit_entry.description,
-            'timestamp': audit_entry.timestamp.isoformat(),
+            'timestamp': audit_entry.timestamp.isoformat() if audit_entry.timestamp else None,
             'ip_address': audit_entry.ip_address,
-            'additional_data': audit_entry.additional_data
+            'metadata': audit_entry.metadata
         }
         
         hash_string = json.dumps(hash_data, sort_keys=True, default=str)

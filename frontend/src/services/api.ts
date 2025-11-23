@@ -123,37 +123,78 @@ class ApiService {
   }
 
   async getUser(id: number): Promise<User> {
-    const response = await this.client.get<User>(`/users/${id}/`);
-    return response.data;
-  }
-
-  async createUser(userData: any): Promise<User> {
-    const response = await this.client.post<User>('/users/', userData);
-    return response.data;
-  }
-
-  async updateUser(id: number, userData: any): Promise<User> {
-    const response = await this.client.patch<User>(`/users/${id}/`, userData);
+    const response = await this.client.get<User>(`/auth/users/${id}/`);
     return response.data;
   }
 
   async deleteUser(id: number): Promise<void> {
-    await this.client.delete(`/users/${id}/`);
+    await this.client.delete(`/auth/users/${id}/`);
   }
 
-  async assignRole(userId: number, roleId: number): Promise<any> {
-    const response = await this.client.post(`/users/${userId}/assign_role/`, { role_id: roleId });
+  async assignRole(userId: number, roleId: number, reason?: string): Promise<any> {
+    const response = await this.client.post(`/auth/users/${userId}/assign_role/`, { 
+      role_id: roleId,
+      reason: reason || ''
+    });
     return response.data;
   }
 
-  async removeRole(userId: number, roleId: number): Promise<any> {
-    const response = await this.client.post(`/users/${userId}/remove_role/`, { role_id: roleId });
+  async removeRole(userId: number, roleId: number, reason?: string): Promise<any> {
+    const response = await this.client.post(`/auth/users/${userId}/remove_role/`, { 
+      role_id: roleId,
+      reason: reason || ''
+    });
     return response.data;
   }
 
-  async getRoles(params?: any): Promise<ApiResponse<Role[]>> {
-    const response = await this.client.get<ApiResponse<Role[]>>('/users/roles/', { params });
+  async resetPassword(userId: number, newPassword: string, newPasswordConfirm: string, reason?: string): Promise<any> {
+    const response = await this.client.post(`/auth/users/${userId}/reset_password/`, {
+      new_password: newPassword,
+      new_password_confirm: newPasswordConfirm,
+      reason: reason || ''
+    });
     return response.data;
+  }
+
+  async createUser(userData: {
+    username: string;
+    email: string;
+    password: string;
+    password_confirm: string;
+    first_name?: string;
+    last_name?: string;
+    employee_id?: string;
+    phone_number?: string;
+    department?: string;
+    position?: string;
+    role_id?: number;
+  }): Promise<any> {
+    const response = await this.client.post('/auth/users/create_user/', userData);
+    return response.data;
+  }
+
+  async updateUser(userId: number, userData: Partial<{
+    email: string;
+    first_name: string;
+    last_name: string;
+    employee_id: string;
+    phone_number: string;
+    department: string;
+    position: string;
+    is_active: boolean;
+  }>): Promise<any> {
+    const response = await this.client.patch(`/auth/users/${userId}/`, userData);
+    return response.data;
+  }
+
+  async getUsers(): Promise<any[]> {
+    const response = await this.client.get('/auth/users/');
+    return response.data.results || response.data;
+  }
+
+  async getRoles(params?: any): Promise<any[]> {
+    const response = await this.client.get('/auth/roles/', { params });
+    return response.data.results || response.data;
   }
 
   // System Settings methods

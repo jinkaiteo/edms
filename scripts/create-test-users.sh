@@ -22,11 +22,11 @@ docker compose exec backend python manage.py shell << 'EOF'
 from apps.users.models import User, Role, UserRole
 from django.contrib.auth.hashers import make_password
 
-# Test user data from credentials file
+# Test user data with simple passwords (updated from live system)
 test_users = [
     {
         'username': 'docadmin',
-        'password': 'test123',
+        'password': 'testdocadmin123456',
         'email': 'docadmin@edms-project.com',
         'first_name': 'Document',
         'last_name': 'Administrator',
@@ -36,7 +36,7 @@ test_users = [
     },
     {
         'username': 'author',
-        'password': 'test123',
+        'password': 'testauthor123456',
         'email': 'author@edms-project.com',
         'first_name': 'Document',
         'last_name': 'Author',
@@ -45,7 +45,7 @@ test_users = [
     },
     {
         'username': 'reviewer',
-        'password': 'test123',
+        'password': 'testreviewer123456',
         'email': 'reviewer@edms-project.com',
         'first_name': 'Document',
         'last_name': 'Reviewer',
@@ -54,7 +54,7 @@ test_users = [
     },
     {
         'username': 'approver',
-        'password': 'test123',
+        'password': 'testapprover123456',
         'email': 'approver@edms-project.com',
         'first_name': 'Document',
         'last_name': 'Approver',
@@ -63,7 +63,7 @@ test_users = [
     },
     {
         'username': 'placeholderadmin',
-        'password': 'test123',
+        'password': 'testplaceholder123456',
         'email': 'placeholderadmin@edms-project.com',
         'first_name': 'Placeholder',
         'last_name': 'Admin',
@@ -118,12 +118,14 @@ EOF
 echo ""
 echo "✅ Test users creation completed!"
 echo ""
-echo "👤 Available test accounts:"
-echo "   docadmin / test123"
-echo "   author / test123"
-echo "   reviewer / test123"
-echo "   approver / test123"
-echo "   placeholderadmin / test123"
+echo "👤 Available test accounts (Simple Password Pattern):"
+echo "   docadmin / testdocadmin123456"
+echo "   author / testauthor123456"
+echo "   reviewer / testreviewer123456"
+echo "   approver / testapprover123456"
+echo "   placeholderadmin / testplaceholder123456"
+echo ""
+echo "📋 Password Pattern: test[username]123456"
 echo ""
 echo "🌐 Login at: http://localhost:8000/admin"
 echo ""
