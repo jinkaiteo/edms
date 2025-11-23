@@ -22,11 +22,13 @@ docker compose exec backend python manage.py shell << 'EOF'
 from apps.users.models import User, Role, UserRole
 from django.contrib.auth.hashers import make_password
 
-# Test user data with simple passwords (updated from live system)
+# Test user data with simple password for easy testing
+simple_password = 'test123'  # Same password for all users for testing convenience
+
 test_users = [
     {
         'username': 'docadmin',
-        'password': 'testdocadmin123456',
+        'password': simple_password,
         'email': 'docadmin@edms-project.com',
         'first_name': 'Document',
         'last_name': 'Administrator',
@@ -36,7 +38,7 @@ test_users = [
     },
     {
         'username': 'author',
-        'password': 'testauthor123456',
+        'password': simple_password,
         'email': 'author@edms-project.com',
         'first_name': 'Document',
         'last_name': 'Author',
@@ -45,7 +47,7 @@ test_users = [
     },
     {
         'username': 'reviewer',
-        'password': 'testreviewer123456',
+        'password': simple_password,
         'email': 'reviewer@edms-project.com',
         'first_name': 'Document',
         'last_name': 'Reviewer',
@@ -54,7 +56,7 @@ test_users = [
     },
     {
         'username': 'approver',
-        'password': 'testapprover123456',
+        'password': simple_password,
         'email': 'approver@edms-project.com',
         'first_name': 'Document',
         'last_name': 'Approver',
@@ -63,10 +65,21 @@ test_users = [
     },
     {
         'username': 'placeholderadmin',
-        'password': 'testplaceholder123456',
+        'password': simple_password,
         'email': 'placeholderadmin@edms-project.com',
         'first_name': 'Placeholder',
         'last_name': 'Admin',
+        'department': 'IT',
+        'position': 'System Administrator'
+    },
+    {
+        'username': 'admin',
+        'password': simple_password,
+        'email': 'admin@edms-project.com',
+        'first_name': 'System',
+        'last_name': 'Administrator',
+        'is_staff': True,
+        'is_superuser': True,
         'department': 'IT',
         'position': 'System Administrator'
     }
@@ -118,14 +131,15 @@ EOF
 echo ""
 echo "✅ Test users creation completed!"
 echo ""
-echo "👤 Available test accounts (Simple Password Pattern):"
-echo "   docadmin / testdocadmin123456"
-echo "   author / testauthor123456"
-echo "   reviewer / testreviewer123456"
-echo "   approver / testapprover123456"
-echo "   placeholderadmin / testplaceholder123456"
+echo "👤 Available test accounts (Simple Password for All):"
+echo "   admin / test123 (Superuser)"
+echo "   docadmin / test123 (Document Admin)"
+echo "   author / test123 (Document Author)"
+echo "   reviewer / test123 (Document Reviewer)"
+echo "   approver / test123 (Document Approver)"
+echo "   placeholderadmin / test123 (Placeholder Admin)"
 echo ""
-echo "📋 Password Pattern: test[username]123456"
+echo "🔑 All users have the same password: test123"
 echo ""
 echo "🌐 Login at: http://localhost:8000/admin"
 echo ""

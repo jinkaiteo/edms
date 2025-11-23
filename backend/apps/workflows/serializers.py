@@ -10,7 +10,8 @@ from django.contrib.auth import get_user_model
 from django.utils import timezone
 
 from .models import (
-    DocumentState, WorkflowType, WorkflowInstance, WorkflowTransition,
+    DocumentState, DocumentWorkflow, DocumentTransition,
+    WorkflowType, WorkflowInstance, WorkflowTransition,
     WorkflowTask, WorkflowRule, WorkflowNotification,
     WorkflowTemplate
 )
@@ -394,3 +395,45 @@ class DocumentStateSerializer(serializers.ModelSerializer):
             'is_initial', 'is_final'
         ]
         read_only_fields = ['code']
+
+
+class DocumentWorkflowSerializer(serializers.ModelSerializer):
+    """Serializer for DocumentWorkflow model."""
+    
+    current_state = DocumentStateSerializer(read_only=True)
+    initiated_by = serializers.StringRelatedField(read_only=True)
+    current_assignee = serializers.StringRelatedField(read_only=True)
+    selected_reviewer = serializers.StringRelatedField(read_only=True)
+    selected_approver = serializers.StringRelatedField(read_only=True)
+    document_title = serializers.CharField(source='document.title', read_only=True)
+    document_number = serializers.CharField(source='document.document_number', read_only=True)
+    
+    class Meta:
+        model = DocumentWorkflow
+        fields = [
+            'uuid', 'document', 'document_title', 'document_number',
+            'workflow_type', 'current_state', 'initiated_by', 
+            'current_assignee', 'selected_reviewer', 'selected_approver',
+            'created_at', 'updated_at', 'due_date', 'effective_date',
+            'obsoleting_date', 'workflow_data', 'up_version_reason',
+            'obsoleting_reason', 'termination_reason', 'is_terminated',
+            'last_approved_state'
+        ]
+
+
+class DocumentTransitionSerializer(serializers.ModelSerializer):
+    """Serializer for DocumentTransition model."""
+    
+    workflow = DocumentWorkflowSerializer(read_only=True)
+    from_state = DocumentStateSerializer(read_only=True)
+    to_state = DocumentStateSerializer(read_only=True)
+    transitioned_by = serializers.StringRelatedField(read_only=True)
+    
+    class Meta:
+        model = DocumentTransition
+        fields = [
+            'uuid', 'workflow', 'from_state', 'to_state',
+            'transitioned_by', 'transitioned_at', 'comment',
+            'transition_data'
+        ]
+        read_only_fields = '__all__'

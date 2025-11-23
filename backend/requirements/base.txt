@@ -39,4 +39,18 @@ ipython==8.16.1
 sentry-sdk[django]==1.35.0
 
 # Environment Management
-python-decouple==3.8
+python-decouple==3.8# Phase 3 High Priority Dependencies
+# Document Processing
+pytesseract==0.3.10
+Pillow==10.0.1
+python-docx==0.8.11
+PyPDF2==3.0.1
+reportlab==4.0.4
+
+# Electronic Signatures
+cryptography==41.0.7
+
+# Scheduler Enhancement
+celery[redis]==5.3.4
+django-celery-beat==2.5.0
+redis==5.0.1

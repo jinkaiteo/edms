@@ -659,7 +659,33 @@ class DocumentWorkflow(models.Model):
         return f"{self.document} - {self.current_state}"
     
     def transition_to(self, new_state_code, user, comment='', **kwargs):
-        """Transition document to new state."""
+        """Transition document to new state with EDMS validation."""
+        current_state_code = self.current_state.code
+        
+        # EDMS-compliant state transition validation (database compatible)
+        valid_transitions = {
+            'DRAFT': ['PENDING_REVIEW'],
+            'PENDING_REVIEW': ['UNDER_REVIEW', 'DRAFT'],
+            'UNDER_REVIEW': ['REVIEWED', 'DRAFT'],
+            'REVIEWED': ['PENDING_APPROVAL'], 
+            'PENDING_APPROVAL': ['UNDER_APPROVAL', 'DRAFT'],
+            'UNDER_APPROVAL': ['PENDING_EFFECTIVE', 'DRAFT'],
+            'PENDING_EFFECTIVE': ['EFFECTIVE'],
+            'EFFECTIVE': ['SUPERSEDED', 'PENDING_OBSOLETE'],
+            'SUPERSEDED': [],
+            'PENDING_OBSOLETE': ['OBSOLETE', 'EFFECTIVE'],
+            'OBSOLETE': [],
+            'TERMINATED': []
+        }
+        
+        # Validate transition
+        allowed_transitions = valid_transitions.get(current_state_code, [])
+        if new_state_code not in allowed_transitions:
+            raise ValueError(
+                f'Invalid workflow transition: {current_state_code} → {new_state_code}. '
+                f'Valid transitions from {current_state_code}: {allowed_transitions}'
+            )
+        
         old_state = self.current_state
         new_state = DocumentState.objects.get(code=new_state_code)
         
@@ -680,6 +706,26 @@ class DocumentWorkflow(models.Model):
         self.save()
         
         return transition
+    
+    def get_valid_next_states(self):
+        """Get list of valid next states for current workflow state."""
+        valid_transitions = {
+            'DRAFT': ['PENDING_REVIEW'],
+            'PENDING_REVIEW': ['UNDER_REVIEW', 'DRAFT'],
+            'UNDER_REVIEW': ['REVIEWED', 'DRAFT'],
+            'REVIEWED': ['PENDING_APPROVAL'], 
+            'PENDING_APPROVAL': ['UNDER_APPROVAL', 'DRAFT'],
+            'UNDER_APPROVAL': ['PENDING_EFFECTIVE', 'DRAFT'],
+            'PENDING_EFFECTIVE': ['EFFECTIVE'],
+            'EFFECTIVE': ['SUPERSEDED', 'PENDING_OBSOLETE'],
+            'SUPERSEDED': [],
+            'PENDING_OBSOLETE': ['OBSOLETE', 'EFFECTIVE'],
+            'OBSOLETE': [],
+            'TERMINATED': []
+        }
+        
+        current_state_code = self.current_state.code
+        return valid_transitions.get(current_state_code, [])
 
 
 class DocumentTransition(models.Model):
