@@ -174,18 +174,34 @@ const DocumentList: React.FC<DocumentListProps> = ({
       console.log('📄 Fetching documents from API with filters:', filters);
       const documentsData = await apiService.get('/documents/documents/');
       console.log('📄 Documents fetched from API:', documentsData);
+      console.log('📄 API response type:', typeof documentsData, 'Array?', Array.isArray(documentsData));
       
       // API response should be array of documents or wrapped in a data property
       const documentsArray = Array.isArray(documentsData) ? documentsData : (documentsData.results || documentsData.data || []);
+      console.log('📄 Documents array extracted:', documentsArray);
+      console.log('📄 Documents array length:', documentsArray?.length);
+      console.log('📄 Sample document structure:', documentsArray[0]);
       let filteredDocs = [...documentsArray];
       
       // Apply filters
-      if (filters?.status) {
+      console.log('📄 Before filtering - count:', filteredDocs.length);
+      
+      // Only filter if status has actual value (not empty array)
+      if (filters?.status && filters.status.length > 0) {
+        console.log('📄 Filtering by status:', filters.status);
         filteredDocs = filteredDocs.filter(doc => doc.status === filters.status);
+        console.log('📄 After status filter - count:', filteredDocs.length);
+      } else {
+        console.log('📄 Skipping status filter - empty or no value');
       }
       
-      if (filters?.document_type) {
+      // Only filter if document_type has actual value (not empty array)  
+      if (filters?.document_type && filters.document_type.length > 0) {
+        console.log('📄 Filtering by document_type:', filters.document_type);
         filteredDocs = filteredDocs.filter(doc => doc.document_type?.id === filters.document_type);
+        console.log('📄 After document_type filter - count:', filteredDocs.length);
+      } else {
+        console.log('📄 Skipping document_type filter - empty or no value');
       }
       
       if (filters?.search) {
@@ -228,6 +244,8 @@ const DocumentList: React.FC<DocumentListProps> = ({
         return 0;
       });
       
+      console.log('📄 Final filtered documents to set:', filteredDocs);
+      console.log('📄 Final documents count:', filteredDocs?.length);
       setDocuments(filteredDocs);
     } catch (error: any) {
       console.error('Failed to load documents:', error);
@@ -388,6 +406,13 @@ const DocumentList: React.FC<DocumentListProps> = ({
           </div>
         </div>
 
+        {/* DEBUG: Current documents state */}
+        <div className="mb-4 p-2 bg-yellow-50 border border-yellow-200 rounded">
+          <p className="text-sm text-gray-700">
+            🐛 Debug: Documents array length = {documents.length}, Loading = {loading.toString()}, Error = {error || 'none'}
+          </p>
+        </div>
+        
         {/* Documents display */}
         {documents.length === 0 ? (
           <div className="text-center py-12">
