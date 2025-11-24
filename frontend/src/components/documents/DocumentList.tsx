@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Document, DocumentStatus, DocumentType } from '../../types/api';
-import apiService from '../../services/api';
+import { apiService } from '../../services/api.ts';
 
 interface DocumentListProps {
   onDocumentSelect?: (document: Document) => void;
@@ -175,10 +175,12 @@ const DocumentList: React.FC<DocumentListProps> = ({
     try {
       // Use real API call to fetch documents from backend
       console.log('📄 Fetching documents from API with filters:', filters);
-      const response = await apiService.get('/documents/');
-      console.log('📄 Documents fetched from API:', response);
+      const documentsData = await apiService.get('/documents/');
+      console.log('📄 Documents fetched from API:', documentsData);
       
-      let filteredDocs = [...(response.data || [])];
+      // API response should be array of documents or wrapped in a data property
+      const documentsArray = Array.isArray(documentsData) ? documentsData : (documentsData.results || documentsData.data || []);
+      let filteredDocs = [...documentsArray];
       
       // Apply filters
       if (filters?.status) {
