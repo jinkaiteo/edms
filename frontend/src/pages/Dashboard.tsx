@@ -390,12 +390,12 @@ const Dashboard: React.FC = () => {
                     </ul>
                   </div>
                   <div className="mt-6">
-                    <a
-                      href="#"
-                      className="w-full flex justify-center items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50"
+                    <button
+                      onClick={() => navigate('/audit-trail')}
+                      className="w-full flex justify-center items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
                     >
                       View all activity
-                    </a>
+                    </button>
                   </div>
                 </div>
               </div>

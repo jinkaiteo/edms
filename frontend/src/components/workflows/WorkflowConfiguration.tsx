@@ -79,38 +79,37 @@ const WorkflowConfiguration: React.FC<WorkflowConfigurationProps> = ({ className
     const loadWorkflows = async () => {
       try {
         setLoading(true);
+        setError(null);
+        console.log('🔄 WorkflowConfiguration: Loading workflows...');
         
         // Try to authenticate first if not already authenticated
         if (!apiService.isAuthenticated()) {
-          console.log('Authenticating for workflow API access...');
+          console.log('🔐 WorkflowConfiguration: Not authenticated, attempting admin login...');
           try {
-            await apiService.login({ username: 'admin', password: 'admin' });
-            console.log('Authentication successful');
+            const loginResult = await apiService.login({ username: 'admin', password: 'test123' });
+            console.log('✅ Authentication successful:', loginResult.access ? 'JWT token received' : 'Session established');
           } catch (authErr) {
-            console.log('Authentication failed, trying with test user credentials...');
-            try {
-              await apiService.login({ username: 'docadmin', password: 'EDMSAdmin2024!' });
-              console.log('Authentication successful with docadmin');
-            } catch (err2) {
-              console.error('All authentication attempts failed:', err2);
-              throw new Error('Authentication required for live data');
-            }
+            console.error('❌ Authentication failed:', authErr);
+            throw new Error('Authentication required for live workflow data');
           }
         }
         
-        // Get workflow types from API
+        // Get workflow types from API with authentication
+        console.log('📡 Fetching workflow types from API...');
         const response = await apiService.getWorkflowTypes();
         const workflowData = response.results || response.data || [];
         
-        console.log('✅ Loaded workflow types from API:', workflowData.length, 'workflows');
-        console.log('Workflow data:', workflowData);
+        console.log('✅ Successfully loaded', workflowData.length, 'workflows from API (not mock data)');
+        console.log('🔍 Live workflow data:', workflowData.map(w => ({ name: w.name, type: w.workflow_type, active: w.is_active })));
         
         setWorkflows(workflowData);
-      } catch (err: any) {
-        console.error('Error loading workflows:', err);
-        console.log('❌ Workflow Configuration: Using mock data due to API error');
         
-        // Fallback to mock data on error
+      } catch (err: any) {
+        console.error('❌ Error loading workflows:', err);
+        setError(`Failed to load live workflow data: ${err.message}. Using fallback configuration.`);
+        
+        // Fallback to mock data on error with clear indication
+        console.log('⚠️ Workflow Configuration: Using mock data due to API error');
         setWorkflows(mockWorkflows);
       } finally {
         setLoading(false);
@@ -139,9 +138,12 @@ const WorkflowConfiguration: React.FC<WorkflowConfigurationProps> = ({ className
         
         // Ensure we're authenticated before making update
         if (!apiService.isAuthenticated()) {
+          console.log('🔐 Re-authenticating for workflow update...');
           try {
-            await apiService.login({ username: 'docadmin', password: 'EDMSAdmin2024!' });
+            await apiService.login({ username: 'admin', password: 'test123' });
+            console.log('✅ Re-authentication successful');
           } catch (authErr) {
+            console.error('❌ Re-authentication failed:', authErr);
             throw new Error('Authentication required for workflow updates');
           }
         }

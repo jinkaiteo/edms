@@ -56,13 +56,13 @@ if not User.objects.filter(username='admin').exists():
         admin_user = User.objects.create_superuser(
             username='admin',
             email='admin@edms-project.com',
-            password='EDMSAdmin2024!',
+            password='test123',
             first_name='System',
             last_name='Administrator'
         )
         admin_user.is_validated = True
         admin_user.save()
-        print("✅ Admin user created: admin / EDMSAdmin2024!")
+        print("✅ Admin user created: admin / test123")
 else:
     print("ℹ️  Admin user already exists")
 EOF
@@ -439,7 +439,7 @@ echo "✅ Database initialization completed successfully!"
 echo ""
 echo "📊 Initialization Summary:"
 echo "   ✅ Database migrations applied"
-echo "   ✅ Admin user created (admin / EDMSAdmin2024!)"
+echo "   ✅ Admin user created (admin / test123)"
 echo "   ✅ System roles configured"
 echo "   ✅ Storage directories created"
 echo "   ✅ PostgreSQL extensions enabled"
@@ -448,7 +448,7 @@ echo "   ✅ Initial backup created"
 echo ""
 echo "🔐 Default Login Credentials:"
 echo "   Username: admin"
-echo "   Password: EDMSAdmin2024!"
+echo "   Password: test123"
 echo ""
 echo "🌐 Next Steps:"
 echo "   1. Access admin panel: http://localhost:8000/admin"

@@ -150,7 +150,7 @@ DB_PASSWORD=edms_password
 ### Test Users
 Default test accounts (created by `create-test-users.sh`):
 
-- **Document Admin**: `docadmin` / `EDMSAdmin2024!`
+- **Universal Admin**: `admin` / `test123`
 - **Document Author**: `author` / `AuthorPass2024!`
 - **Document Reviewer**: `reviewer` / `ReviewPass2024!`
 - **Document Approver**: `approver` / `ApprovePass2024!`
