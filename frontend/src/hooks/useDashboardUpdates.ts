@@ -74,24 +74,27 @@ export const useDashboardUpdates = ({
       setError(errorMessage);
       onError?.(err);
 
-      // Set fallback data on error
-      if (!dashboardStats) {
-        setDashboardStats({
-          total_documents: 0,
-          pending_reviews: 0,
-          active_workflows: 0,
-          active_users: 0,
-          placeholders: 0,
-          audit_entries_24h: 0,
-          recent_activity: [],
-          timestamp: new Date().toISOString(),
-          cache_duration: 0
-        });
-      }
+      // Set fallback data on error only if no data exists yet
+      setDashboardStats(prevStats => {
+        if (prevStats === null) {
+          return {
+            total_documents: 0,
+            pending_reviews: 0,
+            active_workflows: 0,
+            active_users: 0,
+            placeholders: 0,
+            audit_entries_24h: 0,
+            recent_activity: [],
+            timestamp: new Date().toISOString(),
+            cache_duration: 0
+          };
+        }
+        return prevStats; // Keep existing data if API fails
+      });
     } finally {
       setIsLoading(false);
     }
-  }, [enabled, onError, onUpdate, dashboardStats]);
+  }, [enabled, onError, onUpdate]);
 
   // Auto-refresh configuration
   const autoRefresh = useAutoRefresh({

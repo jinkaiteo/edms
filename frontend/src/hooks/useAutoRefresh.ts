@@ -98,7 +98,13 @@ export const useAutoRefresh = ({
   useEffect(() => {
     if (!isPaused && interval > 0) {
       intervalRef.current = setInterval(() => {
-        refreshNow();
+        refreshFnRef.current().then(() => {
+          setLastRefresh(new Date());
+          setNextRefresh(new Date(Date.now() + interval));
+        }).catch((error) => {
+          console.error('Auto-refresh error:', error);
+          onError?.(error as Error);
+        });
       }, interval);
       
       setNextRefresh(calculateNextRefresh());
@@ -110,7 +116,7 @@ export const useAutoRefresh = ({
         }
       };
     }
-  }, [isPaused, interval, refreshNow, calculateNextRefresh]);
+  }, [isPaused, interval, calculateNextRefresh, onError]);
   
   // Cleanup on unmount
   useEffect(() => {
