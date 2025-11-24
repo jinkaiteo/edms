@@ -185,7 +185,7 @@ const DocumentList: React.FC<DocumentListProps> = ({
       }
       
       if (filters?.document_type) {
-        filteredDocs = filteredDocs.filter(doc => doc.document_type.id === filters.document_type);
+        filteredDocs = filteredDocs.filter(doc => doc.document_type?.id === filters.document_type);
       }
       
       if (filters?.search) {
@@ -216,8 +216,8 @@ const DocumentList: React.FC<DocumentListProps> = ({
             bValue = b.status;
             break;
           case 'document_type':
-            aValue = a.document_type.name;
-            bValue = b.document_type.name;
+            aValue = a.document_type?.name || '';
+            bValue = b.document_type?.name || '';
             break;
           default:
             return 0;
@@ -417,7 +417,7 @@ const DocumentList: React.FC<DocumentListProps> = ({
                           {document.title}
                         </h4>
                         <p className="text-sm text-gray-500">
-                          {document.document_number} • {document.document_type.name}
+                          {document.document_number} • {document.document_type?.name || 'Unknown Type'}
                         </p>
                       </div>
                     </div>
@@ -503,8 +503,8 @@ const DocumentList: React.FC<DocumentListProps> = ({
                     </p>
                   </div>
                   <div className="text-xs text-gray-500 space-y-1">
-                    <div>{document.document_type.name}</div>
-                    <div>By {document.created_by.full_name}</div>
+                    <div>{document.document_type?.name || 'Unknown Type'}</div>
+                    <div>By {document.created_by?.full_name || 'Unknown Author'}</div>
                     <div>{formatDate(document.created_at)}</div>
                     {document.file_size && <div>{formatFileSize(document.file_size)}</div>}
                   </div>
