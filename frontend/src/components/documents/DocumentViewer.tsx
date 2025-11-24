@@ -241,7 +241,7 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({
               <span>•</span>
               <span>Version {document.version}</span>
               <span>•</span>
-              <span>{document.document_type.name}</span>
+              <span>{document.document_type?.name || 'Unknown Type'}</span>
             </div>
           </div>
           <div className="flex items-center space-x-2 ml-4">
@@ -312,11 +312,11 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({
                   </div>
                   <div>
                     <dt className="text-sm font-medium text-gray-500">Document Type</dt>
-                    <dd className="text-sm text-gray-900 mt-1">{document.document_type.name}</dd>
+                    <dd className="text-sm text-gray-900 mt-1">{document.document_type?.name || 'Unknown Type'}</dd>
                   </div>
                   <div>
                     <dt className="text-sm font-medium text-gray-500">Created By</dt>
-                    <dd className="text-sm text-gray-900 mt-1">{document.created_by.full_name}</dd>
+                    <dd className="text-sm text-gray-900 mt-1">{document.created_by?.full_name || 'Unknown Author'}</dd>
                   </div>
                   <div>
                     <dt className="text-sm font-medium text-gray-500">Created Date</dt>
@@ -549,7 +549,7 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({
                   <div>
                     <h4 className="text-sm font-medium text-gray-900">Document Created</h4>
                     <p className="text-sm text-gray-600">
-                      Document created by {document.created_by.full_name}
+                      Document created by {document.created_by?.full_name || 'Unknown Author'}
                     </p>
                   </div>
                   <span className="text-sm text-gray-500">{formatDate(document.created_at)}</span>
