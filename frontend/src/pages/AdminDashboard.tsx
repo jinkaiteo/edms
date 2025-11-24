@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useCallback } from 'react';
 import Layout from '../components/common/Layout.tsx';
 import UserManagement from '../components/users/UserManagement.tsx';
 import WorkflowConfiguration from '../components/workflows/WorkflowConfiguration.tsx';
@@ -7,7 +7,7 @@ import SystemSettings from '../components/settings/SystemSettings.tsx';
 import AuditTrailViewer from '../components/audit/AuditTrailViewer.tsx';
 import LoadingSpinner from '../components/common/LoadingSpinner.tsx';
 import { useDashboardUpdates } from '../hooks/useDashboardUpdates.ts';
-import { DashboardStats, ActivityItem } from '../types/api.ts';
+import { DashboardStats } from '../types/api.ts';
 
 const AdminDashboard: React.FC = () => {
   console.log('📊 AdminDashboard: Component mounted');
