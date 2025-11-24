@@ -416,11 +416,11 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({
                     <dl className="space-y-3">
                       <div>
                         <dt className="text-sm font-medium text-gray-500">Workflow Type</dt>
-                        <dd className="text-sm text-gray-900 mt-1">{workflowStatus.workflow_type.name}</dd>
+                        <dd className="text-sm text-gray-900 mt-1">{workflowStatus.workflow_type?.name || 'Unknown Workflow Type'}</dd>
                       </div>
                       <div>
                         <dt className="text-sm font-medium text-gray-500">Started By</dt>
-                        <dd className="text-sm text-gray-900 mt-1">{workflowStatus.initiated_by.full_name}</dd>
+                        <dd className="text-sm text-gray-900 mt-1">{workflowStatus.initiated_by?.full_name || 'Unknown User'}</dd>
                       </div>
                       <div>
                         <dt className="text-sm font-medium text-gray-500">Started Date</dt>
@@ -435,7 +435,7 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({
                       {workflowStatus.current_assignee && (
                         <div>
                           <dt className="text-sm font-medium text-gray-500">Current Assignee</dt>
-                          <dd className="text-sm text-gray-900 mt-1">{workflowStatus.current_assignee.full_name}</dd>
+                          <dd className="text-sm text-gray-900 mt-1">{workflowStatus.current_assignee?.full_name || 'Unassigned'}</dd>
                         </div>
                       )}
                     </dl>
@@ -503,7 +503,7 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({
                           </div>
                         </div>
                         <div className="space-y-1 text-sm text-gray-600">
-                          <div>Signed by: {signature.user.full_name}</div>
+                          <div>Signed by: {signature.user?.full_name || 'Unknown User'}</div>
                           <div>Date: {formatDate(signature.signature_timestamp)}</div>
                           <div>Reason: {signature.reason}</div>
                           <div>Method: {signature.signature_method.replace('_', ' ')}</div>
