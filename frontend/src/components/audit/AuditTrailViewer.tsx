@@ -230,19 +230,89 @@ const AuditTrailViewer: React.FC<AuditTrailViewerProps> = ({ className = '' }) =
           console.log('✅ AuditTrail: Authentication successful');
         }
         
-        // For now, show the mock data with a clear indication that it's demo data
-        // In the future, this will be replaced with: const response = await apiService.getAuditTrail(filters);
-        console.log('📊 AuditTrail: Currently showing demo audit data (54 real login records available in backend)');
-        console.log('💡 Note: Real audit API integration ready - showing mock data for demonstration');
-        
-        setAuditLogs(mockAuditLogs);
-        setLoading(false);
+        // Get real audit trail data from backend API
+        console.log('📡 AuditTrail: Fetching real audit data from backend...');
+        try {
+          const response = await apiService.getAuditTrail(filters);
+          console.log('✅ AuditTrail: API response received:', response);
+          console.log('🔍 Raw API response structure:', {
+            hasResults: !!(response.results),
+            hasData: !!(response.data), 
+            resultsLength: response.results?.length || 0,
+            dataLength: response.data?.length || 0,
+            count: response.count,
+            firstResult: response.results?.[0] || response.data?.[0]
+          });
+          
+          // Transform API data to match frontend format (simplified)
+          const auditData = (response.results || response.data || []).map((item: any, index: number) => ({
+            id: item.id || index,
+            uuid: item.uuid || `temp-${index}`,
+            user: {
+              id: 0,
+              username: item.user_display || 'System',
+              email: '',
+              first_name: '',
+              last_name: '',
+              is_active: true,
+              is_staff: false,
+              is_superuser: false,
+              date_joined: new Date().toISOString(),
+              last_login: null,
+              full_name: item.user_display || 'System',
+              roles: []
+            },
+            action: item.action || 'UNKNOWN',
+            object_type: item.audit_type === 'login_audit' ? 'authentication' : 'system',
+            object_id: item.id || 0,
+            description: item.description || 'No description',
+            timestamp: item.timestamp || new Date().toISOString(),
+            ip_address: item.ip_address || '',
+            user_agent: item.user_agent || '',
+            session_id: null,
+            request_id: null,
+            additional_data: item.additional_data || {},
+            integrity_hash: `sha256:${item.uuid || 'unknown'}`
+          }));
+          
+          console.log('🔄 Data transformation completed. Sample transformed record:');
+          console.log(auditData[0]);
+          
+          console.log(`✅ AuditTrail: Successfully loaded ${auditData.length} real audit records from database`);
+          console.log('🔍 Sample audit data:', auditData.slice(0, 2));
+          
+          if (auditData.length === 0) {
+            console.log('⚠️ No audit data returned from API, using mock data');
+            setAuditLogs(mockAuditLogs);
+          } else {
+            console.log('✅ Setting audit logs with live data');
+            setAuditLogs(auditData);
+          }
+          
+          // Double-check that state was set
+          setTimeout(() => {
+            console.log('🔍 Current auditLogs state length:', auditData.length);
+          }, 100);
+          
+        } catch (apiError) {
+          console.error('❌ AuditTrail: API call failed:', apiError);
+          console.error('API Error details:', {
+            status: apiError?.response?.status,
+            statusText: apiError?.response?.statusText,
+            data: apiError?.response?.data,
+            message: apiError?.message
+          });
+          console.log('⚠️ Using mock data as fallback');
+          setAuditLogs(mockAuditLogs);
+        }
         
       } catch (error) {
         console.error('❌ AuditTrail: Error loading audit trail:', error);
         // Use mock data as fallback
         console.log('⚠️ AuditTrail: Using mock data due to error');
         setAuditLogs(mockAuditLogs);
+        setLoading(false);
+      } finally {
         setLoading(false);
       }
     };

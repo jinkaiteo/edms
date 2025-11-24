@@ -414,7 +414,22 @@ class ApiService {
 
   // Audit Trail
   async getAuditTrail(params?: any): Promise<ApiResponse<AuditTrail[]>> {
-    const response = await this.client.get<ApiResponse<AuditTrail[]>>('/audit-trail/', { params });
+    const response = await this.client.get<ApiResponse<AuditTrail[]>>('/audit/combined/', { params });
+    return response.data;
+  }
+
+  async getAuditTrailOnly(params?: any): Promise<ApiResponse<AuditTrail[]>> {
+    const response = await this.client.get<ApiResponse<AuditTrail[]>>('/audit/trail/', { params });
+    return response.data;
+  }
+
+  async getLoginAudit(params?: any): Promise<ApiResponse<any[]>> {
+    const response = await this.client.get<ApiResponse<any[]>>('/audit/login/', { params });
+    return response.data;
+  }
+
+  async getAuditStatistics(): Promise<any> {
+    const response = await this.client.get('/audit/combined/statistics/');
     return response.data;
   }
 
