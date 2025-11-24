@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Document, DocumentStatus, DocumentType } from '../../types/api';
+import { Document, DocumentStatus } from '../../types/api';
 import { apiService } from '../../services/api.ts';
 
 interface DocumentListProps {
@@ -164,10 +164,6 @@ const DocumentList: React.FC<DocumentListProps> = ({
     }
   ];
 
-  useEffect(() => {
-    loadDocuments();
-  }, [filters]);
-
   const loadDocuments = async () => {
     setLoading(true);
     setError(null);
@@ -239,6 +235,10 @@ const DocumentList: React.FC<DocumentListProps> = ({
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    loadDocuments();
+  }, [filters]);
 
   const getStatusColor = (status: DocumentStatus): string => {
     const colors: Record<DocumentStatus, string> = {
