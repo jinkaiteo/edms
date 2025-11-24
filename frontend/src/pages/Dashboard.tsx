@@ -7,7 +7,7 @@ import { useDashboardUpdates } from '../hooks/useDashboardUpdates.ts';
 import { DashboardStats, ActivityItem } from '../types/api.ts';
 
 const Dashboard: React.FC = () => {
-  const { user, authenticated, logout } = useAuth();
+  const { user, authenticated, loading, logout } = useAuth();
   const navigate = useNavigate();
   
   // Stable callback functions to prevent dependency changes
@@ -36,16 +36,22 @@ const Dashboard: React.FC = () => {
   });
 
   useEffect(() => {
-    console.log('📊 Dashboard mounted - authenticated:', authenticated, 'user:', user?.username);
+    console.log('📊 Dashboard mounted - authenticated:', authenticated, 'loading:', loading, 'user:', user?.username);
+    
+    // Wait for auth loading to complete before making decisions
+    if (loading) {
+      console.log('⏳ Auth still loading, waiting...');
+      return;
+    }
     
     if (!authenticated) {
-      console.log('❌ Not authenticated, redirecting to login...');
+      console.log('❌ Not authenticated after loading complete, redirecting to login...');
       navigate('/login', { replace: true });
       return;
     }
     
     console.log('✅ User authenticated, dashboard auto-updates enabled');
-  }, [authenticated, navigate, user]);
+  }, [authenticated, loading, navigate, user]);
 
   const handleLogout = async () => {
     await logout();
@@ -69,11 +75,15 @@ const Dashboard: React.FC = () => {
     }
   };
 
-  if (isLoading) {
+  // Show loading spinner during auth initialization or data loading
+  if (loading || isLoading) {
     return (
       <Layout>
         <div className="flex items-center justify-center min-h-screen">
           <LoadingSpinner />
+          <span className="ml-3 text-gray-600">
+            {loading ? 'Checking authentication...' : 'Loading dashboard...'}
+          </span>
         </div>
       </Layout>
     );
