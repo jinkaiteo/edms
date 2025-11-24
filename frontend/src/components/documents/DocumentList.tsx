@@ -404,7 +404,7 @@ const DocumentList: React.FC<DocumentListProps> = ({
           <div className="space-y-3">
             {documents.map((document) => (
               <div
-                key={document.id}
+                key={document.id || document.uuid || Math.random()}
                 className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow cursor-pointer"
                 onClick={() => onDocumentSelect?.(document)}
               >
@@ -480,7 +480,7 @@ const DocumentList: React.FC<DocumentListProps> = ({
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {documents.map((document) => (
               <div
-                key={document.id}
+                key={document.id || document.uuid || Math.random()}
                 className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow cursor-pointer"
                 onClick={() => onDocumentSelect?.(document)}
               >
