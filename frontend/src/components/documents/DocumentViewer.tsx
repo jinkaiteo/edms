@@ -348,11 +348,11 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({
               </div>
 
               {/* Metadata */}
-              {Object.keys(document.metadata).length > 0 && (
+              {document.metadata && Object.keys(document.metadata).length > 0 && (
                 <div>
                   <h3 className="text-lg font-medium text-gray-900 mb-4">Metadata</h3>
                   <dl className="space-y-3">
-                    {Object.entries(document.metadata).map(([key, value]) => (
+                    {document.metadata && Object.entries(document.metadata).map(([key, value]) => (
                       <div key={key}>
                         <dt className="text-sm font-medium text-gray-500 capitalize">{key.replace('_', ' ')}</dt>
                         <dd className="text-sm text-gray-900 mt-1">{String(value)}</dd>
