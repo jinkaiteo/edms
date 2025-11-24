@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import Layout from '../components/common/Layout.tsx';
 import UserManagement from '../components/users/UserManagement.tsx';
 import WorkflowConfiguration from '../components/workflows/WorkflowConfiguration.tsx';
@@ -13,6 +13,22 @@ const AdminDashboard: React.FC = () => {
   console.log('📊 AdminDashboard: Component mounted');
   const [activeSection, setActiveSection] = useState<'overview' | 'users' | 'workflows' | 'placeholders' | 'settings' | 'audit' | 'tasks' | 'reports'>('overview');
   
+  // Stable callback functions to prevent dependency changes
+  const handleDashboardError = useCallback((error: Error) => {
+    console.error('Admin dashboard update error:', error);
+  }, []);
+  
+  const handleDashboardUpdate = useCallback((stats: DashboardStats) => {
+    console.log('📊 Admin dashboard auto-refresh executed:', {
+      timestamp: stats.timestamp,
+      documents: stats.total_documents,
+      users: stats.active_users,
+      workflows: stats.active_workflows,
+      activities: stats.recent_activity.length,
+      updateTime: new Date().toISOString()
+    });
+  }, []);
+  
   // Use dashboard updates hook for real-time data
   const {
     dashboardStats,
@@ -25,12 +41,8 @@ const AdminDashboard: React.FC = () => {
     enabled: activeSection === 'overview', // Only load when overview is active
     autoRefreshInterval: 300000, // 5 minutes
     useWebSocket: false, // Can enable WebSocket for admin dashboard later
-    onError: (error) => {
-      console.error('Admin dashboard update error:', error);
-    },
-    onUpdate: (stats) => {
-      console.log('Admin dashboard updated:', stats.timestamp);
-    }
+    onError: handleDashboardError,
+    onUpdate: handleDashboardUpdate
   });
 
   const adminSections = [
