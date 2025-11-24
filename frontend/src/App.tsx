@@ -6,6 +6,8 @@ import Login from './pages/Login.tsx';
 import DocumentList from './pages/DocumentList.tsx';
 import DocumentManagement from './pages/DocumentManagement.tsx';
 import AdminDashboard from './pages/AdminDashboard.tsx';
+import MyTasksStandalone from './pages/MyTasksStandalone.tsx';
+// Removed problematic standalone pages - functionality integrated into AdminDashboard
 import { AuthProvider } from './contexts/AuthContext.tsx';
 import { ToastProvider } from './contexts/ToastContext.tsx';
 import ErrorBoundary from './components/common/ErrorBoundary.tsx';
@@ -37,6 +39,11 @@ function AppContent() {
         <Route path="/" element={<Navigate to="/dashboard" replace />} />
         <Route path="/documents" element={<DocumentList />} />
         <Route path="/document-management" element={<DocumentManagement />} />
+        <Route path="/my-tasks" element={<MyTasksStandalone />} />
+        <Route path="/tasks" element={<MyTasksStandalone />} />
+        <Route path="/workflows" element={<Navigate to="/admin" replace />} />
+        <Route path="/users" element={<Navigate to="/admin" replace />} />
+        <Route path="/reports" element={<Navigate to="/admin" replace />} />
         <Route path="/admin" element={<AdminDashboard />} />
       </Routes>
     </div>

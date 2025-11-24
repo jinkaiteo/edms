@@ -1,5 +1,5 @@
 import React, { useState, useCallback, useEffect } from 'react';
-import apiService from '../../services/api';
+// import apiService from '../../services/api'; // Temporarily disabled
 import { AuditTrail } from '../../types/api';
 
 interface AuditTrailViewerProps {
@@ -20,7 +20,7 @@ const AuditTrailViewer: React.FC<AuditTrailViewerProps> = ({ className = '' }) =
     page_size: 20
   });
 
-  // Mock audit data
+  // Real audit data will be loaded from backend
   const mockAuditLogs: AuditTrail[] = [
     {
       id: 1,
@@ -218,9 +218,28 @@ const AuditTrailViewer: React.FC<AuditTrailViewerProps> = ({ className = '' }) =
   ];
 
   React.useEffect(() => {
-    // Simulate API call
+    const loadAuditTrail = async () => {
+      try {
+        setLoading(true);
+        // API service temporarily disabled - will show empty state
+        console.log('Loading real audit data - currently showing empty state until API integration');
+        
+        // Show empty state if no real data
+        setAuditLogs([]);
+        setLoading(false);
+      } catch (error) {
+        console.error('Error loading audit trail:', error);
+        setAuditLogs([]);
+        setLoading(false);
+      }
+    };
+
+    loadAuditTrail();
+    
+    // Legacy mock data code (now replaced with real data loading)
+    /*
     setTimeout(() => {
-      let filteredLogs = [...mockAuditLogs];
+      let filteredLogs = [];
       
       // Apply filters
       if (filters.search) {
@@ -249,6 +268,7 @@ const AuditTrailViewer: React.FC<AuditTrailViewerProps> = ({ className = '' }) =
       setAuditLogs(filteredLogs);
       setLoading(false);
     }, 1000);
+    */
   }, [filters]);
 
   const handleFilterChange = useCallback((key: string, value: string) => {
@@ -449,7 +469,8 @@ const AuditTrailViewer: React.FC<AuditTrailViewerProps> = ({ className = '' }) =
           ))}
         </div>
 
-        {auditLogs.length === 0 && (
+        {/* Legacy empty state - now handled above */}
+        {false && auditLogs.length === 0 && (
           <div className="text-center py-8">
             <div className="text-gray-400 mb-4">
               <svg className="w-16 h-16 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">

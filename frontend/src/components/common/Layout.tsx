@@ -75,19 +75,13 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
   const getNavigationItems = (): NavigationItem[] => {
     const baseItems: NavigationItem[] = [
       { name: 'Dashboard', href: '/dashboard', icon: HomeIcon },
-      { name: 'Documents', href: '/documents', icon: DocumentTextIcon },
       { name: 'Document Management', href: '/document-management', icon: DocumentArrowUpIcon },
-      { name: 'Search', href: '/search', icon: MagnifyingGlassIcon },
       { name: 'My Tasks', href: '/tasks', icon: ClipboardDocumentListIcon, badge: notifications > 0 ? notifications : undefined },
     ];
 
     // Add role-based items
     const adminItems: NavigationItem[] = [
       { name: 'Administration', href: '/admin', icon: Cog6ToothIcon, roles: ['admin'] },
-      { name: 'Workflows', href: '/workflows', icon: DocumentArrowUpIcon, roles: ['admin', 'approver'] },
-      { name: 'Users', href: '/users', icon: UserGroupIcon, roles: ['admin'] },
-      { name: 'Audit Trail', href: '/audit', icon: ShieldCheckIcon, roles: ['admin'] },
-      { name: 'Reports', href: '/reports', icon: ChartBarIcon, roles: ['admin', 'approver'] },
     ];
 
     // Filter items based on user roles

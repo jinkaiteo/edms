@@ -14,7 +14,7 @@ from drf_spectacular.views import (
 
 from .views import (
     # Core API views
-    APIStatusView, APIInfoView, APIHealthView,
+    APIStatusView, APIInfoView, APIHealthView, DashboardStatsView,
     
     # Document management
     DocumentViewSet, DocumentTypeViewSet, DocumentVersionViewSet,
@@ -100,6 +100,7 @@ urlpatterns = [
     path('status/', APIStatusView.as_view(), name='api-status'),
     path('info/', APIInfoView.as_view(), name='api-info'),
     path('health/', APIHealthView.as_view(), name='api-health'),
+    path('dashboard/stats/', DashboardStatsView.as_view(), name='dashboard-stats'),
     
     # Search analytics
     path('search/analytics/', SearchAnalyticsView.as_view(), name='search-analytics'),
