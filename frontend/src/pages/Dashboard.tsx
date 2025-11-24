@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext.tsx';
 import Layout from '../components/common/Layout.tsx';
@@ -9,6 +9,15 @@ import { DashboardStats, ActivityItem } from '../types/api.ts';
 const Dashboard: React.FC = () => {
   const { user, authenticated, logout } = useAuth();
   const navigate = useNavigate();
+  
+  // Stable callback functions to prevent dependency changes
+  const handleDashboardError = useCallback((error: Error) => {
+    console.error('Dashboard update error:', error);
+  }, []);
+  
+  const handleDashboardUpdate = useCallback((stats: DashboardStats) => {
+    console.log('Dashboard updated:', stats.timestamp);
+  }, []);
   
   // Use the new dashboard updates hook with auto-refresh and optional WebSocket
   const {
@@ -22,12 +31,8 @@ const Dashboard: React.FC = () => {
     enabled: authenticated,
     autoRefreshInterval: 300000, // 5 minutes
     useWebSocket: false, // Start with polling, can enable WebSocket later
-    onError: (error) => {
-      console.error('Dashboard update error:', error);
-    },
-    onUpdate: (stats) => {
-      console.log('Dashboard updated:', stats.timestamp);
-    }
+    onError: handleDashboardError,
+    onUpdate: handleDashboardUpdate
   });
 
   useEffect(() => {
