@@ -28,7 +28,8 @@ const DocumentList: React.FC<DocumentListProps> = ({
   const [sortBy, setSortBy] = useState<'title' | 'created_at' | 'status' | 'document_type'>('created_at');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
 
-  // Mock documents for demonstration
+  // Mock documents for demonstration (keeping for potential fallback)
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const mockDocuments: Document[] = [
     {
       id: 1,
@@ -171,7 +172,7 @@ const DocumentList: React.FC<DocumentListProps> = ({
     try {
       // Use real API call to fetch documents from backend
       console.log('📄 Fetching documents from API with filters:', filters);
-      const documentsData = await apiService.get('/documents/');
+      const documentsData = await apiService.get('/documents/documents/');
       console.log('📄 Documents fetched from API:', documentsData);
       
       // API response should be array of documents or wrapped in a data property
@@ -289,6 +290,7 @@ const DocumentList: React.FC<DocumentListProps> = ({
     });
   };
 
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const handleSort = (field: typeof sortBy) => {
     if (field === sortBy) {
       setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
