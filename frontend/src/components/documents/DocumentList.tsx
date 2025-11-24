@@ -425,7 +425,7 @@ const DocumentList: React.FC<DocumentListProps> = ({
                       {document.description}
                     </p>
                     <div className="flex items-center space-x-4 text-xs text-gray-500">
-                      <span>By {document.created_by.full_name}</span>
+                      <span>By {document.created_by?.full_name || 'Unknown Author'}</span>
                       <span>•</span>
                       <span>{formatDate(document.created_at)}</span>
                       {document.file_size && (
