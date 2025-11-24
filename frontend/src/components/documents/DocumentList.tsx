@@ -173,14 +173,12 @@ const DocumentList: React.FC<DocumentListProps> = ({
     setError(null);
 
     try {
-      // For now, use mock data. Replace with real API call when backend is ready
-      // const response = await apiService.getDocuments(filters);
-      // setDocuments(response.data);
+      // Use real API call to fetch documents from backend
+      console.log('📄 Fetching documents from API with filters:', filters);
+      const response = await apiService.get('/documents/');
+      console.log('📄 Documents fetched from API:', response);
       
-      // Simulate API delay
-      await new Promise(resolve => setTimeout(resolve, 800));
-      
-      let filteredDocs = [...mockDocuments];
+      let filteredDocs = [...(response.data || [])];
       
       // Apply filters
       if (filters?.status) {

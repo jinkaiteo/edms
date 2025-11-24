@@ -10,13 +10,27 @@ const Dashboard: React.FC = () => {
   const { user, authenticated, loading, logout } = useAuth();
   const navigate = useNavigate();
   
+  // Helper function to check admin permissions
+  const isUserAdmin = useCallback(() => {
+    if (!user) return false;
+    return user.is_staff || user.is_superuser || 
+           user.roles?.some(userRole => userRole.role.permission_level === 'admin');
+  }, [user]);
+  
   // Stable callback functions to prevent dependency changes
   const handleDashboardError = useCallback((error: Error) => {
     console.error('Dashboard update error:', error);
   }, []);
   
   const handleDashboardUpdate = useCallback((stats: DashboardStats) => {
-    console.log('Dashboard updated:', stats.timestamp);
+    console.log('📊 Dashboard auto-refresh executed:', {
+      timestamp: stats.timestamp,
+      documents: stats.total_documents,
+      users: stats.active_users,
+      workflows: stats.active_workflows,
+      activities: stats.recent_activity.length,
+      updateTime: new Date().toISOString()
+    });
   }, []);
   
   // Use the new dashboard updates hook with auto-refresh and optional WebSocket
@@ -302,12 +316,16 @@ const Dashboard: React.FC = () => {
                     >
                       ✅ My Tasks
                     </button>
-                    <button
-                      onClick={() => navigate('/reports')}
-                      className="w-full inline-flex items-center justify-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
-                    >
-                      📊 View Reports
-                    </button>
+                    {/* View Reports - Admin Only */}
+                    {isUserAdmin() && (
+                      <button
+                        onClick={() => navigate('/reports')}
+                        className="w-full inline-flex items-center justify-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+                        title="Admin function - View system reports and analytics"
+                      >
+                        📊 View Reports
+                      </button>
+                    )}
                   </div>
                 </div>
               </div>
