@@ -6,10 +6,10 @@
  */
 
 import { useCallback, useEffect, useState } from 'react';
-import { useAutoRefresh } from './useAutoRefresh';
-import { useWebSocket } from './useWebSocket';
-import { apiService } from '../services/api';
-import { DashboardStats } from '../types/api';
+import { useAutoRefresh } from './useAutoRefresh.ts';
+import { useWebSocket } from './useWebSocket.ts';
+import { apiService } from '../services/api.ts';
+import { DashboardStats } from '../types/api.ts';
 
 interface UseDashboardUpdatesOptions {
   enabled?: boolean;
