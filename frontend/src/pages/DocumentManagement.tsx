@@ -2,16 +2,21 @@ import React, { useState, useCallback } from 'react';
 import { Document, SearchFilters, DocumentType } from '../types/api';
 import Layout from '../components/common/Layout.tsx';
 import DocumentUpload from '../components/documents/DocumentUpload.tsx';
+import DocumentUploadModal from '../components/documents/DocumentUploadModal.tsx';
 import DocumentList from '../components/documents/DocumentList.tsx';
 import DocumentViewer from '../components/documents/DocumentViewer.tsx';
 import DocumentSearch from '../components/documents/DocumentSearch.tsx';
+import DocumentUploadNewModal from '../components/documents/DocumentUploadNewModal';
 
 const DocumentManagement: React.FC = () => {
   const [selectedDocument, setSelectedDocument] = useState<Document | null>(null);
   const [showUpload, setShowUpload] = useState(false);
+  const [showUploadModal, setShowUploadModal] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [searchFilters, setSearchFilters] = useState<SearchFilters>({});
   const [viewMode, setViewMode] = useState<'split' | 'full-list' | 'full-viewer'>('split');
+  const [uploadSuccess, setUploadSuccess] = useState<string | null>(null);
+  const [uploadError, setUploadError] = useState<string | null>(null);
 
   // Mock document types for the upload component
   const documentTypes: DocumentType[] = [
@@ -27,6 +32,29 @@ const DocumentManagement: React.FC = () => {
       setViewMode('split');
     }
   }, [viewMode]);
+
+  // Upload modal handlers
+  const handleUploadSuccess = useCallback((document: any) => {
+    setUploadSuccess(`Document "${document.title}" uploaded successfully!`);
+    setUploadError(null);
+    // Clear success message after 5 seconds
+    setTimeout(() => setUploadSuccess(null), 5000);
+    // Refresh document list if needed
+    window.location.reload(); // Simple refresh for now
+  }, []);
+
+  const handleUploadError = useCallback((error: string) => {
+    setUploadError(error);
+    setUploadSuccess(null);
+    // Clear error message after 10 seconds
+    setTimeout(() => setUploadError(null), 10000);
+  }, []);
+
+  const handleOpenUploadModal = useCallback(() => {
+    setShowUploadModal(true);
+    setUploadError(null);
+    setUploadSuccess(null);
+  }, []);
 
   const handleDocumentEdit = useCallback((document: Document) => {
     console.log('Edit document:', document);
@@ -54,18 +82,7 @@ const DocumentManagement: React.FC = () => {
     alert(`Workflow action "${action}" for "${document.title}" will be implemented in the next phase.`);
   }, []);
 
-  const handleUploadSuccess = useCallback((document: Document) => {
-    console.log('Document uploaded successfully:', document);
-    setShowUpload(false);
-    setSelectedDocument(document);
-    // TODO: Refresh document list
-    alert(`Document "${document.title}" uploaded successfully!`);
-  }, []);
 
-  const handleUploadError = useCallback((error: string) => {
-    console.error('Upload error:', error);
-    alert(`Upload failed: ${error}`);
-  }, []);
 
   const handleSearch = useCallback((query: string, filters: SearchFilters) => {
     setSearchQuery(query);
@@ -227,7 +244,7 @@ const DocumentManagement: React.FC = () => {
 
               {/* Upload Button */}
               <button
-                onClick={() => setShowUpload(true)}
+                onClick={handleOpenUploadModal}
                 className="flex items-center space-x-2 px-4 py-2 bg-blue-600 border border-transparent rounded-md text-sm font-medium text-white hover:bg-blue-700 focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
               >
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -318,6 +335,37 @@ const DocumentManagement: React.FC = () => {
             </div>
           </div>
         )}
+
+        {/* Success/Error Messages */}
+        {uploadSuccess && (
+          <div className="mb-4 p-4 bg-green-100 border border-green-400 text-green-700 rounded-md">
+            <div className="flex items-center">
+              <svg className="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+              </svg>
+              {uploadSuccess}
+            </div>
+          </div>
+        )}
+
+        {uploadError && (
+          <div className="mb-4 p-4 bg-red-100 border border-red-400 text-red-700 rounded-md">
+            <div className="flex items-center">
+              <svg className="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+              </svg>
+              {uploadError}
+            </div>
+          </div>
+        )}
+
+        {/* Upload Modal */}
+        <DocumentUploadModal
+          isOpen={showUploadModal}
+          onClose={() => setShowUploadModal(false)}
+          onSuccess={handleUploadSuccess}
+          onError={handleUploadError}
+        />
       </div>
     </Layout>
   );

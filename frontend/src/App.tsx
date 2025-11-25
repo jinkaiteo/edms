@@ -8,8 +8,10 @@ import DocumentManagement from './pages/DocumentManagement.tsx';
 import AdminDashboard from './pages/AdminDashboard.tsx';
 import MyTasksStandalone from './pages/MyTasksStandalone.tsx';
 import AuditTrail from './pages/AuditTrail.tsx';
+import DocumentCreationTest from './pages/DocumentCreationTest.tsx';
 // Removed problematic standalone pages - functionality integrated into AdminDashboard
 import { AuthProvider } from './contexts/AuthContext.tsx';
+import { EnhancedAuthProvider } from './contexts/EnhancedAuthContext.tsx';
 import { ToastProvider } from './contexts/ToastContext.tsx';
 import ErrorBoundary from './components/common/ErrorBoundary.tsx';
 import { useAnnouncer } from './hooks/useAccessibility.ts';
@@ -47,6 +49,7 @@ function AppContent() {
         <Route path="/users" element={<Navigate to="/admin" replace />} />
         <Route path="/reports" element={<Navigate to="/admin" replace />} />
         <Route path="/admin" element={<AdminDashboard />} />
+        <Route path="/document-upload" element={<DocumentCreationTest />} />
       </Routes>
     </div>
   );
@@ -64,11 +67,13 @@ function App() {
       }}
     >
       <ToastProvider maxToasts={4}>
-        <AuthProvider>
-          <Router>
-            <AppContent />
-          </Router>
-        </AuthProvider>
+        <EnhancedAuthProvider>
+          <AuthProvider>
+            <Router>
+              <AppContent />
+            </Router>
+          </AuthProvider>
+        </EnhancedAuthProvider>
       </ToastProvider>
     </ErrorBoundary>
   );

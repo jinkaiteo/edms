@@ -207,9 +207,9 @@ const DocumentList: React.FC<DocumentListProps> = ({
       if (filters?.search) {
         const searchTerm = filters.search.toLowerCase();
         filteredDocs = filteredDocs.filter(doc => 
-          doc.title.toLowerCase().includes(searchTerm) ||
-          doc.description.toLowerCase().includes(searchTerm) ||
-          doc.document_number.toLowerCase().includes(searchTerm)
+          doc.title?.toLowerCase().includes(searchTerm) ||
+          doc.description?.toLowerCase().includes(searchTerm) ||
+          doc.document_number?.toLowerCase().includes(searchTerm)
         );
       }
       
@@ -232,8 +232,8 @@ const DocumentList: React.FC<DocumentListProps> = ({
             bValue = b.status;
             break;
           case 'document_type':
-            aValue = a.document_type?.name || '';
-            bValue = b.document_type?.name || '';
+            aValue = a.document_type_display || '';
+            bValue = b.document_type_display || '';
             break;
           default:
             return 0;
@@ -406,12 +406,6 @@ const DocumentList: React.FC<DocumentListProps> = ({
           </div>
         </div>
 
-        {/* DEBUG: Current documents state */}
-        <div className="mb-4 p-2 bg-yellow-50 border border-yellow-200 rounded">
-          <p className="text-sm text-gray-700">
-            🐛 Debug: Documents array length = {documents.length}, Loading = {loading.toString()}, Error = {error || 'none'}
-          </p>
-        </div>
         
         {/* Documents display */}
         {documents.length === 0 ? (
@@ -442,7 +436,7 @@ const DocumentList: React.FC<DocumentListProps> = ({
                           {document.title}
                         </h4>
                         <p className="text-sm text-gray-500">
-                          {document.document_number} • {document.document_type?.name || 'Unknown Type'}
+                          {document.document_number} • {document.document_type_display || 'Unknown Type'}
                         </p>
                       </div>
                     </div>
@@ -450,7 +444,7 @@ const DocumentList: React.FC<DocumentListProps> = ({
                       {document.description}
                     </p>
                     <div className="flex items-center space-x-4 text-xs text-gray-500">
-                      <span>By {document.created_by?.full_name || 'Unknown Author'}</span>
+                      <span>By {document.author_display || 'Unknown Author'}</span>
                       <span>•</span>
                       <span>{formatDate(document.created_at)}</span>
                       {document.file_size && (
@@ -528,8 +522,8 @@ const DocumentList: React.FC<DocumentListProps> = ({
                     </p>
                   </div>
                   <div className="text-xs text-gray-500 space-y-1">
-                    <div>{document.document_type?.name || 'Unknown Type'}</div>
-                    <div>By {document.created_by?.full_name || 'Unknown Author'}</div>
+                    <div>{document.document_type_display || 'Unknown Type'}</div>
+                    <div>By {document.author_display || 'Unknown Author'}</div>
                     <div>{formatDate(document.created_at)}</div>
                     {document.file_size && <div>{formatFileSize(document.file_size)}</div>}
                   </div>

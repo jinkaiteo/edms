@@ -1,6 +1,7 @@
 import React, { useState, useCallback, useEffect } from 'react';
 import apiService from '../../services/api.ts';
 import { WorkflowType } from '../../types/api';
+import { useEnhancedAuth } from '../../contexts/EnhancedAuthContext.tsx';
 
 interface WorkflowConfigurationProps {
   className?: string;
@@ -14,6 +15,7 @@ const WorkflowConfiguration: React.FC<WorkflowConfigurationProps> = ({ className
   const [selectedWorkflow, setSelectedWorkflow] = useState<WorkflowType | null>(null);
   const [showCreateWorkflow, setShowCreateWorkflow] = useState(false);
   const [showEditWorkflow, setShowEditWorkflow] = useState(false);
+  const { isAuthenticated, getAuthHeaders } = useEnhancedAuth();
 
   // Mock workflow data
   const mockWorkflows: WorkflowType[] = [
@@ -82,16 +84,10 @@ const WorkflowConfiguration: React.FC<WorkflowConfigurationProps> = ({ className
         setError(null);
         console.log('🔄 WorkflowConfiguration: Loading workflows...');
         
-        // Try to authenticate first if not already authenticated
-        if (!apiService.isAuthenticated()) {
-          console.log('🔐 WorkflowConfiguration: Not authenticated, attempting admin login...');
-          try {
-            const loginResult = await apiService.login({ username: 'admin', password: 'test123' });
-            console.log('✅ Authentication successful:', loginResult.access ? 'JWT token received' : 'Session established');
-          } catch (authErr) {
-            console.error('❌ Authentication failed:', authErr);
-            throw new Error('Authentication required for live workflow data');
-          }
+        // Check if authenticated via enhanced auth context
+        if (!isAuthenticated) {
+          console.log('🔐 WorkflowConfiguration: Not authenticated');
+          throw new Error('Authentication required for live workflow data. Please log in first.');
         }
         
         // Get workflow types from API with authentication
@@ -137,15 +133,9 @@ const WorkflowConfiguration: React.FC<WorkflowConfigurationProps> = ({ className
         setError(null);
         
         // Ensure we're authenticated before making update
-        if (!apiService.isAuthenticated()) {
-          console.log('🔐 Re-authenticating for workflow update...');
-          try {
-            await apiService.login({ username: 'admin', password: 'test123' });
-            console.log('✅ Re-authentication successful');
-          } catch (authErr) {
-            console.error('❌ Re-authentication failed:', authErr);
-            throw new Error('Authentication required for workflow updates');
-          }
+        if (!isAuthenticated) {
+          console.log('🔐 WorkflowConfiguration: Authentication required for updates');
+          throw new Error('Authentication required for workflow updates. Please log in first.');
         }
         
         // Update workflow status via API

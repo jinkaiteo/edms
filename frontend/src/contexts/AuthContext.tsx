@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import { apiService } from '../services/api.ts';
 
 interface User {
   uuid: string;
@@ -51,6 +52,11 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           if (profileResponse.ok) {
             const userProfile = await profileResponse.json();
             console.log('✅ AuthContext: Token valid, restoring user session');
+            
+            // CRITICAL: Set token in apiService for restored session
+            apiService.setAuthToken(accessToken);
+            console.log('🔑 AuthContext: Restored token set in apiService');
+            
             setUser(userProfile);
             setAuthenticated(true);
           } else {
@@ -100,6 +106,10 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         console.log('✅ AuthContext: Login successful, storing tokens...');
         localStorage.setItem('accessToken', data.access);
         localStorage.setItem('refreshToken', data.refresh);
+        
+        // CRITICAL: Set token in apiService so it includes in all API requests
+        apiService.setAuthToken(data.access);
+        console.log('🔑 AuthContext: Token set in apiService for API requests');
         
         // Fetch user profile with the token
         const profileResponse = await fetch('http://localhost:8000/api/v1/auth/profile/', {
@@ -153,6 +163,11 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     // Clear stored tokens and state
     localStorage.removeItem('accessToken');
     localStorage.removeItem('refreshToken');
+    
+    // CRITICAL: Clear token from apiService
+    apiService.clearAuth();
+    console.log('🔑 AuthContext: Cleared token from apiService');
+    
     setUser(null);
     setAuthenticated(false);
     console.log('🚪 AuthContext: User logged out successfully');

@@ -35,7 +35,7 @@ THIRD_PARTY_APPS = [
     'django_filters',
     'drf_spectacular',
     'django_redis',
-    'django_celery_beat',  # S3 Scheduler Module - Celery Beat integration
+    # 'django_celery_beat',  # Temporarily disabled  # S3 Scheduler Module - Celery Beat integration
 ]
 
 LOCAL_APPS = [
@@ -57,12 +57,13 @@ MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
     'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
+    'apps.audit.middleware_comprehensive.ComprehensiveAuditMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
-    'apps.audit.middleware.AuditMiddleware',
+    'apps.audit.middleware_api_fix.EnhancedAuditMiddleware',
 ]
 
 ROOT_URLCONF = 'edms.urls'

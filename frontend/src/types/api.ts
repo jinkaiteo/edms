@@ -69,27 +69,33 @@ export interface Role {
 
 // Document types
 export interface Document {
-  id: number;
+  id?: number;
   uuid: string;
   document_number: string;
   title: string;
-  description: string;
-  document_type: DocumentType;
+  description?: string;
+  document_type?: DocumentType;
+  document_type_display?: string;  // API provides this field
   status: DocumentStatus;
-  version: string;
-  created_by: User;
+  status_display?: string;         // API provides this field
+  version?: string;
+  version_string?: string;         // API provides this field
+  created_by?: User;
+  author_display?: string;         // API provides this field
   created_at: string;
-  updated_at: string;
+  updated_at?: string;
   effective_date: string | null;
-  review_date: string | null;
-  obsolete_date: string | null;
-  file_path: string | null;
-  file_size: number | null;
-  file_checksum: string | null;
-  metadata: Record<string, any>;
-  dependencies: Document[];
+  review_date?: string | null;
+  obsolete_date?: string | null;
+  file_path?: string | null;
+  file_size?: number | null;
+  file_checksum?: string | null;
+  metadata?: Record<string, any>;
+  dependencies?: Document[];
   workflow_state?: string;
   current_workflow?: WorkflowInstance;
+  is_controlled?: boolean;         // API provides this field
+  requires_training?: boolean;     // API provides this field
 }
 
 export interface DocumentType {

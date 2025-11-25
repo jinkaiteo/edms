@@ -311,9 +311,15 @@ class DocumentCreateSerializer(serializers.ModelSerializer):
             )
         
         # Check if approval is required
-        if document_type and document_type.approval_required and not data.get('approver'):
+        # Note: Per EDMS workflow specification (lines 6 & 11), approver is assigned 
+        # AFTER review completion, not at document creation
+        # Only require approver if document is moving to approval stage
+        status = data.get('status', 'DRAFT')
+        if (document_type and document_type.approval_required and 
+            status in ['PENDING_APPROVAL', 'UNDER_APPROVAL', 'APPROVED'] and 
+            not data.get('approver')):
             raise serializers.ValidationError(
-                f"Approver is required for document type: {document_type.name}"
+                f"Approver is required when moving to approval stage for document type: {document_type.name}"
             )
         
         return data
