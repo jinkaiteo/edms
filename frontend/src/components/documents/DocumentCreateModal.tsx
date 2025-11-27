@@ -203,9 +203,18 @@ const DocumentCreateModal: React.FC<DocumentCreateModalProps> = ({
       formData.append('requires_training', requiresTraining.toString());
       formData.append('is_controlled', 'true'); // Add missing field
       
+      // Debug selectedFile state
+      console.log('🔍 Debug - selectedFile:', selectedFile);
+      console.log('🔍 Debug - selectedFile type:', typeof selectedFile);
+      console.log('🔍 Debug - selectedFile size:', selectedFile?.size);
+      console.log('🔍 Debug - selectedFile instanceof File:', selectedFile instanceof File);
+      
       // Only append file if it's actually selected and not empty
-      if (selectedFile && selectedFile.size > 0) {
+      if (selectedFile && selectedFile instanceof File && selectedFile.size > 0) {
+        console.log('✅ Adding file to FormData:', selectedFile.name);
         formData.append('file', selectedFile);
+      } else {
+        console.log('❌ NOT adding file to FormData - selectedFile invalid or empty');
       }
 
       // Debug FormData contents
