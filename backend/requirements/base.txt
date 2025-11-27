@@ -43,6 +43,9 @@ python-decouple==3.8  # Phase 3 High Priority Dependencies
 
 # Additional Document Processing
 reportlab==4.0.4
+weasyprint==60.2
+qrcode==7.4.2
+python-docx-template==0.16.7
 
 # Electronic Signatures
 cryptography==41.0.7

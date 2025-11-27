@@ -81,6 +81,119 @@ class EncryptionKey(models.Model):
         return f"{self.name} ({self.key_type})"
 
 
+class PDFSigningCertificate(models.Model):
+    """X.509 certificates for PDF digital signatures."""
+    CERT_TYPE_CHOICES = [
+        ('SELF_SIGNED', 'Self-Signed'),
+        ('CA_ISSUED', 'Certificate Authority Issued'),
+        ('DEVELOPMENT', 'Development Only'),
+    ]
+    
+    id = models.AutoField(primary_key=True)
+    uuid = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
+    name = models.CharField(max_length=200, help_text="Certificate friendly name")
+    certificate_type = models.CharField(max_length=20, choices=CERT_TYPE_CHOICES, default='SELF_SIGNED')
+    
+    # Certificate data
+    certificate_pem = models.TextField(help_text="PEM encoded certificate")
+    private_key_pem = models.TextField(help_text="PEM encoded private key")
+    public_key_pem = models.TextField(help_text="PEM encoded public key")
+    
+    # Certificate metadata
+    subject_cn = models.CharField(max_length=200, help_text="Certificate Common Name")
+    issuer_name = models.CharField(max_length=200, help_text="Certificate Issuer")
+    serial_number = models.CharField(max_length=100, unique=True)
+    
+    # Validity period
+    valid_from = models.DateTimeField()
+    valid_until = models.DateTimeField()
+    
+    # Management
+    is_active = models.BooleanField(default=True)
+    is_default = models.BooleanField(default=False, help_text="Default certificate for PDF signing")
+    created_at = models.DateTimeField(auto_now_add=True)
+    created_by = models.ForeignKey('users.User', on_delete=models.PROTECT)
+    
+    class Meta:
+        ordering = ['-created_at']
+        verbose_name = "PDF Signing Certificate"
+        verbose_name_plural = "PDF Signing Certificates"
+    
+    def __str__(self):
+        return f"{self.name} ({self.subject_cn})"
+    
+    @property
+    def is_expired(self):
+        """Check if certificate is expired."""
+        from django.utils import timezone
+        return timezone.now() > self.valid_until
+    
+    @property
+    def expires_soon(self):
+        """Check if certificate expires within 30 days."""
+        from django.utils import timezone
+        from datetime import timedelta
+        return timezone.now() + timedelta(days=30) > self.valid_until
+
+
+class PDFGenerationLog(models.Model):
+    """Log of PDF generation attempts for audit and monitoring."""
+    GENERATION_TYPE_CHOICES = [
+        ('DOCX_TO_PDF', 'DOCX to PDF'),
+        ('FILE_TO_PDF', 'File to PDF'),
+        ('PDF_PASSTHROUGH', 'PDF Passthrough'),
+    ]
+    
+    STATUS_CHOICES = [
+        ('SUCCESS', 'Success'),
+        ('FAILED', 'Failed'),
+        ('TIMEOUT', 'Timeout'),
+        ('CANCELLED', 'Cancelled'),
+    ]
+    
+    id = models.AutoField(primary_key=True)
+    uuid = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
+    
+    # Related objects
+    document = models.ForeignKey('documents.Document', on_delete=models.CASCADE)
+    user = models.ForeignKey('users.User', on_delete=models.PROTECT)
+    certificate = models.ForeignKey(PDFSigningCertificate, on_delete=models.PROTECT, null=True, blank=True)
+    
+    # Generation details
+    generation_type = models.CharField(max_length=20, choices=GENERATION_TYPE_CHOICES)
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES)
+    
+    # Performance metrics
+    processing_time_ms = models.PositiveIntegerField(default=0, help_text="Processing time in milliseconds")
+    input_file_size = models.PositiveIntegerField(default=0, help_text="Input file size in bytes")
+    output_file_size = models.PositiveIntegerField(default=0, help_text="Generated PDF size in bytes")
+    
+    # Status details
+    error_message = models.TextField(blank=True)
+    signature_applied = models.BooleanField(default=False)
+    metadata_embedded = models.BooleanField(default=False)
+    watermark_applied = models.BooleanField(default=False)
+    qr_code_added = models.BooleanField(default=False)
+    
+    # Audit fields
+    ip_address = models.GenericIPAddressField()
+    user_agent = models.TextField(blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    
+    class Meta:
+        ordering = ['-created_at']
+        verbose_name = "PDF Generation Log"
+        verbose_name_plural = "PDF Generation Logs"
+    
+    def __str__(self):
+        return f"PDF Generation {self.status} - {self.document.document_number} by {self.user}"
+    
+    @property
+    def processing_time_seconds(self):
+        """Get processing time in seconds."""
+        return self.processing_time_ms / 1000.0
+
+
 class DigitalSignature(models.Model):
     """
     Stores digital signature metadata for documents.

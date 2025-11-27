@@ -6,6 +6,7 @@ and document lifecycle with proper permission controls and audit logging.
 """
 
 import os
+import logging
 from django.db.models import Q, Count
 from django.utils import timezone
 from django.http import HttpResponse, Http404
@@ -17,6 +18,8 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework.filters import SearchFilter, OrderingFilter
+
+logger = logging.getLogger(__name__)
 
 from apps.users.permissions import CanManageDocuments
 from .models import (
@@ -179,9 +182,9 @@ class DocumentViewSet(viewsets.ModelViewSet):
             # Also allow approvers to see documents assigned to them as reviewers (flexible workflow routing)
             q_filter |= Q(reviewer=user, status__in=['PENDING_REVIEW', 'UNDER_REVIEW'])
         
-        # Users with read permission can see effective documents
+        # Users with read permission can see effective documents and approved pending effective documents
         if user_permissions:
-            q_filter |= Q(status='EFFECTIVE', is_active=True)
+            q_filter |= Q(status__in=['EFFECTIVE', 'APPROVED_PENDING_EFFECTIVE'], is_active=True)
         
         return queryset.filter(q_filter)
     
@@ -509,13 +512,43 @@ class DocumentViewSet(viewsets.ModelViewSet):
         document = self.get_object()
         
         # Access control: Only approved and effective documents can be downloaded as official PDF
-        if document.status not in ['APPROVED_AND_EFFECTIVE']:
+        if document.status not in ['APPROVED_AND_EFFECTIVE', 'EFFECTIVE', 'APPROVED_PENDING_EFFECTIVE']:
             return Response(
                 {'error': 'Official PDF download is only available for approved and effective documents'},
                 status=status.HTTP_403_FORBIDDEN
             )
         
-        return self._serve_document_file(document, request, 'official_pdf')
+        try:
+            # Generate official PDF with digital signature (Phase 2 implementation)
+            from apps.documents.services.pdf_generator import OfficialPDFGenerator
+            generator = OfficialPDFGenerator()
+            
+            signed_pdf_content = generator.generate_official_pdf(document, request.user)
+            
+            # Serve PDF with proper headers
+            response = HttpResponse(signed_pdf_content, content_type='application/pdf')
+            filename = f"{document.document_number}_official_v{getattr(document, 'version_string', '1.0')}.pdf"
+            response['Content-Disposition'] = f'attachment; filename="{filename}"'
+            response['Content-Length'] = len(signed_pdf_content)
+            
+            # Log successful download
+            logger.info(f"Official PDF download successful: {filename} by {request.user.username}")
+            
+            return response
+            
+        except Exception as e:
+            logger.error(f"Official PDF generation failed for document {document.uuid}: {e}")
+            
+            # Fallback to annotated document with clear messaging
+            if settings.OFFICIAL_PDF_CONFIG.get('FALLBACK_TO_ANNOTATED', True):
+                logger.info(f"Falling back to annotated document for {document.uuid}")
+                return self._serve_document_file(document, request, 'annotated')
+            else:
+                return Response({
+                    'error': 'PDF generation temporarily unavailable',
+                    'details': str(e),
+                    'fallback_available': f'/api/v1/documents/documents/{document.uuid}/download/annotated/'
+                }, status=status.HTTP_503_SERVICE_UNAVAILABLE)
     
     @action(detail=True, methods=['get'], url_path='download/processed')
     def download_processed_docx(self, request, uuid=None):

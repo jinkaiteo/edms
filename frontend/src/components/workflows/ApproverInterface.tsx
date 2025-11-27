@@ -64,29 +64,6 @@ const ApproverInterface: React.FC<ApproverInterfaceProps> = ({
     }
   }, [isOpen]);
 
-  const handleDownload = async (downloadType: 'original' | 'annotated') => {
-    try {
-      const response = await apiService.get(`/documents/documents/${document.uuid}/download/`, {
-        params: { type: downloadType },
-        responseType: 'blob'
-      });
-
-      // Create download link
-      const blob = new Blob([response]);
-      const url = window.URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = `${document.document_number}_${downloadType}.pdf`;
-      document.body.appendChild(link);
-      link.click();
-      window.URL.revokeObjectURL(url);
-      document.body.removeChild(link);
-      
-    } catch (error) {
-      console.error('Download failed:', error);
-      setError('Failed to download document. Please try again.');
-    }
-  };
 
   const handleApprovalSubmission = async () => {
     try {
@@ -258,28 +235,16 @@ const ApproverInterface: React.FC<ApproverInterfaceProps> = ({
             )}
           </div>
 
-          {/* Document Actions */}
-          <div className="mb-6">
-            <h4 className="font-medium text-gray-900 mb-3">Document Review</h4>
-            <div className="flex space-x-3">
-              <button
-                onClick={() => handleDownload('original')}
-                className="flex items-center space-x-2 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
-              >
-                <ArrowDownTrayIcon className="h-4 w-4" />
-                <span>Download Original</span>
-              </button>
-              <button
-                onClick={() => handleDownload('annotated')}
-                className="flex items-center space-x-2 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
-              >
-                <DocumentTextIcon className="h-4 w-4" />
-                <span>Download Annotated</span>
-              </button>
-            </div>
-            <p className="text-xs text-gray-500 mt-2">
-              Review the document thoroughly before making an approval decision.
+          {/* Document Review Instructions */}
+          <div className="mb-6 p-4 bg-amber-50 border border-amber-200 rounded-lg">
+            <h4 className="font-medium text-amber-900 mb-3">📋 Document Review Instructions</h4>
+            <p className="text-sm text-amber-700">
+              Please use the <strong>Download Action Menu</strong> in the main document viewer to access the document for review. 
+              You can download the original document, annotated version, or official PDF as needed.
             </p>
+            <div className="mt-2 text-xs text-amber-600">
+              💡 <strong>Tip:</strong> Close this modal to access the download options, then reopen to submit your approval decision.
+            </div>
           </div>
 
           {/* Error Display */}

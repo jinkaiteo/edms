@@ -159,6 +159,21 @@ STATICFILES_DIRS = [
 MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR.parent / 'storage' / 'media'
 
+# Official PDF Configuration
+OFFICIAL_PDF_CONFIG = {
+    'ENABLE_PDF_GENERATION': True,
+    'PDF_ENGINE': 'reportlab',  # 'reportlab' or 'weasyprint'
+    'SIGNATURE_ALGORITHM': 'RSA-SHA256',
+    'CERTIFICATE_STORAGE_PATH': os.path.join(str(MEDIA_ROOT), 'certificates'),
+    'PDF_WATERMARK': True,
+    'INCLUDE_QR_VERIFICATION': True,
+    'FALLBACK_TO_ANNOTATED': True,
+    'MAX_GENERATION_TIME_SECONDS': 60,
+    'MAX_CONCURRENT_GENERATIONS': 5,
+    'PDF_METADATA_OVERLAY': True,
+    'SIGNATURE_VISIBLE': True
+}
+
 # Document storage
 DOCUMENT_STORAGE_ROOT = BASE_DIR.parent / 'storage' / 'documents'
 
