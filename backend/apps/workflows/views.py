@@ -124,7 +124,8 @@ class SimpleDocumentWorkflowAPIView(APIView):
                 approver = None
                 if approver_id:
                     try:
-                        from django.contrib.auth.models import User
+                        from django.contrib.auth import get_user_model
+                        User = get_user_model()
                         approver = User.objects.get(id=approver_id)
                     except User.DoesNotExist:
                         return Response({
