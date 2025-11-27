@@ -52,7 +52,9 @@ const SetEffectiveDateModal: React.FC<SetEffectiveDateModalProps> = ({
       // Set default date to today
       const today = new Date();
       setEffectiveDate(today.toISOString().split('T')[0]);
-      setEffectiveTime('08:00');
+      // Set current time as default instead of hardcoded 08:00
+      const currentTime = today.toTimeString().slice(0, 5); // HH:MM format
+      setEffectiveTime(currentTime);
       setComments('');
       setError(null);
     }
@@ -140,7 +142,9 @@ const SetEffectiveDateModal: React.FC<SetEffectiveDateModalProps> = ({
   const handleClose = () => {
     if (!loading) {
       setEffectiveDate('');
-      setEffectiveTime('08:00');
+      // Set current time as default
+      const currentTime = new Date().toTimeString().slice(0, 5);
+      setEffectiveTime(currentTime);
       setImmediateEffective(false);
       setComments('');
       setError(null);

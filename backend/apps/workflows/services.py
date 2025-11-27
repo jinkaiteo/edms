@@ -56,14 +56,12 @@ class SimpleWorkflowService:
         return self.lifecycle_service.route_for_approval(document, user, approver, comment)
     
     def approve_document(self, document: Document, user: User, 
-                        comment: str = '', effective_date = None) -> bool:
-        """Approve a document."""
-        return self.lifecycle_service.approve_document(document, user, comment, effective_date)
+                        effective_date: date, comment: str = '') -> bool:
+        """Approve document with required effective date."""
+        return self.lifecycle_service.approve_document(document, user, effective_date, comment)
     
-    def make_effective(self, document: Document, user: User, 
-                      comment: str = '', effective_date = None) -> bool:
-        """Make a document effective."""
-        return self.lifecycle_service.make_effective(document, user, comment, effective_date)
+    # make_effective method removed - documents become effective automatically
+    # via scheduler or immediately upon approval based on effective_date
     
     def start_version_workflow(self, existing_document: Document, user: User,
                               new_version_data: Dict[str, Any]) -> Dict[str, Any]:

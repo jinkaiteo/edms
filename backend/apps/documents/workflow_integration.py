@@ -100,15 +100,24 @@ def document_workflow_endpoint(request, uuid):
                 result = workflow_service.route_for_approval(document, request.user, approver, comment)
             elif action == 'approve_document':
                 effective_date = request.data.get('effective_date')
-                result = workflow_service.approve_document(document, request.user, comment, effective_date)
-            elif action == 'make_effective':
-                effective_date = request.data.get('effective_date')
-                if effective_date:
-                    # Parse the effective_date if it's provided as ISO string
+                if not effective_date:
+                    return Response({
+                        'error': 'effective_date is required for approval'
+                    }, status=status.HTTP_400_BAD_REQUEST)
+                
+                # Parse effective_date if it's a string
+                if isinstance(effective_date, str):
                     from datetime import datetime
-                    if isinstance(effective_date, str):
-                        effective_date = datetime.fromisoformat(effective_date.replace('Z', '+00:00')).date()
-                result = workflow_service.make_effective(document, request.user, comment, effective_date)
+                    try:
+                        effective_date = datetime.fromisoformat(effective_date.replace('Z', '')).date()
+                    except ValueError:
+                        return Response({
+                            'error': 'Invalid effective_date format. Use YYYY-MM-DD'
+                        }, status=status.HTTP_400_BAD_REQUEST)
+                
+                result = workflow_service.approve_document(document, request.user, effective_date, comment)
+            # make_effective action removed - documents become effective automatically
+            # via scheduler or immediately upon approval based on effective_date
             elif action == 'terminate_workflow':
                 reason = request.data.get('reason', comment)
                 result = workflow_service.terminate_workflow(document, request.user, reason)

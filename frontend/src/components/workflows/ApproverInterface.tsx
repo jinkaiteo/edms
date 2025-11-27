@@ -48,11 +48,21 @@ const ApproverInterface: React.FC<ApproverInterfaceProps> = ({
 }) => {
   const [approvalDecision, setApprovalDecision] = useState<'approve' | 'reject' | ''>('');
   const [approvalComment, setApprovalComment] = useState<string>('');
+  const [effectiveDate, setEffectiveDate] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   
   // Get current user from auth context
   const { user } = useAuth();
+
+  useEffect(() => {
+    if (isOpen) {
+      // Set default effective date to tomorrow
+      const tomorrow = new Date();
+      tomorrow.setDate(tomorrow.getDate() + 1);
+      setEffectiveDate(tomorrow.toISOString().split('T')[0]);
+    }
+  }, [isOpen]);
 
   const handleDownload = async (downloadType: 'original' | 'annotated') => {
     try {
@@ -147,10 +157,21 @@ const ApproverInterface: React.FC<ApproverInterfaceProps> = ({
       // Submit workflow transition
       
       try {
-        const workflowResponse = await apiService.post(`/documents/documents/${document.uuid}/workflow/`, {
+        // Prepare workflow request data
+        const requestData: any = {
           action: approvalDecision === 'approve' ? 'approve_document' : 'reject_document',
           comment: approvalComment
-        });
+        };
+
+        // Add effective_date for approval (required for new simplified workflow)
+        if (approvalDecision === 'approve') {
+          if (!effectiveDate) {
+            throw new Error('Effective date is required for approval');
+          }
+          requestData.effective_date = effectiveDate;
+        }
+
+        const workflowResponse = await apiService.post(`/documents/documents/${document.uuid}/workflow/`, requestData);
         
         
       } catch (workflowError: any) {
@@ -317,10 +338,41 @@ const ApproverInterface: React.FC<ApproverInterfaceProps> = ({
             </div>
           </div>
 
+          {/* Effective Date - Only for Approval */}
+          {approvalDecision === 'approve' && (
+            <div className="mb-6 p-4 bg-green-50 border border-green-200 rounded-lg">
+              <label htmlFor="effectiveDate" className="block text-sm font-medium text-green-800 mb-2">
+                Effective Date <span className="text-red-500">*</span>
+              </label>
+              <input
+                type="date"
+                id="effectiveDate"
+                value={effectiveDate}
+                onChange={(e) => setEffectiveDate(e.target.value)}
+                disabled={loading}
+                className="w-full px-3 py-2 border border-green-300 rounded-md focus:ring-2 focus:ring-green-500 focus:border-green-500 disabled:opacity-50"
+                required
+              />
+              <div className="mt-2 text-sm">
+                {effectiveDate && (
+                  <span className={new Date(effectiveDate) <= new Date() 
+                    ? "text-green-700 font-medium" 
+                    : "text-orange-700 font-medium"
+                  }>
+                    {new Date(effectiveDate) <= new Date() 
+                      ? "📅 Document will be effective immediately"
+                      : `⏰ Document will be pending effective until ${new Date(effectiveDate).toLocaleDateString()}`
+                    }
+                  </span>
+                )}
+              </div>
+            </div>
+          )}
+
           {/* Approval Comments */}
           <div className="mb-6">
             <label htmlFor="approvalComment" className="block text-sm font-medium text-gray-700 mb-2">
-              Approval Comments <span className="text-red-500">*</span>
+              {approvalDecision === 'approve' ? 'Approval' : 'Rejection'} Comments <span className="text-red-500">*</span>
             </label>
             <textarea
               id="approvalComment"
@@ -387,7 +439,7 @@ const ApproverInterface: React.FC<ApproverInterfaceProps> = ({
           </button>
           <button
             onClick={handleApprovalSubmission}
-            disabled={loading || !approvalDecision || !approvalComment.trim()}
+            disabled={loading || !approvalDecision || !approvalComment.trim() || (approvalDecision === 'approve' && !effectiveDate)}
             className={`px-4 py-2 text-white rounded-md disabled:opacity-50 flex items-center space-x-2 ${
               approvalDecision === 'approve' 
                 ? 'bg-green-600 hover:bg-green-700' 

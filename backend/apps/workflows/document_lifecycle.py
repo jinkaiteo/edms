@@ -267,15 +267,15 @@ class DocumentLifecycleService:
         )
 
     def approve_document(self, document: Document, user: User, 
-                        comment: str = '', effective_date: date = None) -> bool:
+                        effective_date: date, comment: str = '') -> bool:
         """
-        Approve document (PENDING_APPROVAL → APPROVED).
+        Approve document with required effective date (PENDING_APPROVAL → APPROVED_PENDING_EFFECTIVE or APPROVED_AND_EFFECTIVE).
         
         Args:
             document: Document to approve
             user: User approving (must be assigned approver)
+            effective_date: Date when document becomes effective (REQUIRED)
             comment: Approval comment
-            effective_date: Optional effective date (defaults to tomorrow)
             
         Returns:
             bool: True if successful
@@ -292,70 +292,85 @@ class DocumentLifecycleService:
         if workflow.current_state.code != 'PENDING_APPROVAL':
             raise ValidationError(f"Cannot approve from state: {workflow.current_state.code}")
         
-        # Set effective date
+        # Validate effective_date is provided
         if not effective_date:
-            effective_date = timezone.now().date() + timezone.timedelta(days=1)
-        
+            raise ValidationError("Effective date is required for approval")
+
+        # Set effective date and approval date
         document.effective_date = effective_date
         document.approval_date = timezone.now()
         document.save()
-        
+
+        # Determine target state based on effective date
+        today = timezone.now().date()
+        if effective_date <= today:
+            # Effective today or in the past = immediately effective
+            target_state = 'APPROVED_AND_EFFECTIVE'
+            comment_suffix = f' - Effective immediately ({effective_date})'
+        else:
+            # Effective in the future = pending effective
+            target_state = 'APPROVED_PENDING_EFFECTIVE'
+            comment_suffix = f' - Pending effective {effective_date}'
+
+        # Transition to appropriate state
         return self._transition_workflow(
             workflow=workflow,
-            to_state_code='APPROVED',
+            to_state_code=target_state,
             user=user,
-            comment=comment or 'Document approved',
-            assignee=None  # No further assignment needed
+            comment=(comment or f'Document approved by {user.get_full_name()}') + comment_suffix,
+            assignee=None  # No further assignment needed for intentional workflow
         )
     
-    def make_effective(self, document: Document, user: User, 
-                      comment: str = '', effective_date: date = None) -> bool:
+    def activate_pending_effective_documents(self, user: User = None) -> int:
         """
-        Make document effective (APPROVED → EFFECTIVE).
-        This can be automated or manual based on effective_date.
+        Scheduler task: Activate documents that are APPROVED_PENDING_EFFECTIVE and due today.
+        Called daily at midnight to check and update document statuses.
         
         Args:
-            document: Document to make effective
-            user: User making effective (system user for automated)
-            comment: Optional comment
-            effective_date: Optional override for effective date (for immediate effective)
+            user: System user for audit trail (optional, defaults to system)
             
         Returns:
-            bool: True if successful
+            int: Number of documents activated
         """
-        workflow = self._get_active_workflow(document)
-        if not workflow:
-            raise ValidationError("No active workflow found for document")
+        from django.contrib.auth import get_user_model
         
-        # Validate current state
-        if workflow.current_state.code != 'APPROVED':
-            raise ValidationError(f"Cannot make effective from state: {workflow.current_state.code}")
+        if not user:
+            User = get_user_model()
+            user, _ = User.objects.get_or_create(
+                username='system',
+                defaults={'first_name': 'System', 'last_name': 'Scheduler', 'is_staff': True}
+            )
         
-        # Update effective date if provided (for immediate effective)
-        if effective_date:
-            document.effective_date = effective_date
-            document.save()
+        today = timezone.now().date()
+        activated_count = 0
         
-        # Check effective date
-        if document.effective_date and document.effective_date > timezone.now().date():
-            raise ValidationError(f"Cannot make effective before effective date: {document.effective_date}")
-        
-        success = self._transition_workflow(
-            workflow=workflow,
-            to_state_code='EFFECTIVE',
-            user=user,
-            comment=comment or 'Document made effective',
-            assignee=None
+        # Find documents that are pending effective and due today or earlier
+        pending_docs = Document.objects.filter(
+            status='APPROVED_PENDING_EFFECTIVE',
+            effective_date__lte=today
         )
         
-        if success:
-            # Update document status
-            document.status = 'EFFECTIVE'
-            if not document.effective_date:
-                document.effective_date = timezone.now().date()
-            document.save()
+        for document in pending_docs:
+            try:
+                with transaction.atomic():
+                    workflow = self._get_active_workflow(document)
+                    if workflow and workflow.current_state.code == 'APPROVED_PENDING_EFFECTIVE':
+                        # Transition to APPROVED_AND_EFFECTIVE
+                        success = self._transition_workflow(
+                            workflow=workflow,
+                            to_state_code='APPROVED_AND_EFFECTIVE',
+                            user=user,
+                            comment=f'Document automatically activated on scheduled effective date: {document.effective_date}',
+                            assignee=None
+                        )
+                        if success:
+                            activated_count += 1
+                            
+            except Exception as e:
+                # Log error but continue processing other documents
+                print(f"Failed to activate document {document.document_number}: {e}")
         
-        return success
+        return activated_count
     
     # =================================================================
     # 2. UP-VERSIONING WORKFLOW

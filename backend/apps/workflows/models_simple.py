@@ -30,8 +30,8 @@ class DocumentState(models.Model):
     REVIEWED = 'REVIEWED'
     PENDING_APPROVAL = 'PENDING_APPROVAL'
     UNDER_APPROVAL = 'UNDER_APPROVAL'
-    APPROVED = 'APPROVED'
-    EFFECTIVE = 'EFFECTIVE'
+    APPROVED_PENDING_EFFECTIVE = 'APPROVED_PENDING_EFFECTIVE'
+    APPROVED_AND_EFFECTIVE = 'APPROVED_AND_EFFECTIVE'
     SUPERSEDED = 'SUPERSEDED'
     PENDING_OBSOLETE = 'PENDING_OBSOLETE'
     OBSOLETE = 'OBSOLETE'
@@ -44,8 +44,8 @@ class DocumentState(models.Model):
         (REVIEWED, 'Reviewed'),
         (PENDING_APPROVAL, 'Pending Approval'),
         (UNDER_APPROVAL, 'Under Approval'),
-        (APPROVED, 'Approved'),
-        (EFFECTIVE, 'Effective'),
+        (APPROVED_PENDING_EFFECTIVE, 'Approved - Pending Effective'),
+        (APPROVED_AND_EFFECTIVE, 'Approved and Effective'),
         (SUPERSEDED, 'Superseded'),
         (PENDING_OBSOLETE, 'Pending Obsolete'),
         (OBSOLETE, 'Obsolete'),
@@ -180,11 +180,11 @@ class DocumentWorkflow(models.Model):
             'UNDER_REVIEW': ['REVIEWED', 'DRAFT'],
             'REVIEWED': ['PENDING_APPROVAL'], 
             'PENDING_APPROVAL': ['UNDER_APPROVAL', 'DRAFT'],
-            'UNDER_APPROVAL': ['APPROVED', 'DRAFT'],
-            'APPROVED': ['EFFECTIVE'],
-            'EFFECTIVE': ['SUPERSEDED', 'PENDING_OBSOLETE'],
+            'UNDER_APPROVAL': ['APPROVED_PENDING_EFFECTIVE', 'APPROVED_AND_EFFECTIVE', 'DRAFT'],
+            'APPROVED_PENDING_EFFECTIVE': ['APPROVED_AND_EFFECTIVE'],
+            'APPROVED_AND_EFFECTIVE': ['SUPERSEDED', 'PENDING_OBSOLETE'],
             'SUPERSEDED': [],
-            'PENDING_OBSOLETE': ['OBSOLETE', 'EFFECTIVE'],
+            'PENDING_OBSOLETE': ['OBSOLETE', 'APPROVED_AND_EFFECTIVE'],
             'OBSOLETE': [],
             'TERMINATED': []
         }
@@ -226,11 +226,11 @@ class DocumentWorkflow(models.Model):
             'UNDER_REVIEW': ['REVIEWED', 'DRAFT'],
             'REVIEWED': ['PENDING_APPROVAL'], 
             'PENDING_APPROVAL': ['UNDER_APPROVAL', 'DRAFT'],
-            'UNDER_APPROVAL': ['APPROVED', 'DRAFT'],
-            'APPROVED': ['EFFECTIVE'],
-            'EFFECTIVE': ['SUPERSEDED', 'PENDING_OBSOLETE'],
+            'UNDER_APPROVAL': ['APPROVED_PENDING_EFFECTIVE', 'APPROVED_AND_EFFECTIVE', 'DRAFT'],
+            'APPROVED_PENDING_EFFECTIVE': ['APPROVED_AND_EFFECTIVE'],
+            'APPROVED_AND_EFFECTIVE': ['SUPERSEDED', 'PENDING_OBSOLETE'],
             'SUPERSEDED': [],
-            'PENDING_OBSOLETE': ['OBSOLETE', 'EFFECTIVE'],
+            'PENDING_OBSOLETE': ['OBSOLETE', 'APPROVED_AND_EFFECTIVE'],
             'OBSOLETE': [],
             'TERMINATED': []
         }

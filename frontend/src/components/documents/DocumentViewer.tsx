@@ -4,7 +4,7 @@ import ReviewerInterface from '../workflows/ReviewerInterface.tsx';
 import SubmitForReviewModal from '../workflows/SubmitForReviewModal.tsx';
 import RouteForApprovalModal from '../workflows/RouteForApprovalModal.tsx';
 import ApproverInterface from '../workflows/ApproverInterface.tsx';
-import SetEffectiveDateModal from '../workflows/SetEffectiveDateModal.tsx';
+// SetEffectiveDateModal removed - no longer needed in simplified workflow
 import CreateNewVersionModal from '../workflows/CreateNewVersionModal.tsx';
 import MarkObsoleteModal from '../workflows/MarkObsoleteModal.tsx';
 import DocumentCreateModal from './DocumentCreateModal.tsx';
@@ -41,7 +41,7 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({
   const [showSubmitForReviewModal, setShowSubmitForReviewModal] = useState(false);
   const [showRouteForApprovalModal, setShowRouteForApprovalModal] = useState(false);
   const [showApproverInterface, setShowApproverInterface] = useState(false);
-  const [showSetEffectiveDateModal, setShowSetEffectiveDateModal] = useState(false);
+  // showSetEffectiveDateModal removed - no longer needed in simplified workflow
   const [showCreateNewVersionModal, setShowCreateNewVersionModal] = useState(false);
   const [showMarkObsoleteModal, setShowMarkObsoleteModal] = useState(false);
   
@@ -210,9 +210,9 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({
         setShowApproverInterface(true);
         return;
         
-      case 'set_effective_date':
-        // EDMS Set Effective Date: Open effective date modal
-        setShowSetEffectiveDateModal(true);
+      // set_effective_date action removed - no longer needed in simplified workflow
+      case 'view_pending_effective':
+        // Just informational - no action needed
         return;
         
       case 'create_revision':
@@ -254,7 +254,7 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({
   };
 
   const handleEffectiveDateSet = () => {
-    setShowSetEffectiveDateModal(false);
+    // setShowSetEffectiveDateModal removed - no longer needed in simplified workflow
     loadDocumentData();
   };
 
@@ -482,30 +482,35 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({
         }
         break;
         
-      case 'APPROVED':
-        // EDMS line 16: Approver sets effective date
-        
-        // Debug: Calculate if Set Effective Date button should show
-        const shouldShowSetEffective = hasApprovalPermission && isAssignedApprover;
-        console.log('🔍 Debug - Set Effective Date Button Logic:', {
-          documentStatus: document.status,
-          statusMatches: document.status.toUpperCase() === 'APPROVED',
-          isAssignedApprover,
-          hasApprovalPermission,
-          authenticated,
-          workflowStatusExists: !!workflowStatus,
-          userExists: !!user,
-          documentExists: !!document,
-          shouldShowButton: shouldShowSetEffective,
-          allConditionsMet: shouldShowSetEffective && authenticated && !!workflowStatus && !!user && !!document
-        });
-        
-        if (hasApprovalPermission && isAssignedApprover) {
-          actions.push({ 
-            key: 'set_effective_date', 
-            label: '📅 Set Effective Date', 
-            color: 'green',
-            description: 'Set when document becomes effective'
+      case 'APPROVED_PENDING_EFFECTIVE':
+        // Document approved but waiting for effective date
+        // No actions available - will be automatically activated by scheduler
+        if (hasApprovalPermission || hasWritePermission) {
+          actions.push({
+            key: 'view_pending_effective',
+            label: '⏰ Pending Effective',
+            color: 'orange',
+            description: `Document will be effective on ${document.effective_date ? new Date(document.effective_date).toLocaleDateString() : 'scheduled date'}`
+          });
+        }
+        break;
+
+      case 'APPROVED_AND_EFFECTIVE':
+        // Document is approved and currently effective
+        // Standard effective document actions (up-version, obsolete, etc.)
+        if (hasWritePermission) {
+          actions.push({
+            key: 'create_new_version',
+            label: '📝 Create New Version',
+            color: 'blue', 
+            description: 'Start up-versioning workflow for document revision'
+          });
+          
+          actions.push({
+            key: 'mark_obsolete',
+            label: '🗑️ Mark Obsolete', 
+            color: 'red',
+            description: 'Start obsolete workflow to retire this document'
           });
         }
         break;
@@ -1048,14 +1053,7 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({
       )}
 
       {/* Set Effective Date Modal (EDMS Effective Date Setting) */}
-      {showSetEffectiveDateModal && document && (
-        <SetEffectiveDateModal
-          isOpen={showSetEffectiveDateModal}
-          onClose={() => setShowSetEffectiveDateModal(false)}
-          document={document}
-          onEffectiveDateSet={handleEffectiveDateSet}
-        />
-      )}
+      {/* SetEffectiveDateModal removed - no longer needed in simplified workflow */}
 
       {/* Create New Version Modal (EDMS Versioning) */}
       {showCreateNewVersionModal && document && (
