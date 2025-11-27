@@ -230,18 +230,18 @@ const DocumentCreateModal: React.FC<DocumentCreateModalProps> = ({
         });
       }
 
-      const response = await apiService.post('/documents/documents/', formData, {
-        headers: {
-          'Content-Type': 'multipart/form-data',
-        },
-      });
+      // Don't set Content-Type header - let browser set it automatically for FormData
+      const response = await apiService.post('/documents/documents/', formData);
 
       onCreateSuccess(response);
       handleClose();
 
     } catch (error: any) {
+      console.log('🔍 Debug - Full error object:', error);
+      console.log('🔍 Debug - Error response:', error.response);
+      console.log('🔍 Debug - Error response data:', error.response?.data);
       console.error('❌ Error creating document:', error);
-      setError('Failed to create document. Please try again.');
+      setError(`Failed to create document: ${JSON.stringify(error.response?.data || error.message || 'Unknown error')}`);
     } finally {
       setLoading(false);
     }
