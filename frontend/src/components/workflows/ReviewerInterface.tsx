@@ -124,6 +124,12 @@ const ReviewerInterface: React.FC<ReviewerInterfaceProps> = ({
     }
   };
 
+  // Helper function to get file extension
+  const getFileExtension = (filename: string): string => {
+    const extension = filename.split('.').pop()?.toLowerCase() || 'pdf';
+    return extension;
+  };
+
   const handleDownload = async (downloadType: 'original' | 'annotated' | 'official') => {
     try {
       
