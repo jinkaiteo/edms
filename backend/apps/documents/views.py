@@ -388,6 +388,74 @@ class DocumentViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
     
+    def _serve_processed_docx(self, document, request):
+        """Generate and serve processed .docx document with placeholder replacement."""
+        from .docx_processor import docx_processor
+        from django.http import HttpResponse
+        import os
+        
+        try:
+            # Check if document has a .docx file
+            if not document.file_name or not document.file_name.lower().endswith('.docx'):
+                return Response(
+                    {'error': 'Document must have a .docx file for template processing'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            
+            # Check if docx processing is available
+            if not docx_processor.is_available():
+                return Response(
+                    {'error': 'DOCX template processing is not available. Missing python-docx-template package.'},
+                    status=status.HTTP_500_INTERNAL_SERVER_ERROR
+                )
+            
+            # Process the document
+            processed_file_path = docx_processor.process_docx_template(document, request.user)
+            
+            # Read the processed file
+            with open(processed_file_path, 'rb') as f:
+                file_content = f.read()
+            
+            # Clean up temporary file
+            os.unlink(processed_file_path)
+            
+            # Create response
+            response = HttpResponse(
+                file_content,
+                content_type='application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+            )
+            
+            filename = f"{document.document_number}_processed.docx"
+            response['Content-Disposition'] = f'attachment; filename="{filename}"'
+            response['Content-Length'] = str(len(file_content))
+            
+            # Log successful download
+            log_document_access(
+                document=document,
+                user=request.user,
+                access_type='DOWNLOAD',
+                request=request,
+                success=True,
+                file_downloaded=True,
+                metadata={'download_type': 'processed_docx'}
+            )
+            
+            return response
+            
+        except Exception as e:
+            log_document_access(
+                document=document,
+                user=request.user,
+                access_type='DOWNLOAD',
+                request=request,
+                success=False,
+                failure_reason=f'DOCX processing failed: {str(e)}'
+            )
+            return Response(
+                {'error': f'Failed to process .docx document: {str(e)}'},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+    
     @action(detail=True, methods=['get'], url_path='download/official')
     def download_official_pdf(self, request, uuid=None):
         """Download official PDF (only for approved and effective documents)."""
@@ -401,6 +469,12 @@ class DocumentViewSet(viewsets.ModelViewSet):
             )
         
         return self._serve_document_file(document, request, 'official_pdf')
+    
+    @action(detail=True, methods=['get'], url_path='download/processed')
+    def download_processed_docx(self, request, uuid=None):
+        """Download .docx document with placeholders replaced by actual metadata."""
+        document = self.get_object()
+        return self._serve_processed_docx(document, request)
 
     def _serve_document_file(self, document, request, download_type):
         """Common method to serve document files with proper validation."""

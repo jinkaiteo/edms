@@ -13,7 +13,39 @@ const PlaceholderManagement: React.FC<PlaceholderManagementProps> = ({ className
   const [showEditPlaceholder, setShowEditPlaceholder] = useState(false);
   const [filter, setFilter] = useState<string>('all');
 
-  // Mock placeholder data
+  // Load placeholders from API
+  React.useEffect(() => {
+    fetchPlaceholders();
+  }, []);
+
+  const fetchPlaceholders = async () => {
+    try {
+      setLoading(true);
+      const response = await fetch('http://localhost:8000/api/v1/placeholders/definitions/', {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('accessToken')}`,
+          'Content-Type': 'application/json',
+        },
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        setPlaceholders(data);
+      } else {
+        console.error('Failed to fetch placeholders');
+        // Fallback to mock data
+        setPlaceholders(mockPlaceholders);
+      }
+    } catch (error) {
+      console.error('Error fetching placeholders:', error);
+      // Fallback to mock data
+      setPlaceholders(mockPlaceholders);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Mock placeholder data for fallback
   const mockPlaceholders: PlaceholderDefinition[] = [
     {
       id: 1,
