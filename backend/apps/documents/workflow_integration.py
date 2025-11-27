@@ -98,7 +98,7 @@ def document_workflow_endpoint(request, uuid):
                     }, status=status.HTTP_400_BAD_REQUEST)
                 
                 result = workflow_service.route_for_approval(document, request.user, approver, comment)
-            elif action == 'approve_document':
+            elif action == 'approve_document' or action == 'approve':
                 effective_date = request.data.get('effective_date')
                 if not effective_date:
                     return Response({
