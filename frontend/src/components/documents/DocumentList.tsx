@@ -28,6 +28,7 @@ const DocumentList: React.FC<DocumentListProps> = ({
   const [sortBy, setSortBy] = useState<'title' | 'created_at' | 'status' | 'document_type'>('created_at');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
+  const [showObsolete, setShowObsolete] = useState(false);
 
   // Helper function to extract base document number (remove version suffix)
   const getBaseDocumentNumber = (documentNumber: string): string => {
@@ -445,6 +446,19 @@ const DocumentList: React.FC<DocumentListProps> = ({
               <option value="document_type-asc">Type A-Z</option>
             </select>
             
+            {/* Show Obsolete Toggle */}
+            <label className="flex items-center space-x-2 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={showObsolete}
+                onChange={(e) => setShowObsolete(e.target.checked)}
+                className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 focus:ring-2"
+              />
+              <span className="text-sm font-medium text-gray-700">
+                Show Obsolete ({documents.filter(doc => doc.status === 'OBSOLETE').length})
+              </span>
+            </label>
+
             {/* View mode toggle */}
             <div className="flex border border-gray-300 rounded-md">
               <button
@@ -478,8 +492,13 @@ const DocumentList: React.FC<DocumentListProps> = ({
         ) : viewMode === 'list' ? (
           // Grouped list view with version history
           (() => {
-            // Group documents and get current versions for sorting
-            const documentGroups = groupDocumentsByBase(documents);
+            // Filter documents based on obsolete toggle
+            const filteredDocuments = showObsolete 
+              ? documents 
+              : documents.filter(doc => doc.status !== 'OBSOLETE');
+
+            // Group filtered documents and get current versions for sorting
+            const documentGroups = groupDocumentsByBase(filteredDocuments);
             const groupKeys = Object.keys(documentGroups);
 
             // Sort groups by the current (newest) version's properties
@@ -665,8 +684,14 @@ const DocumentList: React.FC<DocumentListProps> = ({
           })()
         ) : (
           // Grid view
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {documents.map((document) => (
+          (() => {
+            const filteredDocuments = showObsolete 
+              ? documents 
+              : documents.filter(doc => doc.status !== 'OBSOLETE');
+              
+            return (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {filteredDocuments.map((document) => (
               <div
                 key={document.id || document.uuid || Math.random()}
                 className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow cursor-pointer"

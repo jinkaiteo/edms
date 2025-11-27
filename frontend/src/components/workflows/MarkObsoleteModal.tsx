@@ -83,24 +83,71 @@ const MarkObsoleteModal: React.FC<MarkObsoleteModalProps> = ({
   const fetchAvailableApprovers = async () => {
     setLoadingApprovers(true);
     try {
-      // Try to get users with approver role
-      const response = await apiService.get('/users/');
-      if (response.success || response.results) {
-        const users = response.results || response.data || [];
-        // Filter for users who can approve (this is a simplified approach)
-        // In a real system, you'd have a dedicated endpoint for approvers
-        const approvers = users.filter((user: any) => 
-          user.is_staff || user.groups?.includes('Approvers') || user.username.includes('approver')
-        );
-        setAvailableApprovers(approvers.map((user: any) => ({
-          id: user.id,
-          username: user.username,
-          first_name: user.first_name || '',
-          last_name: user.last_name || '',
-          email: user.email || '',
-          display_name: user.display_name || `${user.first_name} ${user.last_name}`.trim() || user.username
-        })));
+      // Call the actual users endpoint
+      const response = await apiService.get('/users/users/');
+      console.log('🔍 Users API Response:', response); // Debug log
+      
+      let users = [];
+      
+      // Parse the API response structure
+      if (response.results && Array.isArray(response.results)) {
+        users = response.results; // DRF pagination structure
+      } else if (response.users && Array.isArray(response.users)) {
+        users = response.users; // Alternative structure
+      } else if (response.data && Array.isArray(response.data)) {
+        users = response.data; // Another fallback
+      } else if (Array.isArray(response)) {
+        users = response; // Direct array
       }
+      
+      console.log('🔍 API Response structure:', typeof response, Object.keys(response || {}));
+      console.log('🔍 Users type:', typeof users, 'isArray:', Array.isArray(users));
+      console.log('🔍 Found users:', users.length || 0, 'users'); // Debug log
+      
+      // Ensure users is an array before filtering
+      if (!Array.isArray(users)) {
+        console.error('🔍 Users is not an array:', users);
+        users = []; // Fallback to empty array
+      }
+      
+      // Filter for users who can approve - look for various indicators
+      const approvers = users.filter((user: any) => {
+        // Check multiple criteria for approver capability
+        const hasApproverUsername = user.username && (
+          user.username.includes('approver') ||
+          user.username.includes('admin')
+        );
+        
+        const hasApproverRole = user.roles && Array.isArray(user.roles) && 
+          user.roles.some((role: any) => role.name === 'Approver' || role.name === 'approver');
+        
+        const hasApproverGroup = user.groups && Array.isArray(user.groups) && 
+          user.groups.some((group: any) => 
+            (typeof group === 'string' && group.toLowerCase().includes('approver')) ||
+            (typeof group === 'object' && group.name && group.name.toLowerCase().includes('approver'))
+          );
+        
+        const canApprove = user.is_staff || 
+                          user.is_superuser ||
+                          hasApproverUsername ||
+                          hasApproverRole ||
+                          hasApproverGroup;
+                          
+        console.log(`🔍 User ${user.username}: staff=${user.is_staff}, super=${user.is_superuser}, roles=${JSON.stringify(user.roles)}, groups=${JSON.stringify(user.groups)}, canApprove=${canApprove}`);
+        return canApprove;
+      });
+      
+      console.log('🔍 Filtered approvers:', approvers.length, 'approvers');
+      
+      setAvailableApprovers(approvers.map((user: any) => ({
+        id: user.id,
+        username: user.username,
+        first_name: user.first_name || '',
+        last_name: user.last_name || '',
+        email: user.email || '',
+        display_name: user.display_name || `${user.first_name} ${user.last_name}`.trim() || user.username
+      })));
+      
     } catch (error) {
       console.error('Failed to fetch approvers:', error);
       // Set current approver as only option if API fails
