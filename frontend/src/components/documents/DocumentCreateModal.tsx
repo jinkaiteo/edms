@@ -159,13 +159,22 @@ const DocumentCreateModal: React.FC<DocumentCreateModalProps> = ({
 
   const handleCreateDocument = async () => {
     try {
-      // Validation
-      if (!title.trim()) {
-        setError('Title is required');
+      // Enhanced validation with debugging
+      console.log('🔍 Debug - Form values before validation:', {
+        title: JSON.stringify(title),
+        description: JSON.stringify(description),
+        titleLength: title.length,
+        descriptionLength: description.length,
+        documentType,
+        documentSource
+      });
+
+      if (!title || !title.trim()) {
+        setError('Title is required and cannot be empty');
         return;
       }
-      if (!description.trim()) {
-        setError('Description is required');
+      if (!description || !description.trim()) {
+        setError('Description is required and cannot be empty');
         return;
       }
       if (!documentType) {
@@ -180,18 +189,28 @@ const DocumentCreateModal: React.FC<DocumentCreateModalProps> = ({
       setLoading(true);
       setError(null);
 
-      // Create FormData for file upload
+      // Create FormData for file upload with defensive values
       const formData = new FormData();
-      formData.append('title', title);
-      formData.append('description', description);
-      formData.append('keywords', keywords);
+      const titleValue = title.trim();
+      const descriptionValue = description.trim();
+      
+      formData.append('title', titleValue);
+      formData.append('description', descriptionValue);
+      formData.append('keywords', keywords.trim());
       formData.append('document_type', documentType);
       formData.append('document_source', documentSource);
       formData.append('priority', priority);
       formData.append('requires_training', requiresTraining.toString());
+      formData.append('is_controlled', 'true'); // Add missing field
       
       if (selectedFile) {
         formData.append('file', selectedFile);
+      }
+
+      // Debug FormData contents
+      console.log('📋 FormData contents:');
+      for (let pair of formData.entries()) {
+        console.log(`  ${pair[0]}: ${JSON.stringify(pair[1])}`);
       }
 
       // Add dependencies
