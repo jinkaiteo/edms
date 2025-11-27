@@ -329,14 +329,55 @@ class DocumentViewSet(viewsets.ModelViewSet):
         return self._serve_annotated_document(document, request)
     
     def _serve_annotated_document(self, document, request):
-        """Generate and serve annotated document with metadata overlay."""
+        """Generate and serve annotated document with metadata overlay or processed .docx template."""
         from .annotation_processor import annotation_processor
+        from .docx_processor import docx_processor
         from django.http import HttpResponse
         import tempfile
         import os
         
         try:
-            # Generate annotation content
+            # Check if document has a .docx file for template processing
+            if document.file_name and document.file_name.lower().endswith('.docx') and docx_processor.is_available():
+                # Process .docx template with placeholder replacement
+                try:
+                    processed_file_path = docx_processor.process_docx_template(document, request.user)
+                    
+                    # Read the processed file
+                    with open(processed_file_path, 'rb') as f:
+                        file_content = f.read()
+                    
+                    # Clean up temporary file
+                    os.unlink(processed_file_path)
+                    
+                    # Create response for processed .docx
+                    response = HttpResponse(
+                        file_content,
+                        content_type='application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+                    )
+                    
+                    filename = f"{document.document_number}_annotated.docx"
+                    response['Content-Disposition'] = f'attachment; filename="{filename}"'
+                    response['Content-Length'] = str(len(file_content))
+                    
+                    # Log successful download
+                    log_document_access(
+                        document=document,
+                        user=request.user,
+                        access_type='DOWNLOAD',
+                        request=request,
+                        success=True,
+                        file_downloaded=True,
+                        metadata={'download_type': 'annotated_docx_processed'}
+                    )
+                    
+                    return response
+                    
+                except Exception as docx_error:
+                    # Fall back to text annotation if .docx processing fails
+                    print(f"DOCX processing failed, falling back to text annotation: {docx_error}")
+            
+            # Generate text annotation content (default behavior or fallback)
             annotation_content = annotation_processor.generate_annotated_document_content(document, request.user)
             
             # Create temporary file with annotation
@@ -369,7 +410,7 @@ class DocumentViewSet(viewsets.ModelViewSet):
                 request=request,
                 success=True,
                 file_downloaded=True,
-                metadata={'download_type': 'annotated'}
+                metadata={'download_type': 'annotated_text'}
             )
             
             return response

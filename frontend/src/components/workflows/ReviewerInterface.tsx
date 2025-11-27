@@ -130,7 +130,7 @@ const ReviewerInterface: React.FC<ReviewerInterfaceProps> = ({
     return extension;
   };
 
-  const handleDownload = async (downloadType: 'original' | 'annotated' | 'processed' | 'official') => {
+  const handleDownload = async (downloadType: 'original' | 'annotated' | 'official') => {
     console.log('🎯 DEBUG - handleDownload called with:', downloadType);
     console.log('🎯 DEBUG - Document object:', document);
     
@@ -153,9 +153,6 @@ const ReviewerInterface: React.FC<ReviewerInterfaceProps> = ({
           break;
         case 'annotated':
           downloadUrl = `http://localhost:8000/api/v1/documents/documents/${document.uuid}/download/annotated/`;
-          break;
-        case 'processed':
-          downloadUrl = `http://localhost:8000/api/v1/documents/documents/${document.uuid}/download/processed/`;
           break;
         case 'official':
           downloadUrl = `http://localhost:8000/api/v1/documents/documents/${document.uuid}/download/official/`;
