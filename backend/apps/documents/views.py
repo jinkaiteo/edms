@@ -182,9 +182,8 @@ class DocumentViewSet(viewsets.ModelViewSet):
             # Also allow approvers to see documents assigned to them as reviewers (flexible workflow routing)
             q_filter |= Q(reviewer=user, status__in=['PENDING_REVIEW', 'UNDER_REVIEW'])
         
-        # Users with read permission can see effective documents and approved pending effective documents
-        if user_permissions:
-            q_filter |= Q(status__in=['EFFECTIVE', 'APPROVED_PENDING_EFFECTIVE'], is_active=True)
+        # All authenticated users can see effective and superseded documents for version history
+        q_filter |= Q(status__in=['EFFECTIVE', 'APPROVED_AND_EFFECTIVE', 'APPROVED_PENDING_EFFECTIVE', 'SUPERSEDED'], is_active=True)
         
         return queryset.filter(q_filter)
     

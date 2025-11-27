@@ -285,10 +285,12 @@ def audit_failed_login(sender, credentials, request, **kwargs):
     except User.DoesNotExist:
         user = None
     
+    # Get the attempted username from credentials for failed login audit
     audit_service.log_login_event(
         user=user,
         success=False,
-        failure_reason='Invalid credentials'
+        failure_reason='Invalid credentials',
+        attempted_username=username
     )
     
     # Log compliance event for security

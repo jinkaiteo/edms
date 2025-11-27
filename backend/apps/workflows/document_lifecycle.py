@@ -396,7 +396,7 @@ class DocumentLifecycleService:
         """
         with transaction.atomic():
             # Validate existing document
-            if existing_document.status != 'EFFECTIVE':
+            if existing_document.status not in ['EFFECTIVE', 'APPROVED_AND_EFFECTIVE']:
                 raise ValidationError("Can only version EFFECTIVE documents")
             
             # Create new version
@@ -404,7 +404,16 @@ class DocumentLifecycleService:
                 major_increment=new_version_data.get('major_increment', False)
             )
             
+            # Generate versioned document number to maintain uniqueness while showing relationship
+            # Extract base document number by removing any existing version suffix
+            base_doc_number = existing_document.document_number
+            if '-v' in base_doc_number:
+                # Remove existing version (e.g., "SOP-2025-0001-v1.0" -> "SOP-2025-0001")
+                base_doc_number = base_doc_number.split('-v')[0]
+            versioned_doc_number = f"{base_doc_number}-v{major}.{minor}"
+            
             new_document = Document.objects.create(
+                document_number=versioned_doc_number,  # Versioned document number
                 title=new_version_data.get('title', existing_document.title),
                 description=new_version_data.get('description', existing_document.description),
                 document_type=existing_document.document_type,
@@ -431,7 +440,7 @@ class DocumentLifecycleService:
             # Use up-versioning workflow type if available
             upversion_type = self.workflow_types.get('UP_VERSION')
             if upversion_type:
-                workflow.workflow_type = upversion_type
+                workflow.workflow_type = upversion_type.workflow_type
                 workflow.save()
             
             return {
@@ -455,7 +464,7 @@ class DocumentLifecycleService:
         if not new_document.supersedes:
             return True  # Nothing to supersede
         
-        if new_document.status != 'EFFECTIVE':
+        if new_document.status not in ['EFFECTIVE', 'APPROVED_AND_EFFECTIVE']:
             raise ValidationError("New document must be EFFECTIVE to supersede old version")
         
         with transaction.atomic():
@@ -703,7 +712,7 @@ class DocumentLifecycleService:
                               transition: DocumentTransition):
         """Handle actions after successful transition."""
         # Auto-complete versioning when new version becomes effective
-        if (transition.to_state.code == 'EFFECTIVE' and 
+        if (transition.to_state.code in ['EFFECTIVE', 'APPROVED_AND_EFFECTIVE'] and 
             workflow.document.supersedes):
             self.complete_versioning(workflow.document, transition.transitioned_by)
     

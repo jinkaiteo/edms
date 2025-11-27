@@ -80,6 +80,36 @@ class SimpleDocumentWorkflowAPIView(APIView):
             elif action_type == 'terminate_workflow':
                 reason = request.data.get('reason', comment)
                 result = lifecycle_service.terminate_workflow(document, request.user, reason)
+            elif action_type == 'start_version_workflow':
+                version_data = {
+                    'title': request.data.get('title'),
+                    'description': request.data.get('description'), 
+                    'reason_for_change': request.data.get('reason_for_change', ''),
+                    'change_summary': request.data.get('change_summary', ''),
+                    'major_increment': request.data.get('major_increment', False),
+                    'reviewer': None,  # Will use existing reviewer
+                    'approver': None   # Will use existing approver
+                }
+                
+                if not version_data['reason_for_change']:
+                    return Response({
+                        'error': 'Reason for change is required'
+                    }, status=status.HTTP_400_BAD_REQUEST)
+                
+                if not version_data['change_summary']:
+                    return Response({
+                        'error': 'Change summary is required'
+                    }, status=status.HTTP_400_BAD_REQUEST)
+                
+                result = lifecycle_service.start_version_workflow(document, request.user, version_data)
+                if result:
+                    return Response({
+                        'success': True,
+                        'message': 'Version workflow started successfully',
+                        'new_document_id': str(result['new_document'].uuid),
+                        'new_document_number': result['new_document'].document_number,
+                        'new_version': result['new_document'].version_string
+                    })
             else:
                 return Response({
                     'error': f'Unknown action: {action_type}'

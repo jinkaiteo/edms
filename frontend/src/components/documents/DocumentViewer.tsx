@@ -286,6 +286,7 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({
         return;
         
       case 'create_revision':
+      case 'create_new_version':
         // EDMS Create New Version: Open new version modal
         setShowCreateNewVersionModal(true);
         return;
@@ -774,35 +775,33 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({
 
       case 'APPROVED_AND_EFFECTIVE':
         // Document is approved and currently effective
-        // Standard effective document actions (up-version, obsolete, etc.)
-        if (hasWritePermission) {
-          actions.push({
-            key: 'create_new_version',
-            label: '📝 Create New Version',
-            color: 'blue', 
-            description: 'Start up-versioning workflow for document revision'
-          });
-          
-          actions.push({
-            key: 'mark_obsolete',
-            label: '🗑️ Mark Obsolete', 
-            color: 'red',
-            description: 'Start obsolete workflow to retire this document'
-          });
-        }
+        // Allow all authenticated users to initiate workflows (approval required anyway)
+        actions.push({
+          key: 'create_new_version',
+          label: '📝 Create New Version',
+          color: 'blue', 
+          description: 'Start up-versioning workflow for document revision'
+        });
+        
+        actions.push({
+          key: 'mark_obsolete',
+          label: '🗑️ Mark Obsolete', 
+          color: 'red',
+          description: 'Start obsolete workflow to retire this document'
+        });
         break;
         
       case 'EFFECTIVE':
         // EDMS lines 21-26: Up-versioning and obsolescence workflows
-        if (hasWritePermission) {
-          actions.push({ 
-            key: 'create_revision', 
-            label: '📝 Create New Version', 
-            color: 'blue',
-            description: 'Start up-versioning workflow'
-          });
-        }
-        if (hasWritePermission && !hasDocumentDependencies()) {
+        // Allow all authenticated users to initiate workflows (approval required anyway)
+        actions.push({ 
+          key: 'create_revision', 
+          label: '📝 Create New Version', 
+          color: 'blue',
+          description: 'Start up-versioning workflow'
+        });
+        
+        if (!hasDocumentDependencies()) {
           actions.push({ 
             key: 'initiate_obsolescence', 
             label: '🗑️ Mark Obsolete', 

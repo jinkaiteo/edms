@@ -73,21 +73,17 @@ const CreateNewVersionModal: React.FC<CreateNewVersionModalProps> = ({
 
       // Create new version through workflow API
       const versionData = {
-        action: 'create_new_version',
-        version_type: versionType,
+        action: 'start_version_workflow',
         major_increment: versionType === 'major',
         reason_for_change: reasonForChange,
         change_summary: changeSummary,
-        version_comment: versionComment || `New ${versionType} version created`,
-        metadata: {
-          source_document: document.uuid,
-          source_version: document.version_string,
-          created_by: 'author'
-        }
+        title: document.title,
+        description: document.description || ''  // Ensure description is never null
       };
 
-
-      const workflowResponse = await apiService.post(`/documents/documents/${document.uuid}/workflow/`, versionData);
+      // Debug logging can be removed in production
+      
+      const workflowResponse = await apiService.post(`/workflows/documents/${document.uuid}/`, versionData);
 
       // Check if a new document was created or if we get the new document data
       let newDocument = null;
@@ -98,14 +94,18 @@ const CreateNewVersionModal: React.FC<CreateNewVersionModalProps> = ({
       }
 
 
-      if (newDocument) {
-        onVersionCreated(newDocument);
+      if (workflowResponse.success) {
+        onVersionCreated({
+          success: true,
+          message: workflowResponse.message,
+          newDocumentId: workflowResponse.new_document_id,
+          newDocumentNumber: workflowResponse.new_document_number,
+          newVersion: workflowResponse.new_version
+        });
+        onClose();
       } else {
-        // Fallback: just trigger refresh
-        onVersionCreated(null);
+        setError(workflowResponse.error || 'Failed to create new version');
       }
-
-      onClose();
 
     } catch (workflowError: any) {
       console.error('❌ WORKFLOW: Failed to create new version - full error:', workflowError);

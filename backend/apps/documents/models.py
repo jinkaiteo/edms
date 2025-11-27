@@ -334,7 +334,9 @@ class Document(models.Model):
         """Override save to handle auto-generation and validation."""
         # Auto-generate document number if not set
         if not self.document_number:
-            self.document_number = self.generate_document_number()
+            base_number = self.generate_document_number()
+            # Append version for consistency with up-versioning workflow
+            self.document_number = f"{base_number}-v{self.version_major}.{self.version_minor}"
         
         # Calculate file checksum if file exists
         if self.file_path and not self.file_checksum:

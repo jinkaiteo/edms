@@ -219,7 +219,7 @@ class AuditService:
             additional_data=document_data
         )
 
-    def log_login_event(self, user: User, success: bool, failure_reason: str = None) -> LoginAudit:
+    def log_login_event(self, user: User, success: bool, failure_reason: str = None, attempted_username: str = None) -> LoginAudit:
         """
         Log user login events.
         
@@ -235,7 +235,7 @@ class AuditService:
         
         return LoginAudit.objects.create(
             user=user,
-            username=user.username if user else None,
+            username=user.username if user else (attempted_username or 'unknown'),
             success=success,
             failure_reason=failure_reason,
             ip_address=audit_context.get('ip_address') if audit_context else None,

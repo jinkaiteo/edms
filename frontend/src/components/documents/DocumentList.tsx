@@ -27,6 +27,64 @@ const DocumentList: React.FC<DocumentListProps> = ({
   const [viewMode, setViewMode] = useState<'list' | 'grid'>('list');
   const [sortBy, setSortBy] = useState<'title' | 'created_at' | 'status' | 'document_type'>('created_at');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
+  const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
+
+  // Helper function to extract base document number (remove version suffix)
+  const getBaseDocumentNumber = (documentNumber: string): string => {
+    if (documentNumber.includes('-v')) {
+      return documentNumber.split('-v')[0];
+    }
+    return documentNumber;
+  };
+
+  // Helper function to group documents by base number
+  const groupDocumentsByBase = (docs: Document[]) => {
+    const groups: { [key: string]: Document[] } = {};
+    
+    docs.forEach(doc => {
+      const baseNumber = getBaseDocumentNumber(doc.document_number);
+      if (!groups[baseNumber]) {
+        groups[baseNumber] = [];
+      }
+      groups[baseNumber].push(doc);
+    });
+
+    // Sort each group by version (newest first)
+    Object.keys(groups).forEach(baseNumber => {
+      groups[baseNumber].sort((a, b) => {
+        // Extract version numbers for proper sorting
+        const getVersionNumber = (docNum: string) => {
+          const versionMatch = docNum.match(/-v(\d+)\.(\d+)$/);
+          if (versionMatch) {
+            return { major: parseInt(versionMatch[1]), minor: parseInt(versionMatch[2]) };
+          }
+          return { major: 1, minor: 0 }; // Default version
+        };
+
+        const versionA = getVersionNumber(a.document_number);
+        const versionB = getVersionNumber(b.document_number);
+        
+        if (versionA.major !== versionB.major) {
+          return versionB.major - versionA.major; // Newer major version first
+        }
+        return versionB.minor - versionA.minor; // Newer minor version first
+      });
+    });
+
+    return groups;
+  };
+
+  const toggleGroupExpansion = (baseNumber: string) => {
+    const newExpanded = new Set(expandedGroups);
+    if (newExpanded.has(baseNumber)) {
+      newExpanded.delete(baseNumber);
+    } else {
+      newExpanded.add(baseNumber);
+    }
+    setExpandedGroups(newExpanded);
+  };
+
+
 
   // Mock documents for demonstration (keeping for potential fallback)
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -418,81 +476,193 @@ const DocumentList: React.FC<DocumentListProps> = ({
             <p className="text-gray-500">No documents match your current filters.</p>
           </div>
         ) : viewMode === 'list' ? (
-          // List view
-          <div className="space-y-3">
-            {documents.map((document) => (
-              <div
-                key={document.id || document.uuid || Math.random()}
-                className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow cursor-pointer"
-                onClick={() => onDocumentSelect?.(document)}
-              >
-                <div className="flex justify-between items-start">
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center space-x-3 mb-2">
-                      <span className="text-2xl">{getStatusIcon(document.status)}</span>
+          // Grouped list view with version history
+          (() => {
+            // Group documents and get current versions for sorting
+            const documentGroups = groupDocumentsByBase(documents);
+            const groupKeys = Object.keys(documentGroups);
+
+            // Sort groups by the current (newest) version's properties
+            const sortedGroupKeys = groupKeys.sort((a, b) => {
+              const currentDocA = documentGroups[a][0]; // First item is newest due to our sorting
+              const currentDocB = documentGroups[b][0];
+
+              let aValue: any, bValue: any;
+
+              switch (sortBy) {
+                case 'title':
+                  aValue = currentDocA.title.toLowerCase();
+                  bValue = currentDocB.title.toLowerCase();
+                  break;
+                case 'created_at':
+                  aValue = new Date(currentDocA.created_at);
+                  bValue = new Date(currentDocB.created_at);
+                  break;
+                case 'status':
+                  aValue = currentDocA.status.toLowerCase();
+                  bValue = currentDocB.status.toLowerCase();
+                  break;
+                case 'document_type':
+                  aValue = currentDocA.document_type_display?.toLowerCase() || '';
+                  bValue = currentDocB.document_type_display?.toLowerCase() || '';
+                  break;
+                default:
+                  return 0;
+              }
+
+              if (sortOrder === 'asc') {
+                return aValue > bValue ? 1 : aValue < bValue ? -1 : 0;
+              } else {
+                return aValue < bValue ? 1 : aValue > bValue ? -1 : 0;
+              }
+            });
+
+            return (
+              <div className="space-y-4">
+                {sortedGroupKeys.map((baseNumber) => {
+              const groupDocuments = documentGroups[baseNumber];
+              const currentVersion = groupDocuments[0]; // Newest version
+              const olderVersions = groupDocuments.slice(1); // Superseded versions
+              const isExpanded = expandedGroups.has(baseNumber);
+
+              return (
+                <div key={baseNumber} className="border border-gray-200 rounded-lg">
+                  {/* Current Version */}
+                  <div
+                    className="p-4 hover:shadow-md transition-shadow cursor-pointer"
+                    onClick={() => onDocumentSelect?.(currentVersion)}
+                  >
+                    <div className="flex justify-between items-start">
                       <div className="flex-1 min-w-0">
-                        <h4 className="text-sm font-medium text-gray-900 truncate">
-                          {document.title}
-                        </h4>
-                        <p className="text-sm text-gray-500">
-                          {document.document_number} • {document.document_type_display || 'Unknown Type'}
+                        <div className="flex items-center space-x-3 mb-2">
+                          <span className="text-2xl">{getStatusIcon(currentVersion.status)}</span>
+                          <div className="flex-1 min-w-0">
+                            <h4 className="text-sm font-medium text-gray-900 truncate">
+                              {currentVersion.title}
+                            </h4>
+                            <p className="text-sm text-gray-500">
+                              {currentVersion.document_number} • {currentVersion.document_type_display || 'Unknown Type'}
+                              {currentVersion.status === 'APPROVED_AND_EFFECTIVE' && (
+                                <span className="ml-2 inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                                  Current Version
+                                </span>
+                              )}
+                            </p>
+                          </div>
+                        </div>
+                        <p className="text-sm text-gray-600 line-clamp-2 mb-2">
+                          {currentVersion.description}
                         </p>
+                        <div className="flex items-center space-x-4 text-sm text-gray-500">
+                          <span>Status: {currentVersion.status.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}</span>
+                          {currentVersion.author_display && (
+                            <span>Author: {currentVersion.author_display}</span>
+                          )}
+                          <span>Created: {formatDate(currentVersion.created_at)}</span>
+                        </div>
+                      </div>
+                      
+                      <div className="flex items-center space-x-2">
+                        {onDocumentEdit && (
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onDocumentEdit(currentVersion);
+                            }}
+                            className="text-blue-600 hover:text-blue-900 text-sm font-medium"
+                          >
+                            Edit
+                          </button>
+                        )}
+                        {onDocumentDelete && (
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onDocumentDelete(currentVersion);
+                            }}
+                            className="text-red-600 hover:text-red-900 text-sm font-medium"
+                          >
+                            Delete
+                          </button>
+                        )}
                       </div>
                     </div>
-                    <p className="text-sm text-gray-600 line-clamp-2 mb-2">
-                      {document.description}
-                    </p>
-                    <div className="flex items-center space-x-4 text-xs text-gray-500">
-                      <span>By {document.author_display || 'Unknown Author'}</span>
-                      <span>•</span>
-                      <span>{formatDate(document.created_at)}</span>
-                      {document.file_size && (
-                        <>
-                          <span>•</span>
-                          <span>{formatFileSize(document.file_size)}</span>
-                        </>
+                  </div>
+
+                  {/* Version History Toggle */}
+                  {olderVersions.length > 0 && (
+                    <div className="border-t border-gray-100">
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          toggleGroupExpansion(baseNumber);
+                        }}
+                        className="w-full px-4 py-2 text-left text-sm text-gray-600 hover:bg-gray-50 flex items-center justify-between"
+                      >
+                        <span>
+                          {olderVersions.length} previous version{olderVersions.length !== 1 ? 's' : ''}
+                        </span>
+                        <svg
+                          className={`w-4 h-4 transform transition-transform ${isExpanded ? 'rotate-180' : ''}`}
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                        </svg>
+                      </button>
+
+                      {/* Previous Versions */}
+                      {isExpanded && (
+                        <div className="border-t border-gray-100 bg-gray-50">
+                          {olderVersions.map((oldVersion, index) => (
+                            <div
+                              key={oldVersion.id || oldVersion.uuid}
+                              className="px-4 py-3 hover:bg-gray-100 cursor-pointer border-b border-gray-100 last:border-b-0"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                onDocumentSelect?.(oldVersion);
+                              }}
+                            >
+                              <div className="flex items-center justify-between">
+                                <div className="flex-1">
+                                  <div className="flex items-center space-x-2">
+                                    <span className="text-sm font-medium text-gray-700">
+                                      {oldVersion.document_number}
+                                    </span>
+                                    <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gray-200 text-gray-700">
+                                      {oldVersion.status.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}
+                                    </span>
+                                  </div>
+                                  <p className="text-sm text-gray-500 mt-1">
+                                    Created: {formatDate(oldVersion.created_at)}
+                                    {oldVersion.author_display && ` • Author: ${oldVersion.author_display}`}
+                                  </p>
+                                </div>
+                                <div className="flex items-center space-x-2">
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      onDocumentSelect?.(oldVersion);
+                                    }}
+                                    className="text-blue-600 hover:text-blue-900 text-sm font-medium"
+                                  >
+                                    View
+                                  </button>
+                                </div>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
                       )}
                     </div>
-                  </div>
-                  <div className="flex items-center space-x-3 ml-4">
-                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(document.status)}`}>
-                      {document.status.replace('_', ' ')}
-                    </span>
-                    <div className="flex space-x-1">
-                      {onDocumentEdit && (
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            onDocumentEdit(document);
-                          }}
-                          className="p-1 text-gray-400 hover:text-blue-600"
-                          title="Edit document"
-                        >
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                          </svg>
-                        </button>
-                      )}
-                      {onDocumentDelete && (
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            onDocumentDelete(document);
-                          }}
-                          className="p-1 text-gray-400 hover:text-red-600"
-                          title="Delete document"
-                        >
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                          </svg>
-                        </button>
-                      )}
-                    </div>
-                  </div>
+                  )}
                 </div>
+              );
+            })}
               </div>
-            ))}
-          </div>
+            );
+          })()
         ) : (
           // Grid view
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
