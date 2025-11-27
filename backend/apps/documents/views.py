@@ -328,7 +328,7 @@ class DocumentViewSet(viewsets.ModelViewSet):
             )
             return Response(
                 {'error': 'No file attached to this document'},
-                status=status.HTTP_404_NOT_FOUND
+                status=status.HTTP_400_BAD_REQUEST
             )
         
         file_path = document.full_file_path
