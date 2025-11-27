@@ -6,6 +6,7 @@ and related models with validation and security considerations.
 """
 
 from rest_framework import serializers
+from rest_framework.exceptions import ValidationError
 from django.contrib.auth import get_user_model
 from django.utils import timezone
 
@@ -341,7 +342,12 @@ class DocumentCreateSerializer(serializers.ModelSerializer):
         import mimetypes
         from django.conf import settings
         
-        validated_data['author'] = self.context['request'].user
+        # Get user from context with fallback
+        user = self.context['request'].user
+        if user.is_anonymous:
+            raise ValidationError({'detail': 'Authentication required to create documents'})
+        
+        validated_data['author'] = user
         
         # Handle file upload if present
         uploaded_file = validated_data.pop('file', None)

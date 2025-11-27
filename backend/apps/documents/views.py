@@ -99,6 +99,34 @@ class DocumentViewSet(viewsets.ModelViewSet):
     
     queryset = Document.objects.all()
     permission_classes = [permissions.IsAuthenticated]
+    
+    def create(self, request, *args, **kwargs):
+        """Enhanced document creation with better error handling."""
+        # Ensure user has proper permissions
+        user = request.user
+        if user.is_anonymous:
+            return Response(
+                {'error': 'Authentication required'}, 
+                status=status.HTTP_401_UNAUTHORIZED
+            )
+        
+        # Check if user has document creation permissions
+        has_permission = (
+            user.is_superuser or
+            user.user_roles.filter(
+                role__module='O1',
+                role__permission_level__in=['write', 'admin'],
+                is_active=True
+            ).exists()
+        )
+        
+        if not has_permission:
+            return Response(
+                {'error': 'Insufficient permissions to create documents'}, 
+                status=status.HTTP_403_FORBIDDEN
+            )
+        
+        return super().create(request, *args, **kwargs)
     filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
     filterset_class = DocumentFilter
     search_fields = ['document_number', 'title', 'description', 'keywords']

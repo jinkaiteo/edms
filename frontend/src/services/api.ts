@@ -535,9 +535,23 @@ class ApiService {
     return response.data;
   }
 
-  // Generic POST method
-  async post<T>(endpoint: string, data?: any): Promise<T> {
-    const response = await this.client.post<T>(endpoint, data);
+  // Generic POST method with proper FormData handling
+  async post<T>(endpoint: string, data?: any, config?: any): Promise<T> {
+    // For FormData requests, ensure proper headers and auth
+    if (data instanceof FormData) {
+      const accessToken = localStorage.getItem('accessToken');
+      const formDataConfig = {
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+          // Don't set Content-Type for FormData - let browser set boundary
+        },
+        ...config
+      };
+      const response = await this.client.post<T>(endpoint, data, formDataConfig);
+      return response.data;
+    }
+    
+    const response = await this.client.post<T>(endpoint, data, config);
     return response.data;
   }
 
