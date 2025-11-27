@@ -140,17 +140,30 @@ const ReviewerInterface: React.FC<ReviewerInterfaceProps> = ({
           break;
       }
 
-      // Trigger download
-      const response = await apiService.get(downloadUrl, { responseType: 'blob' });
+      // Trigger download with proper error handling and DOM context
+      const response = await fetch(downloadUrl, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('accessToken')}`,
+        },
+      });
       
-      // Create download link
-      const url = window.URL.createObjectURL(new Blob([response]));
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = `${document?.document_number}_${downloadType}.pdf`;
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
+      if (!response.ok) {
+        throw new Error(`Download failed: ${response.status} ${response.statusText}`);
+      }
+      
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      
+      // Create download link with proper DOM context check
+      if (typeof document !== 'undefined' && document.createElement) {
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `${document?.document_number}_${downloadType}.${getFileExtension(document?.file_name || '')}`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+      }
       window.URL.revokeObjectURL(url);
       
       
