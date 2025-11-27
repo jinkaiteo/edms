@@ -98,7 +98,7 @@ class DocumentViewSet(viewsets.ModelViewSet):
     """
     
     queryset = Document.objects.all()
-    permission_classes = [permissions.IsAuthenticated, CanManageDocuments]
+    permission_classes = [permissions.IsAuthenticated]
     filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
     filterset_class = DocumentFilter
     search_fields = ['document_number', 'title', 'description', 'keywords']
@@ -288,12 +288,44 @@ class DocumentViewSet(viewsets.ModelViewSet):
         
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
     
-    @action(detail=True, methods=['get'])
-    def download(self, request, uuid=None):
-        """Download document file."""
+    @action(detail=True, methods=['get'], url_path='download/original')
+    def download_original(self, request, uuid=None):
+        """Download original document file."""
+        document = self.get_object()
+        return self._serve_document_file(document, request, 'original')
+    
+    @action(detail=True, methods=['get'], url_path='download/annotated')
+    def download_annotated(self, request, uuid=None):
+        """Download annotated document file with metadata."""
+        document = self.get_object()
+        return self._serve_document_file(document, request, 'annotated')
+    
+    @action(detail=True, methods=['get'], url_path='download/official')
+    def download_official_pdf(self, request, uuid=None):
+        """Download official PDF (only for approved and effective documents)."""
         document = self.get_object()
         
+        # Access control: Only approved and effective documents can be downloaded as official PDF
+        if document.status not in ['APPROVED_AND_EFFECTIVE']:
+            return Response(
+                {'error': 'Official PDF download is only available for approved and effective documents'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+        
+        return self._serve_document_file(document, request, 'official_pdf')
+
+    def _serve_document_file(self, document, request, download_type):
+        """Common method to serve document files with proper validation."""
+        
         if not document.file_path:
+            log_document_access(
+                document=document,
+                user=request.user,
+                access_type='DOWNLOAD',
+                request=request,
+                success=False,
+                failure_reason='No file attached to document'
+            )
             return Response(
                 {'error': 'No file attached to this document'},
                 status=status.HTTP_404_NOT_FOUND
@@ -336,7 +368,8 @@ class DocumentViewSet(viewsets.ModelViewSet):
             access_type='DOWNLOAD',
             request=request,
             success=True,
-            file_downloaded=True
+            file_downloaded=True,
+            metadata={'download_type': download_type}
         )
         
         # Serve file
