@@ -288,13 +288,15 @@ class DocumentDetailSerializer(serializers.ModelSerializer):
 class DocumentCreateSerializer(serializers.ModelSerializer):
     """Serializer for creating new documents."""
     
+    file = serializers.FileField(write_only=True, required=False)
+    
     class Meta:
         model = Document
         fields = [
             'title', 'description', 'keywords', 'document_type',
             'document_source', 'priority', 'reviewer', 'approver',
-            'file_name', 'file_path', 'mime_type', 'effective_date',
-            'reason_for_change', 'requires_training', 'is_controlled'
+            'file', 'effective_date', 'reason_for_change', 
+            'requires_training', 'is_controlled'
         ]
     
     def validate(self, data):
@@ -333,9 +335,55 @@ class DocumentCreateSerializer(serializers.ModelSerializer):
         return data
     
     def create(self, validated_data):
-        """Create new document with proper defaults."""
+        """Create new document with proper defaults and file handling."""
+        import os
+        import hashlib
+        import mimetypes
+        from django.conf import settings
+        
         validated_data['author'] = self.context['request'].user
-        return super().create(validated_data)
+        
+        # Handle file upload if present
+        uploaded_file = validated_data.pop('file', None)
+        
+        # Create document first
+        document = super().create(validated_data)
+        
+        if uploaded_file:
+            # Create storage directory if it doesn't exist
+            storage_dir = os.path.join(settings.BASE_DIR, 'storage', 'documents')
+            os.makedirs(storage_dir, exist_ok=True)
+            
+            # Generate unique filename
+            file_extension = os.path.splitext(uploaded_file.name)[1]
+            filename = f"{document.uuid}{file_extension}"
+            file_path = os.path.join(storage_dir, filename)
+            
+            # Save file to disk
+            with open(file_path, 'wb') as f:
+                for chunk in uploaded_file.chunks():
+                    f.write(chunk)
+            
+            # Calculate file metadata
+            file_size = os.path.getsize(file_path)
+            mime_type, _ = mimetypes.guess_type(uploaded_file.name)
+            
+            # Calculate checksum
+            with open(file_path, 'rb') as f:
+                file_hash = hashlib.sha256()
+                for chunk in iter(lambda: f.read(4096), b""):
+                    file_hash.update(chunk)
+                checksum = file_hash.hexdigest()
+            
+            # Update document with file information
+            document.file_name = uploaded_file.name
+            document.file_path = os.path.relpath(file_path, settings.BASE_DIR)
+            document.file_size = file_size
+            document.file_checksum = checksum
+            document.mime_type = mime_type or 'application/octet-stream'
+            document.save()
+        
+        return document
 
 
 class DocumentUpdateSerializer(serializers.ModelSerializer):

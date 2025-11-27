@@ -327,7 +327,7 @@ class Document(models.Model):
     def full_file_path(self):
         """Return the full file path."""
         if self.file_path:
-            return os.path.join(settings.MEDIA_ROOT, self.file_path)
+            return os.path.join(settings.BASE_DIR, self.file_path)
         return None
     
     def save(self, *args, **kwargs):
