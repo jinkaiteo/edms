@@ -506,7 +506,7 @@ class DocumentLifecycleService:
         """
         with transaction.atomic():
             # Validate document can be obsoleted
-            if document.status not in ['EFFECTIVE']:
+            if document.status not in ['EFFECTIVE', 'APPROVED_AND_EFFECTIVE']:
                 raise ValidationError("Can only obsolete EFFECTIVE documents")
             
             if not reason:
@@ -520,26 +520,35 @@ class DocumentLifecycleService:
                     f"Cannot obsolete document with critical dependencies: {', '.join(dependent_docs)}"
                 )
             
-            # Get obsolete workflow type
-            obsolete_type = (self.workflow_types.get('OBSOLETE') or 
-                           WorkflowType.objects.filter(workflow_type='OBSOLETE').first())
+            # Get obsolete workflow type - use simple string instead of WorkflowType object
+            obsolete_workflow_type = 'OBSOLETE'
             
-            if not obsolete_type:
-                raise ValidationError("No OBSOLETE workflow type found")
-            
-            # Create obsolescence workflow
-            workflow = DocumentWorkflow.objects.create(
+            # Get or update existing workflow for obsolescence
+            workflow, created = DocumentWorkflow.objects.get_or_create(
                 document=document,
-                workflow_type=obsolete_type,
-                current_state=self.states['PENDING_APPROVAL'],  # Obsolescence requires approval
-                initiated_by=user,
-                current_assignee=document.approver or document.author,
-                due_date=self._calculate_due_date(obsolete_type),
-                workflow_data={
-                    'obsolete_reason': reason,
-                    'target_obsolete_date': target_date.isoformat() if target_date else None
+                defaults={
+                    'workflow_type': obsolete_workflow_type,
+                    'current_state': self.states['PENDING_APPROVAL'],
+                    'initiated_by': user,
+                    'current_assignee': document.approver or document.author,
+                    'due_date': None,
+                    'workflow_data': {
+                        'obsolete_reason': reason,
+                        'target_obsolete_date': target_date.isoformat() if target_date else None
+                    }
                 }
             )
+            
+            # If workflow already exists, update it for obsolescence
+            if not created:
+                workflow.workflow_type = obsolete_workflow_type
+                workflow.current_state = self.states['PENDING_APPROVAL']
+                workflow.current_assignee = document.approver or document.author
+                workflow.workflow_data.update({
+                    'obsolete_reason': reason,
+                    'target_obsolete_date': target_date.isoformat() if target_date else None
+                })
+                workflow.save()
             
             return workflow
     

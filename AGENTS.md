@@ -1,244 +1,313 @@
-# EDMS Development Agent Guidelines
+# EDMS Development Guidelines
 
 ## Project Overview
 
 ### Purpose
-21 CFR Part 11 compliant Electronic Document Management System (EDMS) for regulated industries like pharmaceuticals. Focuses on secure, on-premise deployment with complete document lifecycle management.
+**21 CFR Part 11 compliant Electronic Document Management System (EDMS)** for regulated industries like pharmaceuticals. Designed for secure, on-premise deployment with complete document lifecycle management including up-versioning, obsolescence workflows, and comprehensive audit trails.
 
 ### Core Technologies
 - **Backend**: Django 4.2 + Django REST Framework + Enhanced Simple Workflow Engine
-- **Frontend**: React 18 + TypeScript + Tailwind CSS
-- **Database**: PostgreSQL 18 with encryption + full-text search
-- **Cache**: Redis 7+ for sessions and task queues
-- **Containers**: Docker with multi-container deployment
-- **Authentication**: Entra ID integration support
-- **Document Processing**: python-docx-template, PyPDF2, Tesseract
+- **Frontend**: React 18 + TypeScript + Tailwind CSS 
+- **Database**: PostgreSQL 18 with full-text search and encryption
+- **Cache & Tasks**: Redis 7+ for sessions, task queues, and caching
+- **Containers**: Docker with multi-container deployment via docker-compose
+- **Authentication**: JWT + Entra ID integration support
+- **Document Processing**: python-docx-template, PyPDF2, Tesseract OCR
+- **Testing**: Playwright for E2E, pytest for backend, Jest for frontend
 
-### Architecture Decision
-- **HTTP-only internal deployment** (simplified from HTTPS for easier setup)
+### Architecture Decisions
+- **HTTP-only internal deployment** (simplified from HTTPS for development)
 - **PostgreSQL full-text search** (simplified from Elasticsearch)
-- **On-premise deployment** with Ubuntu 20.04.6 LTS Server
+- **On-premise Ubuntu 20.04.6 LTS Server** deployment target
+- **Enhanced Simple Workflow Engine** instead of complex workflow libraries
 - **Modular approach** with operational (O1) and service modules (S1-S7)
 
-## Current Project Status
+## Current Implementation Status
 
-### Implementation Phase
-- ✅ **Architecture & documentation complete** - comprehensive technical specs ready
-- ✅ **Repository setup** - clean structure with proper documentation
-- ⏳ **Code implementation** - not yet started (planning phase complete)
-- ⏳ **Development environment** - containers and scripts to be created
+### ✅ Completed Features
+- **Core workflow system** - Review, approval, up-versioning, supersession
+- **Document management** - Upload, versioning, grouped view with version history
+- **User authentication** - JWT-based with role permissions
+- **Audit trail** - Complete 21 CFR Part 11 compliant logging
+- **Document downloads** - Original, annotated, official PDF with digital signatures
+- **Frontend UI** - Professional React interface with accordion version history
+- **Test users** - Complete set of role-based test accounts
 
-### Expected Project Structure
+### 🔄 In Progress
+- **Obsolete workflow** - Mark documents obsolete with dependency checking
+- **Termination workflow** - Cancel workflows before approval
+- **Enhanced notifications** - Email alerts for workflow events
+
+### Project Structure
 ```
 edms/
-├── backend/                # Django application (to be created)
-│   ├── edms/              # Django project
-│   ├── apps/              # Django apps (documents, users, workflows)
-│   └── requirements/      # Python dependencies
-├── frontend/              # React application (to be created)
-│   ├── src/              # React components and pages
+├── backend/                # ✅ Django application (COMPLETE)
+│   ├── edms/              # Django project settings
+│   ├── apps/              # Django apps (documents, users, workflows, audit, etc.)
+│   ├── requirements/      # Python dependencies by environment
+│   └── fixtures/          # Initial data and test users
+├── frontend/              # ✅ React application (COMPLETE)
+│   ├── src/              # React components, pages, hooks, contexts
 │   └── public/           # Static assets
-├── infrastructure/        # Container configs (to be created)
-├── scripts/              # Automation scripts (to be created)
+├── infrastructure/        # ✅ Container configurations
+├── scripts/              # ✅ Automation and deployment scripts
 ├── Dev_Docs/            # ✅ Complete technical documentation
-└── storage/             # Document storage (encrypted, to be created)
+├── tests/               # ✅ E2E Playwright tests
+└── test_doc/           # Sample documents for testing
 ```
 
-## Key Documentation Files
+## Essential Documentation
 
-### Essential Reading
-- `README.md` - Project overview and quick start
-- `Dev_Docs/EDMS_details.txt` - Core system requirements
-- `Dev_Docs/1_EDMS_Database_Schema_Complete.md` - Complete database design
-- `Dev_Docs/7_Django_Models_Implementation.md` - Django model specifications
-- `Dev_Docs/EDMS_Placeholder_Metadata_Pairs.md` - Document placeholder system
+### Core System Requirements
+- `README.md` - Project overview and quick start guide
+- `Dev_Docs/EDMS_details.txt` - Complete system requirements and workflows
+- `Dev_Docs/1_EDMS_Database_Schema_Complete.md` - Database design
+- `SECURITY.md` - Security policies and 21 CFR Part 11 compliance
 
 ### Implementation Guides
-- `Dev_Docs/6_Environment_Setup_Scripts.md` - Setup automation scripts
-- `Dev_Docs/2_EDMS_API_Specifications.md` - REST API design
-- `Dev_Docs/3_Enhanced_Simple_Workflow_Setup.md` - Custom Workflow Engine configuration
-- `Dev_Docs/Missing_Configuration_Templates.md` - Config templates
+- `Dev_Docs/2_EDMS_API_Specifications.md` - REST API design patterns
+- `Dev_Docs/3_Enhanced_Simple_Workflow_Setup.md` - Workflow engine configuration
+- `Dev_Docs/7_Django_Models_Implementation.md` - Django model specifications
+- `CONTRIBUTING.md` - Development workflow and coding standards
 
-### Security & Compliance
-- `SECURITY.md` - Security policies and vulnerability reporting
-- `Dev_Docs/4_Authentication_Integration.md` - Auth implementation
-- All features must comply with **21 CFR Part 11** and **ALCOA principles**
+### Authentication & Testing
+- `QUICK_LOGIN_CREDENTIALS.md` - Current test user credentials (password: `test123`)
+- `Dev_Docs/EDMS_Test_Users_Credentials.md` - Complete test user matrix
+- `UAT_QUICK_START_GUIDE.md` - User acceptance testing procedures
 
-## Development Conventions
+## Development Standards
 
 ### Code Organization
-- **Modular architecture**: Operational module O1 + Service modules S1-S7
-- **App structure**: Separate Django apps for documents, users, workflows, audit, etc.
-- **API design**: RESTful endpoints following specification in `2_EDMS_API_Specifications.md`
+- **Modular Django architecture**: Separate apps for documents, users, workflows, audit
+- **Enhanced Simple Workflow Engine**: Custom workflow implementation in `apps/workflows/`
+- **API-first design**: RESTful endpoints with consistent response formats
+- **Component-based frontend**: Reusable React components with TypeScript
 
 ### Database Conventions
-- **Primary keys**: Use Django's default auto-incrementing IDs
-- **UUIDs**: Add UUID fields for external references and security
-- **Audit trail**: All model changes must be tracked (S2 module)
-- **Encryption**: Sensitive document data encrypted at rest
+- **Auto-incrementing primary keys**: Use Django defaults
+- **UUID fields**: For external references and security (`uuid` field on all main models)
+- **Audit trail**: All model changes tracked via signals in `apps/audit/`
+- **Versioned document numbering**: `{BASE}-v{MAJOR}.{MINOR}` format
 
-### Document Management
-- **Placeholder system**: Use `{{PLACEHOLDER_NAME}}` format for document templates
-- **File processing**: Support .docx (python-docx-template), PDF (PyPDF2), OCR (Tesseract)
-- **Version control**: Major.minor versioning (e.g., 1.2)
-- **Workflow states**: Draft → Review → Approval → Effective → (Superseded/Obsolete)
+### Document Management Conventions
+- **Document types**: Policy, Manual, Procedures, SOP, Forms, Records
+- **Document sources**: Original Digital Draft, Scanned Original, Scanned Copy  
+- **Workflow states**: `DRAFT` → `PENDING_REVIEW` → `UNDER_REVIEW` → `REVIEWED` → `PENDING_APPROVAL` → `APPROVED_AND_EFFECTIVE` → `SUPERSEDED`/`OBSOLETE`
+- **Version control**: Automatic supersession when new versions become effective
 
-### Security Requirements
+### Security & Compliance
 - **Role-based permissions**: read, write, review, approve, admin levels
-- **Audit logging**: All database modifications must be recorded
-- **Input validation**: Comprehensive validation for all user inputs
-- **Session security**: Secure session management with Redis
-- **File integrity**: SHA-256 checksums for all documents
+- **Complete audit logging**: All database modifications recorded with user attribution
+- **Input validation**: Comprehensive validation at API and model levels
+- **File integrity**: SHA-256 checksums for all uploaded documents
+- **21 CFR Part 11**: Electronic signatures, tamper-proof audit trails, access controls
 
-## Test Users and Data
+## Test Users & Development
 
-### Default Test Accounts (from EDMS_Test_Users_Credentials.md)
-- **Document Admin**: `docadmin` / `EDMSAdmin2024!`
-- **Document Author**: `author` / `AuthorPass2024!`
-- **Document Reviewer**: `reviewer` / `ReviewPass2024!`
-- **Document Approver**: `approver` / `ApprovePass2024!`
-- **Placeholder Admin**: `placeholderadmin` / `PlaceholderAdmin2024!`
+### Standard Test Credentials
+**All test users use password: `test123`**
 
-### Test Data Categories
-- Test documents for each document type (Policy, Manual, Procedures, SOP, Forms, Records)
-- Workflow scenarios (review, approval, up-versioning, obsoleting)
-- Permission testing across different user roles
+| Username | Role | Department | Capabilities |
+|----------|------|------------|-------------|
+| `admin` | System Admin | IT Systems | Full superuser access |
+| `author01`/`author02` | Document Author | QA/Regulatory | Create & edit documents |
+| `reviewer01`/`reviewer02` | Document Reviewer | QA/Regulatory | Review documents |
+| `approver01`/`approver02` | Document Approver | QA/Regulatory | Approve documents |
+
+### Quick Testing Workflow
+1. **Login as `author01`** → Create document → Submit for review
+2. **Login as `reviewer01`** → Review and approve document
+3. **Login as `author01`** → Route document for approval  
+4. **Login as `approver01`** → Approve and set effective date
+5. **Test up-versioning** → Create new version → Complete workflow
+
+### Development Environment
+```bash
+# Start development environment
+docker-compose up -d
+
+# Backend: http://localhost:8000
+# Frontend: http://localhost:3000  
+# PostgreSQL: localhost:5432
+# Redis: localhost:6379
+```
 
 ## API Design Patterns
 
-### Endpoint Structure
+### REST Endpoints Structure
 - **Base URL**: `/api/v1/`
-- **Authentication**: JWT-based API authentication
-- **Modules**: `/documents/`, `/users/`, `/workflows/`, `/audit/`, etc.
-- **Standard responses**: Consistent error handling and response formats
+- **Authentication**: JWT Bearer tokens
+- **Documents**: `/api/v1/documents/documents/` (CRUD + workflow actions)
+- **Workflows**: `/api/v1/workflows/documents/{uuid}/` (workflow state management)
+- **Users**: `/api/v1/users/` (user management)
+- **Audit**: `/api/v1/audit/` (audit trail access)
 
-### Key API Modules
-1. **Documents API** (`/api/v1/documents/`) - CRUD operations, workflow actions
-2. **Users API** (`/api/v1/users/`) - User management, roles, permissions
-3. **Workflows API** (`/api/v1/workflows/`) - Workflow state management
-4. **Audit API** (`/api/v1/audit/`) - Compliance and audit trail access
+### Standard Response Format
+```json
+{
+  "success": true,
+  "message": "Operation completed successfully",
+  "data": { ... },
+  "errors": []
+}
+```
 
-## Compliance Requirements
+### Workflow Actions
+- `start_review` - Begin review workflow
+- `submit_for_review` - Submit to reviewer
+- `complete_review` - Complete review process
+- `route_for_approval` - Send to approver
+- `approve_document` - Approve with effective date
+- `start_version_workflow` - Create new document version
+- `terminate_workflow` - Cancel workflow before approval
 
-### 21 CFR Part 11 Implementation
-- **Electronic records**: Complete metadata tracking
-- **Electronic signatures**: Secure signature validation
-- **Audit trails**: Tamper-proof activity logging
-- **Access controls**: Role-based permission system
-- **System validation**: Documented validation process
+## Document Features
 
-### ALCOA Principles
-- **Attributable**: All actions linked to authenticated users
-- **Legible**: Clear, readable audit trails and records
-- **Contemporaneous**: Real-time activity logging
-- **Original**: Tamper-proof record keeping with checksums
-- **Accurate**: Data validation and integrity checks
+### Document States & Visibility
+- **DRAFT** - Visible only to author
+- **PENDING_REVIEW** - Visible to author + assigned reviewer
+- **APPROVED_AND_EFFECTIVE** - Visible to all authenticated users
+- **SUPERSEDED** - Visible via version history accordion UI
+
+### Download Types
+1. **Original Document** - Unmodified uploaded file
+2. **Annotated Document** - With metadata placeholders replaced
+3. **Official PDF** - Digitally signed PDF with full metadata annotation
+
+### Grouped Document View
+- Documents grouped by base number (e.g., `FORM-2025-0001`)
+- Current version displayed prominently with "Current Version" badge
+- Previous versions accessible via expandable accordion interface
+- Professional status indicators and icons
+
+## Workflow Implementation
+
+### Review Workflow (✅ Complete)
+- Author creates document → Reviewer reviews → Approver approves → Becomes effective
+- Full audit trail and email notifications
+- Status transitions with proper validation
+
+### Up-versioning Workflow (✅ Complete)  
+- Create new version from effective document
+- Automatic supersession when new version becomes effective
+- Proper version numbering with major/minor increments
+- Notification to dependent document owners
+
+### Document Lifecycle Service
+Located in `backend/apps/workflows/document_lifecycle.py`:
+- `start_version_workflow()` - Creates new document versions
+- `complete_versioning()` - Handles supersession logic
+- `start_obsolete_workflow()` - Initiates obsolescence with dependency checks
+- `terminate_workflow()` - Returns document to last approved state
+
+## Frontend Architecture
+
+### Component Structure
+```
+frontend/src/
+├── components/
+│   ├── documents/          # Document management UI
+│   ├── workflows/          # Workflow interfaces  
+│   ├── common/            # Shared components
+│   └── audit/             # Audit trail viewer
+├── contexts/              # React contexts (Auth, Toast)
+├── hooks/                 # Custom React hooks
+├── pages/                 # Main page components
+└── services/             # API service layer
+```
+
+### Key Components
+- **DocumentList.tsx** - Grouped document view with version history
+- **DocumentViewer.tsx** - Document details with workflow actions
+- **CreateNewVersionModal.tsx** - Up-versioning interface
+- **SubmitForReviewModal.tsx** - Review workflow initiation
+- **ApproverInterface.tsx** - Document approval interface
 
 ## Development Workflow
 
 ### Git Conventions
 - **Main branch**: `main` (protected, requires PR)
-- **Feature branches**: `feature/module-name` or `feature/issue-number`
-- **Commit format**: Use conventional commits (feat:, fix:, docs:, etc.)
+- **Feature branches**: `feature/description` or `fix/description`
+- **Commit format**: Conventional commits (`feat:`, `fix:`, `docs:`, `refactor:`)
 
-### Testing Requirements
-- **Backend**: pytest with coverage for Django apps
+### Testing Strategy
+- **Backend**: `pytest` with Django test client
 - **Frontend**: Jest + React Testing Library
-- **E2E**: Playwright for end-to-end testing
-- **Compliance**: Specific tests for regulatory requirements
+- **E2E**: Playwright for complete workflow testing
+- **Manual**: User acceptance testing scenarios
 
-### CI/CD Pipeline (`.github/workflows/ci.yml`)
-- **Python 3.11** for backend development
-- **Node.js 18+** for frontend development
-- **Automated testing** on push/PR
-- **Security scanning** and dependency checks
+### Docker Development
+- **Backend**: Django development server with hot reload
+- **Frontend**: React development server with hot reload  
+- **Database**: PostgreSQL with persistent volumes
+- **Shared volumes**: For document storage and development
 
-## Environment Setup
+## Security Guidelines
 
-### Development Prerequisites
-- Python 3.11+
-- Node.js 18+
-- Docker & Docker Compose
-- PostgreSQL 18
-- Redis 7+
+### Development Security
+- HTTP-only for internal development (HTTPS for production)
+- All sensitive data encrypted at rest
+- JWT tokens with proper expiration
+- CORS configured for localhost development
 
-### Key Scripts (to be created in `/scripts/`)
-- `infrastructure-setup.sh` - Initial environment setup
-- `start-development.sh` - Start dev environment
-- `initialize-database.sh` - Database setup and migrations
-- `create-test-users.sh` - Create test user accounts
+### Production Security  
+- HTTPS with valid certificates
+- Environment variable configuration
+- Database encryption
+- Regular security scans and dependency updates
 
-## Important Security Notes
+### Compliance Requirements (21 CFR Part 11)
+- Electronic signatures with validation chains
+- Tamper-proof audit trails with timestamps
+- Role-based access controls with proper authorization
+- Complete document lifecycle tracking
 
-### Development vs Production
-- **Development**: HTTP-only for internal deployment simplicity
-- **Production**: Should implement HTTPS with proper certificates
-- **Never commit**: Certificates, private keys, production secrets
+## Common Development Tasks
 
-### Sensitive Files (in `.gitignore`)
-- `storage/` - Document storage directory
-- `certificates/`, `*.key`, `*.crt`, `*.pem` - Certificate files
-- `.env*` files - Environment configurations (except `.env.example`)
+### Adding New Document Types
+1. Update `DocumentType` choices in `backend/apps/documents/models.py`
+2. Add corresponding UI options in frontend document creation forms
+3. Update API serializers and validation
 
-## Module Implementation Priority
+### Extending Workflows
+1. Add new states to `DocumentState` model
+2. Implement transition logic in `DocumentLifecycleService`
+3. Create frontend interfaces for new workflow steps
+4. Add appropriate audit logging
 
-### Phase 1: Core Infrastructure
-1. **Django project setup** with apps structure
-2. **Database models** implementation (S1, S2, O1 core)
-3. **Basic authentication** and user management
-4. **Document upload/storage** functionality
+### Testing Workflows
+1. Use provided test users with `test123` password
+2. Follow complete workflow cycles from creation to effectiveness
+3. Test edge cases like workflow termination and document dependencies
+4. Verify audit trail entries for compliance
 
-### Phase 2: Workflow Engine
-1. **Enhanced Simple Workflow Engine integration** for workflow management
-2. **Document lifecycle** implementation (Draft → Effective)
-3. **Role-based permissions** system
-4. **Audit trail** logging (S2 module)
+## Troubleshooting
 
-### Phase 3: Document Processing
-1. **Placeholder replacement** system (S6 module)
-2. **PDF generation** and digital signatures
-3. **Search functionality** with PostgreSQL full-text
-4. **Document versioning** and dependencies
+### Common Issues
+- **Authentication failures**: Check JWT token storage and API endpoints
+- **Permission errors**: Verify user roles and document ownership
+- **Version conflicts**: Ensure proper document status before up-versioning
+- **Database constraints**: Check for proper foreign key relationships
 
-### Phase 4: Frontend & UI
-1. **React application** with TypeScript setup
-2. **User dashboard** and document management UI
-3. **Workflow interfaces** for review/approval
-4. **Responsive design** with Tailwind CSS
+### Debug Tools
+- Django admin interface for database inspection
+- Browser developer tools for frontend debugging
+- Docker logs for container troubleshooting
+- Playwright test reports for E2E test analysis
 
-## Common Pitfalls to Avoid
+## Key Contacts & Resources
 
-### Security
-- Never expose debug information in production
-- Always validate user inputs and permissions
-- Implement proper error handling without information leakage
-- Maintain audit trails for all database modifications
-
-### Compliance
-- Document workflow state changes must be atomic
-- Audit records must be tamper-proof and timestamped
-- Electronic signatures require proper validation chains
-- All user actions must be attributable and logged
-
-### Performance
-- Use database indexes for frequently queried fields
-- Implement proper caching strategies with Redis
-- Optimize document file handling for large files
-- Consider pagination for large document lists
-
-## Getting Help
-
-### Documentation Hierarchy
-1. **This AGENTS.md file** - Development guidelines
-2. **Dev_Docs/** - Detailed technical specifications
-3. **README.md** - Project overview and quick start
-4. **SECURITY.md** - Security policies and practices
-
-### Key Contacts (from SECURITY.md)
+### Project Information
 - **Security Team**: security@edms-project.com
-- **Compliance Officer**: compliance@edms-project.com
+- **Compliance Officer**: compliance@edms-project.com  
 - **Development Lead**: dev@edms-project.com
+
+### Documentation References
+- [Django Documentation](https://docs.djangoproject.com/)
+- [React Documentation](https://react.dev/)
+- [21 CFR Part 11 Guidance](https://www.fda.gov/regulatory-information/search-fda-guidance-documents/part-11-electronic-records-electronic-signatures-scope-and-application)
+- [OWASP Security Guidelines](https://owasp.org/www-project-top-ten/)
 
 ---
 
-**Remember**: This is a regulated industry application. Security, compliance, and audit requirements are not optional - they are core functional requirements that must be implemented correctly from the start.
+**Important**: This is a regulated industry application. Security, compliance, and audit requirements are core functional requirements that must be implemented correctly from the start. All database modifications must be logged, all user actions must be attributable, and all workflows must maintain complete audit trails.

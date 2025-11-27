@@ -110,6 +110,51 @@ class SimpleDocumentWorkflowAPIView(APIView):
                         'new_document_number': result['new_document'].document_number,
                         'new_version': result['new_document'].version_string
                     })
+            elif action_type == 'start_obsolete_workflow':
+                reason = request.data.get('reason')
+                target_date = request.data.get('target_date')
+                
+                if not reason:
+                    return Response({
+                        'error': 'Reason for obsolescence is required'
+                    }, status=status.HTTP_400_BAD_REQUEST)
+                
+                # Parse target_date if provided
+                parsed_target_date = None
+                if target_date:
+                    from datetime import datetime
+                    try:
+                        parsed_target_date = datetime.strptime(target_date, '%Y-%m-%d').date()
+                    except ValueError:
+                        return Response({
+                            'error': 'Invalid date format. Use YYYY-MM-DD'
+                        }, status=status.HTTP_400_BAD_REQUEST)
+                
+                try:
+                    workflow = lifecycle_service.start_obsolete_workflow(
+                        document, request.user, reason, parsed_target_date
+                    )
+                except Exception as e:
+                    return Response({
+                        'error': f'Failed to start obsolete workflow: {str(e)}'
+                    }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+                
+                if workflow:
+                    return Response({
+                        'success': True,
+                        'message': 'Obsolescence workflow started successfully',
+                        'workflow_id': str(workflow.uuid),
+                        'status': 'pending_approval',
+                        'approver': document.approver.username if document.approver else None
+                    })
+            elif action_type == 'approve_obsolescence':
+                result = lifecycle_service.approve_obsolescence(document, request.user, comment)
+                if result:
+                    return Response({
+                        'success': True,
+                        'message': 'Document obsolescence approved successfully',
+                        'status': 'obsolete'
+                    })
             else:
                 return Response({
                     'error': f'Unknown action: {action_type}'

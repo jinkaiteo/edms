@@ -107,18 +107,13 @@ const MarkObsoleteModal: React.FC<MarkObsoleteModalProps> = ({
 
       // Initiate obsolescence workflow
       const workflowData = {
-        action: 'initiate_obsolescence',
+        action: 'start_obsolete_workflow',
         reason: reasonForObsolescence,
         comment: obsolescenceComment || 'Document marked for obsolescence',
-        metadata: {
-          obsoleted_by: 'author',
-          obsolescence_type: 'manual',
-          dependencies_checked: true
-        }
+        target_date: null // Could be added as a field later
       };
 
-
-      const workflowResponse = await apiService.post(`/documents/documents/${document.uuid}/workflow/`, workflowData);
+      const workflowResponse = await apiService.post(`/workflows/documents/${document.uuid}/`, workflowData);
 
 
       onObsolescenceInitiated();

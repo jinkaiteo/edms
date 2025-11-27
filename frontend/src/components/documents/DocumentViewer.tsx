@@ -291,6 +291,7 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({
         setShowCreateNewVersionModal(true);
         return;
         
+      case 'mark_obsolete':
       case 'initiate_obsolescence':
         // EDMS Mark Obsolete: Open obsolescence modal
         setShowMarkObsoleteModal(true);
@@ -801,14 +802,12 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({
           description: 'Start up-versioning workflow'
         });
         
-        if (!hasDocumentDependencies()) {
-          actions.push({ 
-            key: 'initiate_obsolescence', 
-            label: '🗑️ Mark Obsolete', 
-            color: 'red',
-            description: 'Start obsolescence workflow'
-          });
-        }
+        actions.push({ 
+          key: 'mark_obsolete', 
+          label: '🗑️ Mark Obsolete', 
+          color: 'red',
+          description: 'Start obsolescence workflow'
+        });
         break;
     }
 
