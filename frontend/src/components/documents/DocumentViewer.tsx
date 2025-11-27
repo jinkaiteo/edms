@@ -7,6 +7,8 @@ import ApproverInterface from '../workflows/ApproverInterface.tsx';
 // SetEffectiveDateModal removed - no longer needed in simplified workflow
 import CreateNewVersionModal from '../workflows/CreateNewVersionModal.tsx';
 import MarkObsoleteModal from '../workflows/MarkObsoleteModal.tsx';
+import ViewReviewStatus from '../workflows/ViewReviewStatus.tsx';
+import DownloadActionMenu from './DownloadActionMenu.tsx';
 import DocumentCreateModal from './DocumentCreateModal.tsx';
 import MyDraftDocuments from './MyDraftDocuments.tsx';
 import { useAuth } from '../../contexts/AuthContext.tsx';
@@ -18,6 +20,7 @@ interface DocumentViewerProps {
   onEdit?: (document: Document) => void;
   onSign?: (document: Document) => void;
   onWorkflowAction?: (document: Document, action: string) => void;
+  onRefresh?: () => void;
   className?: string;
 }
 
@@ -27,6 +30,7 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({
   onEdit,
   onSign,
   onWorkflowAction,
+  onRefresh,
   className = ''
 }) => {
   const [activeTab, setActiveTab] = useState<'details' | 'workflow' | 'signatures' | 'history'>('details');
@@ -45,6 +49,7 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({
   // showSetEffectiveDateModal removed - no longer needed in simplified workflow
   const [showCreateNewVersionModal, setShowCreateNewVersionModal] = useState(false);
   const [showMarkObsoleteModal, setShowMarkObsoleteModal] = useState(false);
+  const [showViewReviewStatus, setShowViewReviewStatus] = useState(false);
   
   // Auth context for role-based visibility
   const { authenticated, user } = useAuth();
@@ -58,111 +63,165 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({
   const loadDocumentData = async () => {
     if (!document) return;
 
+    console.log('🔄 Loading document data for:', {
+      id: document.id,
+      uuid: document.uuid,
+      title: document.title,
+      status: document.status
+    });
+
     setLoading(true);
     try {
-      // For now, use mock data. Replace with real API calls when backend is ready
-      // const [workflowResponse, signaturesResponse] = await Promise.all([
-      //   apiService.getDocumentWorkflowStatus(document.id),
-      //   apiService.getElectronicSignatures({ document_id: document.id })
-      // ]);
+      // Fetch real workflow status from backend - but only if we have valid IDs
+      const apiCalls = [];
+      
+      // Add workflow status call if we have document UUID
+      if (document.uuid) {
+        console.log('📡 Fetching workflow status for UUID:', document.uuid);
+        apiCalls.push(
+          fetch(`http://localhost:8000/api/v1/workflows/documents/${document.uuid}/status/`, {
+            headers: {
+              'Authorization': `Bearer ${localStorage.getItem('accessToken')}`,
+              'Content-Type': 'application/json',
+            },
+          }).then(res => res.ok ? res.json() : null).catch(() => null)
+        );
+      } else {
+        console.log('⚠️ No document UUID available, skipping workflow status fetch');
+        apiCalls.push(Promise.resolve(null));
+      }
+      
+      // Add signatures call if we have document ID
+      if (document.id && document.id !== undefined) {
+        console.log('📡 Fetching signatures for document ID:', document.id);
+        apiCalls.push(
+          fetch(`http://localhost:8000/api/v1/security/signatures/?document_id=${document.id}`, {
+            headers: {
+              'Authorization': `Bearer ${localStorage.getItem('accessToken')}`,
+              'Content-Type': 'application/json',
+            },
+          }).then(res => res.ok ? res.json() : null).catch(() => null)
+        );
+      } else {
+        console.log('⚠️ No valid document ID available, skipping signatures fetch. ID was:', document.id);
+        apiCalls.push(Promise.resolve(null));
+      }
 
-      // Mock workflow status
-      const mockWorkflow: WorkflowInstance = {
-        id: 1,
-        uuid: 'workflow-uuid-1',
-        workflow_type: {
-          id: 1,
-          uuid: 'type-uuid-1',
-          name: 'Document Review',
-          workflow_type: 'REVIEW',
-          description: 'Standard document review workflow',
-          is_active: true,
-          requires_approval: true,
-          timeout_days: 7,
-          reminder_days: 2
-        },
-        state: document.status.toLowerCase() === 'effective' ? 'approved' : document.status,
-        state_display: document.status.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase()),
-        initiated_by: document.created_by,
-        current_assignee: null,
-        started_at: document.created_at,
-        completed_at: document.status.toLowerCase() === 'effective' ? document.updated_at : null,
-        due_date: null,
-        is_active: document.status.toLowerCase() !== 'effective',
-        is_completed: document.status.toLowerCase() === 'effective',
-        is_overdue: false,
-        completion_reason: document.status.toLowerCase() === 'effective' ? 'Successfully completed review process' : null,
-        workflow_data: {},
-        content_object_data: {
-          type: 'document',
-          id: document.id,
-          document_number: document.document_number,
-          title: document.title,
-          status: document.status,
-          version: document.version
-        }
-      };
+      const [workflowResponse, signaturesResponse] = await Promise.all(apiCalls);
 
-      // Mock signatures
-      const mockSignatures: ElectronicSignature[] = document.status.toLowerCase() === 'effective' ? [
-        {
-          id: 1,
-          uuid: 'sig-uuid-1',
-          document: document.id,
-          user: {
-            id: 3,
-            username: 'reviewer',
-            email: 'reviewer@edms.local',
-            first_name: 'Document',
-            last_name: 'Reviewer',
-            is_active: true,
-            is_staff: false,
-            is_superuser: false,
-            date_joined: '2024-01-01T00:00:00Z',
-            last_login: '2024-11-21T10:00:00Z',
-            full_name: 'Document Reviewer',
-            roles: []
-          },
-          signature_type: 'REVIEW',
-          reason: 'Document review completed successfully',
-          signature_timestamp: '2024-11-21T15:30:00Z',
-          document_hash: 'sha256:abcdef123456...',
-          signature_data: {},
-          certificate: {
-            id: 1,
-            uuid: 'cert-uuid-1',
-            user: 3,
-            certificate_type: 'SIGNING',
-            serial_number: 'CERT-001-2024',
-            subject_dn: 'CN=Document Reviewer,O=EDMS,C=US',
-            issuer_dn: 'CN=EDMS CA,O=EDMS,C=US',
-            issued_at: '2024-01-01T00:00:00Z',
-            expires_at: '2025-01-01T00:00:00Z',
-            is_active: true,
-            revoked_at: null,
-            revocation_reason: ''
-          },
-          signature_method: 'PKI_DIGITAL',
-          is_valid: true,
-          invalidated_at: null,
-          invalidation_reason: ''
-        }
-      ] : [];
+      // Use real data if available, fallback to mock data
+      if (workflowResponse) {
+        setWorkflowStatus(workflowResponse);
+      } else {
+        // Fallback to mock workflow status only if API fails
+        setWorkflowStatus(createMockWorkflowStatus(document));
+      }
 
-      setWorkflowStatus(mockWorkflow);
-      setSignatures(mockSignatures);
+      if (signaturesResponse) {
+        setSignatures(signaturesResponse.results || []);
+      } else {
+        // Fallback to mock signatures
+        setSignatures(createMockSignatures(document));
+      }
 
-      // Mock document preview URL
+      // Set document preview URL
       if (document.file_path) {
-        // In a real app, this would be a proper preview URL from the backend
         setPreviewUrl(`/api/v1/documents/${document.id}/preview/`);
       }
 
     } catch (error) {
       console.error('Failed to load document data:', error);
+      // Fallback to mock data on any error
+      setWorkflowStatus(createMockWorkflowStatus(document));
+      setSignatures(createMockSignatures(document));
     } finally {
       setLoading(false);
     }
+  };
+
+  // Helper function to create mock workflow status
+  const createMockWorkflowStatus = (doc: Document): WorkflowInstance => ({
+    id: 1,
+    uuid: 'workflow-uuid-1',
+    workflow_type: {
+      id: 1,
+      uuid: 'type-uuid-1',
+      name: 'Document Review',
+      workflow_type: 'REVIEW',
+      description: 'Standard document review workflow',
+      is_active: true,
+      requires_approval: true,
+      timeout_days: 7,
+      reminder_days: 2
+    },
+    state: doc.status.toLowerCase() === 'effective' ? 'approved' : doc.status.toLowerCase(),
+    state_display: doc.status.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase()),
+    initiated_by: doc.created_by,
+    current_assignee: null,
+    started_at: doc.created_at,
+    completed_at: doc.status.toLowerCase() === 'effective' ? doc.updated_at : null,
+    due_date: null,
+    is_active: doc.status.toLowerCase() !== 'effective',
+    is_completed: doc.status.toLowerCase() === 'effective',
+    is_overdue: false,
+    completion_reason: doc.status.toLowerCase() === 'effective' ? 'Successfully completed review process' : null,
+    workflow_data: {},
+    content_object_data: {
+      type: 'document',
+      id: doc.id,
+      document_number: doc.document_number,
+      title: doc.title,
+      status: doc.status,
+      version: doc.version
+    }
+  });
+
+  // Helper function to create mock signatures
+  const createMockSignatures = (doc: Document): ElectronicSignature[] => {
+    return doc.status.toLowerCase() === 'effective' ? [
+      {
+        id: 1,
+        uuid: 'sig-uuid-1',
+        document: doc.id,
+        user: {
+          id: 3,
+          username: 'reviewer',
+          email: 'reviewer@edms.local',
+          first_name: 'Document',
+          last_name: 'Reviewer',
+          is_active: true,
+          is_staff: false,
+          is_superuser: false,
+          date_joined: '2024-01-01T00:00:00Z',
+          last_login: '2024-11-21T10:00:00Z',
+          full_name: 'Document Reviewer',
+          roles: []
+        },
+        signature_type: 'REVIEW',
+        reason: 'Document review completed successfully',
+        signature_timestamp: '2024-11-21T15:30:00Z',
+        document_hash: 'sha256:abcdef123456...',
+        signature_data: {},
+        certificate: {
+          id: 1,
+          uuid: 'cert-uuid-1',
+          user: 3,
+          certificate_type: 'SIGNING',
+          serial_number: 'CERT-001-2024',
+          subject_dn: 'CN=Document Reviewer,O=EDMS,C=US',
+          issuer_dn: 'CN=EDMS CA,O=EDMS,C=US',
+          issued_at: '2024-01-01T00:00:00Z',
+          expires_at: '2025-01-01T00:00:00Z',
+          is_active: true,
+          revoked_at: null,
+          revocation_reason: ''
+        },
+        signature_method: 'PKI_DIGITAL',
+        is_valid: true,
+        invalidated_at: null,
+        invalidation_reason: ''
+      }
+    ] : [];
   };
 
   const formatDate = (dateString: string): string => {
@@ -235,6 +294,11 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({
         // EDMS Mark Obsolete: Open obsolescence modal
         setShowMarkObsoleteModal(true);
         return;
+
+      case 'view_review_status':
+        // EDMS View Review Status: Open review status modal
+        setShowViewReviewStatus(true);
+        return;
         
       default:
         // Handle other workflow actions through parent component
@@ -244,42 +308,46 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({
     }
   };
   
-  const handleReviewComplete = () => {
+  const handleReviewComplete = async () => {
     setShowReviewerInterface(false);
-    loadDocumentData();
+    await forceRefreshDocumentState();
   };
 
-  const handleSubmitForReviewSuccess = () => {
+  const handleSubmitForReviewSuccess = async () => {
     setShowSubmitForReviewModal(false);
-    loadDocumentData();
+    await forceRefreshDocumentState();
   };
 
-  const handleApprovalRouted = () => {
+  const handleApprovalRouted = async () => {
     setShowRouteForApprovalModal(false);
-    loadDocumentData();
+    await forceRefreshDocumentState();
   };
 
-  const handleApprovalComplete = () => {
+  const handleApprovalComplete = async () => {
     setShowApproverInterface(false);
-    loadDocumentData();
+    await forceRefreshDocumentState();
   };
 
-  const handleEffectiveDateSet = () => {
+  const handleEffectiveDateSet = async () => {
     // setShowSetEffectiveDateModal removed - no longer needed in simplified workflow
-    loadDocumentData();
+    await forceRefreshDocumentState();
   };
 
-  const handleVersionCreated = (newDocument: any) => {
+  const handleVersionCreated = async (newDocument: any) => {
     setShowCreateNewVersionModal(false);
     if (newDocument) {
       // If new document data provided, could switch to it
     }
-    loadDocumentData();
+    await forceRefreshDocumentState();
   };
 
-  const handleObsolescenceInitiated = () => {
+  const handleObsolescenceInitiated = async () => {
     setShowMarkObsoleteModal(false);
-    loadDocumentData();
+    await forceRefreshDocumentState();
+  };
+
+  const handleViewReviewStatusClosed = () => {
+    setShowViewReviewStatus(false);
   };
 
   const handleCreateDocumentSuccess = (updatedDocument: any) => {
@@ -290,26 +358,86 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({
     // Force reload of the current document data
     console.log('🔄 Reloading document data after update...');
     
-    // Instead of full page reload, just refresh the document data
-    if (updatedDocument && updatedDocument.uuid) {
-      // Update the document prop if possible (this would need parent component support)
-      // For now, just reload the component's data
-      loadDocumentData();
+    // Fetch the latest document data to update the workflow buttons
+    if (document && document.uuid) {
+      // Fetch complete updated document data
+      fetchUpdatedDocumentData(document.uuid);
       
       // Dispatch a custom event to notify parent components to refresh their data
       window.dispatchEvent(new CustomEvent('documentUpdated', { 
         detail: { 
           document: updatedDocument,
-          uuid: updatedDocument.uuid 
+          uuid: document.uuid 
         } 
       }));
+    }
+  };
+
+  const fetchUpdatedDocumentData = async (documentUuid: string) => {
+    try {
+      console.log('🔄 Fetching updated document data to refresh workflow buttons...');
+      const response = await fetch(`http://localhost:8000/api/v1/documents/documents/${documentUuid}/`, {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('accessToken')}`,
+          'Content-Type': 'application/json',
+        },
+      });
       
-      // Small delay to allow backend to process and return fresh data
-      setTimeout(() => {
-        loadDocumentData();
-      }, 500);
-    } else {
-      loadDocumentData();
+      if (response.ok) {
+        const freshDocumentData = await response.json();
+        console.log('✅ Fresh document data received:', {
+          hasFile: !!(freshDocumentData.file_path && freshDocumentData.file_name),
+          fileName: freshDocumentData.file_name,
+          filePath: freshDocumentData.file_path,
+          status: freshDocumentData.status
+        });
+        
+        // CRITICAL: We need to update the parent component's document state
+        // Dispatch event with the fresh document data
+        window.dispatchEvent(new CustomEvent('documentUpdated', { 
+          detail: { 
+            document: freshDocumentData,
+            uuid: documentUuid,
+            action: 'file_uploaded'
+          } 
+        }));
+        
+        // Force parent component to refresh its document data
+        if (onRefresh) {
+          console.log('🔄 Calling onRefresh to update parent component...');
+          onRefresh();
+        }
+        
+        // Reload document data in viewer with fresh document info
+        await loadDocumentData();
+        
+      } else {
+        console.error('Failed to fetch fresh document data:', response.status);
+      }
+    } catch (error) {
+      console.error('Error fetching fresh document data:', error);
+    }
+  };
+
+  // Add function to force refresh document and workflow state
+  const forceRefreshDocumentState = async () => {
+    if (!document?.uuid) return;
+    
+    console.log('🔄 Force refreshing document state after workflow action...');
+    
+    try {
+      // 1. Fetch latest document data
+      await fetchUpdatedDocumentData(document.uuid);
+      
+      // 2. Reload workflow data
+      await loadDocumentData();
+      
+      // 3. Force re-render of action buttons
+      setLoading(true);
+      setTimeout(() => setLoading(false), 100);
+      
+    } catch (error) {
+      console.error('Error force refreshing document state:', error);
     }
   };
 
@@ -514,9 +642,19 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({
         // Per EDMS_details.txt line 114: Author must upload document before submitting for review
         const hasUploadedFile = !!(document.file_path && document.file_name);
         
-        if (hasWritePermission) {
+        // Debug logging for workflow button logic
+        console.log('🔍 WORKFLOW BUTTON DEBUG for', document.document_number);
+        console.log('  document.file_path:', document.file_path);
+        console.log('  document.file_name:', document.file_name);
+        console.log('  hasUploadedFile:', hasUploadedFile);
+        console.log('  hasWritePermission:', hasWritePermission);
+        console.log('  document.status:', document.status);
+        
+        // Only document author can upload files and submit for review
+        if (isDocumentAuthor) {
           if (!hasUploadedFile) {
             // Step 1: File upload required first
+            console.log('  📁 Showing: Upload File button (author only)');
             actions.push({ 
               key: 'upload_file', 
               label: '📁 Upload File (Required)', 
@@ -525,6 +663,7 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({
             });
           } else {
             // Step 2: File uploaded, can now submit for review
+            console.log('  📤 Showing: Submit for Review button (author only)');
             actions.push({ 
               key: 'submit_for_review', 
               label: '📤 Submit for Review (Step 2)', 
@@ -538,12 +677,9 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({
       case 'PENDING_REVIEW':
         // Note: Enforcing uppercase PENDING_REVIEW for consistency with backend
         // EDMS lines 7-10: ONLY the assigned reviewer can start review process
-        // This is critical - only the specifically assigned reviewer should see this button
+        // CRITICAL: Authors cannot review their own documents (segregation of duties)
         
-        // Debug: Calculate if Start Review Process button should show
-        const shouldShowStartReview = isAssignedReviewer;
-        
-        if (isAssignedReviewer) {
+        if (isAssignedReviewer && !isDocumentAuthor) {
           actions.push({ 
             key: 'open_reviewer_interface', 
             label: '📋 Start Review Process', 
@@ -553,35 +689,42 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({
         } else if (isDocumentAuthor) {
           actions.push({ 
             key: 'view_review_status', 
-            label: '👀 View Review Status', 
+            label: '👀 Monitor Review Progress', 
             color: 'gray',
-            description: 'Monitor review progress'
+            description: 'View review progress (author cannot review own document)'
           });
         }
         break;
         
       case 'UNDER_REVIEW':
         // Continue review process for assigned reviewer
-        // Only the specifically assigned reviewer can continue review
-        if (isAssignedReviewer) {
+        // CRITICAL: Only the specifically assigned reviewer can continue review
+        // Authors cannot review their own documents (segregation of duties)
+        if (isAssignedReviewer && !isDocumentAuthor) {
           actions.push({ 
             key: 'open_reviewer_interface', 
             label: '📋 Continue Review', 
             color: 'blue', 
             description: 'Complete document review process'
           });
+        } else if (isDocumentAuthor) {
+          // Authors can monitor review progress but cannot perform review actions
+          actions.push({ 
+            key: 'view_review_status', 
+            label: '👀 Monitor Review Progress', 
+            color: 'gray',
+            description: 'View review progress (author cannot review own document)'
+          });
         }
         break;
         
       case 'REVIEW_COMPLETED':
       case 'REVIEWED':
-        // EDMS line 11: Author selects approver after review completion
-        
-        
-        if (hasWritePermission && isDocumentAuthor) {
+        // EDMS line 11: Only document author can route for approval after review completion
+        if (isDocumentAuthor) {
           actions.push({ 
             key: 'route_for_approval', 
-            label: '✅ Route for Approval', 
+            label: '✅ Route for Approval (Author Only)', 
             color: 'green',
             description: 'Select approver and route for approval'
           });
@@ -719,22 +862,45 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({
             </div>
           </div>
           <div className="flex items-center space-x-2 ml-4">
-            <button
-              onClick={handleEditDocument}
-              className="px-3 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50 focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
-            >
-              Edit
-            </button>
+            {/* Edit button - only show to document author when document is in DRAFT status */}
+            {authenticated && user && document.status.toUpperCase() === 'DRAFT' && (
+              (() => {
+                // Check if user is document author
+                let isDocumentAuthor = false;
+                
+                // Direct ID comparison
+                if (document.author !== undefined) {
+                  const directMatch1 = document.author === user.id;
+                  const directMatch2 = document.author === String(user.id);
+                  const directMatch3 = String(document.author) === String(user.id);
+                  isDocumentAuthor = directMatch1 || directMatch2 || directMatch3;
+                }
+                
+                // Fallback to checking display name if ID not available
+                if (!isDocumentAuthor && document.author_display) {
+                  const displayIncludesUsername = document.author_display.toLowerCase().includes(user.username.toLowerCase());
+                  isDocumentAuthor = displayIncludesUsername;
+                }
+                
+                // Show edit button only if user is the document author
+                return isDocumentAuthor ? (
+                  <button
+                    onClick={handleEditDocument}
+                    className="px-3 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50 focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+                    title="Edit document (author only, draft status)"
+                  >
+                    ✏️ Edit
+                  </button>
+                ) : null;
+              })()
+            )}
             {document.file_path && (
-              <button
-                onClick={() => {
-                  // In a real app, this would trigger a download
-                  window.open(`/api/v1/documents/${document.id}/download/`, '_blank');
+              <DownloadActionMenu
+                document={document}
+                onDownload={(type, success) => {
+                  console.log(`📥 Download ${success ? 'completed' : 'failed'} for ${type}:`, document.document_number);
                 }}
-                className="px-3 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50 focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
-              >
-                Download
-              </button>
+              />
             )}
             {onClose && (
               <button
@@ -1217,6 +1383,15 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({
           }}
           onCreateSuccess={handleCreateDocumentSuccess}
           editDocument={editingDocument}
+        />
+      )}
+
+      {/* View Review Status Modal (EDMS Review Status Display) */}
+      {showViewReviewStatus && document && (
+        <ViewReviewStatus
+          document={document}
+          onClose={handleViewReviewStatusClosed}
+          onRefresh={loadDocumentData}
         />
       )}
     </div>

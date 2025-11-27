@@ -27,6 +27,10 @@ urlpatterns = [
          SimpleDocumentWorkflowAPIView.as_view(), 
          name='simple_document_workflow'),
     
+    path('documents/<uuid:document_uuid>/status/', 
+         SimpleDocumentWorkflowAPIView.as_view(), 
+         name='simple_document_workflow_status'),
+    
     path('documents/<uuid:document_uuid>/history/', 
          SimpleWorkflowHistoryAPIView.as_view(), 
          name='simple_document_workflow_history'),

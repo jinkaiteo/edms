@@ -11,3 +11,4 @@ export { default as ApproverInterface } from './ApproverInterface.tsx';
 export { default as SetEffectiveDateModal } from './SetEffectiveDateModal.tsx';
 export { default as CreateNewVersionModal } from './CreateNewVersionModal.tsx';
 export { default as MarkObsoleteModal } from './MarkObsoleteModal.tsx';
+export { default as ViewReviewStatus } from './ViewReviewStatus.tsx';

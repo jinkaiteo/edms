@@ -166,12 +166,18 @@ class DocumentViewSet(viewsets.ModelViewSet):
         # Filter based on user's role and document status
         q_filter = Q()
         
-        # Authors can see their own documents
+        # Authors can see ALL their own documents (including DRAFT)
         q_filter |= Q(author=user)
         
-        # Reviewers can see documents assigned to them for review
-        if 'review' in user_permissions or 'approve' in user_permissions:
-            q_filter |= Q(reviewer=user) | Q(approver=user)
+        # Reviewers can see documents assigned to them ONLY after submitted for review
+        if 'review' in user_permissions:
+            q_filter |= Q(reviewer=user, status__in=['PENDING_REVIEW', 'UNDER_REVIEW', 'REVIEWED', 'PENDING_APPROVAL', 'APPROVED_AND_EFFECTIVE'])
+        
+        # Approvers can see documents assigned to them ONLY after reviewed
+        if 'approve' in user_permissions:
+            q_filter |= Q(approver=user, status__in=['PENDING_APPROVAL', 'APPROVED_AND_EFFECTIVE'])
+            # Also allow approvers to see documents assigned to them as reviewers (flexible workflow routing)
+            q_filter |= Q(reviewer=user, status__in=['PENDING_REVIEW', 'UNDER_REVIEW'])
         
         # Users with read permission can see effective documents
         if user_permissions:
@@ -658,14 +664,18 @@ class DocumentViewSet(viewsets.ModelViewSet):
                     status=status.HTTP_400_BAD_REQUEST
                 )
         
-        # Handle document_source and dependencies manually since they're read-only in the detail serializer
+        # Handle document_source, dependencies, and file upload manually since they need special processing
         document_source_id = request.data.get('document_source')
         dependencies_data = []
+        uploaded_file = request.FILES.get('file') if hasattr(request, 'FILES') else None
         
         # Extract dependencies from form data
         for key, value in request.data.items():
             if key.startswith('dependencies[') and key.endswith(']'):
                 dependencies_data.append(value)
+                
+        print(f"Debug: File upload detected: {uploaded_file.name if uploaded_file else 'None'}")
+        print(f"Debug: File size: {uploaded_file.size if uploaded_file else 'None'}")
         
         # Update document_source if provided
         if document_source_id:
@@ -735,6 +745,57 @@ class DocumentViewSet(viewsets.ModelViewSet):
             except Exception as e:
                 return Response(
                     {'error': f'Error updating dependencies: {e}'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+        
+        # Handle file upload if provided
+        if uploaded_file:
+            try:
+                from django.core.files.storage import default_storage
+                from django.core.files.base import ContentFile
+                import os
+                import mimetypes
+                
+                print(f"Processing file upload: {uploaded_file.name} ({uploaded_file.size} bytes)")
+                
+                # Generate file path
+                file_path = f"documents/{instance.uuid}/{uploaded_file.name}"
+                
+                # Save file using default storage
+                saved_path = default_storage.save(file_path, ContentFile(uploaded_file.read()))
+                
+                # Update document with file information
+                instance.file_name = uploaded_file.name
+                instance.file_path = saved_path
+                instance.file_size = uploaded_file.size
+                instance.mime_type = mimetypes.guess_type(uploaded_file.name)[0] or 'application/octet-stream'
+                
+                # Calculate checksum
+                instance.file_checksum = instance.calculate_file_checksum()
+                
+                print(f"File saved successfully: {saved_path}")
+                print(f"File info updated: name={instance.file_name}, size={instance.file_size}")
+                
+                # Log file upload
+                from .utils import log_document_access
+                log_document_access(
+                    document=instance,
+                    user=request.user,
+                    access_type='EDIT',
+                    request=request,
+                    success=True,
+                    metadata={
+                        'action': 'file_uploaded',
+                        'file_name': uploaded_file.name,
+                        'file_size': uploaded_file.size,
+                        'via': 'edit_modal'
+                    }
+                )
+                
+            except Exception as e:
+                print(f"Error processing file upload: {e}")
+                return Response(
+                    {'error': f'File upload failed: {str(e)}'},
                     status=status.HTTP_400_BAD_REQUEST
                 )
         
@@ -866,6 +927,255 @@ class DocumentViewSet(viewsets.ModelViewSet):
         ).data
         
         return Response({'versions': versions})
+    
+    @action(detail=True, methods=['post'])
+    def workflow(self, request, uuid=None):
+        """Handle workflow actions (submit review, route for approval, etc.)."""
+        document = self.get_object()
+        action_type = request.data.get('action')
+        
+        if not action_type:
+            return Response(
+                {'error': 'Action type is required'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        try:
+            if action_type == 'submit_review':
+                return self._handle_submit_review(document, request)
+            elif action_type == 'route_for_approval':
+                return self._handle_route_for_approval(document, request)
+            elif action_type == 'approve':
+                return self._handle_approve(document, request)
+            else:
+                return Response(
+                    {'error': f'Unknown workflow action: {action_type}'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+                
+        except Exception as e:
+            # Log the error for debugging
+            print(f"Workflow error for {action_type}: {e}")
+            import traceback
+            traceback.print_exc()
+            
+            return Response(
+                {'error': f'Workflow action failed: {str(e)}'},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+    
+    def _handle_submit_review(self, document, request):
+        """Handle review submission."""
+        # Validate that user can submit review
+        if document.reviewer != request.user:
+            return Response(
+                {'error': 'Only the assigned reviewer can submit a review'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+        
+        # Validate document status
+        if document.status not in ['PENDING_REVIEW', 'UNDER_REVIEW']:
+            return Response(
+                {'error': f'Cannot submit review for document in {document.status} status'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # Get review data
+        recommendation = request.data.get('recommendation')
+        comments = request.data.get('comments', '')
+        
+        if not recommendation:
+            return Response(
+                {'error': 'Review recommendation is required'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # Update document status
+        old_status = document.status
+        if recommendation == 'approve':
+            document.status = 'REVIEWED'
+        elif recommendation == 'reject':
+            document.status = 'DRAFT'  # Send back to author
+        else:
+            return Response(
+                {'error': 'Invalid recommendation. Must be "approve" or "reject"'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        document.save()
+        
+        # Create comment for review
+        if comments:
+            from .models import DocumentComment
+            DocumentComment.objects.create(
+                document=document,
+                author=request.user,
+                content=comments,
+                comment_type='review',
+                subject=f'Review {recommendation.title()}: {document.document_number}'
+            )
+        
+        # Log workflow action
+        log_document_access(
+            document=document,
+            user=request.user,
+            access_type='WORKFLOW',
+            request=request,
+            success=True,
+            metadata={
+                'action': 'submit_review',
+                'recommendation': recommendation,
+                'old_status': old_status,
+                'new_status': document.status
+            }
+        )
+        
+        return Response({
+            'message': f'Review {recommendation}ed successfully',
+            'status': document.status,
+            'recommendation': recommendation
+        })
+    
+    def _handle_route_for_approval(self, document, request):
+        """Handle routing for approval."""
+        # Validate that user is document author
+        if document.author != request.user:
+            return Response(
+                {'error': 'Only the document author can route for approval'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+        
+        # Validate document status
+        if document.status != 'REVIEWED':
+            return Response(
+                {'error': f'Document must be in REVIEWED status to route for approval. Current status: {document.status}'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # Get approver
+        approver_id = request.data.get('approver_id')
+        if not approver_id:
+            return Response(
+                {'error': 'Approver ID is required'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        try:
+            from django.contrib.auth import get_user_model
+            User = get_user_model()
+            approver = User.objects.get(id=approver_id)
+        except User.DoesNotExist:
+            return Response(
+                {'error': 'Invalid approver ID'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # Update document
+        old_status = document.status
+        document.status = 'PENDING_APPROVAL'
+        document.approver = approver
+        document.save()
+        
+        # Log workflow action
+        log_document_access(
+            document=document,
+            user=request.user,
+            access_type='WORKFLOW',
+            request=request,
+            success=True,
+            metadata={
+                'action': 'route_for_approval',
+                'approver': approver.username,
+                'old_status': old_status,
+                'new_status': document.status
+            }
+        )
+        
+        return Response({
+            'message': 'Document routed for approval successfully',
+            'status': document.status,
+            'approver': approver.username
+        })
+    
+    def _handle_approve(self, document, request):
+        """Handle document approval."""
+        # Validate that user is assigned approver
+        if document.approver != request.user:
+            return Response(
+                {'error': 'Only the assigned approver can approve this document'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+        
+        # Validate document status
+        if document.status != 'PENDING_APPROVAL':
+            return Response(
+                {'error': f'Document must be in PENDING_APPROVAL status. Current status: {document.status}'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # Get approval data
+        decision = request.data.get('decision')
+        comments = request.data.get('comments', '')
+        effective_date = request.data.get('effective_date')
+        
+        if not decision:
+            return Response(
+                {'error': 'Approval decision is required'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # Update document status
+        old_status = document.status
+        if decision == 'approve':
+            document.status = 'APPROVED_AND_EFFECTIVE'
+            if effective_date:
+                from django.utils.dateparse import parse_date
+                document.effective_date = parse_date(effective_date) or timezone.now().date()
+            else:
+                document.effective_date = timezone.now().date()
+        elif decision == 'reject':
+            document.status = 'DRAFT'  # Send back to author
+        else:
+            return Response(
+                {'error': 'Invalid decision. Must be "approve" or "reject"'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        document.save()
+        
+        # Create comment for approval
+        if comments:
+            from .models import DocumentComment
+            DocumentComment.objects.create(
+                document=document,
+                author=request.user,
+                content=comments,
+                comment_type='approval',
+                subject=f'Approval {decision.title()}: {document.document_number}'
+            )
+        
+        # Log workflow action
+        log_document_access(
+            document=document,
+            user=request.user,
+            access_type='WORKFLOW',
+            request=request,
+            success=True,
+            metadata={
+                'action': 'approve',
+                'decision': decision,
+                'old_status': old_status,
+                'new_status': document.status,
+                'effective_date': str(document.effective_date) if document.effective_date else None
+            }
+        )
+        
+        return Response({
+            'message': f'Document {decision}ed successfully',
+            'status': document.status,
+            'decision': decision,
+            'effective_date': document.effective_date
+        })
 
 
 class DocumentVersionViewSet(viewsets.ReadOnlyModelViewSet):

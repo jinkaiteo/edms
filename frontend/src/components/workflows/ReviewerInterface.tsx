@@ -272,6 +272,19 @@ const ReviewerInterface: React.FC<ReviewerInterfaceProps> = ({
       } catch (workflowError: any) {
       }
       
+      // Success! Document state has changed, need to refresh parent data
+      console.log('✅ Review submitted successfully, refreshing parent document data...');
+      
+      // Dispatch custom event to notify all components that document has been updated
+      window.dispatchEvent(new CustomEvent('documentUpdated', { 
+        detail: { 
+          documentId: document.uuid,
+          action: 'review_submitted',
+          newStatus: reviewDecision === 'approve' ? 'REVIEWED' : 'DRAFT',
+          refreshRequired: true
+        } 
+      }));
+      
       onReviewComplete();
       onClose();
 

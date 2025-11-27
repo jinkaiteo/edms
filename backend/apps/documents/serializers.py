@@ -219,7 +219,9 @@ class DocumentListSerializer(serializers.ModelSerializer):
             'status', 'status_display', 'document_type_display',
             'author', 'author_display', 'reviewer', 'reviewer_display', 
             'approver', 'approver_display', 'created_at', 'effective_date',
-            'is_controlled', 'requires_training'
+            'is_controlled', 'requires_training',
+            # Add file information for workflow button logic
+            'file_name', 'file_path', 'file_size'
         ]
 
 

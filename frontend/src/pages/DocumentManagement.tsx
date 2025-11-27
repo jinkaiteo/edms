@@ -33,6 +33,38 @@ const DocumentManagement: React.FC = () => {
     }
   }, [viewMode]);
 
+  const handleDocumentRefresh = useCallback(async () => {
+    // Refresh the currently selected document with latest data from API
+    if (selectedDocument && selectedDocument.uuid) {
+      console.log('🔄 DocumentManagement: Refreshing selected document data...');
+      try {
+        const response = await fetch(`http://localhost:8000/api/v1/documents/documents/${selectedDocument.uuid}/`, {
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('accessToken')}`,
+            'Content-Type': 'application/json',
+          },
+        });
+        
+        if (response.ok) {
+          const updatedDocument = await response.json();
+          console.log('✅ DocumentManagement: Updated document received:', {
+            hasFile: !!(updatedDocument.file_path && updatedDocument.file_name),
+            fileName: updatedDocument.file_name,
+            documentNumber: updatedDocument.document_number
+          });
+          
+          // Update the selected document with fresh data
+          setSelectedDocument(updatedDocument);
+          console.log('✅ DocumentManagement: selectedDocument state updated!');
+        } else {
+          console.error('Failed to refresh document:', response.status);
+        }
+      } catch (error) {
+        console.error('Error refreshing document:', error);
+      }
+    }
+  }, [selectedDocument]);
+
   // EDMS Step 1: Document creation handlers
   const handleCreateDocumentSuccess = useCallback((document: any) => {
     const documentTitle = document?.title || document?.document_number || 'New Document';
@@ -152,6 +184,7 @@ const DocumentManagement: React.FC = () => {
                 onEdit={handleDocumentEdit}
                 onSign={handleDocumentSign}
                 onWorkflowAction={handleWorkflowAction}
+                onRefresh={handleDocumentRefresh}
               />
             </div>
           </div>
