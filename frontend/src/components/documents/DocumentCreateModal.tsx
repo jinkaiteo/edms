@@ -231,7 +231,7 @@ const DocumentCreateModal: React.FC<DocumentCreateModalProps> = ({
       }
 
       // Use direct fetch instead of apiService for FormData uploads
-      const response = await fetch('/api/v1/documents/documents/', {
+      const response = await fetch('http://localhost:8000/api/v1/documents/documents/', {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('accessToken')}`,
