@@ -230,10 +230,35 @@ const DocumentCreateModal: React.FC<DocumentCreateModalProps> = ({
         });
       }
 
-      // Don't set Content-Type header - let browser set it automatically for FormData
-      const response = await apiService.post('/documents/documents/', formData);
+      // Use direct fetch instead of apiService for FormData uploads
+      const response = await fetch('/api/v1/documents/documents/', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('accessToken')}`,
+          // Don't set Content-Type - let browser set multipart boundary
+        },
+        body: formData,
+      });
 
-      onCreateSuccess(response);
+      if (response.ok) {
+        const newDocument = await response.json();
+        console.log('✅ Document created successfully:', newDocument);
+        onCreateSuccess(newDocument);
+        
+        // Reset form
+        setTitle('');
+        setDescription('');
+        setKeywords('');
+        setDocumentType('');
+        setDocumentSource('');
+        setPriority('normal');
+        setRequiresTraining(false);
+        setSelectedFile(null);
+      } else {
+        const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
+        console.log('❌ API Error Response:', errorData);
+        throw new Error(JSON.stringify(errorData));
+      }
       handleClose();
 
     } catch (error: any) {
