@@ -119,6 +119,24 @@ class DocumentAnnotationProcessor:
         # Additional technical information
         metadata['IS_CURRENT'] = 'CURRENT' if 'EFFECTIVE' in document.status else 'NOT CURRENT'
         
+        # Common alternative placeholder names for backward compatibility with existing templates
+        metadata.update({
+            'DOCUMENT_NUMBER': metadata['DOC_NUMBER'],
+            'DOCUMENT_TITLE': metadata['DOC_TITLE'],
+            'DOCUMENT_STATUS': metadata['DOC_STATUS'],
+            'DOCUMENT_VERSION': metadata['DOC_VERSION'],
+            'DOCUMENT_TYPE': metadata['DOC_TYPE'],
+            'AUTHOR': metadata['AUTHOR_NAME'],
+            'REVIEWER': metadata['REVIEWER_NAME'],
+            'APPROVER': metadata['APPROVER_NAME'],
+            'STATUS': metadata['DOC_STATUS'],
+            'VERSION': metadata['DOC_VERSION'],
+            'TITLE': metadata['DOC_TITLE'],
+            'NUMBER': metadata['DOC_NUMBER'],
+            'COMPANY': metadata['COMPANY_NAME'],
+            'ORGANIZATION': metadata['COMPANY_NAME'],
+        })
+        
         return metadata
     
     def generate_annotated_document_content(self, document: Document, user: User = None) -> str:

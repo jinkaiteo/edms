@@ -119,6 +119,30 @@ class DocxTemplateProcessor:
         context['system_name'] = 'Electronic Document Management System (EDMS)'
         context['generated_by_system'] = True
         
+        # Add common alternative placeholder names that might be in templates
+        context.update({
+            'DOCUMENT_TITLE': metadata.get('DOC_TITLE', 'Unknown'),
+            'DOCUMENT_NUMBER': metadata.get('DOC_NUMBER', 'Unknown'),
+            'DOCUMENT_STATUS': metadata.get('DOC_STATUS', 'Unknown'),
+            'DOCUMENT_VERSION': metadata.get('DOC_VERSION', 'Unknown'),
+            'AUTHOR': metadata.get('AUTHOR_NAME', 'Unknown'),
+            'REVIEWER': metadata.get('REVIEWER_NAME', 'Unknown'),
+            'APPROVER': metadata.get('APPROVER_NAME', 'Unknown'),
+            'STATUS': metadata.get('DOC_STATUS', 'Unknown'),
+            'VERSION': metadata.get('DOC_VERSION', 'Unknown'),
+            'TITLE': metadata.get('DOC_TITLE', 'Unknown'),
+            'NUMBER': metadata.get('DOC_NUMBER', 'Unknown'),
+            'COMPANY': metadata.get('COMPANY_NAME', 'Your Company'),
+            'ORGANIZATION': metadata.get('COMPANY_NAME', 'Your Company'),
+            'DATE': metadata.get('CURRENT_DATE', ''),
+            'TIME': metadata.get('CURRENT_TIME', ''),
+            'DATETIME': metadata.get('CURRENT_DATETIME', ''),
+            'CREATED': metadata.get('CREATED_DATE', ''),
+            'MODIFIED': metadata.get('UPDATED_DATE', ''),
+            'APPROVED': metadata.get('APPROVAL_DATE', ''),
+            'EFFECTIVE': metadata.get('EFFECTIVE_DATE', ''),
+        })
+        
         return context
     
     def get_template_variables(self, document: Document) -> Dict[str, str]:
