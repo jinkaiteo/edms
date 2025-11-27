@@ -324,9 +324,69 @@ class DocumentViewSet(viewsets.ModelViewSet):
     
     @action(detail=True, methods=['get'], url_path='download/annotated')
     def download_annotated(self, request, uuid=None):
-        """Download annotated document file with metadata."""
+        """Download annotated document file with metadata overlay."""
         document = self.get_object()
-        return self._serve_document_file(document, request, 'annotated')
+        return self._serve_annotated_document(document, request)
+    
+    def _serve_annotated_document(self, document, request):
+        """Generate and serve annotated document with metadata overlay."""
+        from .annotation_processor import annotation_processor
+        from django.http import HttpResponse
+        import tempfile
+        import os
+        
+        try:
+            # Generate annotation content
+            annotation_content = annotation_processor.generate_annotated_document_content(document, request.user)
+            
+            # Create temporary file with annotation
+            with tempfile.NamedTemporaryFile(mode='w', suffix='.txt', delete=False) as temp_file:
+                temp_file.write(annotation_content)
+                temp_file_path = temp_file.name
+            
+            # Read the file and serve it
+            with open(temp_file_path, 'rb') as f:
+                file_content = f.read()
+            
+            # Clean up temp file
+            os.unlink(temp_file_path)
+            
+            # Create response
+            response = HttpResponse(
+                file_content,
+                content_type='text/plain; charset=utf-8'
+            )
+            
+            filename = f"{document.document_number}_annotated.txt"
+            response['Content-Disposition'] = f'attachment; filename="{filename}"'
+            response['Content-Length'] = str(len(file_content))
+            
+            # Log successful download
+            log_document_access(
+                document=document,
+                user=request.user,
+                access_type='DOWNLOAD',
+                request=request,
+                success=True,
+                file_downloaded=True,
+                metadata={'download_type': 'annotated'}
+            )
+            
+            return response
+            
+        except Exception as e:
+            log_document_access(
+                document=document,
+                user=request.user,
+                access_type='DOWNLOAD',
+                request=request,
+                success=False,
+                failure_reason=f'Annotation generation failed: {str(e)}'
+            )
+            return Response(
+                {'error': f'Failed to generate annotated document: {str(e)}'},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
     
     @action(detail=True, methods=['get'], url_path='download/official')
     def download_official_pdf(self, request, uuid=None):
