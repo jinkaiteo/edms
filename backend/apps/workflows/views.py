@@ -113,11 +113,23 @@ class SimpleDocumentWorkflowAPIView(APIView):
             elif action_type == 'start_obsolete_workflow':
                 reason = request.data.get('reason')
                 target_date = request.data.get('target_date')
+                approver_id = request.data.get('approver_id')
                 
                 if not reason:
                     return Response({
                         'error': 'Reason for obsolescence is required'
                     }, status=status.HTTP_400_BAD_REQUEST)
+                
+                # Get approver if specified
+                approver = None
+                if approver_id:
+                    try:
+                        from django.contrib.auth.models import User
+                        approver = User.objects.get(id=approver_id)
+                    except User.DoesNotExist:
+                        return Response({
+                            'error': 'Selected approver not found'
+                        }, status=status.HTTP_400_BAD_REQUEST)
                 
                 # Parse target_date if provided
                 parsed_target_date = None
@@ -132,7 +144,7 @@ class SimpleDocumentWorkflowAPIView(APIView):
                 
                 try:
                     workflow = lifecycle_service.start_obsolete_workflow(
-                        document, request.user, reason, parsed_target_date
+                        document, request.user, reason, parsed_target_date, approver
                     )
                 except Exception as e:
                     return Response({

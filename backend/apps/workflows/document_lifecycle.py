@@ -491,7 +491,7 @@ class DocumentLifecycleService:
     # =================================================================
     
     def start_obsolete_workflow(self, document: Document, user: User,
-                               reason: str, target_date: date = None) -> DocumentWorkflow:
+                               reason: str, target_date: date = None, approver: User = None) -> DocumentWorkflow:
         """
         Start obsolescence workflow with dependency checking.
         
@@ -530,7 +530,7 @@ class DocumentLifecycleService:
                     'workflow_type': obsolete_workflow_type,
                     'current_state': self.states['PENDING_APPROVAL'],
                     'initiated_by': user,
-                    'current_assignee': document.approver or document.author,
+                    'current_assignee': approver or document.approver or document.author,
                     'due_date': None,
                     'workflow_data': {
                         'obsolete_reason': reason,
@@ -543,7 +543,7 @@ class DocumentLifecycleService:
             if not created:
                 workflow.workflow_type = obsolete_workflow_type
                 workflow.current_state = self.states['PENDING_APPROVAL']
-                workflow.current_assignee = document.approver or document.author
+                workflow.current_assignee = approver or document.approver or document.author
                 workflow.workflow_data.update({
                     'obsolete_reason': reason,
                     'target_obsolete_date': target_date.isoformat() if target_date else None

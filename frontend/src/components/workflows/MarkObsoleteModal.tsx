@@ -24,6 +24,17 @@ interface Document {
   version_string: string;
   author_display: string;
   effective_date: string;
+  approver_id?: number;
+  approver_display?: string;
+}
+
+interface Approver {
+  id: number;
+  username: string;
+  first_name: string;
+  last_name: string;
+  email: string;
+  display_name: string;
 }
 
 interface DocumentDependency {
@@ -49,17 +60,64 @@ const MarkObsoleteModal: React.FC<MarkObsoleteModalProps> = ({
 }) => {
   const [reasonForObsolescence, setReasonForObsolescence] = useState<string>('');
   const [obsolescenceComment, setObsolescenceComment] = useState<string>('');
+  const [selectedApprover, setSelectedApprover] = useState<string>('');
+  const [availableApprovers, setAvailableApprovers] = useState<Approver[]>([]);
   const [dependencies, setDependencies] = useState<DocumentDependency[]>([]);
   const [loading, setLoading] = useState(false);
   const [checkingDependencies, setCheckingDependencies] = useState(false);
+  const [loadingApprovers, setLoadingApprovers] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [dependencyError, setDependencyError] = useState<string | null>(null);
 
   useEffect(() => {
     if (isOpen) {
       checkDocumentDependencies();
+      fetchAvailableApprovers();
+      // Set default approver to document's current approver
+      if (document.approver_id) {
+        setSelectedApprover(document.approver_id.toString());
+      }
     }
-  }, [isOpen, document.uuid]);
+  }, [isOpen, document.uuid, document.approver_id]);
+
+  const fetchAvailableApprovers = async () => {
+    setLoadingApprovers(true);
+    try {
+      // Try to get users with approver role
+      const response = await apiService.get('/users/');
+      if (response.success || response.results) {
+        const users = response.results || response.data || [];
+        // Filter for users who can approve (this is a simplified approach)
+        // In a real system, you'd have a dedicated endpoint for approvers
+        const approvers = users.filter((user: any) => 
+          user.is_staff || user.groups?.includes('Approvers') || user.username.includes('approver')
+        );
+        setAvailableApprovers(approvers.map((user: any) => ({
+          id: user.id,
+          username: user.username,
+          first_name: user.first_name || '',
+          last_name: user.last_name || '',
+          email: user.email || '',
+          display_name: user.display_name || `${user.first_name} ${user.last_name}`.trim() || user.username
+        })));
+      }
+    } catch (error) {
+      console.error('Failed to fetch approvers:', error);
+      // Set current approver as only option if API fails
+      if (document.approver_display && document.approver_id) {
+        setAvailableApprovers([{
+          id: document.approver_id,
+          username: '',
+          first_name: '',
+          last_name: '',
+          email: '',
+          display_name: document.approver_display
+        }]);
+      }
+    } finally {
+      setLoadingApprovers(false);
+    }
+  };
 
   const checkDocumentDependencies = async () => {
     try {
@@ -110,6 +168,7 @@ const MarkObsoleteModal: React.FC<MarkObsoleteModalProps> = ({
         action: 'start_obsolete_workflow',
         reason: reasonForObsolescence,
         comment: obsolescenceComment || 'Document marked for obsolescence',
+        approver_id: selectedApprover ? parseInt(selectedApprover) : null,
         target_date: null // Could be added as a field later
       };
 
@@ -147,7 +206,7 @@ const MarkObsoleteModal: React.FC<MarkObsoleteModalProps> = ({
   if (!isOpen) return null;
 
   const hasDependencies = dependencies.length > 0;
-  const canProceed = !hasDependencies && !checkingDependencies && reasonForObsolescence.trim();
+  const canProceed = !hasDependencies && !checkingDependencies && reasonForObsolescence.trim().length > 0 && selectedApprover.length > 0;
 
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto bg-gray-500 bg-opacity-75 flex items-center justify-center">
@@ -255,6 +314,38 @@ const MarkObsoleteModal: React.FC<MarkObsoleteModalProps> = ({
               </div>
             </div>
           )}
+
+          {/* Approver Selection */}
+          <div className="mb-6">
+            <label htmlFor="selectedApprover" className="block text-sm font-medium text-gray-700 mb-2">
+              Select Approver <span className="text-red-500">*</span>
+            </label>
+            {loadingApprovers ? (
+              <div className="flex items-center space-x-2 text-gray-500">
+                <ClockIcon className="h-4 w-4 animate-spin" />
+                <span>Loading approvers...</span>
+              </div>
+            ) : (
+              <select
+                id="selectedApprover"
+                value={selectedApprover}
+                onChange={(e) => setSelectedApprover(e.target.value)}
+                disabled={loading || hasDependencies}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-red-500 focus:border-red-500 disabled:opacity-50"
+                required
+              >
+                <option value="">Select an approver...</option>
+                {availableApprovers.map((approver) => (
+                  <option key={approver.id} value={approver.id.toString()}>
+                    {approver.display_name} ({approver.username})
+                  </option>
+                ))}
+              </select>
+            )}
+            <p className="text-sm text-gray-500 mt-1">
+              Choose who should approve the obsolescence of this document
+            </p>
+          </div>
 
           {/* Reason for Obsolescence */}
           <div className="mb-6">
