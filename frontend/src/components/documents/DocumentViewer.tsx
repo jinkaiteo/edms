@@ -10,7 +10,7 @@ import MarkObsoleteModal from '../workflows/MarkObsoleteModal.tsx';
 import DocumentCreateModal from './DocumentCreateModal.tsx';
 import MyDraftDocuments from './MyDraftDocuments.tsx';
 import { useAuth } from '../../contexts/AuthContext.tsx';
-import apiService from '../../services/api';
+import apiService from '../../services/api.ts';
 
 interface DocumentViewerProps {
   document: Document | null;
@@ -38,6 +38,7 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({
   
   // Workflow modals
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [editingDocument, setEditingDocument] = useState<Document | null>(null);
   const [showSubmitForReviewModal, setShowSubmitForReviewModal] = useState(false);
   const [showRouteForApprovalModal, setShowRouteForApprovalModal] = useState(false);
   const [showApproverInterface, setShowApproverInterface] = useState(false);
@@ -185,9 +186,19 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({
     
     // Handle EDMS workflow actions
     switch (actionKey) {
+      case 'upload_file':
+        // EDMS Step 1: Open edit modal for file upload and metadata editing
+        handleEditDocument();
+        return;
+        
       case 'submit_for_review':
-        // EDMS Step 2: Open submit for review modal
-        setShowSubmitForReviewModal(true);
+        // EDMS Step 2: Open submit for review modal (only if file uploaded)
+        if (document && document.file_path && document.file_name) {
+          setShowSubmitForReviewModal(true);
+        } else {
+          // Fallback: redirect to edit/upload modal if no file
+          handleEditDocument();
+        }
         return;
 
       case 'route_for_approval':
@@ -271,9 +282,120 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({
     loadDocumentData();
   };
 
-  const handleCreateDocumentSuccess = (newDocument: any) => {
+  const handleCreateDocumentSuccess = (updatedDocument: any) => {
+    console.log('📝 Document update callback received:', updatedDocument);
     setShowCreateModal(false);
-    loadDocumentData();
+    setEditingDocument(null);
+    
+    // Force reload of the current document data
+    console.log('🔄 Reloading document data after update...');
+    
+    // Instead of full page reload, just refresh the document data
+    if (updatedDocument && updatedDocument.uuid) {
+      // Update the document prop if possible (this would need parent component support)
+      // For now, just reload the component's data
+      loadDocumentData();
+      
+      // Dispatch a custom event to notify parent components to refresh their data
+      window.dispatchEvent(new CustomEvent('documentUpdated', { 
+        detail: { 
+          document: updatedDocument,
+          uuid: updatedDocument.uuid 
+        } 
+      }));
+      
+      // Small delay to allow backend to process and return fresh data
+      setTimeout(() => {
+        loadDocumentData();
+      }, 500);
+    } else {
+      loadDocumentData();
+    }
+  };
+
+  const handleEditDocument = async () => {
+    // Fetch complete document data for editing (not just the summary from props)
+    if (document) {
+      try {
+        setLoading(true);
+        
+        // Fetch full document details using the document UUID
+        const response = await fetch(`http://localhost:8000/api/v1/documents/documents/${document.uuid}/`, {
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('accessToken')}`,
+            'Content-Type': 'application/json',
+          },
+        });
+        
+        if (response.ok) {
+          const fullDocumentData = await response.json();
+          console.log('🔍 Full document data for editing:', fullDocumentData);
+          
+          // Use the complete document data for editing
+          setEditingDocument(fullDocumentData);
+          setShowCreateModal(true);
+        } else {
+          console.error('Failed to fetch full document data:', response.status);
+          // Fallback to existing document data
+          setEditingDocument(document);
+          setShowCreateModal(true);
+        }
+      } catch (error) {
+        console.error('Error fetching full document data:', error);
+        // Fallback to existing document data
+        setEditingDocument(document);
+        setShowCreateModal(true);
+      } finally {
+        setLoading(false);
+      }
+    }
+  };
+
+  const handleFileUpload = () => {
+    // Handle file upload for documents in DRAFT status without files
+    if (!document) return;
+    
+    // Create a file input element
+    const input = window.document.createElement('input');
+    input.type = 'file';
+    input.accept = '.pdf,.doc,.docx,.txt';
+    input.onchange = async (e) => {
+      const file = (e.target as HTMLInputElement).files?.[0];
+      if (file && document) {
+        await uploadFileForDocument(file, document);
+      }
+    };
+    input.click();
+  };
+
+  const uploadFileForDocument = async (file: File, doc: Document) => {
+    try {
+      setLoading(true);
+      
+      // Create FormData for file upload
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('document_id', doc.uuid);
+      
+      // Upload file via API
+      const response = await apiService.uploadDocumentFile(doc.uuid, formData);
+      
+      if (response.success) {
+        // Show success message
+        console.log('File uploaded successfully');
+        
+        // Reload document data to get updated file information
+        loadDocumentData();
+      } else {
+        console.error('File upload failed:', response.error);
+        alert('File upload failed. Please try again.');
+      }
+    } catch (error) {
+      console.error('Error uploading file:', error);
+      alert('Error uploading file. Please check your connection and try again.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const getStatusColor = (status: string): string => {
@@ -388,16 +510,28 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({
     
     switch (document.status.toUpperCase()) {
       case 'DRAFT':
-        // EDMS Step 2: Author can select reviewer and submit for review (line 6)
-        // Use hasWritePermission since document.author might be undefined in frontend
+        // EDMS Step 1 & 2: Check if file is uploaded before allowing review submission
+        // Per EDMS_details.txt line 114: Author must upload document before submitting for review
+        const hasUploadedFile = !!(document.file_path && document.file_name);
+        
         if (hasWritePermission) {
-          actions.push({ 
-            key: 'submit_for_review', 
-            label: '📤 Submit for Review (Step 2)', 
-            color: 'blue',
-            description: 'Select reviewer and route document for review'
-          });
-        } else {
+          if (!hasUploadedFile) {
+            // Step 1: File upload required first
+            actions.push({ 
+              key: 'upload_file', 
+              label: '📁 Upload File (Required)', 
+              color: 'blue',
+              description: 'Upload document file before submitting for review'
+            });
+          } else {
+            // Step 2: File uploaded, can now submit for review
+            actions.push({ 
+              key: 'submit_for_review', 
+              label: '📤 Submit for Review (Step 2)', 
+              color: 'blue',
+              description: 'Select reviewer and route document for review'
+            });
+          }
         }
         break;
         
@@ -585,14 +719,12 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({
             </div>
           </div>
           <div className="flex items-center space-x-2 ml-4">
-            {onEdit && (
-              <button
-                onClick={() => onEdit(document)}
-                className="px-3 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50 focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
-              >
-                Edit
-              </button>
-            )}
+            <button
+              onClick={handleEditDocument}
+              className="px-3 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50 focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+            >
+              Edit
+            </button>
             {document.file_path && (
               <button
                 onClick={() => {
@@ -1075,12 +1207,16 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({
         />
       )}
 
-      {/* Create Document Modal (EDMS Step 1) */}
+      {/* Document Create/Edit Modal (EDMS Step 1 & Edit) */}
       {showCreateModal && (
         <DocumentCreateModal
           isOpen={showCreateModal}
-          onClose={() => setShowCreateModal(false)}
+          onClose={() => {
+            setShowCreateModal(false);
+            setEditingDocument(null);
+          }}
           onCreateSuccess={handleCreateDocumentSuccess}
+          editDocument={editingDocument}
         />
       )}
     </div>

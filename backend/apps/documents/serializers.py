@@ -235,9 +235,9 @@ class DocumentDetailSerializer(serializers.ModelSerializer):
     status_display = serializers.CharField(source='get_status_display', read_only=True)
     priority_display = serializers.CharField(source='get_priority_display', read_only=True)
     
-    # Related objects
-    dependencies = DocumentDependencySerializer(many=True, read_only=True)
-    dependents = DocumentDependencySerializer(many=True, read_only=True)
+    # Related objects (custom methods to filter active only)
+    dependencies = serializers.SerializerMethodField()
+    dependents = serializers.SerializerMethodField()
     comments = DocumentCommentSerializer(many=True, read_only=True)
     attachments = DocumentAttachmentSerializer(many=True, read_only=True)
     versions = DocumentVersionSerializer(many=True, read_only=True)
@@ -284,6 +284,16 @@ class DocumentDetailSerializer(serializers.ModelSerializer):
         """Check if current user can approve this document."""
         user = self.context['request'].user
         return obj.can_approve(user)
+    
+    def get_dependencies(self, obj):
+        """Get only active dependencies."""
+        active_dependencies = obj.dependencies.filter(is_active=True)
+        return DocumentDependencySerializer(active_dependencies, many=True, context=self.context).data
+    
+    def get_dependents(self, obj):
+        """Get only active dependents."""
+        active_dependents = obj.dependents.filter(is_active=True)
+        return DocumentDependencySerializer(active_dependents, many=True, context=self.context).data
 
 
 class DocumentCreateSerializer(serializers.ModelSerializer):

@@ -13,6 +13,7 @@ interface DocumentCreateModalProps {
   isOpen: boolean;
   onClose: () => void;
   onCreateSuccess: (document: any) => void;
+  editDocument?: Document | null; // Document to edit (null for create mode)
 }
 
 interface DocumentType {
@@ -32,7 +33,8 @@ interface DocumentSource {
 const DocumentCreateModal: React.FC<DocumentCreateModalProps> = ({
   isOpen,
   onClose,
-  onCreateSuccess
+  onCreateSuccess,
+  editDocument = null
 }) => {
   const { authenticated } = useAuth();
   
@@ -44,6 +46,10 @@ const DocumentCreateModal: React.FC<DocumentCreateModalProps> = ({
   const [documentSource, setDocumentSource] = useState('');
   const [priority, setPriority] = useState('normal');
   const [requiresTraining, setRequiresTraining] = useState(false);
+  
+  // Draft-only editing controls
+  const [documentTypeChanged, setDocumentTypeChanged] = useState(false);
+  const [showNumberChangeWarning, setShowNumberChangeWarning] = useState(false);
   
   // File upload
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -58,12 +64,126 @@ const DocumentCreateModal: React.FC<DocumentCreateModalProps> = ({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Load reference data
+  // Load reference data and populate form for edit mode
   useEffect(() => {
     if (isOpen && authenticated) {
       loadReferenceData();
     }
   }, [isOpen, authenticated]);
+
+  // Separate effect for form population after reference data is loaded
+  useEffect(() => {
+    if (isOpen && editDocument && documentTypes.length > 0 && documentSources.length > 0) {
+      console.log('🔍 Populating edit form with document:', editDocument);
+      console.log('🔍 Available document properties:', Object.keys(editDocument));
+      console.log('🔍 Full document object for inspection:', editDocument);
+      
+      setTitle(editDocument.title || '');
+      setDescription(editDocument.description || '');
+      setKeywords(editDocument.keywords || '');
+      
+      // Debug: Log each field access attempt
+      console.log('🔍 Field access attempts:');
+      console.log('  title:', editDocument.title);
+      console.log('  description:', editDocument.description);
+      console.log('  keywords:', editDocument.keywords);
+      console.log('  priority:', editDocument.priority);
+      console.log('  requires_training:', editDocument.requires_training);
+      console.log('  document_type:', editDocument.document_type);
+      console.log('  document_type_id:', editDocument.document_type_id);
+      console.log('  document_source:', editDocument.document_source);
+      console.log('  document_source_id:', editDocument.document_source_id);
+      
+      // Handle document_type - check all possible property names
+      let documentTypeId = '';
+      if (editDocument.document_type) {
+        if (typeof editDocument.document_type === 'object' && editDocument.document_type.id) {
+          documentTypeId = editDocument.document_type.id.toString();
+        } else {
+          documentTypeId = editDocument.document_type.toString();
+        }
+      } else if (editDocument.document_type_id) {
+        documentTypeId = editDocument.document_type_id.toString();
+      }
+      setDocumentType(documentTypeId);
+      
+      // Handle document_source - check all possible property names
+      let documentSourceId = '';
+      if (editDocument.document_source) {
+        if (typeof editDocument.document_source === 'object' && editDocument.document_source.id) {
+          documentSourceId = editDocument.document_source.id.toString();
+        } else {
+          documentSourceId = editDocument.document_source.toString();
+        }
+      } else if (editDocument.document_source_id) {
+        documentSourceId = editDocument.document_source_id.toString();
+      }
+      setDocumentSource(documentSourceId);
+      
+      setPriority(editDocument.priority || 'normal');
+      setRequiresTraining(editDocument.requires_training || false);
+      
+      // Populate dependencies if available
+      if (editDocument.dependencies && Array.isArray(editDocument.dependencies)) {
+        console.log('🔍 Raw editDocument.dependencies:', editDocument.dependencies);
+        
+        // Extract depends_on IDs from DocumentDependency objects
+        const dependencyIds = editDocument.dependencies.map(dep => {
+          // The backend returns DocumentDependency objects with 'depends_on' field
+          if (typeof dep === 'object' && dep.depends_on) {
+            return dep.depends_on; // This is the document ID we want
+          } else if (typeof dep === 'object' && dep.id) {
+            return dep.id; // Fallback for different object structure
+          } else {
+            return dep; // Fallback for primitive values
+          }
+        });
+        
+        console.log('🔍 Mapped dependencyIds:', dependencyIds);
+        console.log('🔍 Available documents for comparison:', availableDocuments.map(doc => doc.id));
+        
+        // Filter out any IDs that don't exist in availableDocuments
+        const validDependencyIds = dependencyIds.filter(id => 
+          availableDocuments.some(doc => doc.id === id)
+        );
+        console.log('🔍 Filtered valid dependencyIds:', validDependencyIds);
+        
+        setSelectedDependencies(validDependencyIds);
+        console.log('🔍 Dependencies populated (filtered):', validDependencyIds);
+      } else {
+        // Clear dependencies if none exist
+        setSelectedDependencies([]);
+        console.log('🔍 No dependencies to populate, cleared array');
+      }
+      
+      // Note: File information is available but not pre-populated for security reasons
+      // Users need to re-upload files when editing
+      if (editDocument.file_name && editDocument.file_path) {
+        console.log('🔍 Document has existing file:', {
+          fileName: editDocument.file_name,
+          filePath: editDocument.file_path,
+          fileSize: editDocument.file_size
+        });
+        // Could show file info but not pre-populate the file input for security
+      }
+      
+      // Reset change tracking for fresh edit session
+      setDocumentTypeChanged(false);
+      setShowNumberChangeWarning(false);
+      
+      console.log('✅ Form populated with values:', {
+        title: editDocument.title,
+        description: editDocument.description,
+        keywords: editDocument.keywords,
+        documentType: typeof editDocument.document_type === 'object' ? editDocument.document_type.id : editDocument.document_type,
+        documentSource: typeof editDocument.document_source === 'object' ? editDocument.document_source.id : editDocument.document_source,
+        priority: editDocument.priority,
+        requiresTraining: editDocument.requires_training,
+        dependencies: editDocument.dependencies?.length || 0,
+        hasExistingFile: !!(editDocument.file_name && editDocument.file_path)
+      });
+    }
+  }, [isOpen, editDocument, documentTypes.length, documentSources.length]);
 
   const loadReferenceData = async () => {
     try {
@@ -79,12 +199,14 @@ const DocumentCreateModal: React.FC<DocumentCreateModalProps> = ({
       setDocumentSources(Array.isArray(sourcesResponse) ? sourcesResponse : sourcesResponse.results || []);
       setAvailableDocuments(Array.isArray(documentsResponse) ? documentsResponse : documentsResponse.results || []);
       
-      // Set defaults
-      if (typesResponse && typesResponse.length > 0) {
-        setDocumentType(typesResponse[0].id.toString());
-      }
-      if (sourcesResponse && sourcesResponse.length > 0) {
-        setDocumentSource(sourcesResponse[0].id.toString());
+      // Set defaults ONLY if not editing (to avoid overriding populated values)
+      if (!editDocument) {
+        if (typesResponse && typesResponse.length > 0) {
+          setDocumentType(typesResponse[0].id.toString());
+        }
+        if (sourcesResponse && sourcesResponse.length > 0) {
+          setDocumentSource(sourcesResponse[0].id.toString());
+        }
       }
       
     } catch (error: any) {
@@ -157,6 +279,31 @@ const DocumentCreateModal: React.FC<DocumentCreateModalProps> = ({
     setError(null);
   };
 
+  // Check if core fields can be edited (only in DRAFT status)
+  const canEditCoreFields = editDocument ? editDocument.status === 'DRAFT' : true;
+  
+  // Handle document type changes with warning
+  const handleDocumentTypeChange = (newTypeId: string) => {
+    // Get original document type ID for comparison
+    let originalTypeId = '';
+    if (editDocument && editDocument.document_type) {
+      if (typeof editDocument.document_type === 'object' && editDocument.document_type.id) {
+        originalTypeId = editDocument.document_type.id.toString();
+      } else {
+        originalTypeId = editDocument.document_type.toString();
+      }
+    }
+    
+    if (editDocument && originalTypeId && originalTypeId !== newTypeId) {
+      setDocumentTypeChanged(true);
+      setShowNumberChangeWarning(true);
+    } else {
+      setDocumentTypeChanged(false);
+      setShowNumberChangeWarning(false);
+    }
+    setDocumentType(newTypeId);
+  };
+
   const handleCreateDocument = async () => {
     try {
       // Enhanced validation with debugging
@@ -217,47 +364,101 @@ const DocumentCreateModal: React.FC<DocumentCreateModalProps> = ({
         console.log('❌ NOT adding file to FormData - selectedFile invalid or empty');
       }
 
+      // Add dependencies BEFORE debugging FormData
+      console.log('🔍 Debug - selectedDependencies:', selectedDependencies);
+      console.log('🔍 Debug - selectedDependencies length:', selectedDependencies.length);
+      console.log('🔍 Debug - selectedDependencies type:', typeof selectedDependencies);
+      
+      if (selectedDependencies.length > 0) {
+        console.log('✅ Adding dependencies to FormData...');
+        selectedDependencies.forEach((depId, index) => {
+          console.log(`  Adding dependency ${index}: ${depId}`);
+          formData.append(`dependencies[${index}]`, depId.toString());
+        });
+      } else {
+        console.log('❌ No dependencies to add (selectedDependencies is empty)');
+      }
+
       // Debug FormData contents
       console.log('📋 FormData contents:');
       for (let pair of formData.entries()) {
         console.log(`  ${pair[0]}: ${JSON.stringify(pair[1])}`);
       }
 
-      // Add dependencies
-      if (selectedDependencies.length > 0) {
-        selectedDependencies.forEach((depId, index) => {
-          formData.append(`dependencies[${index}]`, depId.toString());
-        });
+      // Include document type change flag for backend processing
+      if (editDocument && documentTypeChanged) {
+        formData.append('document_type_changed', 'true');
+        
+        // Get original document type ID
+        let originalTypeId = '';
+        if (editDocument.document_type) {
+          if (typeof editDocument.document_type === 'object' && editDocument.document_type.id) {
+            originalTypeId = editDocument.document_type.id.toString();
+          } else {
+            originalTypeId = editDocument.document_type.toString();
+          }
+        }
+        formData.append('old_document_type', originalTypeId);
       }
 
-      // Use direct fetch instead of apiService for FormData uploads
-      const response = await fetch('http://localhost:8000/api/v1/documents/documents/', {
-        method: 'POST',
+      // Use direct fetch for FormData uploads (create or update)
+      const apiUrl = editDocument 
+        ? `http://localhost:8000/api/v1/documents/documents/${editDocument.uuid}/`
+        : 'http://localhost:8000/api/v1/documents/documents/';
+      
+      const method = editDocument ? 'PATCH' : 'POST';
+      
+      // Get fresh token to avoid expiration issues
+      const currentToken = localStorage.getItem('accessToken');
+      console.log('🔑 Using token for request:', currentToken ? 'Token available' : 'No token found');
+      
+      const response = await fetch(apiUrl, {
+        method: method,
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('accessToken')}`,
+          'Authorization': `Bearer ${currentToken}`,
           // Don't set Content-Type - let browser set multipart boundary
         },
         body: formData,
       });
+      
+      console.log(`📡 ${method} request to:`, apiUrl);
+      console.log('📡 Response status:', response.status);
+      console.log('📡 Response ok:', response.ok);
 
       if (response.ok) {
-        const newDocument = await response.json();
-        console.log('✅ Document created successfully:', newDocument);
-        onCreateSuccess(newDocument);
+        const updatedDocument = await response.json();
+        console.log(`✅ Document ${editDocument ? 'updated' : 'created'} successfully:`, updatedDocument);
         
-        // Reset form
-        setTitle('');
-        setDescription('');
-        setKeywords('');
-        setDocumentType('');
-        setDocumentSource('');
-        setPriority('normal');
-        setRequiresTraining(false);
-        setSelectedFile(null);
+        // Show success message
+        console.log('📋 Changes applied:', {
+          title: titleValue,
+          description: descriptionValue,
+          keywords: keywords.trim(),
+          priority: priority,
+          requiresTraining: requiresTraining,
+          documentType: documentType,
+          documentSource: documentSource
+        });
+        
+        onCreateSuccess(updatedDocument);
+        
+        // Reset form only for create mode, not edit mode
+        if (!editDocument) {
+          setTitle('');
+          setDescription('');
+          setKeywords('');
+          setDocumentType('');
+          setDocumentSource('');
+          setPriority('normal');
+          setRequiresTraining(false);
+          setSelectedFile(null);
+        }
       } else {
         const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
         console.log('❌ API Error Response:', errorData);
-        throw new Error(JSON.stringify(errorData));
+        console.log('❌ Response status:', response.status);
+        console.log('❌ Response headers:', response.headers);
+        throw new Error(`HTTP ${response.status}: ${JSON.stringify(errorData)}`);
       }
       handleClose();
 
@@ -273,7 +474,8 @@ const DocumentCreateModal: React.FC<DocumentCreateModalProps> = ({
   };
 
   const handleClose = () => {
-    // Reset form
+    // Reset form with debugging
+    console.log('🔍 Form reset - before clearing dependencies:', selectedDependencies);
     setTitle('');
     setDescription('');
     setKeywords('');
@@ -283,6 +485,7 @@ const DocumentCreateModal: React.FC<DocumentCreateModalProps> = ({
     setRequiresTraining(false);
     setSelectedFile(null);
     setSelectedDependencies([]);
+    console.log('🔍 Form reset - after clearing dependencies: []');
     setError(null);
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
@@ -301,7 +504,7 @@ const DocumentCreateModal: React.FC<DocumentCreateModalProps> = ({
           <div className="px-6 py-4 border-b border-gray-200">
             <div className="flex items-center justify-between">
               <h2 className="text-xl font-semibold text-gray-900">
-                📝 Create Document (Step 1)
+                {editDocument ? '✏️ Edit Document' : '📝 Create Document (Step 1)'}
               </h2>
               <button
                 onClick={handleClose}
@@ -324,13 +527,20 @@ const DocumentCreateModal: React.FC<DocumentCreateModalProps> = ({
 
           {/* Workflow Information */}
           <div className="px-6 py-4 bg-blue-50 border-l-4 border-blue-400">
-            <h3 className="text-sm font-semibold text-blue-900 mb-2">📋 EDMS Workflow Step 1</h3>
+            <h3 className="text-sm font-semibold text-blue-900 mb-2">
+              {editDocument ? '✏️ Edit Document Mode' : '📋 EDMS Workflow Step 1'}
+            </h3>
             <p className="text-blue-800 text-sm">
-              <strong>Current Step:</strong> Create document placeholder with basic information
+              {editDocument 
+                ? `Editing: ${editDocument.document_number} - ${editDocument.title}`
+                : 'Create document placeholder with basic information'
+              }
             </p>
-            <p className="text-blue-700 text-xs mt-1">
-              Per EDMS specification lines 4-5: Document status will be DRAFT. Reviewer selection happens in Step 2.
-            </p>
+            {!editDocument && (
+              <p className="text-blue-700 text-xs mt-1">
+                Per EDMS specification lines 4-5: Document status will be DRAFT. Reviewer selection happens in Step 2.
+              </p>
+            )}
           </div>
 
           <div className="px-6 py-6 space-y-6">
@@ -339,7 +549,34 @@ const DocumentCreateModal: React.FC<DocumentCreateModalProps> = ({
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Document File <span className="text-xs text-gray-500">(Optional)</span>
+                {editDocument && editDocument.file_name && (
+                  <span className="text-xs text-blue-600 ml-2">
+                    Current: {editDocument.file_name}
+                  </span>
+                )}
               </label>
+              
+              {/* Show existing file information */}
+              {editDocument && editDocument.file_name && editDocument.file_path && !selectedFile && (
+                <div className="mb-3 p-3 bg-blue-50 border border-blue-200 rounded-md">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center space-x-2">
+                      <svg className="w-5 h-5 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                      </svg>
+                      <div>
+                        <p className="text-sm font-medium text-blue-800">{editDocument.file_name}</p>
+                        {editDocument.file_size && (
+                          <p className="text-xs text-blue-600">
+                            {(editDocument.file_size / 1024 / 1024).toFixed(2)} MB
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                    <p className="text-xs text-blue-600">Upload new file to replace</p>
+                  </div>
+                </div>
+              )}
               <div
                 className={`border-2 border-dashed rounded-lg p-6 text-center transition-colors ${
                   isDragOver
@@ -406,16 +643,26 @@ const DocumentCreateModal: React.FC<DocumentCreateModalProps> = ({
               <div>
                 <label htmlFor="title" className="block text-sm font-medium text-gray-700 mb-1">
                   Document Title *
+                  {!canEditCoreFields && (
+                    <span className="text-xs text-amber-600 ml-1">(Read-only after DRAFT)</span>
+                  )}
                 </label>
                 <input
                   type="text"
                   id="title"
                   value={title}
                   onChange={(e) => setTitle(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                  className={`w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 ${
+                    !canEditCoreFields ? 'bg-gray-100 cursor-not-allowed' : ''
+                  }`}
                   placeholder="Enter document title"
-                  disabled={loading}
+                  disabled={loading || !canEditCoreFields}
                 />
+                {!canEditCoreFields && editDocument && (
+                  <p className="text-sm text-amber-600 mt-1">
+                    ⚠️ Title cannot be changed after submitting for review. Contact administrator if changes needed.
+                  </p>
+                )}
               </div>
 
               <div>
@@ -456,13 +703,18 @@ const DocumentCreateModal: React.FC<DocumentCreateModalProps> = ({
               <div>
                 <label htmlFor="documentType" className="block text-sm font-medium text-gray-700 mb-1">
                   Document Type *
+                  {!canEditCoreFields && (
+                    <span className="text-xs text-amber-600 ml-1">(Read-only after DRAFT)</span>
+                  )}
                 </label>
                 <select
                   id="documentType"
                   value={documentType}
-                  onChange={(e) => setDocumentType(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
-                  disabled={loading}
+                  onChange={(e) => handleDocumentTypeChange(e.target.value)}
+                  className={`w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 ${
+                    !canEditCoreFields ? 'bg-gray-100 cursor-not-allowed' : ''
+                  }`}
+                  disabled={loading || !canEditCoreFields}
                 >
                   <option value="">Select document type</option>
                   {documentTypes.map((type) => (
@@ -471,6 +723,35 @@ const DocumentCreateModal: React.FC<DocumentCreateModalProps> = ({
                     </option>
                   ))}
                 </select>
+                
+                {/* Document Type Change Warning */}
+                {showNumberChangeWarning && editDocument && (
+                  <div className="mt-2 p-3 bg-yellow-50 border border-yellow-200 rounded-md">
+                    <div className="flex">
+                      <svg className="w-5 h-5 text-yellow-400 mr-2 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                      </svg>
+                      <div>
+                        <h4 className="text-sm font-medium text-yellow-800">⚠️ Document Number Will Change</h4>
+                        <p className="text-sm text-yellow-700 mt-1">
+                          Changing document type will generate a new document number.
+                        </p>
+                        <p className="text-xs text-yellow-600 mt-1">
+                          <strong>Current:</strong> {editDocument.document_number} → <strong>New:</strong> [Generated automatically on save]
+                        </p>
+                        <p className="text-xs text-yellow-600 mt-1">
+                          This change will be logged in the audit trail for compliance.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+                
+                {!canEditCoreFields && editDocument && (
+                  <p className="text-sm text-amber-600 mt-1">
+                    ⚠️ Document type cannot be changed after submitting for review. Contact administrator if changes needed.
+                  </p>
+                )}
               </div>
 
               <div>
@@ -571,7 +852,10 @@ const DocumentCreateModal: React.FC<DocumentCreateModalProps> = ({
               disabled={loading}
               className="px-4 py-2 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-md hover:bg-blue-700 focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50"
             >
-              {loading ? 'Creating...' : 'Create Document'}
+              {loading 
+                ? (editDocument ? 'Updating...' : 'Creating...') 
+                : (editDocument ? 'Update Document' : 'Create Document')
+              }
             </button>
           </div>
         </div>

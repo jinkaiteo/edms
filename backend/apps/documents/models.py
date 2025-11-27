@@ -342,16 +342,24 @@ class Document(models.Model):
         
         super().save(*args, **kwargs)
     
-    def generate_document_number(self):
+    def generate_document_number(self, document_type=None):
         """Generate unique document number based on document type."""
         from django.utils import timezone
         
+        # Use provided document_type or fall back to instance document_type
+        doc_type = document_type or self.document_type
+        if not doc_type:
+            # Fallback numbering if no type specified
+            year = timezone.now().year
+            count = Document.objects.filter(created_at__year=year).count() + 1
+            return f"DOC-{year}-{count:04d}"
+        
         year = timezone.now().year
-        prefix = self.document_type.numbering_prefix or self.document_type.code
+        prefix = doc_type.numbering_prefix or doc_type.code
         
         # Find the next sequence number for this type and year
         last_doc = Document.objects.filter(
-            document_type=self.document_type,
+            document_type=doc_type,
             document_number__startswith=f"{prefix}-{year}-"
         ).order_by('-document_number').first()
         
@@ -366,7 +374,7 @@ class Document(models.Model):
             next_seq = 1
         
         # Format using document type's numbering format
-        return self.document_type.numbering_format.format(
+        return doc_type.numbering_format.format(
             prefix=prefix,
             year=year,
             sequence=next_seq

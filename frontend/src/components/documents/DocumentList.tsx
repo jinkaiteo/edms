@@ -244,6 +244,20 @@ const DocumentList: React.FC<DocumentListProps> = ({
     loadDocuments();
   }, [filters]);
 
+  // Listen for document updates from other components
+  useEffect(() => {
+    const handleDocumentUpdate = (event: CustomEvent) => {
+      console.log('📄 Document update event received, refreshing list...');
+      loadDocuments();
+    };
+
+    window.addEventListener('documentUpdated', handleDocumentUpdate as EventListener);
+    
+    return () => {
+      window.removeEventListener('documentUpdated', handleDocumentUpdate as EventListener);
+    };
+  }, []);
+
   const getStatusColor = (status: DocumentStatus): string => {
     const colors: Record<DocumentStatus, string> = {
       draft: 'bg-gray-100 text-gray-800',

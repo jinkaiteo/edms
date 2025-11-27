@@ -516,6 +516,239 @@ class DocumentViewSet(viewsets.ModelViewSet):
         """Download .docx document with placeholders replaced by actual metadata."""
         document = self.get_object()
         return self._serve_processed_docx(document, request)
+    
+    @action(detail=True, methods=['patch'], url_path='upload')
+    def upload_file(self, request, uuid=None):
+        """Upload file to a document in DRAFT status."""
+        document = self.get_object()
+        
+        # Check permissions
+        if not document.can_edit(request.user):
+            return Response(
+                {'error': 'You do not have permission to edit this document'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+        
+        # Check document status
+        if document.status != 'DRAFT':
+            return Response(
+                {'error': 'Files can only be uploaded to documents in DRAFT status'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # Check if file is provided
+        if 'file' not in request.FILES:
+            return Response(
+                {'error': 'No file provided'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        uploaded_file = request.FILES['file']
+        
+        # Save file
+        from django.core.files.storage import default_storage
+        from django.core.files.base import ContentFile
+        import os
+        import mimetypes
+        
+        # Generate file path
+        file_path = f"documents/{document.uuid}/{uploaded_file.name}"
+        
+        # Save file using default storage
+        saved_path = default_storage.save(file_path, ContentFile(uploaded_file.read()))
+        
+        # Update document with file information
+        document.file_name = uploaded_file.name
+        document.file_path = saved_path
+        document.file_size = uploaded_file.size
+        document.mime_type = mimetypes.guess_type(uploaded_file.name)[0] or 'application/octet-stream'
+        
+        # Calculate checksum
+        document.file_checksum = document.calculate_file_checksum()
+        
+        document.save()
+        
+        # Log file upload
+        log_document_access(
+            document=document,
+            user=request.user,
+            access_type='EDIT',
+            request=request,
+            success=True,
+            metadata={
+                'action': 'file_uploaded',
+                'file_name': uploaded_file.name,
+                'file_size': uploaded_file.size
+            }
+        )
+        
+        # Return updated document
+        serializer = self.get_serializer(document)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+    
+    def update(self, request, *args, **kwargs):
+        """Enhanced update method to handle document type changes and number regeneration."""
+        partial = kwargs.pop('partial', False)
+        instance = self.get_object()
+        
+        # Check if user can edit this document
+        if not instance.can_edit(request.user):
+            return Response(
+                {'error': 'You do not have permission to edit this document'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+        
+        # Only allow core field changes in DRAFT status
+        if instance.status != 'DRAFT':
+            # Remove protected fields from the request data for non-DRAFT documents
+            protected_fields = ['title', 'document_type', 'document_source']
+            for field in protected_fields:
+                if field in request.data:
+                    return Response(
+                        {'error': f'Field "{field}" cannot be changed after document leaves DRAFT status'},
+                        status=status.HTTP_400_BAD_REQUEST
+                    )
+        
+        # Handle document type changes
+        document_type_changed = request.data.get('document_type_changed') == 'true'
+        old_document_type_id = request.data.get('old_document_type')
+        new_document_type_id = request.data.get('document_type')
+        
+        old_document_number = None
+        if document_type_changed and old_document_type_id and new_document_type_id:
+            from apps.documents.models import DocumentType
+            
+            try:
+                old_type = DocumentType.objects.get(id=old_document_type_id)
+                new_type = DocumentType.objects.get(id=new_document_type_id)
+                
+                if old_type != new_type:
+                    # Store old number for audit logging
+                    old_document_number = instance.document_number
+                    
+                    # Generate new document number based on new type
+                    instance.document_number = instance.generate_document_number(new_type)
+                    
+                    # Log the document number change
+                    from apps.audit.models import DatabaseChangeLog
+                    import json
+                    
+                    # Create change log with correct field structure
+                    DatabaseChangeLog.objects.create(
+                        content_type=ContentType.objects.get_for_model(instance),
+                        object_id=instance.id,
+                        action='UPDATE',
+                        user=request.user,
+                        table_name='documents_document',
+                        operation='UPDATE', 
+                        record_id=str(instance.id),
+                        old_values={
+                            'document_number': old_document_number,
+                            'document_type': old_type.name
+                        },
+                        new_values={
+                            'document_number': instance.document_number,
+                            'document_type': new_type.name
+                        }
+                    )
+                    
+            except DocumentType.DoesNotExist:
+                return Response(
+                    {'error': 'Invalid document type provided'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+        
+        # Handle document_source and dependencies manually since they're read-only in the detail serializer
+        document_source_id = request.data.get('document_source')
+        dependencies_data = []
+        
+        # Extract dependencies from form data
+        for key, value in request.data.items():
+            if key.startswith('dependencies[') and key.endswith(']'):
+                dependencies_data.append(value)
+        
+        # Update document_source if provided
+        if document_source_id:
+            try:
+                from apps.documents.models import DocumentSource
+                new_source = DocumentSource.objects.get(id=document_source_id)
+                instance.document_source = new_source
+                print(f"Updated document source to: {new_source.name} (ID: {new_source.id})")
+            except DocumentSource.DoesNotExist:
+                return Response(
+                    {'error': f'Document source with ID {document_source_id} not found'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+        
+        # Update dependencies if provided
+        if dependencies_data:
+            try:
+                from apps.documents.models import DocumentDependency
+                # Validate all dependency documents exist first
+                valid_dependencies = []
+                invalid_dependencies = []
+                
+                for dep_doc_id in dependencies_data:
+                    try:
+                        depends_on_doc = Document.objects.get(id=dep_doc_id)
+                        # Don't allow self-dependency
+                        if depends_on_doc.id != instance.id:
+                            valid_dependencies.append(depends_on_doc)
+                        else:
+                            print(f"Skipped self-dependency: {dep_doc_id}")
+                    except Document.DoesNotExist:
+                        invalid_dependencies.append(dep_doc_id)
+                
+                if invalid_dependencies:
+                    return Response(
+                        {'error': f'Dependency documents not found: {invalid_dependencies}. Available document IDs: {[doc.id for doc in Document.objects.exclude(id=instance.id)[:10]]}'},
+                        status=status.HTTP_400_BAD_REQUEST
+                    )
+                
+                # Clear existing dependencies
+                DocumentDependency.objects.filter(document=instance, is_active=True).update(is_active=False)
+                
+                # Create new dependencies (use get_or_create to avoid duplicates)
+                for depends_on_doc in valid_dependencies:
+                    dependency, created = DocumentDependency.objects.get_or_create(
+                        document=instance,
+                        depends_on=depends_on_doc,
+                        dependency_type='required',
+                        defaults={
+                            'created_by': request.user,
+                            'is_active': True
+                        }
+                    )
+                    
+                    # If dependency already exists but was inactive, reactivate it
+                    if not created and not dependency.is_active:
+                        dependency.is_active = True
+                        dependency.save()
+                        print(f"Reactivated existing dependency: {instance.id} → {depends_on_doc.id}")
+                    elif created:
+                        print(f"Created new dependency: {instance.id} → {depends_on_doc.id}")
+                    else:
+                        print(f"Dependency already active: {instance.id} → {depends_on_doc.id}")
+                
+                print(f"Updated dependencies to: {[doc.id for doc in valid_dependencies]}")
+                
+            except Exception as e:
+                return Response(
+                    {'error': f'Error updating dependencies: {e}'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+        
+        # Continue with normal update process for other fields
+        serializer = self.get_serializer(instance, data=request.data, partial=partial)
+        serializer.is_valid(raise_exception=True)
+        self.perform_update(serializer)
+        
+        if getattr(instance, '_prefetched_objects_cache', None):
+            # If 'prefetch_related' has been applied to a queryset, we need to
+            # forcibly invalidate the prefetch cache on the instance.
+            instance._prefetched_objects_cache = {}
+        
+        return Response(serializer.data)
 
     def _serve_document_file(self, document, request, download_type):
         """Common method to serve document files with proper validation."""

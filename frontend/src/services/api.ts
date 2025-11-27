@@ -358,6 +358,23 @@ class ApiService {
     await this.client.delete(`/documents/${id}/`);
   }
 
+  async uploadDocumentFile(documentUuid: string, formData: FormData): Promise<any> {
+    try {
+      const response = await this.client.patch(`/documents/${documentUuid}/upload/`, formData, {
+        headers: {
+          // Don't set Content-Type for FormData - let browser set it with boundary
+        }
+      });
+      return { success: true, data: response.data };
+    } catch (error: any) {
+      console.error('File upload failed:', error);
+      return { 
+        success: false, 
+        error: error.response?.data?.message || error.message || 'File upload failed'
+      };
+    }
+  }
+
   async signDocument(data: SignatureRequest): Promise<ElectronicSignature> {
     const response = await this.client.post<ElectronicSignature>(`/documents/${data.document_id}/sign/`, data);
     return response.data;
