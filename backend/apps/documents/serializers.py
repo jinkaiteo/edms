@@ -288,7 +288,7 @@ class DocumentDetailSerializer(serializers.ModelSerializer):
 class DocumentCreateSerializer(serializers.ModelSerializer):
     """Serializer for creating new documents."""
     
-    file = serializers.FileField(write_only=True, required=False)
+    file = serializers.FileField(write_only=True, required=False, allow_empty_file=False)
     
     class Meta:
         model = Document

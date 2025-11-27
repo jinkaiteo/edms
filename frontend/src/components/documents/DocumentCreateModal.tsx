@@ -203,7 +203,8 @@ const DocumentCreateModal: React.FC<DocumentCreateModalProps> = ({
       formData.append('requires_training', requiresTraining.toString());
       formData.append('is_controlled', 'true'); // Add missing field
       
-      if (selectedFile) {
+      // Only append file if it's actually selected and not empty
+      if (selectedFile && selectedFile.size > 0) {
         formData.append('file', selectedFile);
       }
 
