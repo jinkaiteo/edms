@@ -149,13 +149,13 @@ const ReviewerInterface: React.FC<ReviewerInterfaceProps> = ({
       let downloadUrl = '';
       switch (downloadType) {
         case 'original':
-          downloadUrl = `/documents/documents/${documentId}/download/original/`;
+          downloadUrl = `http://localhost:8000/api/v1/documents/documents/${document.uuid}/download/original/`;
           break;
         case 'annotated':
-          downloadUrl = `/documents/documents/${documentId}/download/annotated/`;
+          downloadUrl = `http://localhost:8000/api/v1/documents/documents/${document.uuid}/download/annotated/`;
           break;
         case 'official':
-          downloadUrl = `/documents/documents/${documentId}/download/official/`;
+          downloadUrl = `http://localhost:8000/api/v1/documents/documents/${document.uuid}/download/official/`;
           break;
       }
 
