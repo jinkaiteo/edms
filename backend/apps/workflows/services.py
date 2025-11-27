@@ -6,6 +6,7 @@ Uses DocumentWorkflow + DocumentLifecycleService for all workflow operations.
 """
 
 from typing import Dict, List, Optional, Any
+from datetime import date
 from django.contrib.auth import get_user_model
 from apps.documents.models import Document
 from .models import DocumentWorkflow, DocumentState, DocumentTransition
