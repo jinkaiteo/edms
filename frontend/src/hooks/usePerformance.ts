@@ -137,7 +137,6 @@ export function usePerformanceMonitor(name: string) {
     const duration = endTime - startTimeRef.current;
     
     if (process.env.NODE_ENV === 'development') {
-      console.log(`Performance: ${name} took ${duration.toFixed(2)}ms`);
     }
 
     // In production, you might want to send this to an analytics service

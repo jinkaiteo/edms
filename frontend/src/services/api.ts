@@ -283,48 +283,37 @@ class ApiService {
   }
 
   async createDocument(data: DocumentCreateRequest): Promise<Document> {
-    console.log('🚀 createDocument called with data:', data);
     
     const formData = new FormData();
     
-    console.log('📋 Building FormData...');
     Object.entries(data).forEach(([key, value]) => {
       if (value !== undefined) {
         if (key === 'file' && value instanceof File) {
           formData.append(key, value);
-          console.log(`✅ Added file: ${key} = ${value.name} (${value.size} bytes)`);
         } else {
           // Fix field name mapping for backend compatibility
           let fieldName = key;
           if (key === 'document_type_id') {
             fieldName = 'document_type'; // Backend expects 'document_type' not 'document_type_id'
-            console.log(`🔧 Field mapping: ${key} → ${fieldName}`);
           } else if (key === 'document_source_id') {
             fieldName = 'document_source'; // Backend expects 'document_source' not 'document_source_id'
-            console.log(`🔧 Field mapping: ${key} → ${fieldName}`);
           }
           const stringValue = typeof value === 'object' ? JSON.stringify(value) : String(value);
           formData.append(fieldName, stringValue);
-          console.log(`✅ Added field: ${fieldName} = ${stringValue}`);
         }
       }
     });
     
     // Note: document_source should come from form data, not hardcoded
-    console.log('📋 Document source will be set from form data');
     
     // Debug: Log all FormData entries
-    console.log('📊 Complete FormData contents:');
     for (let [key, value] of formData.entries()) {
       if (value instanceof File) {
-        console.log(`  ${key}: [File] ${value.name} (${value.size} bytes, ${value.type})`);
       } else {
-        console.log(`  ${key}: ${value}`);
       }
     }
 
     // Use the correct endpoint and let interceptor handle auth
-    console.log('📡 Sending POST request to /documents/documents/');
     
     try {
       const response = await this.client.post<Document>('/documents/documents/', formData, {
@@ -332,7 +321,6 @@ class ApiService {
           // Don't set Content-Type for FormData - let browser set it with boundary
         }
       });
-      console.log('✅ Document creation successful:', response.data);
       return response.data;
     } catch (error: any) {
       console.error('❌ Document creation failed:', error);

@@ -1,5 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import { Document, WorkflowInstance, ElectronicSignature } from '../../types/api';
+import ReviewerInterface from '../workflows/ReviewerInterface.tsx';
+import SubmitForReviewModal from '../workflows/SubmitForReviewModal.tsx';
+import RouteForApprovalModal from '../workflows/RouteForApprovalModal.tsx';
+import ApproverInterface from '../workflows/ApproverInterface.tsx';
+import SetEffectiveDateModal from '../workflows/SetEffectiveDateModal.tsx';
+import CreateNewVersionModal from '../workflows/CreateNewVersionModal.tsx';
+import MarkObsoleteModal from '../workflows/MarkObsoleteModal.tsx';
+import DocumentCreateModal from './DocumentCreateModal.tsx';
+import MyDraftDocuments from './MyDraftDocuments.tsx';
+import { useAuth } from '../../contexts/AuthContext.tsx';
 import apiService from '../../services/api';
 
 interface DocumentViewerProps {
@@ -24,6 +34,19 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({
   const [signatures, setSignatures] = useState<ElectronicSignature[]>([]);
   const [loading, setLoading] = useState(false);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [showReviewerInterface, setShowReviewerInterface] = useState(false);
+  
+  // Workflow modals
+  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [showSubmitForReviewModal, setShowSubmitForReviewModal] = useState(false);
+  const [showRouteForApprovalModal, setShowRouteForApprovalModal] = useState(false);
+  const [showApproverInterface, setShowApproverInterface] = useState(false);
+  const [showSetEffectiveDateModal, setShowSetEffectiveDateModal] = useState(false);
+  const [showCreateNewVersionModal, setShowCreateNewVersionModal] = useState(false);
+  const [showMarkObsoleteModal, setShowMarkObsoleteModal] = useState(false);
+  
+  // Auth context for role-based visibility
+  const { authenticated, user } = useAuth();
 
   useEffect(() => {
     if (document) {
@@ -57,17 +80,17 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({
           timeout_days: 7,
           reminder_days: 2
         },
-        state: document.status === 'effective' ? 'approved' : document.status,
+        state: document.status.toLowerCase() === 'effective' ? 'approved' : document.status,
         state_display: document.status.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase()),
         initiated_by: document.created_by,
         current_assignee: null,
         started_at: document.created_at,
-        completed_at: document.status === 'effective' ? document.updated_at : null,
+        completed_at: document.status.toLowerCase() === 'effective' ? document.updated_at : null,
         due_date: null,
-        is_active: document.status !== 'effective',
-        is_completed: document.status === 'effective',
+        is_active: document.status.toLowerCase() !== 'effective',
+        is_completed: document.status.toLowerCase() === 'effective',
         is_overdue: false,
-        completion_reason: document.status === 'effective' ? 'Successfully completed review process' : null,
+        completion_reason: document.status.toLowerCase() === 'effective' ? 'Successfully completed review process' : null,
         workflow_data: {},
         content_object_data: {
           type: 'document',
@@ -80,7 +103,7 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({
       };
 
       // Mock signatures
-      const mockSignatures: ElectronicSignature[] = document.status === 'effective' ? [
+      const mockSignatures: ElectronicSignature[] = document.status.toLowerCase() === 'effective' ? [
         {
           id: 1,
           uuid: 'sig-uuid-1',
@@ -158,6 +181,101 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({
     return Math.round(bytes / Math.pow(1024, i) * 100) / 100 + ' ' + sizes[i];
   };
 
+  const handleWorkflowAction = (actionKey: string) => {
+    
+    // Handle EDMS workflow actions
+    switch (actionKey) {
+      case 'submit_for_review':
+        // EDMS Step 2: Open submit for review modal
+        setShowSubmitForReviewModal(true);
+        return;
+
+      case 'route_for_approval':
+        // EDMS Route for Approval: Open route for approval modal
+        setShowRouteForApprovalModal(true);
+        return;
+        
+      case 'open_reviewer_interface':
+        // EDMS Review Process: Open reviewer interface
+        setShowReviewerInterface(true);
+        return;
+        
+      case 'route_for_approval':
+        // EDMS Approval Routing: Open route for approval modal
+        setShowRouteForApprovalModal(true);
+        return;
+        
+      case 'open_approver_interface':
+        // EDMS Approval Process: Open approver interface
+        setShowApproverInterface(true);
+        return;
+        
+      case 'set_effective_date':
+        // EDMS Set Effective Date: Open effective date modal
+        setShowSetEffectiveDateModal(true);
+        return;
+        
+      case 'create_revision':
+        // EDMS Create New Version: Open new version modal
+        setShowCreateNewVersionModal(true);
+        return;
+        
+      case 'initiate_obsolescence':
+        // EDMS Mark Obsolete: Open obsolescence modal
+        setShowMarkObsoleteModal(true);
+        return;
+        
+      default:
+        // Handle other workflow actions through parent component
+        if (onWorkflowAction && document) {
+          onWorkflowAction(document, actionKey);
+        }
+    }
+  };
+  
+  const handleReviewComplete = () => {
+    setShowReviewerInterface(false);
+    loadDocumentData();
+  };
+
+  const handleSubmitForReviewSuccess = () => {
+    setShowSubmitForReviewModal(false);
+    loadDocumentData();
+  };
+
+  const handleApprovalRouted = () => {
+    setShowRouteForApprovalModal(false);
+    loadDocumentData();
+  };
+
+  const handleApprovalComplete = () => {
+    setShowApproverInterface(false);
+    loadDocumentData();
+  };
+
+  const handleEffectiveDateSet = () => {
+    setShowSetEffectiveDateModal(false);
+    loadDocumentData();
+  };
+
+  const handleVersionCreated = (newDocument: any) => {
+    setShowCreateNewVersionModal(false);
+    if (newDocument) {
+      // If new document data provided, could switch to it
+    }
+    loadDocumentData();
+  };
+
+  const handleObsolescenceInitiated = () => {
+    setShowMarkObsoleteModal(false);
+    loadDocumentData();
+  };
+
+  const handleCreateDocumentSuccess = (newDocument: any) => {
+    setShowCreateModal(false);
+    loadDocumentData();
+  };
+
   const getStatusColor = (status: string): string => {
     const colors: Record<string, string> = {
       draft: 'bg-gray-100 text-gray-800',
@@ -175,35 +293,252 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({
   };
 
   const getAvailableActions = () => {
-    if (!document || !workflowStatus) return [];
+    if (!document || !workflowStatus || !authenticated || !user) {
+      return [];
+    }
+
 
     const actions = [];
     
-    switch (document.status) {
-      case 'draft':
-        actions.push({ key: 'submit_for_review', label: 'Submit for Review', color: 'blue' });
+    // EDMS Role-based permissions (per EDMS_details.txt lines 69-75)
+    let isDocumentAuthor = false;
+    
+    
+    // Check if user is document author
+    if (document.author !== undefined) {
+        const directMatch1 = document.author === user.id;
+        const directMatch2 = document.author === String(user.id);
+        const directMatch3 = String(document.author) === String(user.id);
+        isDocumentAuthor = directMatch1 || directMatch2 || directMatch3;
+        
+    }
+    
+    // Fallback to checking display name if ID not available
+    if (!isDocumentAuthor && document.author_display) {
+        const usernameMatch = user.username === 'author';
+        const displayIncludesUsername = document.author_display.toLowerCase().includes(user.username.toLowerCase());
+        // Remove the overly broad "displayIncludesAuthor" check - it matches everyone
+        
+        isDocumentAuthor = usernameMatch || displayIncludesUsername;
+        
+    }
+    
+    
+    // Check if user is assigned reviewer - use reviewer_display as fallback since reviewer ID might not be in document object
+    let isAssignedReviewer = false;
+    
+    
+    // First try direct ID comparison
+    if (document.reviewer !== undefined) {
+        const directMatch1 = document.reviewer === user.id;
+        const directMatch2 = document.reviewer === String(user.id);
+        const directMatch3 = String(document.reviewer) === String(user.id);
+        isAssignedReviewer = directMatch1 || directMatch2 || directMatch3;
+        
+    }
+    
+    // Fallback to checking display name if ID not available or doesn't match
+    if (!isAssignedReviewer && document.reviewer_display) {
+        const usernameMatch = user.username === 'reviewer';
+        const displayIncludesUsername = document.reviewer_display.toLowerCase().includes(user.username.toLowerCase());
+        // Only use exact username matching for fallback - remove overly broad checks
+        
+        isAssignedReviewer = usernameMatch || displayIncludesUsername;
+        
+    }
+    
+    
+    // Check if user is assigned approver - use approver_display as fallback since approver ID might not be in document object
+    let isAssignedApprover = false;
+    
+    
+    // First try direct ID comparison  
+    if (document.approver !== undefined) {
+        const directMatch1 = document.approver === user.id;
+        const directMatch2 = document.approver === String(user.id);
+        const directMatch3 = String(document.approver) === String(user.id);
+        isAssignedApprover = directMatch1 || directMatch2 || directMatch3;
+        
+    }
+    
+    // Fallback to checking display name if ID not available or doesn't match
+    if (!isAssignedApprover && document.approver_display) {
+        const usernameMatch = user.username === 'approver';
+        const displayIncludesUsername = document.approver_display.toLowerCase().includes(user.username.toLowerCase());
+        // Only use exact username matching for fallback - remove overly broad checks
+        
+        isAssignedApprover = usernameMatch || displayIncludesUsername;
+        
+    }
+    
+    // Check user permissions through roles or direct assignment
+    const userHasWriteRole = user.roles?.some(role => role.permission_level === 'write') || user.permissions?.includes('write');
+    const userHasReviewRole = user.roles?.some(role => role.permission_level === 'review') || user.permissions?.includes('review');
+    const userHasApprovalRole = user.roles?.some(role => role.permission_level === 'approve') || user.permissions?.includes('approve');
+    
+    const hasWritePermission = userHasWriteRole || user.is_staff || isDocumentAuthor;
+    const hasReviewPermission = userHasReviewRole || user.is_staff || isAssignedReviewer;
+    const hasApprovalPermission = userHasApprovalRole || user.is_staff || isAssignedApprover;
+    
+
+    
+
+    // Note: Backend uses uppercase status values (DRAFT, PENDING_REVIEW, etc.)
+    // Converting to uppercase for consistent comparison
+    
+    switch (document.status.toUpperCase()) {
+      case 'DRAFT':
+        // EDMS Step 2: Author can select reviewer and submit for review (line 6)
+        // Use hasWritePermission since document.author might be undefined in frontend
+        if (hasWritePermission) {
+          actions.push({ 
+            key: 'submit_for_review', 
+            label: '📤 Submit for Review (Step 2)', 
+            color: 'blue',
+            description: 'Select reviewer and route document for review'
+          });
+        } else {
+        }
         break;
-      case 'pending_review':
-        actions.push({ key: 'start_review', label: 'Start Review', color: 'blue' });
+        
+      case 'PENDING_REVIEW':
+        // Note: Enforcing uppercase PENDING_REVIEW for consistency with backend
+        // EDMS lines 7-10: ONLY the assigned reviewer can start review process
+        // This is critical - only the specifically assigned reviewer should see this button
+        
+        // Debug: Calculate if Start Review Process button should show
+        const shouldShowStartReview = isAssignedReviewer;
+        
+        if (isAssignedReviewer) {
+          actions.push({ 
+            key: 'open_reviewer_interface', 
+            label: '📋 Start Review Process', 
+            color: 'blue', 
+            description: 'Download document and provide review comments'
+          });
+        } else if (isDocumentAuthor) {
+          actions.push({ 
+            key: 'view_review_status', 
+            label: '👀 View Review Status', 
+            color: 'gray',
+            description: 'Monitor review progress'
+          });
+        }
         break;
-      case 'under_review':
-        actions.push({ key: 'complete_review', label: 'Complete Review', color: 'green' });
-        actions.push({ key: 'request_changes', label: 'Request Changes', color: 'yellow' });
+        
+      case 'UNDER_REVIEW':
+        // Continue review process for assigned reviewer
+        // Only the specifically assigned reviewer can continue review
+        if (isAssignedReviewer) {
+          actions.push({ 
+            key: 'open_reviewer_interface', 
+            label: '📋 Continue Review', 
+            color: 'blue', 
+            description: 'Complete document review process'
+          });
+        }
         break;
-      case 'review_completed':
-        actions.push({ key: 'approve', label: 'Approve Document', color: 'green' });
-        actions.push({ key: 'reject', label: 'Reject Document', color: 'red' });
+        
+      case 'REVIEW_COMPLETED':
+      case 'REVIEWED':
+        // EDMS line 11: Author selects approver after review completion
+        
+        
+        if (hasWritePermission && isDocumentAuthor) {
+          actions.push({ 
+            key: 'route_for_approval', 
+            label: '✅ Route for Approval', 
+            color: 'green',
+            description: 'Select approver and route for approval'
+          });
+        }
         break;
-      case 'approved':
-        actions.push({ key: 'make_effective', label: 'Make Effective', color: 'green' });
+        
+      case 'PENDING_APPROVAL':
+        // EDMS lines 12-15: Approver can approve or reject
+        
+        // Debug: Calculate if Start Approval Process button should show
+        const shouldShowStartApproval = hasApprovalPermission && isAssignedApprover;
+        console.log('🔍 Debug - Start Approval Process Button Logic:', {
+          documentStatus: document.status,
+          statusMatches: document.status.toUpperCase() === 'PENDING_APPROVAL',
+          isAssignedApprover,
+          hasApprovalPermission,
+          authenticated,
+          workflowStatusExists: !!workflowStatus,
+          userExists: !!user,
+          documentExists: !!document,
+          shouldShowButton: shouldShowStartApproval,
+          allConditionsMet: shouldShowStartApproval && authenticated && !!workflowStatus && !!user && !!document
+        });
+        
+        if (hasApprovalPermission && isAssignedApprover) {
+          actions.push({ 
+            key: 'open_approver_interface', 
+            label: '✅ Start Approval Process', 
+            color: 'green',
+            description: 'Review and approve/reject document'
+          });
+        }
         break;
-      case 'effective':
-        actions.push({ key: 'create_revision', label: 'Create Revision', color: 'blue' });
-        actions.push({ key: 'mark_obsolete', label: 'Mark Obsolete', color: 'red' });
+        
+      case 'APPROVED':
+        // EDMS line 16: Approver sets effective date
+        
+        // Debug: Calculate if Set Effective Date button should show
+        const shouldShowSetEffective = hasApprovalPermission && isAssignedApprover;
+        console.log('🔍 Debug - Set Effective Date Button Logic:', {
+          documentStatus: document.status,
+          statusMatches: document.status.toUpperCase() === 'APPROVED',
+          isAssignedApprover,
+          hasApprovalPermission,
+          authenticated,
+          workflowStatusExists: !!workflowStatus,
+          userExists: !!user,
+          documentExists: !!document,
+          shouldShowButton: shouldShowSetEffective,
+          allConditionsMet: shouldShowSetEffective && authenticated && !!workflowStatus && !!user && !!document
+        });
+        
+        if (hasApprovalPermission && isAssignedApprover) {
+          actions.push({ 
+            key: 'set_effective_date', 
+            label: '📅 Set Effective Date', 
+            color: 'green',
+            description: 'Set when document becomes effective'
+          });
+        }
+        break;
+        
+      case 'EFFECTIVE':
+        // EDMS lines 21-26: Up-versioning and obsolescence workflows
+        if (hasWritePermission) {
+          actions.push({ 
+            key: 'create_revision', 
+            label: '📝 Create New Version', 
+            color: 'blue',
+            description: 'Start up-versioning workflow'
+          });
+        }
+        if (hasWritePermission && !hasDocumentDependencies()) {
+          actions.push({ 
+            key: 'initiate_obsolescence', 
+            label: '🗑️ Mark Obsolete', 
+            color: 'red',
+            description: 'Start obsolescence workflow'
+          });
+        }
         break;
     }
 
+
     return actions;
+  };
+
+  // Helper function to check document dependencies (EDMS lines 28-30)
+  const hasDocumentDependencies = () => {
+    // In real implementation, check if other documents depend on this one
+    return false; // Simplified for now
   };
 
   if (!document) {
@@ -239,9 +574,9 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({
             <div className="flex items-center space-x-4 text-sm text-gray-500">
               <span>{document.document_number}</span>
               <span>•</span>
-              <span>Version {document.version}</span>
+              <span>Version {document.version_string || document.version || '1.0'}</span>
               <span>•</span>
-              <span>{document.document_type?.name || 'Unknown Type'}</span>
+              <span>{document.document_type_display || 'Unknown Type'}</span>
             </div>
           </div>
           <div className="flex items-center space-x-2 ml-4">
@@ -312,11 +647,23 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({
                   </div>
                   <div>
                     <dt className="text-sm font-medium text-gray-500">Document Type</dt>
-                    <dd className="text-sm text-gray-900 mt-1">{document.document_type?.name || 'Unknown Type'}</dd>
+                    <dd className="text-sm text-gray-900 mt-1">{document.document_type_display || 'Unknown Type'}</dd>
                   </div>
                   <div>
-                    <dt className="text-sm font-medium text-gray-500">Created By</dt>
-                    <dd className="text-sm text-gray-900 mt-1">{document.created_by?.full_name || 'Unknown Author'}</dd>
+                    <dt className="text-sm font-medium text-gray-500">Author</dt>
+                    <dd className="text-sm text-gray-900 mt-1">{document.author_display || 'Unknown Author'}</dd>
+                  </div>
+                  <div>
+                    <dt className="text-sm font-medium text-gray-500">Version</dt>
+                    <dd className="text-sm text-gray-900 mt-1">{document.version_string || document.version || '1.0'}</dd>
+                  </div>
+                  <div>
+                    <dt className="text-sm font-medium text-gray-500">Status</dt>
+                    <dd className="text-sm text-gray-900 mt-1">
+                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(document.status)}`}>
+                        {document.status_display || document.status.replace('_', ' ')}
+                      </span>
+                    </dd>
                   </div>
                   <div>
                     <dt className="text-sm font-medium text-gray-500">Created Date</dt>
@@ -324,7 +671,7 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({
                   </div>
                   <div>
                     <dt className="text-sm font-medium text-gray-500">Last Modified</dt>
-                    <dd className="text-sm text-gray-900 mt-1">{formatDate(document.updated_at)}</dd>
+                    <dd className="text-sm text-gray-900 mt-1">{formatDate(document.updated_at || document.created_at)}</dd>
                   </div>
                   {document.effective_date && (
                     <div>
@@ -342,6 +689,25 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({
                     <div>
                       <dt className="text-sm font-medium text-gray-500">File Size</dt>
                       <dd className="text-sm text-gray-900 mt-1">{formatFileSize(document.file_size)}</dd>
+                    </div>
+                  )}
+                  
+                  {/* Workflow Assignment Information */}
+                  {(document.reviewer_display || document.approver_display) && (
+                    <div className="pt-4 border-t border-gray-200">
+                      <h4 className="text-sm font-medium text-gray-900 mb-3">Workflow Assignments</h4>
+                      {document.reviewer_display && (
+                        <div className="mb-2">
+                          <dt className="text-sm font-medium text-gray-500">Assigned Reviewer</dt>
+                          <dd className="text-sm text-gray-900 mt-1">{document.reviewer_display}</dd>
+                        </div>
+                      )}
+                      {document.approver_display && (
+                        <div>
+                          <dt className="text-sm font-medium text-gray-500">Assigned Approver</dt>
+                          <dd className="text-sm text-gray-900 mt-1">{document.approver_display}</dd>
+                        </div>
+                      )}
                     </div>
                   )}
                 </dl>
@@ -399,15 +765,51 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({
 
         {activeTab === 'workflow' && (
           <div className="space-y-6">
-            <div className="flex justify-between items-center">
-              <h3 className="text-lg font-medium text-gray-900">Workflow Status</h3>
-              {workflowStatus && (
-                <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${getStatusColor(workflowStatus.state)}`}>
-                  {workflowStatus.state_display}
-                </span>
-              )}
+            {/* EDMS Workflow Step Indicator */}
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="text-sm font-semibold text-blue-900">📋 EDMS Workflow Progress</h3>
+                  <p className="text-blue-800 text-sm mt-1">
+                    Current Status: <strong>{document.status_display || document.status?.replace('_', ' ')}</strong>
+                  </p>
+                </div>
+                {workflowStatus && (
+                  <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${getStatusColor(workflowStatus.state)}`}>
+                    {workflowStatus.state_display}
+                  </span>
+                )}
+              </div>
+              
+              {/* Step Progress Indicator */}
+              <div className="mt-4">
+                <div className="flex items-center text-xs text-blue-700">
+                  <div className={`flex items-center ${['draft'].includes(document.status.toLowerCase()) ? 'text-blue-600 font-medium' : 'text-gray-500'}`}>
+                    <span className="w-2 h-2 rounded-full bg-current mr-2"></span>
+                    Step 1: Create
+                  </div>
+                  <div className="flex-1 h-px bg-blue-200 mx-3"></div>
+                  <div className={`flex items-center ${['pending_review', 'under_review'].includes(document.status.toLowerCase()) ? 'text-blue-600 font-medium' : 'text-gray-500'}`}>
+                    <span className="w-2 h-2 rounded-full bg-current mr-2"></span>
+                    Step 2: Review
+                  </div>
+                  <div className="flex-1 h-px bg-blue-200 mx-3"></div>
+                  <div className={`flex items-center ${['pending_approval', 'under_approval', 'approved'].includes(document.status.toLowerCase()) ? 'text-blue-600 font-medium' : 'text-gray-500'}`}>
+                    <span className="w-2 h-2 rounded-full bg-current mr-2"></span>
+                    Step 3: Approve
+                  </div>
+                  <div className="flex-1 h-px bg-blue-200 mx-3"></div>
+                  <div className={`flex items-center ${['effective'].includes(document.status.toLowerCase()) ? 'text-green-600 font-medium' : 'text-gray-500'}`}>
+                    <span className="w-2 h-2 rounded-full bg-current mr-2"></span>
+                    Effective
+                  </div>
+                </div>
+              </div>
             </div>
 
+            {/* Only show workflow items if user has pending actions for THIS document */}
+
+            {/* Workflow Information and Actions */}
             {workflowStatus ? (
               <div className="space-y-6">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -416,11 +818,11 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({
                     <dl className="space-y-3">
                       <div>
                         <dt className="text-sm font-medium text-gray-500">Workflow Type</dt>
-                        <dd className="text-sm text-gray-900 mt-1">{workflowStatus.workflow_type?.name || 'Unknown Workflow Type'}</dd>
+                        <dd className="text-sm text-gray-900 mt-1">{workflowStatus.workflow_type?.name || 'Document Review Workflow'}</dd>
                       </div>
                       <div>
-                        <dt className="text-sm font-medium text-gray-500">Started By</dt>
-                        <dd className="text-sm text-gray-900 mt-1">{workflowStatus.initiated_by?.full_name || 'Unknown User'}</dd>
+                        <dt className="text-sm font-medium text-gray-500">Document Author</dt>
+                        <dd className="text-sm text-gray-900 mt-1">{document.author_display || 'Unknown Author'}</dd>
                       </div>
                       <div>
                         <dt className="text-sm font-medium text-gray-500">Started Date</dt>
@@ -432,36 +834,52 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({
                           <dd className="text-sm text-gray-900 mt-1">{formatDate(workflowStatus.completed_at)}</dd>
                         </div>
                       )}
-                      {workflowStatus.current_assignee && (
+                      {document.reviewer_display && (
                         <div>
-                          <dt className="text-sm font-medium text-gray-500">Current Assignee</dt>
-                          <dd className="text-sm text-gray-900 mt-1">{workflowStatus.current_assignee?.full_name || 'Unassigned'}</dd>
+                          <dt className="text-sm font-medium text-gray-500">Assigned Reviewer</dt>
+                          <dd className="text-sm text-gray-900 mt-1">{document.reviewer_display}</dd>
+                        </div>
+                      )}
+                      {document.approver_display && (
+                        <div>
+                          <dt className="text-sm font-medium text-gray-500">Assigned Approver</dt>
+                          <dd className="text-sm text-gray-900 mt-1">{document.approver_display}</dd>
                         </div>
                       )}
                     </dl>
                   </div>
 
-                  {/* Available Actions */}
+                  {/* Role-based Available Actions */}
                   <div>
                     <h4 className="font-medium text-gray-900 mb-3">Available Actions</h4>
-                    <div className="space-y-2">
+                    <div className="space-y-3">
                       {getAvailableActions().map((action) => (
-                        <button
-                          key={action.key}
-                          onClick={() => onWorkflowAction?.(document, action.key)}
-                          className={`w-full px-4 py-2 text-sm font-medium rounded-md border focus:ring-2 focus:ring-offset-2 ${
-                            action.color === 'blue' ? 'bg-blue-600 border-blue-600 text-white hover:bg-blue-700 focus:ring-blue-500' :
-                            action.color === 'green' ? 'bg-green-600 border-green-600 text-white hover:bg-green-700 focus:ring-green-500' :
-                            action.color === 'yellow' ? 'bg-yellow-600 border-yellow-600 text-white hover:bg-yellow-700 focus:ring-yellow-500' :
-                            action.color === 'red' ? 'bg-red-600 border-red-600 text-white hover:bg-red-700 focus:ring-red-500' :
-                            'bg-gray-600 border-gray-600 text-white hover:bg-gray-700 focus:ring-gray-500'
-                          }`}
-                        >
-                          {action.label}
-                        </button>
+                        <div key={action.key}>
+                          <button
+                            onClick={() => handleWorkflowAction(action.key)}
+                            className={`w-full px-4 py-3 text-sm font-medium rounded-md border focus:ring-2 focus:ring-offset-2 text-left ${
+                              action.color === 'blue' ? 'bg-blue-600 border-blue-600 text-white hover:bg-blue-700 focus:ring-blue-500' :
+                              action.color === 'green' ? 'bg-green-600 border-green-600 text-white hover:bg-green-700 focus:ring-green-500' :
+                              action.color === 'yellow' ? 'bg-yellow-600 border-yellow-600 text-white hover:bg-yellow-700 focus:ring-yellow-500' :
+                              action.color === 'red' ? 'bg-red-600 border-red-600 text-white hover:bg-red-700 focus:ring-red-500' :
+                              'bg-gray-600 border-gray-600 text-white hover:bg-gray-700 focus:ring-gray-500'
+                            }`}
+                          >
+                            <div className="font-medium">{action.label}</div>
+                            {action.description && (
+                              <div className="text-xs mt-1 opacity-90">{action.description}</div>
+                            )}
+                          </button>
+                        </div>
                       ))}
+                      
                       {getAvailableActions().length === 0 && (
-                        <p className="text-sm text-gray-500">No actions available at this time.</p>
+                        <div className="text-center py-6 text-gray-500">
+                          <svg className="w-8 h-8 mx-auto mb-2 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                          </svg>
+                          <p className="text-sm">No workflow actions available for your role at this time.</p>
+                        </div>
                       )}
                     </div>
                   </div>
@@ -556,7 +974,7 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({
                 </div>
               </div>
               
-              {document.status !== 'draft' && (
+              {document.status.toLowerCase() !== 'draft' && (
                 <div className="border-l-4 border-yellow-500 pl-4">
                   <div className="flex justify-between items-start">
                     <div>
@@ -570,7 +988,7 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({
                 </div>
               )}
               
-              {document.status === 'effective' && (
+              {document.status.toLowerCase() === 'effective' && (
                 <div className="border-l-4 border-green-500 pl-4">
                   <div className="flex justify-between items-start">
                     <div>
@@ -587,6 +1005,86 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({
           </div>
         )}
       </div>
+      
+      {/* EDMS Workflow Modals */}
+      
+      {/* Reviewer Interface (EDMS Review Process) */}
+      {showReviewerInterface && document && (
+        <ReviewerInterface
+          documentId={document.uuid}
+          onClose={() => setShowReviewerInterface(false)}
+          onReviewComplete={handleReviewComplete}
+        />
+      )}
+
+      {/* Submit for Review Modal (EDMS Step 2) */}
+      {showSubmitForReviewModal && document && (
+        <SubmitForReviewModal
+          document={document}
+          isOpen={showSubmitForReviewModal}
+          onClose={() => setShowSubmitForReviewModal(false)}
+          onSubmitSuccess={handleSubmitForReviewSuccess}
+        />
+      )}
+
+      {/* Route for Approval Modal (EDMS Approval Routing) */}
+      {showRouteForApprovalModal && document && (
+        <RouteForApprovalModal
+          isOpen={showRouteForApprovalModal}
+          onClose={() => setShowRouteForApprovalModal(false)}
+          document={document}
+          onApprovalRouted={handleApprovalRouted}
+        />
+      )}
+
+      {/* Approver Interface (EDMS Approval Process) */}
+      {showApproverInterface && document && (
+        <ApproverInterface
+          isOpen={showApproverInterface}
+          onClose={() => setShowApproverInterface(false)}
+          document={document}
+          onApprovalComplete={handleApprovalComplete}
+        />
+      )}
+
+      {/* Set Effective Date Modal (EDMS Effective Date Setting) */}
+      {showSetEffectiveDateModal && document && (
+        <SetEffectiveDateModal
+          isOpen={showSetEffectiveDateModal}
+          onClose={() => setShowSetEffectiveDateModal(false)}
+          document={document}
+          onEffectiveDateSet={handleEffectiveDateSet}
+        />
+      )}
+
+      {/* Create New Version Modal (EDMS Versioning) */}
+      {showCreateNewVersionModal && document && (
+        <CreateNewVersionModal
+          isOpen={showCreateNewVersionModal}
+          onClose={() => setShowCreateNewVersionModal(false)}
+          document={document}
+          onVersionCreated={handleVersionCreated}
+        />
+      )}
+
+      {/* Mark Obsolete Modal (EDMS Obsolescence) */}
+      {showMarkObsoleteModal && document && (
+        <MarkObsoleteModal
+          isOpen={showMarkObsoleteModal}
+          onClose={() => setShowMarkObsoleteModal(false)}
+          document={document}
+          onObsolescenceInitiated={handleObsolescenceInitiated}
+        />
+      )}
+
+      {/* Create Document Modal (EDMS Step 1) */}
+      {showCreateModal && (
+        <DocumentCreateModal
+          isOpen={showCreateModal}
+          onClose={() => setShowCreateModal(false)}
+          onCreateSuccess={handleCreateDocumentSuccess}
+        />
+      )}
     </div>
   );
 };

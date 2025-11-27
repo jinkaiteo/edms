@@ -3,12 +3,10 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-d
 import './App.css';
 import Dashboard from './pages/Dashboard.tsx';
 import Login from './pages/Login.tsx';
-import DocumentList from './pages/DocumentList.tsx';
 import DocumentManagement from './pages/DocumentManagement.tsx';
 import AdminDashboard from './pages/AdminDashboard.tsx';
 import MyTasksStandalone from './pages/MyTasksStandalone.tsx';
 import AuditTrail from './pages/AuditTrail.tsx';
-import DocumentCreationTest from './pages/DocumentCreationTest.tsx';
 // Removed problematic standalone pages - functionality integrated into AdminDashboard
 import { AuthProvider } from './contexts/AuthContext.tsx';
 import { EnhancedAuthProvider } from './contexts/EnhancedAuthContext.tsx';
@@ -40,7 +38,6 @@ function AppContent() {
         <Route path="/login" element={<Login />} />
         <Route path="/dashboard" element={<Dashboard />} />
         <Route path="/" element={<Navigate to="/dashboard" replace />} />
-        <Route path="/documents" element={<DocumentList />} />
         <Route path="/document-management" element={<DocumentManagement />} />
         <Route path="/my-tasks" element={<MyTasksStandalone />} />
         <Route path="/tasks" element={<MyTasksStandalone />} />
@@ -49,7 +46,6 @@ function AppContent() {
         <Route path="/users" element={<Navigate to="/admin" replace />} />
         <Route path="/reports" element={<Navigate to="/admin" replace />} />
         <Route path="/admin" element={<AdminDashboard />} />
-        <Route path="/document-upload" element={<DocumentCreationTest />} />
       </Routes>
     </div>
   );

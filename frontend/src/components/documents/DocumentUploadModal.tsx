@@ -69,24 +69,19 @@ const DocumentUploadModal: React.FC<DocumentUploadModalProps> = ({
   const loadReferenceData = async () => {
     try {
       setLoadingData(true);
-      console.log('📊 Loading reference data for document upload...');
 
       // Load document types using apiService.get() like DocumentUploadNew
       const typesResponse = await apiService.get('/documents/types/');
-      console.log('📋 Document types response:', typesResponse);
       setDocumentTypes(Array.isArray(typesResponse) ? typesResponse : typesResponse.results || []);
       
       // Load document sources using apiService.get() like DocumentUploadNew
       const sourcesResponse = await apiService.get('/documents/sources/');
-      console.log('📁 Document sources response:', sourcesResponse);
       setDocumentSources(Array.isArray(sourcesResponse) ? sourcesResponse : sourcesResponse.results || []);
       
       // Load users using direct API call like DocumentUploadNew
       const usersResponse = await apiService.get('/auth/users/');
-      console.log('👥 Users response:', usersResponse);
       setUsers(Array.isArray(usersResponse) ? usersResponse : usersResponse.results || []);
 
-      console.log('✅ Reference data loaded successfully');
     } catch (error) {
       console.error('❌ Error loading reference data:', error);
       setError?.('Failed to load form data. Please refresh the page.');
@@ -112,27 +107,22 @@ const DocumentUploadModal: React.FC<DocumentUploadModalProps> = ({
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
-    console.log('🎯 handleSubmit called!', e);
     e.preventDefault();
-    console.log('🎯 Event prevented, proceeding with validation...');
     
     if (!isAuthenticated) {
       console.error('❌ Not authenticated');
       onError?.('Authentication required. Please log in first.');
       return;
     }
-    console.log('✅ Authentication check passed');
 
     if (!formData.file) {
       console.error('❌ No file selected');
       onError?.('Please select a file to upload.');
       return;
     }
-    console.log('✅ File validation passed');
 
     try {
       setIsSubmitting(true);
-      console.log('🚀 Submitting document upload...', formData);
 
       // Prepare data for API call
       // Author is automatically set to current logged-in user per EDMS specification
@@ -151,12 +141,10 @@ const DocumentUploadModal: React.FC<DocumentUploadModalProps> = ({
         file: formData.file
       };
 
-      console.log('📤 Upload data prepared:', uploadData);
 
       // Create document via API service
       const newDocument = await apiService.createDocument(uploadData);
       
-      console.log('✅ Document uploaded successfully:', newDocument);
       onSuccess?.(newDocument);
       
       // Reset form
@@ -402,10 +390,6 @@ const DocumentUploadModal: React.FC<DocumentUploadModalProps> = ({
             <button
               type="button"
               onClick={() => {
-                console.log('🧪 Test button clicked!');
-                console.log('🧪 Form data:', formData);
-                console.log('🧪 Is authenticated:', isAuthenticated);
-                console.log('🧪 User:', user);
               }}
               className="px-4 py-2 text-sm font-medium text-yellow-700 bg-yellow-100 border border-yellow-300 rounded-md hover:bg-yellow-200"
             >

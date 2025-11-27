@@ -42,7 +42,6 @@ class DashboardConsumer(AsyncWebsocketConsumer):
             # Start periodic updates (every 30 seconds)
             self.update_task = asyncio.create_task(self.periodic_updates())
             
-            print(f"✅ Dashboard WebSocket connected for user: {user.username}")
         else:
             await self.close(code=4001)  # Unauthorized
     
@@ -101,7 +100,6 @@ class DashboardConsumer(AsyncWebsocketConsumer):
             }))
             
         except Exception as e:
-            print(f"❌ Error sending dashboard stats: {e}")
             await self.send(text_data=json.dumps({
                 'type': 'error',
                 'message': 'Failed to fetch dashboard statistics'
@@ -181,7 +179,6 @@ class DashboardConsumer(AsyncWebsocketConsumer):
                 }
                 
             except Exception as e:
-                print(f"❌ Database error in WebSocket: {e}")
                 # Return fallback data
                 return {
                     'total_documents': 0,

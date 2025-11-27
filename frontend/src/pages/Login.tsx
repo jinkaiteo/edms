@@ -20,7 +20,6 @@ const Login: React.FC = () => {
       
       // Small delay to ensure state is updated
       setTimeout(() => {
-        console.log('🚀 Redirecting to dashboard...');
         navigate('/dashboard', { replace: true });
       }, 100);
       

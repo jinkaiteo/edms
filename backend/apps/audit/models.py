@@ -477,6 +477,14 @@ class DatabaseChangeLog(models.Model):
     old_values = models.JSONField(default=dict, blank=True)
     new_values = models.JSONField(default=dict, blank=True)
     
+    # Additional fields that audit signals try to pass
+    content_type = models.ForeignKey(ContentType, on_delete=models.PROTECT, null=True, blank=True)
+    object_id = models.CharField(max_length=100, null=True, blank=True)
+    action = models.CharField(max_length=30, null=True, blank=True)
+    ip_address = models.GenericIPAddressField(null=True, blank=True)
+    session_id = models.CharField(max_length=40, null=True, blank=True)
+    integrity_hash = models.CharField(max_length=64, null=True, blank=True)
+    
     class Meta:
         app_label = "audit"
         db_table = 'database_change_log'

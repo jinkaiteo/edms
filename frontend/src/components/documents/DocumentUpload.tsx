@@ -20,7 +20,7 @@ const DocumentUpload: React.FC<DocumentUploadProps> = ({
   const [formData, setFormData] = useState<Partial<DocumentCreateRequest>>({
     title: '',
     description: '',
-    document_type_id: 1,
+    document_type_id: 1, // Use the only valid document type ID (Standard Operating Procedure)
     metadata: {},
     reviewer: 1, // Default to admin user
     approver: 1  // Default to admin user
@@ -28,29 +28,72 @@ const DocumentUpload: React.FC<DocumentUploadProps> = ({
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [availableUsers, setAvailableUsers] = useState<any[]>([]);
+  const [reviewers, setReviewers] = useState<any[]>([]);
+  const [approvers, setApprovers] = useState<any[]>([]);
   
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Mock document types if none provided
+  // Use real document types that match backend IDs
   const defaultDocumentTypes: DocumentType[] = [
-    { id: 1, name: 'Policy', description: 'Company policies', prefix: 'POL', is_active: true, workflow_required: true, retention_period: null, template: null },
-    { id: 2, name: 'SOP', description: 'Standard Operating Procedures', prefix: 'SOP', is_active: true, workflow_required: true, retention_period: null, template: null },
-    { id: 3, name: 'Manual', description: 'User manuals', prefix: 'MAN', is_active: true, workflow_required: false, retention_period: null, template: null },
-    { id: 4, name: 'Form', description: 'Forms and templates', prefix: 'FORM', is_active: true, workflow_required: false, retention_period: null, template: null }
+    { id: 1, name: 'Standard Operating Procedure', description: 'Standard Operating Procedures', prefix: 'SOP', is_active: true, workflow_required: true, retention_period: null, template: null },
+    { id: 4, name: 'Policy', description: 'Company policies and guidelines', prefix: 'POL', is_active: true, workflow_required: true, retention_period: null, template: null },
+    { id: 5, name: 'Manual', description: 'User manuals and handbooks', prefix: 'MAN', is_active: true, workflow_required: true, retention_period: null, template: null },
+    { id: 6, name: 'Form', description: 'Forms and templates', prefix: 'FORM', is_active: true, workflow_required: true, retention_period: null, template: null }
   ];
 
   const availableDocumentTypes = documentTypes.length > 0 ? documentTypes : defaultDocumentTypes;
 
-  // Load available users for reviewer/approver selection
+  // Load available users and filter by roles for reviewer/approver selection
   React.useEffect(() => {
     const loadUsers = async () => {
       try {
         const response = await apiService.get('/auth/users/');
-        setAvailableUsers(response.results || []);
+        const users = response.results || [];
+        setAvailableUsers(users);
+        
+        // Filter users based on their roles
+        const filteredReviewers = users.filter(user => {
+          if (!user.active_roles || user.active_roles.length === 0) return false;
+          
+          // Check if user has review permissions
+          return user.active_roles.some(role => 
+            role.permission_level === 'review' || 
+            role.permission_level === 'admin' ||
+            role.permission_level === 'write' || // Authors can review their own work
+            role.name.toLowerCase().includes('review')
+          );
+        });
+        
+        const filteredApprovers = users.filter(user => {
+          if (!user.active_roles || user.active_roles.length === 0) return false;
+          
+          // Check if user has approval permissions
+          return user.active_roles.some(role => 
+            role.permission_level === 'approve' ||
+            role.permission_level === 'admin' ||
+            role.name.toLowerCase().includes('approv')
+          );
+        });
+        
+        setReviewers(filteredReviewers);
+        setApprovers(filteredApprovers);
+        
+        // Set default values to first available users with proper roles
+        if (filteredReviewers.length > 0) {
+          setFormData(prev => ({ ...prev, reviewer: filteredReviewers[0].id }));
+        }
+        if (filteredApprovers.length > 0) {
+          setFormData(prev => ({ ...prev, approver: filteredApprovers[0].id }));
+        }
+        
+        
       } catch (error) {
         console.error('Failed to load users:', error);
         // Fallback to admin user only
-        setAvailableUsers([{ id: 1, username: 'admin', first_name: 'Admin', last_name: 'User' }]);
+        const adminUser = { id: 1, username: 'admin', first_name: 'Admin', last_name: 'User', active_roles: [{ permission_level: 'admin' }] };
+        setAvailableUsers([adminUser]);
+        setReviewers([adminUser]);
+        setApprovers([adminUser]);
       }
     };
     
@@ -291,7 +334,9 @@ const DocumentUpload: React.FC<DocumentUploadProps> = ({
               <select
                 id="document_type"
                 value={formData.document_type_id || 1}
-                onChange={(e) => handleInputChange('document_type_id', parseInt(e.target.value))}
+                onChange={(e) => {
+                  handleInputChange('document_type_id', parseInt(e.target.value));
+                }}
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
               >
                 {availableDocumentTypes.map(type => (
@@ -322,40 +367,50 @@ const DocumentUpload: React.FC<DocumentUploadProps> = ({
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
               <label htmlFor="reviewer" className="block text-sm font-medium text-gray-700 mb-1">
-                Reviewer *
+                Reviewer * <span className="text-xs text-gray-500">(Users with review permissions)</span>
               </label>
               <select
                 id="reviewer"
-                value={formData.reviewer || 1}
+                value={formData.reviewer || (reviewers[0]?.id || 1)}
                 onChange={(e) => handleInputChange('reviewer', parseInt(e.target.value))}
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
                 required
               >
-                {availableUsers.map(user => (
-                  <option key={user.id} value={user.id}>
-                    {user.first_name} {user.last_name} ({user.username})
-                  </option>
-                ))}
+                {reviewers.length > 0 ? (
+                  reviewers.map(user => (
+                    <option key={user.id} value={user.id}>
+                      {user.first_name} {user.last_name} ({user.username})
+                      {user.active_roles?.some(role => role.permission_level === 'admin') && ' - Admin'}
+                    </option>
+                  ))
+                ) : (
+                  <option value="">No users with review permissions available</option>
+                )}
               </select>
               {errors.reviewer && <p className="text-sm text-red-600 mt-1">{errors.reviewer}</p>}
             </div>
 
             <div>
               <label htmlFor="approver" className="block text-sm font-medium text-gray-700 mb-1">
-                Approver *
+                Approver * <span className="text-xs text-gray-500">(Users with approval permissions)</span>
               </label>
               <select
                 id="approver"
-                value={formData.approver || 1}
+                value={formData.approver || (approvers[0]?.id || 1)}
                 onChange={(e) => handleInputChange('approver', parseInt(e.target.value))}
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
                 required
               >
-                {availableUsers.map(user => (
-                  <option key={user.id} value={user.id}>
-                    {user.first_name} {user.last_name} ({user.username})
-                  </option>
-                ))}
+                {approvers.length > 0 ? (
+                  approvers.map(user => (
+                    <option key={user.id} value={user.id}>
+                      {user.first_name} {user.last_name} ({user.username})
+                      {user.active_roles?.some(role => role.permission_level === 'admin') && ' - Admin'}
+                    </option>
+                  ))
+                ) : (
+                  <option value="">No users with approval permissions available</option>
+                )}
               </select>
               {errors.approver && <p className="text-sm text-red-600 mt-1">{errors.approver}</p>}
             </div>
@@ -373,7 +428,14 @@ const DocumentUpload: React.FC<DocumentUploadProps> = ({
             <button
               type="button"
               onClick={() => {
-                setFormData({ title: '', description: '', document_type_id: 1, metadata: {}, reviewer: 1, approver: 1 });
+                setFormData({ 
+                  title: '', 
+                  description: '', 
+                  document_type_id: 1,  // Force reset to valid ID
+                  metadata: {}, 
+                  reviewer: reviewers[0]?.id || 1, 
+                  approver: approvers[0]?.id || 1 
+                });
                 setSelectedFile(null);
                 setErrors({});
                 if (fileInputRef.current) fileInputRef.current.value = '';

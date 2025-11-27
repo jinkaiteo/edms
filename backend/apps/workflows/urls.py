@@ -1,60 +1,40 @@
 """
-URL configuration for Workflow Management.
+URL configuration for Workflow Management (Simple Approach).
 
-Provides REST API endpoints for workflow operations,
-task management, and workflow automation.
+Provides REST API endpoints using the Simple Workflow approach
+for document lifecycle management with 21 CFR Part 11 compliance.
 """
 
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
 
 from .views import (
-    DocumentStateViewSet,
-    WorkflowTypeViewSet,
-    WorkflowInstanceViewSet,
-    WorkflowTaskViewSet,
-    WorkflowTransitionViewSet,
-    WorkflowRuleViewSet,
-    WorkflowNotificationViewSet,
-    WorkflowTemplateViewSet,
-    DocumentWorkflowAPIView,
-    WorkflowHistoryAPIView,
-    MyTasksAPIView,
-    WorkflowMetricsAPIView,
+    SimpleDocumentWorkflowAPIView,
+    SimpleWorkflowHistoryAPIView,
+    SimpleMyTasksAPIView,
+    DocumentWorkflowViewSet,
 )
 
-# Router for viewsets
+# Router for simple viewsets
 router = DefaultRouter()
-router.register(r'states', DocumentStateViewSet)
-router.register(r'types', WorkflowTypeViewSet)
-router.register(r'instances', WorkflowInstanceViewSet)
-router.register(r'tasks', WorkflowTaskViewSet)
-router.register(r'transitions', WorkflowTransitionViewSet)
-router.register(r'rules', WorkflowRuleViewSet)
-router.register(r'notifications', WorkflowNotificationViewSet)
-router.register(r'templates', WorkflowTemplateViewSet)
+router.register(r'workflows', DocumentWorkflowViewSet)
 
 app_name = 'workflows'
 
 urlpatterns = [
-    # Document-specific workflow endpoints
+    # Simple document workflow endpoints
     path('documents/<uuid:document_uuid>/', 
-         DocumentWorkflowAPIView.as_view(), 
-         name='document_workflow'),
+         SimpleDocumentWorkflowAPIView.as_view(), 
+         name='simple_document_workflow'),
     
     path('documents/<uuid:document_uuid>/history/', 
-         WorkflowHistoryAPIView.as_view(), 
-         name='document_workflow_history'),
+         SimpleWorkflowHistoryAPIView.as_view(), 
+         name='simple_document_workflow_history'),
     
-    # User-specific endpoints
+    # Simple user tasks endpoint
     path('my-tasks/', 
-         MyTasksAPIView.as_view(), 
-         name='my_tasks'),
-    
-    # Metrics and reporting
-    path('metrics/', 
-         WorkflowMetricsAPIView.as_view(), 
-         name='workflow_metrics'),
+         SimpleMyTasksAPIView.as_view(), 
+         name='simple_my_tasks'),
     
     # ViewSet URLs
     path('', include(router.urls)),

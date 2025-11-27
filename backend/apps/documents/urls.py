@@ -21,6 +21,7 @@ from .views import (
     DocumentSearchView,
     DocumentExportView,
 )
+from .workflow_integration import document_workflow_endpoint, document_workflow_history
 
 # Router for viewsets
 router = DefaultRouter()
@@ -36,10 +37,15 @@ router.register(r'attachments', DocumentAttachmentViewSet)
 app_name = 'documents'
 
 urlpatterns = [
-    # Document workflow actions
-    path('documents/<uuid:document_uuid>/workflow/', 
-         DocumentWorkflowView.as_view(), 
-         name='document_workflow'),
+    # Document workflow actions (backward compatible)
+    path('documents/<uuid:uuid>/workflow/', 
+         document_workflow_endpoint, 
+         name='document_workflow_compatible'),
+    
+    # Document workflow history (backward compatible)
+    path('documents/<uuid:uuid>/workflow/history/', 
+         document_workflow_history, 
+         name='document_workflow_history_compatible'),
     
     # Document search
     path('search/', 

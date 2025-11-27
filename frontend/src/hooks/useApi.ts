@@ -63,20 +63,16 @@ export function useAuth() {
   const [loading, setLoading] = useState(false); // Changed to false initially
   const [authenticated, setAuthenticated] = useState(false);
   
-  console.log('useAuth state:', { user, authenticated, loading });
 
   // Removed automatic auth check that was interfering with login
   
   const checkAuthStatus = async () => {
-    console.log('checkAuthStatus called');
     try {
       // For session-based auth, try to get current user
       const userData = await apiService.getCurrentUser();
-      console.log('getCurrentUser response:', userData);
       setUser(userData);
       setAuthenticated(true);
     } catch (error) {
-      console.log('getCurrentUser failed:', error);
       setUser(null);
       setAuthenticated(false);
     } finally {
@@ -88,13 +84,10 @@ export function useAuth() {
     setLoading(true);
     try {
       const response = await apiService.login({ username, password });
-      console.log('Setting user in auth state:', response.user);
       setUser(response.user);
       setAuthenticated(true);
-      console.log('Authentication state updated:', true);
       return response;
     } catch (error) {
-      console.log('Login failed, clearing auth state');
       setUser(null);
       setAuthenticated(false);
       throw error;

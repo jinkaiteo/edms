@@ -1,0 +1,7 @@
+{{DOCUMENT_TITLE}}
+{{DOCUMENT_NUMBER}}
+
+The quick brown fox jump over the rusty log.
+
+{{CURRENT_DATE}}
+

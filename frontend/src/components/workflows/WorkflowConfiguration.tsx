@@ -1,7 +1,7 @@
 import React, { useState, useCallback, useEffect } from 'react';
 import apiService from '../../services/api.ts';
 import { WorkflowType } from '../../types/api';
-import { useEnhancedAuth } from '../../contexts/EnhancedAuthContext.tsx';
+import { useAuth } from '../../contexts/AuthContext.tsx';
 
 interface WorkflowConfigurationProps {
   className?: string;
@@ -15,7 +15,7 @@ const WorkflowConfiguration: React.FC<WorkflowConfigurationProps> = ({ className
   const [selectedWorkflow, setSelectedWorkflow] = useState<WorkflowType | null>(null);
   const [showCreateWorkflow, setShowCreateWorkflow] = useState(false);
   const [showEditWorkflow, setShowEditWorkflow] = useState(false);
-  const { isAuthenticated, getAuthHeaders } = useEnhancedAuth();
+  const { authenticated } = useAuth();
 
   // Mock workflow data
   const mockWorkflows: WorkflowType[] = [
@@ -82,21 +82,16 @@ const WorkflowConfiguration: React.FC<WorkflowConfigurationProps> = ({ className
       try {
         setLoading(true);
         setError(null);
-        console.log('🔄 WorkflowConfiguration: Loading workflows...');
         
-        // Check if authenticated via enhanced auth context
-        if (!isAuthenticated) {
-          console.log('🔐 WorkflowConfiguration: Not authenticated');
+        // Check if authenticated via auth context
+        if (!authenticated) {
           throw new Error('Authentication required for live workflow data. Please log in first.');
         }
         
         // Get workflow types from API with authentication
-        console.log('📡 Fetching workflow types from API...');
         const response = await apiService.getWorkflowTypes();
         const workflowData = response.results || response.data || [];
         
-        console.log('✅ Successfully loaded', workflowData.length, 'workflows from API (not mock data)');
-        console.log('🔍 Live workflow data:', workflowData.map(w => ({ name: w.name, type: w.workflow_type, active: w.is_active })));
         
         setWorkflows(workflowData);
         
@@ -105,7 +100,6 @@ const WorkflowConfiguration: React.FC<WorkflowConfigurationProps> = ({ className
         setError(`Failed to load live workflow data: ${err.message}. Using fallback configuration.`);
         
         // Fallback to mock data on error with clear indication
-        console.log('⚠️ Workflow Configuration: Using mock data due to API error');
         setWorkflows(mockWorkflows);
       } finally {
         setLoading(false);
@@ -113,7 +107,7 @@ const WorkflowConfiguration: React.FC<WorkflowConfigurationProps> = ({ className
     };
 
     loadWorkflows();
-  }, []);
+  }, [authenticated]);
 
   const handleCreateWorkflow = useCallback(() => {
     setSelectedWorkflow(null);
@@ -133,8 +127,7 @@ const WorkflowConfiguration: React.FC<WorkflowConfigurationProps> = ({ className
         setError(null);
         
         // Ensure we're authenticated before making update
-        if (!isAuthenticated) {
-          console.log('🔐 WorkflowConfiguration: Authentication required for updates');
+        if (!authenticated) {
           throw new Error('Authentication required for workflow updates. Please log in first.');
         }
         
@@ -148,7 +141,6 @@ const WorkflowConfiguration: React.FC<WorkflowConfigurationProps> = ({ className
           w.id === workflow.id ? { ...w, is_active: !w.is_active } : w
         ));
         
-        console.log(`Workflow ${workflow.name} ${action}d successfully`);
       } catch (err: any) {
         console.error(`Error ${action}ing workflow:`, err);
         setError(`Failed to ${action} workflow. Please try again.`);

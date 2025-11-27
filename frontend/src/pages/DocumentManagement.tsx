@@ -1,8 +1,8 @@
 import React, { useState, useCallback } from 'react';
 import { Document, SearchFilters, DocumentType } from '../types/api';
 import Layout from '../components/common/Layout.tsx';
-import DocumentUpload from '../components/documents/DocumentUpload.tsx';
-import DocumentUploadModal from '../components/documents/DocumentUploadModal.tsx';
+// DocumentUpload removed - replaced with EDMS-compliant DocumentCreateModal
+import DocumentCreateModal from '../components/documents/DocumentCreateModal.tsx';
 import DocumentList from '../components/documents/DocumentList.tsx';
 import DocumentViewer from '../components/documents/DocumentViewer.tsx';
 import DocumentSearch from '../components/documents/DocumentSearch.tsx';
@@ -33,37 +33,35 @@ const DocumentManagement: React.FC = () => {
     }
   }, [viewMode]);
 
-  // Upload modal handlers
-  const handleUploadSuccess = useCallback((document: any) => {
-    setUploadSuccess(`Document "${document.title}" uploaded successfully!`);
+  // EDMS Step 1: Document creation handlers
+  const handleCreateDocumentSuccess = useCallback((document: any) => {
+    const documentTitle = document?.title || document?.document_number || 'New Document';
+    setUploadSuccess(`Document "${documentTitle}" created successfully! (EDMS Step 1 Complete)`);
     setUploadError(null);
     // Clear success message after 5 seconds
     setTimeout(() => setUploadSuccess(null), 5000);
-    // Refresh document list if needed
-    window.location.reload(); // Simple refresh for now
+    // No page reload - let the document list refresh naturally
   }, []);
 
-  const handleUploadError = useCallback((error: string) => {
-    setUploadError(error);
+  const handleCreateDocumentError = useCallback((error: string) => {
+    setUploadError(`Failed to create document: ${error}`);
     setUploadSuccess(null);
     // Clear error message after 10 seconds
     setTimeout(() => setUploadError(null), 10000);
   }, []);
 
-  const handleOpenUploadModal = useCallback(() => {
+  const handleOpenCreateModal = useCallback(() => {
     setShowUploadModal(true);
     setUploadError(null);
     setUploadSuccess(null);
   }, []);
 
   const handleDocumentEdit = useCallback((document: Document) => {
-    console.log('Edit document:', document);
     // TODO: Implement document editing
     alert(`Edit functionality for "${document.title}" will be implemented in the next phase.`);
   }, []);
 
   const handleDocumentDelete = useCallback((document: Document) => {
-    console.log('Delete document:', document);
     // TODO: Implement document deletion
     if (window.confirm(`Are you sure you want to delete "${document.title}"?`)) {
       alert(`Delete functionality for "${document.title}" will be implemented in the next phase.`);
@@ -71,13 +69,11 @@ const DocumentManagement: React.FC = () => {
   }, []);
 
   const handleDocumentSign = useCallback((document: Document) => {
-    console.log('Sign document:', document);
     // TODO: Implement electronic signature
     alert(`Electronic signature functionality for "${document.title}" will be implemented in the next phase.`);
   }, []);
 
   const handleWorkflowAction = useCallback((document: Document, action: string) => {
-    console.log('Workflow action:', action, 'for document:', document);
     // TODO: Implement workflow actions
     alert(`Workflow action "${action}" for "${document.title}" will be implemented in the next phase.`);
   }, []);
@@ -87,12 +83,10 @@ const DocumentManagement: React.FC = () => {
   const handleSearch = useCallback((query: string, filters: SearchFilters) => {
     setSearchQuery(query);
     setSearchFilters(filters);
-    console.log('Search:', { query, filters });
   }, []);
 
   const handleFilterChange = useCallback((filters: SearchFilters) => {
     setSearchFilters(filters);
-    console.log('Filters changed:', filters);
   }, []);
 
   const getSearchFilters = () => {
@@ -104,26 +98,7 @@ const DocumentManagement: React.FC = () => {
   };
 
   const renderContent = () => {
-    if (showUpload) {
-      return (
-        <div className="space-y-6">
-          <div className="flex items-center justify-between">
-            <h2 className="text-2xl font-semibold text-gray-900">Upload Document</h2>
-            <button
-              onClick={() => setShowUpload(false)}
-              className="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50"
-            >
-              Cancel
-            </button>
-          </div>
-          <DocumentUpload
-            onUploadSuccess={handleUploadSuccess}
-            onUploadError={handleUploadError}
-            documentTypes={documentTypes}
-          />
-        </div>
-      );
-    }
+    // Note: Inline upload removed - all document creation now uses EDMS-compliant modal workflow
 
     switch (viewMode) {
       case 'full-list':
@@ -242,19 +217,38 @@ const DocumentManagement: React.FC = () => {
                 </button>
               </div>
 
-              {/* Upload Button */}
+              {/* Create Document Button (EDMS Step 1) */}
               <button
-                onClick={handleOpenUploadModal}
+                onClick={handleOpenCreateModal}
                 className="flex items-center space-x-2 px-4 py-2 bg-blue-600 border border-transparent rounded-md text-sm font-medium text-white hover:bg-blue-700 focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
               >
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
                 </svg>
-                <span>Upload Document</span>
+                <span>📝 Create Document (Step 1)</span>
               </button>
             </div>
           </div>
         </div>
+
+        {/* EDMS Workflow Information */}
+        {!showUpload && (
+          <div className="mb-6 bg-blue-50 border border-blue-200 rounded-lg p-4">
+            <h3 className="text-sm font-semibold text-blue-900 mb-2">📋 EDMS Two-Step Document Workflow</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+              <div className="bg-white rounded-md p-3 border border-blue-200">
+                <h4 className="font-medium text-blue-800 mb-1">📝 Step 1: Create Document</h4>
+                <p className="text-blue-700">Create document placeholder with basic information (Title, Type, Source, etc.)</p>
+                <p className="text-blue-600 text-xs mt-1">Status: DRAFT • No reviewer selection yet</p>
+              </div>
+              <div className="bg-white rounded-md p-3 border border-blue-200">
+                <h4 className="font-medium text-blue-800 mb-1">📤 Step 2: Submit for Review</h4>
+                <p className="text-blue-700">Select reviewer and route document through approval workflow</p>
+                <p className="text-blue-600 text-xs mt-1">Status: DRAFT → PENDING_REVIEW → EFFECTIVE</p>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Main Content */}
         {renderContent()}
@@ -359,12 +353,11 @@ const DocumentManagement: React.FC = () => {
           </div>
         )}
 
-        {/* Upload Modal */}
-        <DocumentUploadModal
+        {/* EDMS Step 1: Document Creation Modal */}
+        <DocumentCreateModal
           isOpen={showUploadModal}
           onClose={() => setShowUploadModal(false)}
-          onSuccess={handleUploadSuccess}
-          onError={handleUploadError}
+          onCreateSuccess={handleCreateDocumentSuccess}
         />
       </div>
     </Layout>

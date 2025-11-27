@@ -123,7 +123,6 @@ const Reports: React.FC<ReportsProps> = ({ className = '' }) => {
           const reportsData = await apiService.get('/audit/reports/');
           setReports(reportsData);
         } catch (apiError) {
-          console.log('Reports: API not available, using mock data');
           
           // Fallback to mock data
           const mockReports: ComplianceReport[] = [

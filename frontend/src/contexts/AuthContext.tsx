@@ -2,6 +2,7 @@ import React, { createContext, useContext, useState, useEffect, ReactNode } from
 import { apiService } from '../services/api.ts';
 
 interface User {
+  id: number;
   uuid: string;
   username: string;
   email: string;
@@ -10,6 +11,13 @@ interface User {
   is_staff: boolean;
   is_superuser: boolean;
   last_login: string | null;
+  permissions?: string[];
+  roles?: Array<{
+    id: number;
+    name: string;
+    permission_level: string;
+    module: string;
+  }>;
 }
 
 interface AuthContextType {
@@ -27,19 +35,16 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const [authenticated, setAuthenticated] = useState(false);
   const [loading, setLoading] = useState(true); // Start with loading true
 
-  console.log('🔄 AuthContext state:', { authenticated, user: user?.username, loading });
 
   // Initialize auth state on mount - restore from localStorage
   useEffect(() => {
     const initializeAuth = async () => {
-      console.log('🔄 AuthContext: Initializing authentication...');
       
       try {
         const accessToken = localStorage.getItem('accessToken');
         const refreshToken = localStorage.getItem('refreshToken');
         
         if (accessToken && refreshToken) {
-          console.log('🔑 AuthContext: Found stored tokens, validating...');
           
           // Try to get user profile with stored token
           const profileResponse = await fetch('http://localhost:8000/api/v1/auth/profile/', {
@@ -51,21 +56,17 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           
           if (profileResponse.ok) {
             const userProfile = await profileResponse.json();
-            console.log('✅ AuthContext: Token valid, restoring user session');
             
             // CRITICAL: Set token in apiService for restored session
             apiService.setAuthToken(accessToken);
-            console.log('🔑 AuthContext: Restored token set in apiService');
             
             setUser(userProfile);
             setAuthenticated(true);
           } else {
-            console.log('❌ AuthContext: Token expired, clearing storage');
             localStorage.removeItem('accessToken');
             localStorage.removeItem('refreshToken');
           }
         } else {
-          console.log('ℹ️ AuthContext: No stored tokens found');
         }
       } catch (error) {
         console.error('❌ AuthContext: Error initializing auth:', error);
@@ -80,7 +81,6 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   }, []);
 
   const login = async (username: string, password: string) => {
-    console.log('🔐 AuthContext: Starting login process...', { username });
     setLoading(true);
     
     try {
@@ -93,23 +93,19 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         body: JSON.stringify({ username, password }),
       });
 
-      console.log('📡 AuthContext: API Response status:', response.status);
       
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
 
       const data = await response.json();
-      console.log('📥 AuthContext: Login response data:', data);
 
       if (data.access && data.refresh) {
-        console.log('✅ AuthContext: Login successful, storing tokens...');
         localStorage.setItem('accessToken', data.access);
         localStorage.setItem('refreshToken', data.refresh);
         
         // CRITICAL: Set token in apiService so it includes in all API requests
         apiService.setAuthToken(data.access);
-        console.log('🔑 AuthContext: Token set in apiService for API requests');
         
         // Fetch user profile with the token
         const profileResponse = await fetch('http://localhost:8000/api/v1/auth/profile/', {
@@ -123,7 +119,6 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           const userProfile = await profileResponse.json();
           setUser(userProfile);
           setAuthenticated(true);
-          console.log('🎯 AuthContext: Global auth state updated:', { authenticated: true, user: userProfile.username });
           return { success: true, user: userProfile, tokens: data };
         } else {
           throw new Error('Failed to fetch user profile');
@@ -142,7 +137,6 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   };
 
   const logout = async () => {
-    console.log('🚪 AuthContext: Logging out...');
     try {
       const accessToken = localStorage.getItem('accessToken');
       
@@ -166,11 +160,9 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     
     // CRITICAL: Clear token from apiService
     apiService.clearAuth();
-    console.log('🔑 AuthContext: Cleared token from apiService');
     
     setUser(null);
     setAuthenticated(false);
-    console.log('🚪 AuthContext: User logged out successfully');
   };
 
   return (

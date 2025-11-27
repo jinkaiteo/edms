@@ -1,621 +1,167 @@
 """
-Document-Workflow Integration for EDMS.
+Document-Workflow Integration Views
 
-Integrates Django-River workflows with document lifecycle management
-for seamless state transitions and compliance tracking.
+Provides backward-compatible workflow endpoints under the documents app
+to maintain frontend compatibility while using the simplified workflow system.
 """
 
-from typing import Optional, Dict, Any, List
-from django.contrib.auth import get_user_model
-from django.db import transaction
-from django.utils import timezone
-# from river.models import State
-# from river.core.instanceworkflowobject import InstanceWorkflowObject
-# River workflow engine removed - using custom workflow implementation
+from rest_framework import status
+from rest_framework.decorators import api_view, permission_classes
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.response import Response
+from django.shortcuts import get_object_or_404
 
-from .models import Document, DocumentVersion, ElectronicSignature
-from apps.workflows.models import WorkflowInstance, WorkflowType
-from apps.workflows.services import workflow_service
-from apps.audit.services import audit_service
-from apps.users.models import Role
-
-User = get_user_model()
+from .models import Document
+from apps.workflows.services import get_simple_workflow_service
+from apps.users.permissions import CanManageDocuments
 
 
-class DocumentWorkflowManager:
+@api_view(['GET', 'POST'])
+@permission_classes([IsAuthenticated, CanManageDocuments])
+def document_workflow_endpoint(request, uuid):
     """
-    Manages document lifecycle workflows using Django-River.
+    Backward-compatible document workflow endpoint.
     
-    Provides high-level interface for document workflow operations
-    including state transitions, approvals, and lifecycle management.
+    Proxies requests to the new simplified workflow API while maintaining
+    the old endpoint structure for frontend compatibility.
+    
+    GET: Returns workflow status for document
+    POST: Executes workflow action on document
     """
-
-    def __init__(self):
-        self.state_mapping = {
-            'draft': 'draft',
-            'pending_review': 'pending_review',
-            'under_review': 'under_review',
-            'review_completed': 'review_completed',
-            'pending_approval': 'pending_approval',
-            'under_approval': 'under_approval',
-            'approved': 'approved',
-            'effective': 'effective',
-            'superseded': 'superseded',
-            'obsolete': 'obsolete',
-            'terminated': 'terminated'
-        }
-
-    def initiate_review_workflow(self, document: Document, reviewer: User, 
-                                initiated_by: User, **kwargs) -> WorkflowInstance:
-        """
-        Initiate review workflow for a document.
+    try:
+        document = get_object_or_404(Document, uuid=uuid)
+    except Document.DoesNotExist:
+        return Response({
+            'error': 'Document not found'
+        }, status=status.HTTP_404_NOT_FOUND)
+    
+    workflow_service = get_simple_workflow_service()
+    
+    if request.method == 'GET':
+        # Get workflow status
+        try:
+            workflow_status = workflow_service.get_document_workflow_status(document)
+            return Response(workflow_status)
+        except Exception as e:
+            return Response({
+                'error': f'Failed to get workflow status: {str(e)}'
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+    
+    elif request.method == 'POST':
+        # Execute workflow action
+        action = request.data.get('action')
+        comment = request.data.get('comment', '')
         
-        Args:
-            document: Document to review
-            reviewer: User assigned to review
-            initiated_by: User initiating the workflow
-            **kwargs: Additional workflow data
-            
-        Returns:
-            WorkflowInstance: Created workflow instance
-        """
-        with transaction.atomic():
-            # Create workflow instance
-            workflow = workflow_service.initiate_workflow(
-                document=document,
-                workflow_type='REVIEW',
-                initiated_by=initiated_by,
-                assigned_to=reviewer,
-                **kwargs
-            )
-            
-            # Transition document to pending review
-            self._transition_document_state(
-                document=document,
-                new_state='pending_review',
-                user=initiated_by,
-                reason='Review workflow initiated'
-            )
-            
-            # Log audit trail
-            audit_service.log_workflow_event(
-                workflow_instance=workflow,
-                event_type='REVIEW_WORKFLOW_INITIATED',
-                user=initiated_by,
-                description=f"Review workflow initiated for {document.document_number}",
-                additional_data={
-                    'reviewer': reviewer.username,
-                    'document_number': document.document_number
-                }
-            )
-            
-            return workflow
-
-    def start_review(self, document: Document, reviewer: User) -> bool:
-        """
-        Start the actual review process.
+        if not action:
+            return Response({
+                'error': 'Action is required'
+            }, status=status.HTTP_400_BAD_REQUEST)
         
-        Args:
-            document: Document being reviewed
-            reviewer: User starting the review
-            
-        Returns:
-            bool: True if successful
-        """
-        if not self._can_transition(document, 'start_review', reviewer):
-            return False
-        
-        with transaction.atomic():
-            # Transition document state
-            success = self._transition_document_state(
-                document=document,
-                new_state='under_review',
-                user=reviewer,
-                reason='Review started'
-            )
-            
-            if success:
-                # Update workflow instance
-                workflow = self._get_active_workflow(document, 'REVIEW')
-                if workflow:
-                    workflow.current_assignee = reviewer
-                    workflow.save()
-                
-                # Log audit trail
-                audit_service.log_document_access(
-                    user=reviewer,
-                    document=document,
-                    access_type='REVIEW_START'
-                )
-            
-            return success
-
-    def complete_review(self, document: Document, reviewer: User, 
-                       review_result: str, comments: str = '') -> bool:
-        """
-        Complete the document review.
-        
-        Args:
-            document: Document being reviewed
-            reviewer: User completing the review
-            review_result: Result of review (APPROVED, REJECTED, NEEDS_REVISION)
-            comments: Review comments
-            
-        Returns:
-            bool: True if successful
-        """
-        if not self._can_transition(document, 'complete_review', reviewer):
-            return False
-        
-        with transaction.atomic():
-            # Determine next state based on review result
-            if review_result == 'APPROVED':
-                next_state = 'review_completed'
-            elif review_result == 'REJECTED':
-                next_state = 'draft'  # Return to draft for revision
-            else:
-                next_state = 'draft'  # Needs revision
-            
-            # Transition document state
-            success = self._transition_document_state(
-                document=document,
-                new_state=next_state,
-                user=reviewer,
-                reason=f'Review completed: {review_result}'
-            )
-            
-            if success:
-                # Update workflow instance
-                workflow = self._get_active_workflow(document, 'REVIEW')
-                if workflow:
-                    if review_result == 'APPROVED':
-                        # Move to approval workflow if approved
-                        self._initiate_approval_workflow(document, workflow, reviewer)
-                    else:
-                        # Complete workflow if rejected/needs revision
-                        workflow_service.complete_workflow(
-                            workflow, 
-                            reason=f'Review {review_result.lower()}: {comments}'
+        try:
+            # Execute the action using simplified workflow service
+            if action == 'submit_for_review':
+                # For submit_for_review, first ensure workflow exists
+                try:
+                    result = workflow_service.submit_for_review(document, request.user, comment)
+                except Exception as e:
+                    error_msg = str(e)
+                    if 'No active workflow found' in error_msg:
+                        # Auto-start workflow and then submit
+                        workflow_service.start_review_workflow(
+                            document=document,
+                            initiated_by=request.user,
+                            reviewer=document.reviewer,
+                            approver=document.approver
                         )
+                        # Now try submit again
+                        result = workflow_service.submit_for_review(document, request.user, comment)
+                    else:
+                        raise e
+            elif action == 'start_review':
+                result = workflow_service.start_review(document, request.user, comment)
+            elif action == 'complete_review':
+                approved = request.data.get('approved', True)
+                result = workflow_service.complete_review(document, request.user, approved, comment)
+            elif action == 'route_for_approval':
+                approver_id = request.data.get('approver_id')
+                if not approver_id:
+                    return Response({
+                        'error': 'approver_id is required for route_for_approval action'
+                    }, status=status.HTTP_400_BAD_REQUEST)
                 
-                # Log audit trail
-                audit_service.log_document_access(
-                    user=reviewer,
-                    document=document,
-                    access_type='REVIEW_COMPLETE',
-                    additional_data={
-                        'review_result': review_result,
-                        'comments': comments
-                    }
-                )
-            
-            return success
-
-    def initiate_approval_workflow(self, document: Document, approver: User,
-                                 initiated_by: User, **kwargs) -> WorkflowInstance:
-        """
-        Initiate approval workflow for a document.
-        
-        Args:
-            document: Document to approve
-            approver: User assigned to approve
-            initiated_by: User initiating the workflow
-            **kwargs: Additional workflow data
-            
-        Returns:
-            WorkflowInstance: Created workflow instance
-        """
-        with transaction.atomic():
-            # Create workflow instance
-            workflow = workflow_service.initiate_workflow(
-                document=document,
-                workflow_type='APPROVAL',
-                initiated_by=initiated_by,
-                assigned_to=approver,
-                **kwargs
-            )
-            
-            # Transition document to pending approval
-            self._transition_document_state(
-                document=document,
-                new_state='pending_approval',
-                user=initiated_by,
-                reason='Approval workflow initiated'
-            )
-            
-            # Log audit trail
-            audit_service.log_workflow_event(
-                workflow_instance=workflow,
-                event_type='APPROVAL_WORKFLOW_INITIATED',
-                user=initiated_by,
-                description=f"Approval workflow initiated for {document.document_number}",
-                additional_data={
-                    'approver': approver.username,
-                    'document_number': document.document_number
-                }
-            )
-            
-            return workflow
-
-    def approve_document(self, document: Document, approver: User, 
-                        signature_reason: str = '', **kwargs) -> bool:
-        """
-        Approve a document with electronic signature.
-        
-        Args:
-            document: Document to approve
-            approver: User approving the document
-            signature_reason: Reason for electronic signature
-            **kwargs: Additional approval data
-            
-        Returns:
-            bool: True if successful
-        """
-        if not self._can_transition(document, 'approve', approver):
-            return False
-        
-        with transaction.atomic():
-            # Create electronic signature
-            signature = ElectronicSignature.objects.create(
-                document=document,
-                user=approver,
-                signature_type='APPROVAL',
-                reason=signature_reason or f'Approval of document {document.document_number}',
-                signature_timestamp=timezone.now()
-            )
-            
-            # Transition document state
-            success = self._transition_document_state(
-                document=document,
-                new_state='approved',
-                user=approver,
-                reason=f'Document approved by {approver.get_full_name()}'
-            )
-            
-            if success:
-                # Update document approval fields
-                document.approved_by = approver
-                document.approval_date = timezone.now()
-                document.save(update_fields=['approved_by', 'approval_date'])
+                from apps.users.models import User
+                try:
+                    approver = User.objects.get(id=approver_id)
+                except User.DoesNotExist:
+                    return Response({
+                        'error': f'Approver with ID {approver_id} not found'
+                    }, status=status.HTTP_400_BAD_REQUEST)
                 
-                # Complete approval workflow
-                workflow = self._get_active_workflow(document, 'APPROVAL')
-                if workflow:
-                    workflow_service.complete_workflow(
-                        workflow, 
-                        reason=f'Document approved with electronic signature'
-                    )
-                
-                # Schedule effective date if set
-                if document.effective_date and document.effective_date <= timezone.now().date():
-                    self._make_document_effective(document, approver)
-                
-                # Log audit trail
-                audit_service.log_document_access(
-                    user=approver,
-                    document=document,
-                    access_type='APPROVE',
-                    additional_data={
-                        'signature_id': signature.id,
-                        'approval_timestamp': document.approval_date.isoformat()
-                    }
-                )
+                result = workflow_service.route_for_approval(document, request.user, approver, comment)
+            elif action == 'approve_document':
+                effective_date = request.data.get('effective_date')
+                result = workflow_service.approve_document(document, request.user, comment, effective_date)
+            elif action == 'make_effective':
+                effective_date = request.data.get('effective_date')
+                if effective_date:
+                    # Parse the effective_date if it's provided as ISO string
+                    from datetime import datetime
+                    if isinstance(effective_date, str):
+                        effective_date = datetime.fromisoformat(effective_date.replace('Z', '+00:00')).date()
+                result = workflow_service.make_effective(document, request.user, comment, effective_date)
+            elif action == 'terminate_workflow':
+                reason = request.data.get('reason', comment)
+                result = workflow_service.terminate_workflow(document, request.user, reason)
+            else:
+                return Response({
+                    'error': f'Unknown action: {action}'
+                }, status=status.HTTP_400_BAD_REQUEST)
             
-            return success
-
-    def reject_document(self, document: Document, reviewer_or_approver: User,
-                       rejection_reason: str, **kwargs) -> bool:
-        """
-        Reject a document during review or approval.
-        
-        Args:
-            document: Document to reject
-            reviewer_or_approver: User rejecting the document
-            rejection_reason: Reason for rejection
-            **kwargs: Additional rejection data
-            
-        Returns:
-            bool: True if successful
-        """
-        with transaction.atomic():
-            # Transition document back to draft
-            success = self._transition_document_state(
-                document=document,
-                new_state='draft',
-                user=reviewer_or_approver,
-                reason=f'Document rejected: {rejection_reason}'
-            )
-            
-            if success:
-                # Complete active workflows
-                active_workflows = WorkflowInstance.objects.filter(
-                    content_type__model='document',
-                    object_id=document.id,
-                    is_active=True
-                )
-                
-                for workflow in active_workflows:
-                    workflow_service.complete_workflow(
-                        workflow,
-                        reason=f'Document rejected: {rejection_reason}'
-                    )
-                
-                # Log audit trail
-                audit_service.log_document_access(
-                    user=reviewer_or_approver,
-                    document=document,
-                    access_type='REJECT',
-                    additional_data={
-                        'rejection_reason': rejection_reason
-                    }
-                )
-            
-            return success
-
-    def make_document_effective(self, document: Document, user: User = None) -> bool:
-        """
-        Make an approved document effective.
-        
-        Args:
-            document: Document to make effective
-            user: User making the document effective (None for system)
-            
-        Returns:
-            bool: True if successful
-        """
-        return self._make_document_effective(document, user)
-
-    def initiate_obsolescence_workflow(self, document: Document, 
-                                     initiated_by: User, reason: str,
-                                     **kwargs) -> WorkflowInstance:
-        """
-        Initiate obsolescence workflow for a document.
-        
-        Args:
-            document: Document to make obsolete
-            initiated_by: User initiating obsolescence
-            reason: Reason for obsolescence
-            **kwargs: Additional workflow data
-            
-        Returns:
-            WorkflowInstance: Created workflow instance
-        """
-        with transaction.atomic():
-            # Create workflow instance
-            workflow = workflow_service.initiate_workflow(
-                document=document,
-                workflow_type='OBSOLETE',
-                initiated_by=initiated_by,
-                reason=reason,
-                **kwargs
-            )
-            
-            # Log audit trail
-            audit_service.log_workflow_event(
-                workflow_instance=workflow,
-                event_type='OBSOLESCENCE_WORKFLOW_INITIATED',
-                user=initiated_by,
-                description=f"Obsolescence workflow initiated for {document.document_number}",
-                additional_data={
-                    'reason': reason,
-                    'document_number': document.document_number
-                }
-            )
-            
-            return workflow
-
-    def make_document_obsolete(self, document: Document, user: User, 
-                             reason: str, **kwargs) -> bool:
-        """
-        Make a document obsolete.
-        
-        Args:
-            document: Document to make obsolete
-            user: User making the document obsolete
-            reason: Reason for obsolescence
-            **kwargs: Additional data
-            
-        Returns:
-            bool: True if successful
-        """
-        with transaction.atomic():
-            # Transition document state
-            success = self._transition_document_state(
-                document=document,
-                new_state='obsolete',
-                user=user,
-                reason=f'Document made obsolete: {reason}'
-            )
-            
-            if success:
-                # Update document obsolescence fields
-                document.obsolete_date = timezone.now().date()
-                document.save(update_fields=['obsolete_date'])
-                
-                # Complete obsolescence workflow
-                workflow = self._get_active_workflow(document, 'OBSOLETE')
-                if workflow:
-                    workflow_service.complete_workflow(
-                        workflow,
-                        reason=f'Document made obsolete: {reason}'
-                    )
-                
-                # Log audit trail
-                audit_service.log_document_access(
-                    user=user,
-                    document=document,
-                    access_type='MAKE_OBSOLETE',
-                    additional_data={
-                        'obsolescence_reason': reason,
-                        'obsolete_date': document.obsolete_date.isoformat()
-                    }
-                )
-            
-            return success
-
-    def get_available_transitions(self, document: Document, user: User) -> List[Dict[str, Any]]:
-        """
-        Get available workflow transitions for a document and user.
-        
-        Args:
-            document: Document to check transitions for
-            user: User requesting transitions
-            
-        Returns:
-            List of available transitions
-        """
-        workflow_object = InstanceWorkflowObject(document)
-        available_transitions = []
-        
-        try:
-            transitions = workflow_object.get_available_transitions(user)
-            
-            for transition in transitions:
-                available_transitions.append({
-                    'name': transition.name,
-                    'destination': transition.destination_state.label,
-                    'can_perform': self._can_user_perform_transition(user, transition)
+            if result:
+                # Get updated workflow status
+                workflow_status = workflow_service.get_document_workflow_status(document)
+                return Response({
+                    'success': True,
+                    'message': f'Action {action} completed successfully',
+                    'workflow_status': workflow_status
                 })
-                
-        except Exception:
-            pass  # No transitions available or error
-        
-        return available_transitions
-
-    def _transition_document_state(self, document: Document, new_state: str,
-                                 user: User, reason: str = '') -> bool:
-        """Transition document state using Django-River."""
-        try:
-            workflow_object = InstanceWorkflowObject(document)
-            
-            # Find transition to new state
-            transitions = workflow_object.get_available_transitions(user)
-            target_transition = None
-            
-            for transition in transitions:
-                if transition.destination_state.slug == new_state:
-                    target_transition = transition
-                    break
-            
-            if target_transition:
-                workflow_object.proceed(user, target_transition.name)
-                return True
+            else:
+                return Response({
+                    'success': False,
+                    'message': f'Action {action} failed'
+                }, status=status.HTTP_400_BAD_REQUEST)
                 
         except Exception as e:
-            # Log error but don't raise to avoid breaking the workflow
-            audit_service.log_system_event(
-                event_type='WORKFLOW_TRANSITION_ERROR',
-                object_type='Document',
-                object_id=document.id,
-                description=f"Failed to transition document to {new_state}: {str(e)}"
-            )
+            return Response({
+                'error': f'Workflow action failed: {str(e)}'
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated, CanManageDocuments])
+def document_workflow_history(request, uuid):
+    """
+    Get workflow history for a document.
+    
+    Maintains backward compatibility for frontend history requests.
+    """
+    try:
+        document = get_object_or_404(Document, uuid=uuid)
+    except Document.DoesNotExist:
+        return Response({
+            'error': 'Document not found'
+        }, status=status.HTTP_404_NOT_FOUND)
+    
+    try:
+        workflow_service = get_simple_workflow_service()
+        history = workflow_service.get_workflow_history(document)
         
-        return False
-
-    def _can_transition(self, document: Document, transition_name: str, user: User) -> bool:
-        """Check if user can perform a specific transition."""
-        try:
-            workflow_object = InstanceWorkflowObject(document)
-            transitions = workflow_object.get_available_transitions(user)
-            
-            return any(t.name == transition_name for t in transitions)
-            
-        except Exception:
-            return False
-
-    def _can_user_perform_transition(self, user: User, transition) -> bool:
-        """Check if user has permissions for a transition."""
-        # Check role-based permissions
-        required_permissions = {
-            'submit_for_review': ['write'],
-            'start_review': ['review'],
-            'complete_review': ['review'],
-            'submit_for_approval': ['review'],
-            'approve': ['approve'],
-            'reject': ['review', 'approve'],
-            'make_effective': ['admin'],
-            'make_obsolete': ['approve', 'admin']
-        }
-        
-        transition_perms = required_permissions.get(transition.name, [])
-        
-        # Check user roles for required permissions
-        for perm in transition_perms:
-            if user.user_roles.filter(
-                role__permission_level=perm,
-                is_active=True
-            ).exists():
-                return True
-        
-        return user.is_superuser
-
-    def _get_active_workflow(self, document: Document, workflow_type: str) -> Optional[WorkflowInstance]:
-        """Get active workflow instance for a document."""
-        try:
-            return WorkflowInstance.objects.get(
-                content_type__model='document',
-                object_id=document.id,
-                workflow_type__workflow_type=workflow_type,
-                is_active=True
-            )
-        except WorkflowInstance.DoesNotExist:
-            return None
-
-    def _initiate_approval_workflow(self, document: Document, review_workflow: WorkflowInstance, 
-                                  reviewer: User):
-        """Automatically initiate approval workflow after successful review."""
-        # Find an approver
-        approver_role = Role.objects.filter(
-            name__icontains='approver',
-            permission_level='approve'
-        ).first()
-        
-        if approver_role:
-            approvers = User.objects.filter(
-                user_roles__role=approver_role,
-                user_roles__is_active=True
-            ).first()
-            
-            if approvers:
-                self.initiate_approval_workflow(
-                    document=document,
-                    approver=approvers,
-                    initiated_by=reviewer,
-                    parent_workflow=review_workflow.id
-                )
-
-    def _make_document_effective(self, document: Document, user: User = None) -> bool:
-        """Internal method to make document effective."""
-        with transaction.atomic():
-            success = self._transition_document_state(
-                document=document,
-                new_state='effective',
-                user=user,
-                reason='Document made effective'
-            )
-            
-            if success:
-                # Update document effective date
-                document.effective_date = timezone.now().date()
-                document.save(update_fields=['effective_date'])
-                
-                # Log audit trail
-                if user:
-                    audit_service.log_document_access(
-                        user=user,
-                        document=document,
-                        access_type='MAKE_EFFECTIVE'
-                    )
-                else:
-                    audit_service.log_system_event(
-                        event_type='DOCUMENT_MADE_EFFECTIVE',
-                        object_type='Document',
-                        object_id=document.id,
-                        description=f"Document {document.document_number} automatically made effective"
-                    )
-            
-            return success
-
-
-# Global document workflow manager instance
-document_workflow_manager = DocumentWorkflowManager()
+        return Response({
+            'document_id': str(uuid),
+            'document_number': document.document_number,
+            'workflow_history': history
+        })
+    except Exception as e:
+        return Response({
+            'error': f'Failed to get workflow history: {str(e)}'
+        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

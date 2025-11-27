@@ -101,9 +101,7 @@ const UserManagement: React.FC<UserManagementProps> = ({ className = '' }) => {
           
           setUsers(usersData);
           setRoles(rolesData);
-          console.log('User Management: Loaded from API successfully');
         } catch (apiError) {
-          console.log('User Management: API endpoints not available, using mock data');
           
           // Fallback to mock data
           setUsers(mockUsers);

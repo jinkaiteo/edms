@@ -8,6 +8,8 @@ with 21 CFR Part 11 requirements.
 import json
 import hashlib
 from typing import Dict, Any, Optional, List
+from datetime import datetime, date
+from decimal import Decimal
 from django.contrib.auth import get_user_model
 from django.contrib.contenttypes.models import ContentType
 from django.utils import timezone
@@ -33,6 +35,25 @@ class AuditService:
 
     def __init__(self):
         self.hash_algorithm = 'sha256'
+    
+    def _serialize_for_json(self, obj):
+        """Convert objects to JSON-serializable format."""
+        if isinstance(obj, (datetime, date)):
+            return obj.isoformat()
+        elif isinstance(obj, Decimal):
+            return str(obj)
+        elif hasattr(obj, '__dict__'):
+            return str(obj)
+        return obj
+    
+    def _clean_metadata(self, data):
+        """Recursively clean data to be JSON serializable."""
+        if isinstance(data, dict):
+            return {k: self._clean_metadata(v) for k, v in data.items()}
+        elif isinstance(data, list):
+            return [self._clean_metadata(item) for item in data]
+        else:
+            return self._serialize_for_json(data)
 
     def log_user_action(self, user: User, action: str, object_type: str = None,
                        object_id: int = None, description: str = None,
@@ -88,7 +109,7 @@ class AuditService:
                 user_agent=audit_context.get('user_agent') if audit_context else 'API-Client',
                 session_id=audit_context.get('session_id') if audit_context else 'api-session',
                 user_display_name=user.get_full_name() if user else '',
-                metadata=additional_data or {}
+                metadata=self._clean_metadata(additional_data or {})
             )
             
             # Generate integrity hash
@@ -293,8 +314,8 @@ class AuditService:
                 object_id=model_instance.pk,
                 action=action,
                 user=user,
-                old_values=old_values or {},
-                new_values=new_values or {},
+                old_values=self._clean_metadata(old_values or {}),
+                new_values=self._clean_metadata(new_values or {}),
                 ip_address=audit_context.get('ip_address') if audit_context else None,
                 session_id=audit_context.get('session_id') if audit_context else None
             )

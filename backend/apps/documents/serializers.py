@@ -207,14 +207,17 @@ class DocumentListSerializer(serializers.ModelSerializer):
     version_string = serializers.CharField(read_only=True)
     document_type_display = serializers.CharField(source='document_type.name', read_only=True)
     author_display = serializers.CharField(source='author.get_full_name', read_only=True)
+    reviewer_display = serializers.CharField(source='reviewer.get_full_name', read_only=True)
+    approver_display = serializers.CharField(source='approver.get_full_name', read_only=True)
     status_display = serializers.CharField(source='get_status_display', read_only=True)
     
     class Meta:
         model = Document
         fields = [
-            'uuid', 'document_number', 'title', 'version_string',
+            'id', 'uuid', 'document_number', 'title', 'version_string',
             'status', 'status_display', 'document_type_display',
-            'author_display', 'created_at', 'effective_date',
+            'author', 'author_display', 'reviewer', 'reviewer_display', 
+            'approver', 'approver_display', 'created_at', 'effective_date',
             'is_controlled', 'requires_training'
         ]
 
@@ -304,10 +307,15 @@ class DocumentCreateSerializer(serializers.ModelSerializer):
                 f"Template is required for document type: {document_type.name}"
             )
         
-        # Check if review is required
-        if document_type and document_type.review_required and not data.get('reviewer'):
+        # Check if review is required - EDMS Step 2 compliance
+        # Per EDMS specification lines 4-6: reviewer selection happens in Step 2, not Step 1
+        # Only require reviewer if document is moving to review stage
+        status = data.get('status', 'DRAFT')
+        if (document_type and document_type.review_required and 
+            status in ['PENDING_REVIEW', 'UNDER_REVIEW', 'REVIEW_COMPLETED'] and 
+            not data.get('reviewer')):
             raise serializers.ValidationError(
-                f"Reviewer is required for document type: {document_type.name}"
+                f"Reviewer is required when moving to review stage for document type: {document_type.name}"
             )
         
         # Check if approval is required

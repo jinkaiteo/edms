@@ -10,7 +10,6 @@ import { useDashboardUpdates } from '../hooks/useDashboardUpdates.ts';
 import { DashboardStats } from '../types/api.ts';
 
 const AdminDashboard: React.FC = () => {
-  console.log('📊 AdminDashboard: Component mounted');
   const [activeSection, setActiveSection] = useState<'overview' | 'users' | 'workflows' | 'placeholders' | 'settings' | 'audit' | 'tasks' | 'reports'>('overview');
   
   // Stable callback functions to prevent dependency changes
@@ -19,14 +18,8 @@ const AdminDashboard: React.FC = () => {
   }, []);
   
   const handleDashboardUpdate = useCallback((stats: DashboardStats) => {
-    console.log('📊 Admin dashboard auto-refresh executed:', {
-      timestamp: stats.timestamp,
-      documents: stats.total_documents,
-      users: stats.active_users,
-      workflows: stats.active_workflows,
-      activities: stats.recent_activity.length,
-      updateTime: new Date().toISOString()
-    });
+    // Dashboard update handled by useDashboardUpdates hook
+    // No additional action needed here
   }, []);
   
   // Use dashboard updates hook for real-time data

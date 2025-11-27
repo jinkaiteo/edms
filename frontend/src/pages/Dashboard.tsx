@@ -23,14 +23,8 @@ const Dashboard: React.FC = () => {
   }, []);
   
   const handleDashboardUpdate = useCallback((stats: DashboardStats) => {
-    console.log('📊 Dashboard auto-refresh executed:', {
-      timestamp: stats.timestamp,
-      documents: stats.total_documents,
-      users: stats.active_users,
-      workflows: stats.active_workflows,
-      activities: stats.recent_activity.length,
-      updateTime: new Date().toISOString()
-    });
+    // Dashboard update handled by useDashboardUpdates hook
+    // No additional action needed here
   }, []);
   
   // Use the new dashboard updates hook with auto-refresh and optional WebSocket
@@ -50,21 +44,17 @@ const Dashboard: React.FC = () => {
   });
 
   useEffect(() => {
-    console.log('📊 Dashboard mounted - authenticated:', authenticated, 'loading:', loading, 'user:', user?.username);
     
     // Wait for auth loading to complete before making decisions
     if (loading) {
-      console.log('⏳ Auth still loading, waiting...');
       return;
     }
     
     if (!authenticated) {
-      console.log('❌ Not authenticated after loading complete, redirecting to login...');
       navigate('/login', { replace: true });
       return;
     }
     
-    console.log('✅ User authenticated, dashboard auto-updates enabled');
   }, [authenticated, loading, navigate, user]);
 
   const handleLogout = async () => {

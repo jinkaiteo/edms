@@ -65,14 +65,12 @@ export const EnhancedAuthProvider: React.FC<AuthProviderProps> = ({ children }) 
 
   // Login function
   const login = useCallback(async (username: string, password: string): Promise<void> => {
-    console.log('🔐 Enhanced Auth: Starting login process...', { username });
     setIsLoading(true);
 
     try {
       // Use API service for login
       const loginResponse = await apiService.login({ username, password });
       
-      console.log('📡 Enhanced Auth: Login response:', loginResponse);
 
       if (loginResponse.access) {
         // Set token in API service
@@ -87,12 +85,10 @@ export const EnhancedAuthProvider: React.FC<AuthProviderProps> = ({ children }) 
         // Get user information
         try {
           const userData = await apiService.getCurrentUser();
-          console.log('👤 Enhanced Auth: User data retrieved:', userData);
           
           setUser(userData);
           setIsAuthenticated(true);
           
-          console.log('✅ Enhanced Auth: Login successful');
         } catch (userError) {
           console.warn('⚠️ Enhanced Auth: Could not fetch user data, but login successful');
           // Still consider login successful if we have a token
@@ -115,7 +111,6 @@ export const EnhancedAuthProvider: React.FC<AuthProviderProps> = ({ children }) 
 
   // Logout function
   const logout = useCallback(async (): Promise<void> => {
-    console.log('🚪 Enhanced Auth: Logging out...');
     setIsLoading(true);
 
     try {
@@ -134,17 +129,14 @@ export const EnhancedAuthProvider: React.FC<AuthProviderProps> = ({ children }) 
     localStorage.removeItem('accessToken');
     localStorage.removeItem('refreshToken');
     
-    console.log('✅ Enhanced Auth: Logged out successfully');
     setIsLoading(false);
   }, []);
 
   // Refresh authentication status
   const refreshAuth = useCallback(async (): Promise<void> => {
-    console.log('🔄 Enhanced Auth: Refreshing authentication...');
     const token = localStorage.getItem('accessToken');
     
     if (!token) {
-      console.log('❌ Enhanced Auth: No token found');
       setUser(null);
       setIsAuthenticated(false);
       setIsLoading(false);
@@ -158,7 +150,6 @@ export const EnhancedAuthProvider: React.FC<AuthProviderProps> = ({ children }) 
       // Try to get current user to verify token is still valid
       const userData = await apiService.getCurrentUser();
       
-      console.log('✅ Enhanced Auth: Token valid, user authenticated');
       setUser(userData);
       setIsAuthenticated(true);
     } catch (error) {
@@ -176,7 +167,6 @@ export const EnhancedAuthProvider: React.FC<AuthProviderProps> = ({ children }) 
 
   // Initialize authentication on component mount
   useEffect(() => {
-    console.log('🚀 Enhanced Auth: Initializing...');
     refreshAuth();
   }, [refreshAuth]);
 
@@ -184,7 +174,6 @@ export const EnhancedAuthProvider: React.FC<AuthProviderProps> = ({ children }) 
   useEffect(() => {
     if (isAuthenticated) {
       const intervalId = setInterval(() => {
-        console.log('🔄 Enhanced Auth: Periodic token check...');
         refreshAuth();
       }, 5 * 60 * 1000); // Check every 5 minutes
 

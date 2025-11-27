@@ -27,7 +27,8 @@ DATABASES['default'].update({
     'CONN_MAX_AGE': 60,
     'OPTIONS': {
         'MAX_CONNS': 20,
-        'sslmode': 'require',
+        # SSL mode disabled for internal Docker network deployment
+        # 'sslmode': 'require',  # Enable for external database
     }
 })
 

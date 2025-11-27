@@ -55,18 +55,10 @@ export const useDashboardUpdates = ({
     setError(null);
 
     try {
-      console.log('📊 Fetching dashboard statistics...');
       const stats = await apiService.getDashboardStats();
       
       setDashboardStats(stats);
       onUpdate?.(stats);
-      
-      console.log('✅ Dashboard statistics updated:', {
-        timestamp: stats.timestamp,
-        documents: stats.total_documents,
-        users: stats.active_users,
-        workflows: stats.active_workflows
-      });
 
     } catch (err: any) {
       console.error('❌ Failed to fetch dashboard statistics:', err);
@@ -109,14 +101,12 @@ export const useDashboardUpdates = ({
     url: `${process.env.REACT_APP_WS_BASE_URL || 'ws://localhost:8000'}/ws/dashboard/`,
     enabled: enableWebSocket && enabled,
     onOpen: () => {
-      console.log('🔗 Dashboard WebSocket connected');
     },
     onMessage: (event) => {
       try {
         const data = JSON.parse(event.data);
         
         if (data.type === 'dashboard_update') {
-          console.log('📡 Received dashboard update via WebSocket:', data.payload);
           setDashboardStats(data.payload);
           onUpdate?.(data.payload);
         } else if (data.type === 'stats_partial_update') {
@@ -135,7 +125,6 @@ export const useDashboardUpdates = ({
       }
     },
     onClose: (event) => {
-      console.log('🔌 Dashboard WebSocket disconnected');
     },
     onError: (event) => {
       console.error('❌ Dashboard WebSocket error:', event);

@@ -20,7 +20,6 @@ export const useSimpleAuth = () => {
   const [loading, setLoading] = useState(false);
 
   const login = async (username: string, password: string) => {
-    console.log('🔐 Starting login process...', { username });
     setLoading(true);
     
     try {
@@ -34,20 +33,16 @@ export const useSimpleAuth = () => {
         body: JSON.stringify({ username, password }),
       });
 
-      console.log('📡 API Response status:', response.status);
       
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
 
       const data = await response.json();
-      console.log('📥 Login response data:', data);
 
       if (data.success) {
-        console.log('✅ Login successful, setting user state...');
         setUser(data.user);
         setAuthenticated(true);
-        console.log('🎯 Auth state updated:', { authenticated: true, user: data.user.username });
         return data;
       } else {
         throw new Error(data.error || 'Login failed');
@@ -63,7 +58,6 @@ export const useSimpleAuth = () => {
   };
 
   const logout = async () => {
-    console.log('🚪 Logging out...');
     try {
       await fetch('http://localhost:8000/api/v1/auth/logout/', {
         method: 'POST',
@@ -75,7 +69,6 @@ export const useSimpleAuth = () => {
     
     setUser(null);
     setAuthenticated(false);
-    console.log('✅ Logged out, auth state cleared');
   };
 
   return {

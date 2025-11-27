@@ -78,13 +78,11 @@ export const useWebSocket = ({
     if (!enabledRef.current) return;
     
     try {
-      console.log('🔗 Connecting to WebSocket:', url);
       setConnectionState('connecting');
       
       const newSocket = new WebSocket(url, protocols);
       
       newSocket.onopen = (event) => {
-        console.log('✅ WebSocket connected');
         setConnectionState('connected');
         setReconnectAttempts(0);
         setIsReconnecting(false);
@@ -97,7 +95,6 @@ export const useWebSocket = ({
       };
       
       newSocket.onclose = (event) => {
-        console.log('🔌 WebSocket disconnected:', event.code, event.reason);
         setConnectionState('disconnected');
         setSocket(null);
         onClose?.(event);
@@ -108,7 +105,6 @@ export const useWebSocket = ({
           setReconnectAttempts(prev => prev + 1);
           
           reconnectTimeoutRef.current = setTimeout(() => {
-            console.log(`🔄 Reconnecting... (attempt ${reconnectAttempts + 1}/${maxReconnectAttempts})`);
             connect();
           }, reconnectInterval);
         }

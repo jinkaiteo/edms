@@ -10,6 +10,7 @@ from django.db.models import Q, Count
 from django.utils import timezone
 from django.http import HttpResponse, Http404
 from django.contrib.postgres.search import SearchVector, SearchQuery
+from django.contrib.contenttypes.models import ContentType
 from rest_framework import viewsets, status, permissions
 from rest_framework.decorators import action
 from rest_framework.response import Response
@@ -637,17 +638,38 @@ class DocumentWorkflowView(APIView):
     
     def _approve_document(self, document, request, comment):
         """Approve document."""
-        if not document.can_approve(request.user):
+        # Handle both review completion and document approval based on current status
+        if document.status in ['PENDING_REVIEW', 'UNDER_REVIEW']:
+            # This is review completion (reviewer completing review)
+            if not document.can_review(request.user):
+                return Response(
+                    {'error': 'You do not have permission to review this document'},
+                    status=status.HTTP_403_FORBIDDEN
+                )
+            # Complete review workflow
+            document.status = 'REVIEW_COMPLETED' 
+            document.review_date = timezone.now()
+            document.save(update_fields=['status', 'review_date'])
+            
+        elif document.status == 'PENDING_APPROVAL':
+            # This is final approval (approver signing off)
+            if not document.can_approve(request.user):
+                return Response(
+                    {'error': 'You do not have permission to approve this document'},
+                    status=status.HTTP_403_FORBIDDEN
+                )
+            # Complete approval workflow
+            document.status = 'APPROVED'
+            document.approval_date = timezone.now()
+            document.save(update_fields=['status', 'approval_date'])
+            
+        else:
             return Response(
-                {'error': 'You do not have permission to approve this document'},
-                status=status.HTTP_403_FORBIDDEN
+                {'error': f'Document cannot be approved in current status: {document.status}'},
+                status=status.HTTP_400_BAD_REQUEST
             )
         
-        document.status = 'APPROVED'
-        document.approval_date = timezone.now()
-        document.save()
-        
-        # Add approval comment
+        # Add approval/review completion comment
         DocumentComment.objects.create(
             document=document,
             author=request.user,

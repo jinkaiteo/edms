@@ -26,6 +26,9 @@ api_urlpatterns = [
     # Authentication
     path('auth/', include('apps.users.urls')),
     
+    # User management (direct access to users viewset only)
+    path('users/', include(('apps.users.urls', 'users-api'), namespace='users-api')),
+    
     # Dashboard statistics
     path('dashboard/stats/', DashboardStatsView.as_view(), name='dashboard-stats'),
     
@@ -49,8 +52,8 @@ urlpatterns = [
     # API v1
     path('api/v1/', include(api_urlpatterns)),
     
-    # Health check endpoint
-    path('health/', include('apps.backup.urls')),
+    # Health check endpoint (unauthenticated)
+    path('health/', include('edms.health_urls')),
 ]
 
 # Serve media files in development

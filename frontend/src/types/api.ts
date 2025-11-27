@@ -81,7 +81,12 @@ export interface Document {
   version?: string;
   version_string?: string;         // API provides this field
   created_by?: User;
+  author?: number;                 // Author user ID
   author_display?: string;         // API provides this field
+  reviewer?: number;               // Reviewer user ID - MISSING FIELD ADDED
+  reviewer_display?: string;       // Reviewer display name - MISSING FIELD ADDED
+  approver?: number;               // Approver user ID - MISSING FIELD ADDED  
+  approver_display?: string;       // Approver display name - MISSING FIELD ADDED
   created_at: string;
   updated_at?: string;
   effective_date: string | null;

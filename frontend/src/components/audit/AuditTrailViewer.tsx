@@ -221,21 +221,16 @@ const AuditTrailViewer: React.FC<AuditTrailViewerProps> = ({ className = '' }) =
     const loadAuditTrail = async () => {
       try {
         setLoading(true);
-        console.log('🔄 AuditTrail: Loading audit data...');
         
         // Try to authenticate first
         if (!apiService.isAuthenticated()) {
-          console.log('🔐 AuditTrail: Authenticating for API access...');
           await apiService.login({ username: 'admin', password: 'test123' });
-          console.log('✅ AuditTrail: Authentication successful');
         }
         
         // Get real audit trail data from backend API
-        console.log('📡 AuditTrail: Fetching real audit data from backend...');
         try {
           const response = await apiService.getAuditTrail(filters);
-          console.log('✅ AuditTrail: API response received:', response);
-          console.log('🔍 Raw API response structure:', {
+          setDebugInfo({
             hasResults: !!(response.results),
             hasData: !!(response.data), 
             resultsLength: response.results?.length || 0,
@@ -275,23 +270,16 @@ const AuditTrailViewer: React.FC<AuditTrailViewerProps> = ({ className = '' }) =
             integrity_hash: `sha256:${item.uuid || 'unknown'}`
           }));
           
-          console.log('🔄 Data transformation completed. Sample transformed record:');
-          console.log(auditData[0]);
           
-          console.log(`✅ AuditTrail: Successfully loaded ${auditData.length} real audit records from database`);
-          console.log('🔍 Sample audit data:', auditData.slice(0, 2));
           
           if (auditData.length === 0) {
-            console.log('⚠️ No audit data returned from API, using mock data');
             setAuditLogs(mockAuditLogs);
           } else {
-            console.log('✅ Setting audit logs with live data');
             setAuditLogs(auditData);
           }
           
           // Double-check that state was set
           setTimeout(() => {
-            console.log('🔍 Current auditLogs state length:', auditData.length);
           }, 100);
           
         } catch (apiError) {
@@ -302,14 +290,12 @@ const AuditTrailViewer: React.FC<AuditTrailViewerProps> = ({ className = '' }) =
             data: apiError?.response?.data,
             message: apiError?.message
           });
-          console.log('⚠️ Using mock data as fallback');
           setAuditLogs(mockAuditLogs);
         }
         
       } catch (error) {
         console.error('❌ AuditTrail: Error loading audit trail:', error);
         // Use mock data as fallback
-        console.log('⚠️ AuditTrail: Using mock data due to error');
         setAuditLogs(mockAuditLogs);
         setLoading(false);
       } finally {

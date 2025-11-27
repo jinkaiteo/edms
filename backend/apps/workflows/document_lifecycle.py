@@ -210,16 +210,13 @@ class DocumentLifecycleService:
             raise ValidationError("Review comment is required")
         
         if approved:
-            # Validate approver is assigned
-            if not document.approver:
-                raise ValidationError("Document must have an approver assigned")
-            
+            # Review approved - transition to REVIEWED state for author to route to approval
             return self._transition_workflow(
                 workflow=workflow,
-                to_state_code='PENDING_APPROVAL',
+                to_state_code='REVIEWED',
                 user=user,
                 comment=comment,
-                assignee=document.approver
+                assignee=document.author  # Return to author to select approver
             )
         else:
             # Reject back to draft
@@ -231,6 +228,44 @@ class DocumentLifecycleService:
                 assignee=document.author
             )
     
+    def route_for_approval(self, document: Document, user: User, 
+                          approver: User, comment: str = '') -> bool:
+        """
+        Route document for approval after review completion (REVIEWED → PENDING_APPROVAL).
+        
+        Args:
+            document: Document to route for approval
+            user: User routing (must be document author)
+            approver: User to assign as approver
+            comment: Routing comment
+            
+        Returns:
+            bool: True if successful
+        """
+        workflow = self._get_active_workflow(document)
+        if not workflow:
+            raise ValidationError("No active workflow found for document")
+        
+        # Validate user can route for approval
+        if document.author != user and not user.is_superuser:
+            raise ValidationError("Only document author can route for approval")
+        
+        # Validate current state
+        if workflow.current_state.code != 'REVIEWED':
+            raise ValidationError(f"Cannot route for approval from state: {workflow.current_state.code}")
+        
+        # Assign approver and route
+        document.approver = approver
+        document.save()
+        
+        return self._transition_workflow(
+            workflow=workflow,
+            to_state_code='PENDING_APPROVAL',
+            user=user,
+            comment=comment or f'Document routed to {approver.get_full_name()} for approval',
+            assignee=approver
+        )
+
     def approve_document(self, document: Document, user: User, 
                         comment: str = '', effective_date: date = None) -> bool:
         """
@@ -274,7 +309,7 @@ class DocumentLifecycleService:
         )
     
     def make_effective(self, document: Document, user: User, 
-                      comment: str = '') -> bool:
+                      comment: str = '', effective_date: date = None) -> bool:
         """
         Make document effective (APPROVED → EFFECTIVE).
         This can be automated or manual based on effective_date.
@@ -283,6 +318,7 @@ class DocumentLifecycleService:
             document: Document to make effective
             user: User making effective (system user for automated)
             comment: Optional comment
+            effective_date: Optional override for effective date (for immediate effective)
             
         Returns:
             bool: True if successful
@@ -294,6 +330,11 @@ class DocumentLifecycleService:
         # Validate current state
         if workflow.current_state.code != 'APPROVED':
             raise ValidationError(f"Cannot make effective from state: {workflow.current_state.code}")
+        
+        # Update effective date if provided (for immediate effective)
+        if effective_date:
+            document.effective_date = effective_date
+            document.save()
         
         # Check effective date
         if document.effective_date and document.effective_date > timezone.now().date():
@@ -492,7 +533,7 @@ class DocumentLifecycleService:
             bool: True if successful
         """
         workflow = self._get_active_workflow(document)
-        if not workflow or workflow.workflow_type.workflow_type != 'OBSOLETE':
+        if not workflow or 'OBSOLETE' not in workflow.workflow_type:
             raise ValidationError("No active obsolescence workflow found")
         
         # Validate user can approve obsolescence
@@ -585,10 +626,10 @@ class DocumentLifecycleService:
         
         return {
             'has_active_workflow': True,
-            'workflow_type': workflow.workflow_type.workflow_type,
+            'workflow_type': workflow.workflow_type,
             'current_state': workflow.current_state.code,
             'current_assignee': workflow.current_assignee.username if workflow.current_assignee else None,
-            'started_at': workflow.initiated_at,
+            'started_at': workflow.created_at,
             'due_date': workflow.due_date,
             'is_overdue': workflow.due_date and workflow.due_date < timezone.now(),
             'document_status': document.status,
@@ -706,8 +747,10 @@ class DocumentLifecycleService:
             actions.append('start_review')
         elif state == 'UNDER_REVIEW':
             actions.extend(['complete_review', 'reject_to_draft'])
+        elif state == 'REVIEWED':
+            actions.append('route_for_approval')
         elif state == 'PENDING_APPROVAL':
-            if workflow.workflow_type.workflow_type == 'OBSOLETE':
+            if 'OBSOLETE' in workflow.workflow_type:
                 actions.append('approve_obsolescence')
             else:
                 actions.extend(['approve_document', 'reject_to_draft'])

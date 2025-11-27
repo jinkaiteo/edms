@@ -68,7 +68,7 @@ def create_document_audit_record(sender, instance, created, **kwargs):
 def create_access_audit_record(sender, instance, created, **kwargs):
     """Create audit record for document access."""
     if created:
-        from apps.audit.models import AuditLog
+        from apps.audit.models import AuditTrail
         
         severity = 'WARNING' if not instance.success else 'INFO'
         
@@ -96,7 +96,7 @@ def create_access_audit_record(sender, instance, created, **kwargs):
 @receiver(post_save, sender=DocumentDependency)
 def create_dependency_audit_record(sender, instance, created, **kwargs):
     """Create audit record for document dependencies."""
-    from apps.audit.models import AuditLog
+    from apps.audit.models import AuditTrail
     from apps.audit.middleware import get_current_user, get_current_ip_address
     
     if created:
@@ -123,7 +123,7 @@ def create_dependency_audit_record(sender, instance, created, **kwargs):
 @receiver(post_delete, sender=DocumentDependency)
 def create_dependency_removal_audit(sender, instance, **kwargs):
     """Create audit record for dependency removal."""
-    from apps.audit.models import AuditLog
+    from apps.audit.models import AuditTrail
     from apps.audit.middleware import get_current_user, get_current_ip_address
     
     current_user = get_current_user()
@@ -149,7 +149,7 @@ def create_dependency_removal_audit(sender, instance, **kwargs):
 def create_comment_audit_record(sender, instance, created, **kwargs):
     """Create audit record for document comments."""
     if created:
-        from apps.audit.models import AuditLog
+        from apps.audit.models import AuditTrail
         
         AuditTrail.objects.create(
             content_object=instance.document,
@@ -213,7 +213,7 @@ def track_document_field_changes(sender, instance, **kwargs):
 def create_attachment_audit_record(sender, instance, created, **kwargs):
     """Create audit record for document attachments."""
     if created:
-        from apps.audit.models import AuditLog
+        from apps.audit.models import AuditTrail
         
         AuditTrail.objects.create(
             content_object=instance.document,
@@ -236,7 +236,7 @@ def create_attachment_audit_record(sender, instance, created, **kwargs):
 @receiver(post_delete, sender=DocumentAttachment)
 def create_attachment_removal_audit(sender, instance, **kwargs):
     """Create audit record for attachment removal."""
-    from apps.audit.models import AuditLog
+    from apps.audit.models import AuditTrail
     from apps.audit.middleware import get_current_user, get_current_ip_address
     
     current_user = get_current_user()

@@ -24,28 +24,21 @@ def api_status(request):
 def simple_login(request):
     """Simple login endpoint for frontend testing."""
     # Debug logging (fixed)
-    print(f"🔍 Login attempt - Content-Type: {request.content_type}")
-    print(f"🔍 Request data: {request.data}")
-    print(f"🔍 Request method: {request.method}")
     
     username = request.data.get('username')
     password = request.data.get('password')
     
-    print(f"🔍 Extracted - Username: {username}, Password: {'*' * len(password) if password else None}")
     
     if not username or not password:
-        print("❌ Missing username or password")
         return Response({
             'success': False,
             'error': 'Username and password are required'
         }, status=status.HTTP_400_BAD_REQUEST)
     
     user = authenticate(username=username, password=password)
-    print(f"🔍 Authentication result: {user}")
     
     if user:
         login(request, user)
-        print("✅ Login successful")
         return Response({
             'success': True,
             'message': 'Login successful',
@@ -62,7 +55,6 @@ def simple_login(request):
             }
         })
     else:
-        print("❌ Authentication failed")
         return Response({
             'success': False,
             'error': 'Invalid username or password'
