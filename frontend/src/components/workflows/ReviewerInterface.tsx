@@ -131,7 +131,20 @@ const ReviewerInterface: React.FC<ReviewerInterfaceProps> = ({
   };
 
   const handleDownload = async (downloadType: 'original' | 'annotated' | 'official') => {
+    console.log('🎯 DEBUG - handleDownload called with:', downloadType);
+    console.log('🎯 DEBUG - Document object:', document);
+    
+    if (!document) {
+      console.error('❌ DEBUG - No document available');
+      setError('No document selected for download');
+      return;
+    }
+    
     try {
+      setError(null);
+      console.log('🔍 DEBUG - Document UUID:', document.uuid);
+      console.log('🔍 DEBUG - Document file name:', document.file_name);
+      console.log('🔍 DEBUG - Document file size:', document.file_size);
       
       let downloadUrl = '';
       switch (downloadType) {
@@ -147,35 +160,69 @@ const ReviewerInterface: React.FC<ReviewerInterfaceProps> = ({
       }
 
       // Trigger download with proper error handling and DOM context
+      console.log('🔍 DEBUG - Making fetch request to:', downloadUrl);
+      const token = localStorage.getItem('accessToken');
+      console.log('🔍 DEBUG - Token exists:', !!token);
+      console.log('🔍 DEBUG - Token length:', token?.length);
+      
       const response = await fetch(downloadUrl, {
         method: 'GET',
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('accessToken')}`,
+          'Authorization': `Bearer ${token}`,
         },
       });
       
+      console.log('🔍 DEBUG - Response status:', response.status);
+      console.log('🔍 DEBUG - Response statusText:', response.statusText);
+      console.log('🔍 DEBUG - Response headers:', [...response.headers.entries()]);
+      
       if (!response.ok) {
-        throw new Error(`Download failed: ${response.status} ${response.statusText}`);
+        const errorText = await response.text();
+        console.error('❌ DEBUG - Response error:', errorText);
+        throw new Error(`Download failed: ${response.status} ${response.statusText} - ${errorText}`);
       }
       
+      console.log('🔍 DEBUG - Getting blob from response...');
       const blob = await response.blob();
+      console.log('🔍 DEBUG - Blob size:', blob.size);
+      console.log('🔍 DEBUG - Blob type:', blob.type);
+      
       const url = window.URL.createObjectURL(blob);
+      console.log('🔍 DEBUG - Created blob URL:', url);
       
       // Create download link with proper DOM context check
-      if (typeof document !== 'undefined' && document.createElement) {
-        const link = document.createElement('a');
+      console.log('🔍 DEBUG - Checking DOM availability...');
+      console.log('🔍 DEBUG - typeof document:', typeof document);
+      console.log('🔍 DEBUG - document.createElement exists:', typeof document?.createElement === 'function');
+      
+      if (typeof window !== 'undefined' && typeof window.document !== 'undefined' && window.document.createElement) {
+        console.log('🔍 DEBUG - Creating download link...');
+        const link = window.document.createElement('a');
+        const filename = `${document?.document_number}_${downloadType}.${getFileExtension(document?.file_name || '')}`;
         link.href = url;
-        link.download = `${document?.document_number}_${downloadType}.${getFileExtension(document?.file_name || '')}`;
-        document.body.appendChild(link);
+        link.download = filename;
+        console.log('🔍 DEBUG - Download filename:', filename);
+        
+        window.document.body.appendChild(link);
+        console.log('🔍 DEBUG - Clicking download link...');
         link.click();
-        document.body.removeChild(link);
+        window.document.body.removeChild(link);
+        console.log('✅ DEBUG - Download link clicked and removed');
+      } else {
+        console.error('❌ DEBUG - DOM not available for download');
+        setError('Unable to create download link - DOM not available');
       }
+      
       window.URL.revokeObjectURL(url);
+      console.log('✅ DEBUG - Download completed successfully');
       
       
     } catch (error: any) {
-      console.error('❌ Download failed:', error);
-      setError(`Failed to download ${downloadType} document`);
+      console.error('❌ DEBUG - Download failed with error:', error);
+      console.error('❌ DEBUG - Error type:', typeof error);
+      console.error('❌ DEBUG - Error message:', error.message);
+      console.error('❌ DEBUG - Error stack:', error.stack);
+      setError(`Download failed: ${error.message || 'Unknown error'}`);
     }
   };
 
