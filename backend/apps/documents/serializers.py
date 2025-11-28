@@ -302,14 +302,23 @@ class DocumentCreateSerializer(serializers.ModelSerializer):
     """Serializer for creating new documents."""
     
     file = serializers.FileField(write_only=True, required=False, allow_empty_file=False)
+    version_string = serializers.CharField(read_only=True)
+    document_type_display = serializers.CharField(source='document_type.name', read_only=True)
+    author_display = serializers.CharField(source='author.get_full_name', read_only=True)
+    status_display = serializers.CharField(source='get_status_display', read_only=True)
     
     class Meta:
         model = Document
         fields = [
-            'title', 'description', 'keywords', 'document_type',
-            'document_source', 'priority', 'reviewer', 'approver',
-            'file', 'effective_date', 'reason_for_change', 
-            'requires_training', 'is_controlled'
+            'id', 'uuid', 'document_number', 'title', 'description', 'keywords', 
+            'document_type', 'document_type_display', 'document_source', 'priority', 
+            'reviewer', 'approver', 'file', 'effective_date', 'reason_for_change', 
+            'requires_training', 'is_controlled', 'version_string', 'status', 
+            'status_display', 'author', 'author_display', 'created_at'
+        ]
+        read_only_fields = [
+            'id', 'uuid', 'document_number', 'version_string', 'status', 
+            'status_display', 'author', 'author_display', 'created_at'
         ]
     
     def validate(self, data):

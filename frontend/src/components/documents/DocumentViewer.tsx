@@ -776,7 +776,7 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({
 
       case 'APPROVED_AND_EFFECTIVE':
         // Document is approved and currently effective
-        // Allow all authenticated users to initiate workflows (approval required anyway)
+        // Allow all authenticated users to initiate up-versioning (approval required anyway)
         actions.push({
           key: 'create_new_version',
           label: '📝 Create New Version',
@@ -784,17 +784,27 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({
           description: 'Start up-versioning workflow for document revision'
         });
         
-        actions.push({
-          key: 'mark_obsolete',
-          label: '🗑️ Mark Obsolete', 
-          color: 'red',
-          description: 'Start obsolete workflow to retire this document'
-        });
+        // Mark Obsolete - only show to authorized users (approvers/admins)
+        // Match backend authorization: user == document.approver || user.is_staff || user.is_superuser
+        const canObsolete = (
+          isAssignedApprover || // Document approver
+          user.is_staff ||      // System admin
+          user.is_superuser     // Superuser
+        );
+        
+        if (canObsolete) {
+          actions.push({
+            key: 'mark_obsolete',
+            label: '🗑️ Mark Obsolete', 
+            color: 'red',
+            description: 'Start obsolete workflow to retire this document'
+          });
+        }
         break;
         
       case 'EFFECTIVE':
         // EDMS lines 21-26: Up-versioning and obsolescence workflows
-        // Allow all authenticated users to initiate workflows (approval required anyway)
+        // Allow all authenticated users to initiate up-versioning (approval required anyway)
         actions.push({ 
           key: 'create_revision', 
           label: '📝 Create New Version', 
@@ -802,12 +812,22 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({
           description: 'Start up-versioning workflow'
         });
         
-        actions.push({ 
-          key: 'mark_obsolete', 
-          label: '🗑️ Mark Obsolete', 
-          color: 'red',
-          description: 'Start obsolescence workflow'
-        });
+        // Mark Obsolete - only show to authorized users (approvers/admins)
+        // Match backend authorization: user == document.approver || user.is_staff || user.is_superuser
+        const canObsoleteEffective = (
+          isAssignedApprover || // Document approver
+          user.is_staff ||      // System admin
+          user.is_superuser     // Superuser
+        );
+        
+        if (canObsoleteEffective) {
+          actions.push({ 
+            key: 'mark_obsolete', 
+            label: '🗑️ Mark Obsolete', 
+            color: 'red',
+            description: 'Start obsolescence workflow'
+          });
+        }
         break;
     }
 

@@ -188,8 +188,17 @@ class DocumentViewSet(viewsets.ModelViewSet):
         return queryset.filter(q_filter)
     
     def perform_create(self, serializer):
-        """Set author and handle document creation."""
+        """Set author and handle document creation with dependencies."""
         document = serializer.save(author=self.request.user)
+        
+        # Handle dependencies from form data
+        dependencies_data = []
+        for key, value in self.request.data.items():
+            if key.startswith('dependencies[') and key.endswith(']'):
+                dependencies_data.append(value)
+        
+        if dependencies_data:
+            self._create_dependencies(document, dependencies_data)
         
         # Log document creation
         log_document_access(
@@ -199,6 +208,40 @@ class DocumentViewSet(viewsets.ModelViewSet):
             request=self.request,
             success=True
         )
+    
+    def _create_dependencies(self, document, dependencies_data):
+        """Create dependencies for a document."""
+        from .models import DocumentDependency
+        
+        print(f"Creating dependencies for document {document.id}: {dependencies_data}")
+        
+        for dep_doc_id in dependencies_data:
+            try:
+                depends_on_doc = Document.objects.get(id=int(dep_doc_id))
+                
+                # Don't allow self-dependency
+                if depends_on_doc.id != document.id:
+                    dependency, created = DocumentDependency.objects.get_or_create(
+                        document=document,
+                        depends_on=depends_on_doc,
+                        dependency_type='REFERENCE',  # Default type
+                        defaults={
+                            'created_by': self.request.user,
+                            'is_active': True,
+                            'description': 'Dependency created during document creation'
+                        }
+                    )
+                    
+                    if created:
+                        print(f"✅ Created dependency: {document.id} → {depends_on_doc.id}")
+                    else:
+                        print(f"ℹ️ Dependency already exists: {document.id} → {depends_on_doc.id}")
+                else:
+                    print(f"⚠️ Skipped self-dependency: {dep_doc_id}")
+                    
+            except (Document.DoesNotExist, ValueError) as e:
+                print(f"❌ Invalid dependency document ID: {dep_doc_id} - {e}")
+                continue
     
     def retrieve(self, request, *args, **kwargs):
         """Log document access when retrieving."""

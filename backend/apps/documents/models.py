@@ -165,7 +165,10 @@ class Document(models.Model):
         ('PENDING_APPROVAL', 'Pending Approval'),
         ('UNDER_APPROVAL', 'Under Approval'),
         ('APPROVED', 'Approved'),
+        ('APPROVED_AND_EFFECTIVE', 'Approved and Effective'),
+        ('APPROVED_PENDING_EFFECTIVE', 'Approved Pending Effective'),
         ('EFFECTIVE', 'Effective'),
+        ('SCHEDULED_FOR_OBSOLESCENCE', 'Scheduled for Obsolescence'),
         ('SUPERSEDED', 'Superseded'),
         ('OBSOLETE', 'Obsolete'),
         ('TERMINATED', 'Terminated'),
@@ -210,7 +213,7 @@ class Document(models.Model):
     
     # Document lifecycle
     status = models.CharField(
-        max_length=20, 
+        max_length=30, 
         choices=DOCUMENT_STATUS_CHOICES, 
         default='DRAFT',
         db_index=True
@@ -261,6 +264,16 @@ class Document(models.Model):
     effective_date = models.DateField(null=True, blank=True, db_index=True)
     review_due_date = models.DateField(null=True, blank=True, db_index=True)
     obsolete_date = models.DateField(null=True, blank=True)
+    
+    # Obsolescence workflow fields
+    obsolescence_date = models.DateField(null=True, blank=True, db_index=True, 
+                                        help_text="Scheduled date for document obsolescence")
+    obsolescence_reason = models.TextField(blank=True, 
+                                         help_text="Reason provided for obsolescence")
+    obsoleted_by = models.ForeignKey(User, on_delete=models.PROTECT, 
+                                   null=True, blank=True,
+                                   related_name='obsoleted_documents',
+                                   help_text="User who initiated obsolescence")
     
     # Change management
     reason_for_change = models.TextField(blank=True)
@@ -335,8 +348,13 @@ class Document(models.Model):
         # Auto-generate document number if not set
         if not self.document_number:
             base_number = self.generate_document_number()
-            # Append version for consistency with up-versioning workflow
-            self.document_number = f"{base_number}-v{self.version_major}.{self.version_minor}"
+            # For new documents (v1.0), don't append version suffix to avoid conflicts
+            # Version suffix is only used for up-versioned documents
+            if self.version_major == 1 and self.version_minor == 0:
+                self.document_number = base_number
+            else:
+                # Append version for up-versioned documents
+                self.document_number = f"{base_number}-v{self.version_major}.{self.version_minor}"
         
         # Calculate file checksum if file exists
         if self.file_path and not self.file_checksum:
@@ -360,18 +378,30 @@ class Document(models.Model):
         prefix = doc_type.numbering_prefix or doc_type.code
         
         # Find the next sequence number for this type and year
-        last_doc = Document.objects.filter(
+        # Look for documents with the pattern {prefix}-{year}-{sequence} (ignoring version suffixes)
+        existing_docs = Document.objects.filter(
             document_type=doc_type,
             document_number__startswith=f"{prefix}-{year}-"
-        ).order_by('-document_number').first()
+        ).values_list('document_number', flat=True)
         
-        if last_doc:
-            # Extract sequence number from last document
+        # Extract sequence numbers from existing documents
+        sequence_numbers = []
+        for doc_number in existing_docs:
             try:
-                last_seq = int(last_doc.document_number.split('-')[-1])
-                next_seq = last_seq + 1
+                # Remove version suffix if present (e.g., "MAN-2025-0001-v1.0" -> "MAN-2025-0001")
+                base_number = doc_number.split('-v')[0] if '-v' in doc_number else doc_number
+                # Extract the sequence part (last segment after splitting by '-')
+                parts = base_number.split('-')
+                if len(parts) >= 3:
+                    seq_str = parts[-1]
+                    if seq_str.isdigit():
+                        sequence_numbers.append(int(seq_str))
             except (ValueError, IndexError):
-                next_seq = 1
+                continue
+        
+        # Find the next available sequence number
+        if sequence_numbers:
+            next_seq = max(sequence_numbers) + 1
         else:
             next_seq = 1
         
@@ -497,7 +527,7 @@ class DocumentVersion(models.Model):
     # Version lifecycle
     created_at = models.DateTimeField(auto_now_add=True)
     created_by = models.ForeignKey(User, on_delete=models.PROTECT)
-    status = models.CharField(max_length=20, choices=Document.DOCUMENT_STATUS_CHOICES)
+    status = models.CharField(max_length=30, choices=Document.DOCUMENT_STATUS_CHOICES)
     
     # Change tracking
     change_summary = models.TextField(blank=True)

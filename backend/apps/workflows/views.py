@@ -110,56 +110,142 @@ class SimpleDocumentWorkflowAPIView(APIView):
                         'new_document_number': result['new_document'].document_number,
                         'new_version': result['new_document'].version_string
                     })
-            elif action_type == 'start_obsolete_workflow':
+            elif action_type == 'schedule_obsolescence':
                 reason = request.data.get('reason')
-                target_date = request.data.get('target_date')
-                approver_id = request.data.get('approver_id')
+                obsolescence_date = request.data.get('obsolescence_date')
+                warning_days = request.data.get('warning_days', 30)
+                replacement_document_id = request.data.get('replacement_document_id')
                 
                 if not reason:
                     return Response({
                         'error': 'Reason for obsolescence is required'
                     }, status=status.HTTP_400_BAD_REQUEST)
                 
-                # Get approver if specified
-                approver = None
-                if approver_id:
-                    try:
-                        from django.contrib.auth import get_user_model
-                        User = get_user_model()
-                        approver = User.objects.get(id=approver_id)
-                    except User.DoesNotExist:
-                        return Response({
-                            'error': 'Selected approver not found'
-                        }, status=status.HTTP_400_BAD_REQUEST)
+                if not obsolescence_date:
+                    return Response({
+                        'error': 'Obsolescence date is required'
+                    }, status=status.HTTP_400_BAD_REQUEST)
                 
-                # Parse target_date if provided
-                parsed_target_date = None
-                if target_date:
-                    from datetime import datetime
-                    try:
-                        parsed_target_date = datetime.strptime(target_date, '%Y-%m-%d').date()
-                    except ValueError:
+                # Parse obsolescence_date
+                from datetime import datetime, timezone
+                try:
+                    parsed_obsolescence_date = datetime.strptime(obsolescence_date, '%Y-%m-%d').date()
+                    
+                    # Validate future date
+                    if parsed_obsolescence_date <= datetime.now().date():
                         return Response({
-                            'error': 'Invalid date format. Use YYYY-MM-DD'
+                            'error': 'Obsolescence date must be in the future'
+                        }, status=status.HTTP_400_BAD_REQUEST)
+                        
+                except ValueError:
+                    return Response({
+                        'error': 'Invalid date format. Use YYYY-MM-DD'
+                    }, status=status.HTTP_400_BAD_REQUEST)
+                
+                # Check user permissions
+                if not (request.user.is_superuser or 
+                       request.user.is_staff or
+                       'approver' in request.user.username.lower() or
+                       'admin' in request.user.username.lower()):
+                    return Response({
+                        'error': 'Insufficient permissions to schedule obsolescence'
+                    }, status=status.HTTP_403_FORBIDDEN)
+                
+                # Check for workflow conflicts
+                validation = lifecycle_service.validate_obsolescence_eligibility(document)
+                if not validation['can_obsolete']:
+                    return Response({
+                        'error': validation['reason'],
+                        'conflicts': validation.get('conflicts', [])
+                    }, status=status.HTTP_400_BAD_REQUEST)
+                
+                # Get replacement document if provided
+                replacement_document = None
+                if replacement_document_id:
+                    try:
+                        replacement_document = Document.objects.get(uuid=replacement_document_id)
+                    except Document.DoesNotExist:
+                        return Response({
+                            'error': 'Replacement document not found'
                         }, status=status.HTTP_400_BAD_REQUEST)
                 
                 try:
-                    workflow = lifecycle_service.start_obsolete_workflow(
-                        document, request.user, reason, parsed_target_date, approver
+                    result = lifecycle_service.schedule_obsolescence(
+                        document=document,
+                        user=request.user,
+                        reason=reason,
+                        obsolescence_date=parsed_obsolescence_date,
+                        warning_days=warning_days,
+                        replacement_document=replacement_document
                     )
                 except Exception as e:
                     return Response({
-                        'error': f'Failed to start obsolete workflow: {str(e)}'
+                        'error': f'Failed to schedule obsolescence: {str(e)}'
                     }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
                 
-                if workflow:
+                if result:
                     return Response({
                         'success': True,
-                        'message': 'Obsolescence workflow started successfully',
-                        'workflow_id': str(workflow.uuid),
-                        'status': 'pending_approval',
-                        'approver': document.approver.username if document.approver else None
+                        'message': f'Document scheduled for obsolescence on {parsed_obsolescence_date.strftime("%B %d, %Y")}',
+                        'obsolescence_date': obsolescence_date,
+                        'warning_starts': result.get('warning_date'),
+                        'replacement_document': replacement_document.document_number if replacement_document else None,
+                        'status': 'scheduled_for_obsolescence'
                     })
+            elif action_type == 'obsolete_document_directly':
+                reason = request.data.get('reason')
+                obsolescence_date = request.data.get('obsolescence_date')  # Required
+                
+                if not reason:
+                    return Response({
+                        'error': 'Reason for obsolescence is required'
+                    }, status=status.HTTP_400_BAD_REQUEST)
+                
+                if not obsolescence_date:
+                    return Response({
+                        'error': 'Obsolescence date is required'
+                    }, status=status.HTTP_400_BAD_REQUEST)
+                
+                # Parse and validate obsolescence date
+                from datetime import datetime
+                try:
+                    obsolescence_date_obj = datetime.strptime(obsolescence_date, '%Y-%m-%d').date()
+                    if obsolescence_date_obj < datetime.now().date():
+                        return Response({
+                            'error': 'Obsolescence date cannot be in the past'
+                        }, status=status.HTTP_400_BAD_REQUEST)
+                except ValueError:
+                    return Response({
+                        'error': 'Invalid date format. Use YYYY-MM-DD'
+                    }, status=status.HTTP_400_BAD_REQUEST)
+                
+                # Check user authority
+                has_authority = (
+                    request.user == document.approver or  # Document approver
+                    request.user.is_staff or  # System admin
+                    request.user.is_superuser  # Superuser
+                )
+                
+                if not has_authority:
+                    return Response({
+                        'error': 'You do not have authority to obsolete this document'
+                    }, status=status.HTTP_403_FORBIDDEN)
+                
+                try:
+                    result = lifecycle_service.obsolete_document_directly(
+                        document, request.user, reason, obsolescence_date_obj
+                    )
+                    if result:
+                        return Response({
+                            'success': True,
+                            'message': 'Document scheduled for obsolescence successfully',
+                            'obsolescence_date': obsolescence_date,
+                            'status': 'scheduled_for_obsolescence'
+                        })
+                except ValidationError as ve:
+                    return Response({
+                        'error': str(ve)
+                    }, status=status.HTTP_400_BAD_REQUEST)
             elif action_type == 'approve_obsolescence':
                 result = lifecycle_service.approve_obsolescence(document, request.user, comment)
                 if result:

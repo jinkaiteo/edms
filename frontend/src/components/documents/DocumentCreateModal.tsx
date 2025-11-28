@@ -192,7 +192,7 @@ const DocumentCreateModal: React.FC<DocumentCreateModalProps> = ({
       const [typesResponse, sourcesResponse, documentsResponse] = await Promise.all([
         apiService.get('/documents/types/'),
         apiService.get('/documents/sources/'),
-        apiService.get('/documents/documents/?status=EFFECTIVE')
+        apiService.get('/documents/documents/?status=APPROVED_AND_EFFECTIVE')
       ]);
       
       setDocumentTypes(Array.isArray(typesResponse) ? typesResponse : typesResponse.results || []);

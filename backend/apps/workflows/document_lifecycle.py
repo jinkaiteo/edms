@@ -410,10 +410,39 @@ class DocumentLifecycleService:
             if '-v' in base_doc_number:
                 # Remove existing version (e.g., "SOP-2025-0001-v1.0" -> "SOP-2025-0001")
                 base_doc_number = base_doc_number.split('-v')[0]
+            
             versioned_doc_number = f"{base_doc_number}-v{major}.{minor}"
             
+            # Check for conflicts and resolve them
+            conflict_count = 0
+            original_versioned_number = versioned_doc_number
+            while Document.objects.filter(document_number=versioned_doc_number).exists():
+                conflict_count += 1
+                if conflict_count == 1:
+                    # Try next minor version
+                    versioned_doc_number = f"{base_doc_number}-v{major}.{minor + 1}"
+                    minor += 1
+                elif conflict_count == 2:
+                    # Try next major version
+                    versioned_doc_number = f"{base_doc_number}-v{major + 1}.0"
+                    major += 1
+                    minor = 0
+                else:
+                    # Add unique suffix to avoid infinite loop
+                    import uuid
+                    unique_suffix = str(uuid.uuid4())[:8]
+                    versioned_doc_number = f"{base_doc_number}-v{major}.{minor}-{unique_suffix}"
+                    break
+                    
+                # Prevent infinite loop
+                if conflict_count > 10:
+                    raise ValidationError(f"Unable to generate unique document number for version {major}.{minor}")
+            
+            if conflict_count > 0:
+                print(f"Document number conflict resolved: {original_versioned_number} → {versioned_doc_number}")
+            
             new_document = Document.objects.create(
-                document_number=versioned_doc_number,  # Versioned document number
+                document_number=versioned_doc_number,  # Conflict-free versioned document number
                 title=new_version_data.get('title', existing_document.title),
                 description=new_version_data.get('description', existing_document.description),
                 document_type=existing_document.document_type,
@@ -552,6 +581,226 @@ class DocumentLifecycleService:
             
             return workflow
     
+    def obsolete_document_directly(self, document: Document, user: User, 
+                                  reason: str, obsolescence_date: date) -> bool:
+        """
+        Direct obsolescence for authorized users (approvers/admins).
+        No workflow needed - immediate scheduling with notifications.
+        
+        Args:
+            document: Document to obsolete
+            user: User with obsolescence authority
+            reason: Reason for obsolescence (required)
+            obsolescence_date: Date when document becomes obsolete (required)
+            
+        Returns:
+            bool: True if successfully scheduled
+        """
+        with transaction.atomic():
+            # Validate document can be obsoleted
+            if document.status not in ['EFFECTIVE', 'APPROVED_AND_EFFECTIVE']:
+                raise ValidationError("Can only obsolete EFFECTIVE documents")
+            
+            if not reason:
+                raise ValidationError("Reason for obsolescence is required")
+                
+            if not obsolescence_date:
+                raise ValidationError("Obsolescence date is required")
+                
+            today = timezone.now().date()
+            if obsolescence_date <= today:
+                raise ValidationError(f"Obsolescence date must be in the future. Today is {today}, provided date is {obsolescence_date}")
+            
+            # Enhanced conflict detection
+            self._validate_obsolescence_eligibility(document)
+            
+            # Validate user authority
+            has_authority = (
+                user == document.approver or
+                user.is_staff or
+                user.is_superuser
+            )
+            
+            if not has_authority:
+                raise ValidationError("User does not have authority to obsolete this document")
+            
+            # Update document status to scheduled for obsolescence
+            document.status = 'SCHEDULED_FOR_OBSOLESCENCE'
+            document.obsolescence_date = obsolescence_date
+            document.obsolescence_reason = reason
+            document.obsoleted_by = user
+            document.save()
+            
+            # Create audit trail record (using existing audit system)
+            from apps.audit.models import LoginAudit  # Use existing audit model pattern
+            # TODO: Integrate with proper audit system for document obsolescence
+            print(f"📋 Audit: Document {document.document_number} scheduled for obsolescence by {user.username}")
+            
+            # Send immediate notifications
+            self._send_obsolescence_notifications(
+                document=document,
+                user=user,
+                reason=reason,
+                obsolescence_date=obsolescence_date,
+                notification_type='scheduled'
+            )
+            
+            print(f"✅ Document {document.document_number} scheduled for obsolescence on {obsolescence_date}")
+            return True
+
+    def _validate_obsolescence_eligibility(self, document: Document):
+        """Enhanced validation for obsolescence eligibility with conflict detection."""
+        # Check for dependent documents
+        critical_dependencies = document.dependents.filter(is_active=True, is_critical=True)
+        if critical_dependencies.exists():
+            dependent_docs = [dep.document.document_number for dep in critical_dependencies]
+            raise ValidationError(
+                f"Cannot obsolete document with critical dependencies: {', '.join(dependent_docs)}"
+            )
+        
+        # Check for active workflows on this document
+        active_workflows = DocumentWorkflow.objects.filter(
+            document=document,
+            workflow_type__in=['REVIEW', 'UP_VERSION']
+        ).exclude(current_state__code__in=['TERMINATED', 'COMPLETED', 'OBSOLETE'])
+        
+        if active_workflows.exists():
+            workflow_types = [w.workflow_type for w in active_workflows]
+            raise ValidationError(
+                f"Cannot obsolete document with active workflows: {', '.join(workflow_types)}"
+            )
+        
+        # Check if document is already scheduled for obsolescence
+        if document.status == 'SCHEDULED_FOR_OBSOLESCENCE':
+            raise ValidationError("Document is already scheduled for obsolescence")
+            
+        # CRITICAL: Check for newer versions in development/review
+        self._validate_no_newer_versions_in_development(document)
+    
+    def _validate_no_newer_versions_in_development(self, document: Document):
+        """
+        Prevent obsolescence if newer versions of this document are being developed.
+        This ensures continuity of documented processes and regulatory compliance.
+        """
+        # Extract base document number (remove version suffix if present)
+        base_number = document.document_number
+        if '-v' in base_number:
+            base_number = base_number.split('-v')[0]
+        
+        # Find all documents with the same base number
+        related_documents = Document.objects.filter(
+            document_number__startswith=base_number
+        ).exclude(id=document.id)
+        
+        # Check for newer versions in development/review
+        problematic_versions = []
+        
+        for related_doc in related_documents:
+            # Skip if this is an older version
+            if (related_doc.version_major < document.version_major or 
+                (related_doc.version_major == document.version_major and 
+                 related_doc.version_minor <= document.version_minor)):
+                continue
+                
+            # Check if newer version is in development/review
+            if related_doc.status in [
+                'DRAFT', 'PENDING_REVIEW', 'UNDER_REVIEW', 'REVIEWED',
+                'PENDING_APPROVAL', 'UNDER_APPROVAL', 'APPROVED'
+            ]:
+                version_str = f"v{related_doc.version_major}.{related_doc.version_minor}"
+                problematic_versions.append(f"{related_doc.document_number} ({version_str}) - {related_doc.status}")
+        
+        if problematic_versions:
+            raise ValidationError(
+                f"Cannot obsolete document while newer versions are in development. "
+                f"Complete or terminate these workflows first: {'; '.join(problematic_versions)}"
+            )
+        
+        # Check for active up-versioning workflows on related documents
+        active_version_workflows = DocumentWorkflow.objects.filter(
+            document__document_number__startswith=base_number,
+            workflow_type='UP_VERSION'
+        ).exclude(
+            current_state__code__in=['TERMINATED', 'COMPLETED', 'OBSOLETE']
+        ).exclude(document=document)
+        
+        if active_version_workflows.exists():
+            active_docs = [
+                f"{wf.document.document_number} ({wf.workflow_type})" 
+                for wf in active_version_workflows
+            ]
+            raise ValidationError(
+                f"Cannot obsolete document while up-versioning workflows are active: {'; '.join(active_docs)}"
+            )
+
+    def _send_obsolescence_notifications(self, document: Document, user: User, 
+                                       reason: str, obsolescence_date: date, notification_type: str):
+        """Send notifications for obsolescence events."""
+        # Get notification recipients
+        recipients = self._get_obsolescence_notification_recipients(document)
+        
+        notification_data = {
+            'document_number': document.document_number,
+            'document_title': document.title,
+            'obsoleted_by': user.get_full_name(),
+            'reason': reason,
+            'obsolescence_date': obsolescence_date.isoformat(),
+            'notification_type': notification_type
+        }
+        
+        if notification_type == 'scheduled':
+            subject = f"Document Scheduled for Obsolescence: {document.document_number}"
+            message = f"""
+            Document {document.document_number} - {document.title} has been scheduled for obsolescence.
+            
+            Obsoleted by: {user.get_full_name()}
+            Reason: {reason}
+            Obsolescence Date: {obsolescence_date.strftime('%Y-%m-%d')}
+            
+            The document will become obsolete on the specified date.
+            All stakeholders will be notified when obsolescence takes effect.
+            """
+        else:  # notification_type == 'activated'
+            subject = f"Document Now Obsolete: {document.document_number}"
+            message = f"""
+            Document {document.document_number} - {document.title} is now OBSOLETE.
+            
+            This document is no longer valid and should not be used.
+            Please ensure any references to this document are updated.
+            """
+        
+        # Send notifications (placeholder for actual notification system)
+        for recipient in recipients:
+            print(f"📧 Notification sent to {recipient.email}: {subject}")
+            # TODO: Integrate with actual email/notification system
+        
+        # Log notification activity
+        print(f"📋 Obsolescence notifications sent: {len(recipients)} recipients")
+
+    def _get_obsolescence_notification_recipients(self, document: Document):
+        """Get list of users who should be notified about obsolescence."""
+        recipients = set()
+        
+        # Always notify document stakeholders
+        if document.author:
+            recipients.add(document.author)
+        if document.approver:
+            recipients.add(document.approver)
+        if document.reviewer:
+            recipients.add(document.reviewer)
+            
+        # Notify users with dependent documents
+        dependent_doc_authors = User.objects.filter(
+            authored_documents__dependencies__depends_on=document,
+            authored_documents__dependencies__is_active=True
+        ).distinct()
+        recipients.update(dependent_doc_authors)
+        
+        # Notify department/role-based stakeholders
+        # TODO: Add department-based notification logic if needed
+        
+        return list(recipients)
+
     def approve_obsolescence(self, document: Document, user: User,
                             comment: str = '') -> bool:
         """

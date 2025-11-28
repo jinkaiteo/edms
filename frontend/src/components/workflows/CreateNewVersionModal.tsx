@@ -55,6 +55,7 @@ const CreateNewVersionModal: React.FC<CreateNewVersionModalProps> = ({
     }
   };
 
+
   const handleCreateNewVersion = async () => {
     try {
       if (!reasonForChange.trim()) {
