@@ -14,6 +14,7 @@ from .views import (
     SimpleMyTasksAPIView,
     DocumentWorkflowViewSet,
 )
+from .api_views import workflow_types
 
 # Router for simple viewsets
 router = DefaultRouter()
@@ -39,6 +40,12 @@ urlpatterns = [
     path('my-tasks/', 
          SimpleMyTasksAPIView.as_view(), 
          name='simple_my_tasks'),
+    
+    # Workflow types endpoint
+    path('types/', workflow_types, name='workflow_types'),
+    
+    # Enhanced workflow user selection endpoints
+    path('users/', include('apps.workflows.urls_enhanced')),
     
     # ViewSet URLs
     path('', include(router.urls)),

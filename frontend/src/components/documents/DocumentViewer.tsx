@@ -1,13 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { Document, WorkflowInstance, ElectronicSignature } from '../../types/api';
-import ReviewerInterface from '../workflows/ReviewerInterface.tsx';
+import UnifiedWorkflowInterface from '../workflows/UnifiedWorkflowInterface.tsx';
 import SubmitForReviewModal from '../workflows/SubmitForReviewModal.tsx';
 import RouteForApprovalModal from '../workflows/RouteForApprovalModal.tsx';
-import ApproverInterface from '../workflows/ApproverInterface.tsx';
 // SetEffectiveDateModal removed - no longer needed in simplified workflow
 import CreateNewVersionModal from '../workflows/CreateNewVersionModal.tsx';
 import MarkObsoleteModal from '../workflows/MarkObsoleteModal.tsx';
 import ViewReviewStatus from '../workflows/ViewReviewStatus.tsx';
+import TerminateDocumentModal from './TerminateDocumentModal.tsx';
 import DownloadActionMenu from './DownloadActionMenu.tsx';
 import DocumentCreateModal from './DocumentCreateModal.tsx';
 import MyDraftDocuments from './MyDraftDocuments.tsx';
@@ -38,18 +38,20 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({
   const [signatures, setSignatures] = useState<ElectronicSignature[]>([]);
   const [loading, setLoading] = useState(false);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
-  const [showReviewerInterface, setShowReviewerInterface] = useState(false);
+  const [showUnifiedWorkflowInterface, setShowUnifiedWorkflowInterface] = useState(false);
+  const [workflowMode, setWorkflowMode] = useState<'review' | 'approval'>('review');
   
   // Workflow modals
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [editingDocument, setEditingDocument] = useState<Document | null>(null);
   const [showSubmitForReviewModal, setShowSubmitForReviewModal] = useState(false);
   const [showRouteForApprovalModal, setShowRouteForApprovalModal] = useState(false);
-  const [showApproverInterface, setShowApproverInterface] = useState(false);
   // showSetEffectiveDateModal removed - no longer needed in simplified workflow
   const [showCreateNewVersionModal, setShowCreateNewVersionModal] = useState(false);
   const [showMarkObsoleteModal, setShowMarkObsoleteModal] = useState(false);
   const [showViewReviewStatus, setShowViewReviewStatus] = useState(false);
+  const [showTerminateModal, setShowTerminateModal] = useState(false);
+  const [isTerminating, setIsTerminating] = useState(false);
   
   // Auth context for role-based visibility
   const { authenticated, user } = useAuth();
@@ -266,8 +268,9 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({
         return;
         
       case 'open_reviewer_interface':
-        // EDMS Review Process: Open reviewer interface
-        setShowReviewerInterface(true);
+        // EDMS Review Process: Open unified workflow interface for review
+        setWorkflowMode('review');
+        setShowUnifiedWorkflowInterface(true);
         return;
         
       case 'route_for_approval':
@@ -276,8 +279,9 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({
         return;
         
       case 'open_approver_interface':
-        // EDMS Approval Process: Open approver interface
-        setShowApproverInterface(true);
+        // EDMS Approval Process: Open unified workflow interface for approval
+        setWorkflowMode('approval');
+        setShowUnifiedWorkflowInterface(true);
         return;
         
       // set_effective_date action removed - no longer needed in simplified workflow
@@ -302,6 +306,11 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({
         setShowViewReviewStatus(true);
         return;
         
+      case 'terminate_document':
+        // EDMS Terminate Document: Open terminate modal
+        setShowTerminateModal(true);
+        return;
+        
       default:
         // Handle other workflow actions through parent component
         if (onWorkflowAction && document) {
@@ -310,8 +319,8 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({
     }
   };
   
-  const handleReviewComplete = async () => {
-    setShowReviewerInterface(false);
+  const handleWorkflowComplete = async () => {
+    setShowUnifiedWorkflowInterface(false);
     await forceRefreshDocumentState();
   };
 
@@ -322,11 +331,6 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({
 
   const handleApprovalRouted = async () => {
     setShowRouteForApprovalModal(false);
-    await forceRefreshDocumentState();
-  };
-
-  const handleApprovalComplete = async () => {
-    setShowApproverInterface(false);
     await forceRefreshDocumentState();
   };
 
@@ -350,6 +354,58 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({
 
   const handleViewReviewStatusClosed = () => {
     setShowViewReviewStatus(false);
+  };
+
+  const handleTerminateClick = () => {
+    setShowTerminateModal(true);
+  };
+
+  const handleTerminateConfirm = async (reason: string) => {
+    if (!document) return;
+    
+    setIsTerminating(true);
+    try {
+      // Call the termination API using document ID (backend expects integer ID, not UUID)
+      console.log('🛑 Terminating document:', {
+        uuid: document.uuid,
+        id: document.id,
+        pk: document.pk,
+        allProps: Object.keys(document),
+        using: document.id || document.pk
+      });
+      
+      const documentId = document.id || document.pk;
+      if (!documentId) {
+        console.error('Document object:', document);
+        throw new Error('Document ID or PK is required for termination. Available fields: ' + Object.keys(document).join(', '));
+      }
+      
+      await apiService.post(`/documents/documents/${documentId}/terminate/`, {
+        reason: reason
+      });
+      
+      setShowTerminateModal(false);
+      
+      // Show success message
+      console.log(`Document ${document.document_number} has been terminated successfully.`);
+      
+      // Clear selection since terminated documents are hidden from the list
+      window.dispatchEvent(new CustomEvent('clearDocumentSelection'));
+      
+      // Refresh document state
+      await forceRefreshDocumentState();
+      
+    } catch (error: any) {
+      console.error('Failed to terminate document:', error);
+      // You might want to show an error toast here
+      alert(`Error: ${error.response?.data?.error || 'Failed to terminate document'}`);
+    } finally {
+      setIsTerminating(false);
+    }
+  };
+
+  const handleTerminateCancel = () => {
+    setShowTerminateModal(false);
   };
 
   const handleCreateDocumentSuccess = (updatedDocument: any) => {
@@ -673,6 +729,15 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({
               description: 'Select reviewer and route document for review'
             });
           }
+          
+          // Terminate button - available to document author for pre-effective statuses
+          console.log('  🗑️ Showing: Terminate button (author only, DRAFT status)');
+          actions.push({
+            key: 'terminate_document',
+            label: '🗑️ Terminate Document',
+            color: 'red',
+            description: 'Permanently terminate this document (irreversible)'
+          });
         }
         break;
         
@@ -694,6 +759,17 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({
             label: '👀 Monitor Review Progress', 
             color: 'gray',
             description: 'View review progress (author cannot review own document)'
+          });
+        }
+        
+        // Terminate button - available to document author for pre-effective statuses
+        if (isDocumentAuthor) {
+          console.log('  🗑️ Showing: Terminate button (author only, PENDING_REVIEW status)');
+          actions.push({
+            key: 'terminate_document',
+            label: '🗑️ Terminate Document',
+            color: 'red',
+            description: 'Permanently terminate this document (irreversible)'
           });
         }
         break;
@@ -718,6 +794,17 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({
             description: 'View review progress (author cannot review own document)'
           });
         }
+        
+        // Terminate button - available to document author for pre-effective statuses
+        if (isDocumentAuthor) {
+          console.log('  🗑️ Showing: Terminate button (author only, UNDER_REVIEW status)');
+          actions.push({
+            key: 'terminate_document',
+            label: '🗑️ Terminate Document',
+            color: 'red',
+            description: 'Permanently terminate this document (irreversible)'
+          });
+        }
         break;
         
       case 'REVIEW_COMPLETED':
@@ -729,6 +816,15 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({
             label: '✅ Route for Approval (Author Only)', 
             color: 'green',
             description: 'Select approver and route for approval'
+          });
+          
+          // Terminate button - available to document author for pre-effective statuses
+          console.log('  🗑️ Showing: Terminate button (author only, REVIEW_COMPLETED status)');
+          actions.push({
+            key: 'terminate_document',
+            label: '🗑️ Terminate Document',
+            color: 'red',
+            description: 'Permanently terminate this document (irreversible)'
           });
         }
         break;
@@ -757,6 +853,17 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({
             label: '✅ Start Approval Process', 
             color: 'green',
             description: 'Review and approve/reject document'
+          });
+        }
+        
+        // Terminate button - available to document author for pre-effective statuses
+        if (isDocumentAuthor) {
+          console.log('  🗑️ Showing: Terminate button (author only, PENDING_APPROVAL status)');
+          actions.push({
+            key: 'terminate_document',
+            label: '🗑️ Terminate Document',
+            color: 'red',
+            description: 'Permanently terminate this document (irreversible)'
           });
         }
         break;
@@ -920,6 +1027,24 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({
                 }}
               />
             )}
+            {/* Clear Selection Button */}
+            <button
+              onClick={() => {
+                // Call the parent's onDocumentSelect with null to clear selection
+                // This requires updating the DocumentManagement to handle null selection
+                if (onClose) {
+                  onClose(); // For full viewer mode
+                } else {
+                  // For split view, dispatch a custom event to clear selection
+                  window.dispatchEvent(new CustomEvent('clearDocumentSelection'));
+                }
+              }}
+              className="px-3 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50 focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+              title="Clear selection"
+            >
+              ✖️ Clear
+            </button>
+            
             {onClose && (
               <button
                 onClick={onClose}
@@ -1329,12 +1454,14 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({
       
       {/* EDMS Workflow Modals */}
       
-      {/* Reviewer Interface (EDMS Review Process) */}
-      {showReviewerInterface && document && (
-        <ReviewerInterface
-          documentId={document.uuid}
-          onClose={() => setShowReviewerInterface(false)}
-          onReviewComplete={handleReviewComplete}
+      {/* Unified Workflow Interface (EDMS Review & Approval Process) */}
+      {showUnifiedWorkflowInterface && document && (
+        <UnifiedWorkflowInterface
+          isOpen={showUnifiedWorkflowInterface}
+          onClose={() => setShowUnifiedWorkflowInterface(false)}
+          document={document}
+          mode={workflowMode}
+          onComplete={handleWorkflowComplete}
         />
       )}
 
@@ -1355,16 +1482,6 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({
           onClose={() => setShowRouteForApprovalModal(false)}
           document={document}
           onApprovalRouted={handleApprovalRouted}
-        />
-      )}
-
-      {/* Approver Interface (EDMS Approval Process) */}
-      {showApproverInterface && document && (
-        <ApproverInterface
-          isOpen={showApproverInterface}
-          onClose={() => setShowApproverInterface(false)}
-          document={document}
-          onApprovalComplete={handleApprovalComplete}
         />
       )}
 
@@ -1410,6 +1527,18 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({
           document={document}
           onClose={handleViewReviewStatusClosed}
           onRefresh={loadDocumentData}
+        />
+      )}
+
+      {/* Terminate Document Modal (EDMS Termination Process) */}
+      {showTerminateModal && document && (
+        <TerminateDocumentModal
+          isOpen={showTerminateModal}
+          onClose={handleTerminateCancel}
+          onConfirm={handleTerminateConfirm}
+          documentNumber={document.document_number}
+          documentTitle={document.title}
+          isLoading={isTerminating}
         />
       )}
     </div>

@@ -1,7 +1,6 @@
 import React, { useState, useCallback } from 'react';
 import Layout from '../components/common/Layout.tsx';
 import UserManagement from '../components/users/UserManagement.tsx';
-import WorkflowConfiguration from '../components/workflows/WorkflowConfiguration.tsx';
 import PlaceholderManagement from '../components/placeholders/PlaceholderManagement.tsx';
 import SystemSettings from '../components/settings/SystemSettings.tsx';
 import AuditTrailViewer from '../components/audit/AuditTrailViewer.tsx';
@@ -10,7 +9,7 @@ import { useDashboardUpdates } from '../hooks/useDashboardUpdates.ts';
 import { DashboardStats } from '../types/api.ts';
 
 const AdminDashboard: React.FC = () => {
-  const [activeSection, setActiveSection] = useState<'overview' | 'users' | 'workflows' | 'placeholders' | 'settings' | 'audit' | 'tasks' | 'reports'>('overview');
+  const [activeSection, setActiveSection] = useState<'overview' | 'users' | 'placeholders' | 'settings' | 'audit' | 'tasks' | 'reports'>('overview');
   
   // Stable callback functions to prevent dependency changes
   const handleDashboardError = useCallback((error: Error) => {
@@ -52,13 +51,6 @@ const AdminDashboard: React.FC = () => {
       description: 'Manage users, roles, and permissions',
       icon: '👥',
       color: 'bg-green-500'
-    },
-    {
-      key: 'workflows' as const,
-      title: 'Workflow Configuration',
-      description: 'Configure document workflows',
-      icon: '🔄',
-      color: 'bg-purple-500'
     },
     {
       key: 'placeholders' as const,
@@ -392,8 +384,6 @@ const AdminDashboard: React.FC = () => {
         return renderOverview();
       case 'users':
         return <UserManagement />;
-      case 'workflows':
-        return <WorkflowConfiguration />;
       case 'placeholders':
         return <PlaceholderManagement />;
       case 'settings':

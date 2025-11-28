@@ -25,8 +25,9 @@ from celery.exceptions import Retry
 from celery.utils.log import get_task_logger
 
 from .models import ScheduledTask
+from .notification_service import notification_service
 from ..documents.models import Document
-from ..workflows.models import DocumentWorkflow, DocumentState, DocumentTransition
+from ..workflows.models import DocumentWorkflow, DocumentState, DocumentTransition, WorkflowTask, WorkflowInstance
 from ..audit.models import AuditTrail
 from ..users.models import User
 
@@ -48,7 +49,14 @@ class DocumentAutomationService:
     """
     
     def __init__(self):
-        self.system_user = self._get_system_user()
+        self._system_user = None
+    
+    @property
+    def system_user(self):
+        """Lazy initialization of system user to avoid database connection at import."""
+        if self._system_user is None:
+            self._system_user = self._get_system_user()
+        return self._system_user
     
     def process_effective_dates(self) -> Dict[str, Any]:
         """
@@ -111,9 +119,8 @@ class DocumentAutomationService:
                         AuditTrail.objects.create(
                             user=self.system_user,
                             action='DOCUMENT_EFFECTIVE_DATE_PROCESSED',
-                            model_name='Document',
-                            object_id=str(document.id),
-                            changes={
+                            content_object=document,
+                            field_changes={
                                 'old_status': old_status,
                                 'new_status': document.status,
                                 'effective_date': document.effective_date.isoformat() if document.effective_date else None,
@@ -129,6 +136,13 @@ class DocumentAutomationService:
                             'title': document.title,
                             'effective_date': document.effective_date.isoformat() if document.effective_date else None
                         })
+                        
+                        # Send notification
+                        try:
+                            notification_service.send_document_effective_notification(document)
+                            logger.info(f"Sent effective date notification for document {document.document_number}")
+                        except Exception as e:
+                            logger.warning(f"Failed to send notification for document {document.document_number}: {e}")
                         
                         results['success_count'] += 1
                         logger.info(f"Processed effective date for document {document.document_number}")
@@ -159,8 +173,8 @@ class DocumentAutomationService:
             
             # Find documents pending obsoletion
             pending_obsolete = Document.objects.filter(
-                status='PENDING_OBSOLETE',
-                obsoleting_date__lte=timezone.now().date()
+                status='SCHEDULED_FOR_OBSOLESCENCE',
+                obsolescence_date__lte=timezone.now().date()
             )
             
             results['processed_count'] = pending_obsolete.count()
@@ -187,7 +201,7 @@ class DocumentAutomationService:
                                 comment=f"Automated obsoletion processing on {timezone.now().date()}",
                                 transition_data={
                                     'automated': True,
-                                    'obsoletion_date': document.obsoleting_date.isoformat() if document.obsoleting_date else None
+                                    'obsoletion_date': document.obsolescence_date.isoformat() if document.obsolescence_date else None
                                 }
                             )
                             
@@ -202,12 +216,11 @@ class DocumentAutomationService:
                         AuditTrail.objects.create(
                             user=self.system_user,
                             action='DOCUMENT_OBSOLETED',
-                            model_name='Document',
-                            object_id=str(document.id),
-                            changes={
+                            content_object=document,
+                            field_changes={
                                 'old_status': old_status,
                                 'new_status': document.status,
-                                'obsoletion_date': document.obsoleting_date.isoformat() if document.obsoleting_date else None,
+                                'obsoletion_date': document.obsolescence_date.isoformat() if document.obsolescence_date else None,
                                 'automation_timestamp': timezone.now().isoformat()
                             },
                             ip_address='127.0.0.1',
@@ -218,8 +231,15 @@ class DocumentAutomationService:
                             'document_id': document.id,
                             'document_number': document.document_number,
                             'title': document.title,
-                            'obsoletion_date': document.obsoleting_date.isoformat() if document.obsoleting_date else None
+                            'obsoletion_date': document.obsolescence_date.isoformat() if document.obsolescence_date else None
                         })
+                        
+                        # Send notification
+                        try:
+                            notification_service.send_document_obsolete_notification(document)
+                            logger.info(f"Sent obsolescence notification for document {document.document_number}")
+                        except Exception as e:
+                            logger.warning(f"Failed to send notification for document {document.document_number}: {e}")
                         
                         results['success_count'] += 1
                         logger.info(f"Processed obsoletion for document {document.document_number}")
@@ -275,8 +295,12 @@ class DocumentAutomationService:
                         
                         # Send notification for severely overdue workflows
                         if days_overdue > 7:  # More than a week overdue
-                            self._send_timeout_notification(workflow, days_overdue)
-                            results['notification_count'] += 1
+                            try:
+                                notification_service.send_workflow_timeout_notification(workflow, days_overdue)
+                                results['notification_count'] += 1
+                                logger.info(f"Sent timeout notification for workflow {workflow.id}")
+                            except Exception as e:
+                                logger.warning(f"Failed to send timeout notification for workflow {workflow.id}: {e}")
                             
                 except Exception as e:
                     logger.error(f"Error checking workflow timeout for {workflow.id}: {str(e)}")
@@ -335,6 +359,207 @@ class DocumentAutomationService:
         except Exception as e:
             logger.error(f"Failed to send timeout notification: {str(e)}")
 
+    def cleanup_workflow_tasks(self, dry_run: bool = False) -> Dict[str, Any]:
+        """
+        Clean up orphaned, irrelevant, or completed workflow tasks.
+        
+        This function removes:
+        1. Tasks for terminated/obsolete documents
+        2. Tasks for documents that no longer exist
+        3. Orphaned tasks without valid workflow instances
+        4. Duplicate pending tasks for the same document/user
+        5. Tasks that have been pending for too long (configurable timeout)
+        
+        Args:
+            dry_run: If True, only report what would be cleaned up without making changes
+            
+        Returns:
+            Dict containing cleanup results and statistics
+        """
+        logger.info("🧹 Starting workflow task cleanup...")
+        start_time = timezone.now()
+        results = {
+            'terminated_document_tasks': 0,
+            'obsolete_document_tasks': 0,
+            'orphaned_tasks': 0,
+            'duplicate_tasks': 0,
+            'expired_tasks': 0,
+            'nonexistent_document_tasks': 0,
+            'details': []
+        }
+        
+        try:
+            with transaction.atomic():
+                # 1. Clean up tasks for terminated/obsolete documents
+                terminated_obsolete_tasks = WorkflowTask.objects.filter(
+                    content_object__status__in=['TERMINATED', 'OBSOLETE'],
+                    status__in=['PENDING', 'IN_PROGRESS']
+                ).select_related('content_object')
+                
+                for task in terminated_obsolete_tasks:
+                    if not dry_run:
+                        task.status = 'CANCELLED'
+                        task.completed_at = timezone.now()
+                        task.completion_note = f'Auto-cancelled: Document status is {task.content_object.status}'
+                        task.save()
+                    
+                    results['terminated_document_tasks'] += 1
+                    results['details'].append({
+                        'type': 'terminated_obsolete',
+                        'task_id': task.id,
+                        'document': getattr(task.content_object, 'document_number', 'Unknown'),
+                        'document_status': getattr(task.content_object, 'status', 'Unknown'),
+                        'task_type': task.task_type,
+                        'assigned_to': task.assigned_to.username if task.assigned_to else 'Unassigned'
+                    })
+                
+                # 2. Clean up tasks for documents that no longer exist
+                orphaned_content_tasks = WorkflowTask.objects.filter(
+                    content_object__isnull=True,
+                    status__in=['PENDING', 'IN_PROGRESS']
+                )
+                
+                for task in orphaned_content_tasks:
+                    if not dry_run:
+                        task.status = 'CANCELLED'
+                        task.completed_at = timezone.now()
+                        task.completion_note = 'Auto-cancelled: Associated document no longer exists'
+                        task.save()
+                    
+                    results['nonexistent_document_tasks'] += 1
+                    results['details'].append({
+                        'type': 'nonexistent_document',
+                        'task_id': task.id,
+                        'task_type': task.task_type,
+                        'assigned_to': task.assigned_to.username if task.assigned_to else 'Unassigned'
+                    })
+                
+                # 3. Clean up tasks for inactive workflow instances
+                inactive_workflow_tasks = WorkflowTask.objects.filter(
+                    workflow_instance__is_active=False,
+                    status__in=['PENDING', 'IN_PROGRESS']
+                ).select_related('workflow_instance')
+                
+                for task in inactive_workflow_tasks:
+                    if not dry_run:
+                        task.status = 'CANCELLED'
+                        task.completed_at = timezone.now()
+                        task.completion_note = 'Auto-cancelled: Workflow instance is no longer active'
+                        task.save()
+                    
+                    results['orphaned_tasks'] += 1
+                    results['details'].append({
+                        'type': 'inactive_workflow',
+                        'task_id': task.id,
+                        'workflow_instance_id': task.workflow_instance.id if task.workflow_instance else None,
+                        'task_type': task.task_type,
+                        'assigned_to': task.assigned_to.username if task.assigned_to else 'Unassigned'
+                    })
+                
+                # 4. Clean up duplicate pending tasks (same document, same user, same task type)
+                from django.db.models import Count
+                duplicate_groups = WorkflowTask.objects.filter(
+                    status='PENDING'
+                ).values(
+                    'content_type', 'object_id', 'assigned_to', 'task_type'
+                ).annotate(
+                    count=Count('id')
+                ).filter(count__gt=1)
+                
+                for group in duplicate_groups:
+                    duplicate_tasks = WorkflowTask.objects.filter(
+                        content_type=group['content_type'],
+                        object_id=group['object_id'],
+                        assigned_to=group['assigned_to'],
+                        task_type=group['task_type'],
+                        status='PENDING'
+                    ).order_by('created_at')[1:]  # Keep the first (oldest) task
+                    
+                    for task in duplicate_tasks:
+                        if not dry_run:
+                            task.status = 'CANCELLED'
+                            task.completed_at = timezone.now()
+                            task.completion_note = 'Auto-cancelled: Duplicate task removed'
+                            task.save()
+                        
+                        results['duplicate_tasks'] += 1
+                        results['details'].append({
+                            'type': 'duplicate',
+                            'task_id': task.id,
+                            'task_type': task.task_type,
+                            'assigned_to': task.assigned_to.username if task.assigned_to else 'Unassigned'
+                        })
+                
+                # 5. Clean up tasks that have been pending too long (default: 30 days)
+                expiry_threshold = timezone.now() - timedelta(days=getattr(settings, 'WORKFLOW_TASK_EXPIRY_DAYS', 30))
+                expired_tasks = WorkflowTask.objects.filter(
+                    status='PENDING',
+                    created_at__lt=expiry_threshold
+                )
+                
+                for task in expired_tasks:
+                    if not dry_run:
+                        task.status = 'EXPIRED'
+                        task.completed_at = timezone.now()
+                        task.completion_note = f'Auto-expired: Task pending for more than {getattr(settings, "WORKFLOW_TASK_EXPIRY_DAYS", 30)} days'
+                        task.save()
+                    
+                    results['expired_tasks'] += 1
+                    results['details'].append({
+                        'type': 'expired',
+                        'task_id': task.id,
+                        'created_at': task.created_at.isoformat(),
+                        'task_type': task.task_type,
+                        'assigned_to': task.assigned_to.username if task.assigned_to else 'Unassigned'
+                    })
+                
+                # Create audit trail for cleanup
+                total_cleaned = sum([
+                    results['terminated_document_tasks'],
+                    results['obsolete_document_tasks'], 
+                    results['orphaned_tasks'],
+                    results['duplicate_tasks'],
+                    results['expired_tasks'],
+                    results['nonexistent_document_tasks']
+                ])
+                
+                if total_cleaned > 0 and not dry_run:
+                    AuditTrail.objects.create(
+                        user=self.system_user,  # Use system user
+                        action='WORKFLOW_TASK_CLEANUP',
+                        description=f'Automated workflow task cleanup completed. Cleaned {total_cleaned} tasks.',
+                        field_changes=results,
+                        ip_address='system',
+                        user_agent='Scheduler/AutomatedTasks'
+                    )
+                
+                execution_time = (timezone.now() - start_time).total_seconds()
+                
+                logger.info(f"✅ Workflow task cleanup completed in {execution_time:.2f}s")
+                logger.info(f"   - Terminated/Obsolete document tasks: {results['terminated_document_tasks']}")
+                logger.info(f"   - Nonexistent document tasks: {results['nonexistent_document_tasks']}")
+                logger.info(f"   - Orphaned tasks: {results['orphaned_tasks']}")
+                logger.info(f"   - Duplicate tasks: {results['duplicate_tasks']}")
+                logger.info(f"   - Expired tasks: {results['expired_tasks']}")
+                
+                return {
+                    'status': 'completed',
+                    'message': f'Workflow task cleanup completed. Processed {total_cleaned} tasks.',
+                    'dry_run': dry_run,
+                    'results': results,
+                    'execution_time': f"{execution_time:.2f}s",
+                    'next_run': timezone.now() + timedelta(hours=6)  # Run every 6 hours
+                }
+                
+        except Exception as e:
+            logger.error(f"❌ Error during workflow task cleanup: {str(e)}")
+            return {
+                'status': 'error',
+                'message': f'Workflow task cleanup failed: {str(e)}',
+                'results': results,
+                'execution_time': f"{(timezone.now() - start_time).total_seconds():.2f}s"
+            }
+
 
 class SystemHealthService:
     """
@@ -345,7 +570,14 @@ class SystemHealthService:
     """
     
     def __init__(self):
-        self.system_user = self._get_system_user()
+        self._system_user = None
+    
+    @property
+    def system_user(self):
+        """Lazy initialization of system user to avoid database connection at import."""
+        if self._system_user is None:
+            self._system_user = self._get_system_user()
+        return self._system_user
     
     def perform_health_check(self) -> Dict[str, Any]:
         """Perform comprehensive system health check."""
@@ -384,9 +616,8 @@ class SystemHealthService:
             AuditTrail.objects.create(
                 user=self.system_user,
                 action='SYSTEM_HEALTH_CHECK',
-                model_name='System',
-                object_id='health_monitor',
-                changes={
+                description=f'System health check: {health_results["overall_status"]}',
+                field_changes={
                     'overall_status': health_results['overall_status'],
                     'failed_checks': failed_checks,
                     'check_count': len(health_results['checks'])
@@ -563,6 +794,29 @@ def perform_system_health_check():
         
     except Exception as e:
         logger.error(f"System health check failed: {str(e)}")
+        raise
+
+
+@shared_task
+def cleanup_workflow_tasks(dry_run: bool = False):
+    """Celery task to clean up orphaned and irrelevant workflow tasks."""
+    try:
+        automation_service = DocumentAutomationService()
+        results = automation_service.cleanup_workflow_tasks(dry_run=dry_run)
+        
+        total_cleaned = sum([
+            results['results']['terminated_document_tasks'],
+            results['results']['orphaned_tasks'],
+            results['results']['duplicate_tasks'],
+            results['results']['expired_tasks'],
+            results['results']['nonexistent_document_tasks']
+        ])
+        
+        logger.info(f"Workflow task cleanup completed. Cleaned {total_cleaned} tasks.")
+        return results
+        
+    except Exception as e:
+        logger.error(f"Workflow task cleanup failed: {str(e)}")
         raise
 
 

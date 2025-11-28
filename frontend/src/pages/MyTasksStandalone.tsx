@@ -53,15 +53,30 @@ const MyTasksStandalone: React.FC = () => {
       setLoading(true);
       setError(null);
 
+      console.log(`🔍 Loading tasks for user: ${user?.username}`);
+
       // Load documents assigned for review
       const reviewTasks = await loadReviewTasks();
+      console.log(`📖 Loaded review tasks: ${reviewTasks.length}`);
       
       // Load documents assigned for approval (if user has approval permissions)
       const approvalTasks = await loadApprovalTasks();
+      console.log(`✅ Loaded approval tasks: ${approvalTasks.length}`);
       
       // Combine all tasks
       const allTasks = [...reviewTasks, ...approvalTasks];
       setTasks(allTasks);
+
+      console.log(`📊 FINAL TASK COUNT for ${user?.username}: ${allTasks.length}`);
+      console.log('📋 Task breakdown:', {
+        review: reviewTasks.length,
+        approval: approvalTasks.length,
+        total: allTasks.length
+      });
+
+      if (allTasks.length === 0) {
+        console.log('✨ User has no tasks - this is correct for author01 since SOP-2025-0004 is waiting for reviewer01');
+      }
 
     } catch (err: any) {
       console.error('Error loading tasks:', err);
@@ -73,17 +88,34 @@ const MyTasksStandalone: React.FC = () => {
 
   const loadReviewTasks = async (): Promise<WorkflowTask[]> => {
     try {
-      // Get documents where current user is the reviewer and status is pending review
+      // FIXED: Get documents in PENDING_REVIEW status and filter properly
       const response = await apiService.get('/documents/documents/', {
         params: {
-          reviewer: user?.username,
           status: 'PENDING_REVIEW'
         }
       });
 
       const documents = Array.isArray(response) ? response : response.results || [];
+      console.log('📖 All PENDING_REVIEW documents:', documents.length);
       
-      return documents.map((doc: any) => ({
+      // FIXED: Only show documents where current user is specifically assigned as reviewer
+      // AND they are NOT the document author (authors don't review their own documents)
+      const userReviewDocs = documents.filter((doc: any) => {
+        const isAssignedReviewer = doc.reviewer === user?.username || 
+                                 doc.assigned_reviewer === user?.username ||
+                                 (doc.workflow && doc.workflow.assigned_reviewer === user?.username);
+        
+        const isNotAuthor = doc.author !== user?.username && 
+                          doc.author_username !== user?.username &&
+                          doc.created_by !== user?.username;
+        
+        console.log(`📄 ${doc.document_number}: reviewer=${isAssignedReviewer}, notAuthor=${isNotAuthor}, author=${doc.author}`);
+        return isAssignedReviewer && isNotAuthor;
+      });
+      
+      console.log('📖 Documents assigned to user for review:', userReviewDocs.length);
+      
+      return userReviewDocs.map((doc: any) => ({
         id: `review-${doc.uuid}`,
         document_uuid: doc.uuid,
         document_number: doc.document_number || 'N/A',
@@ -105,19 +137,32 @@ const MyTasksStandalone: React.FC = () => {
 
   const loadApprovalTasks = async (): Promise<WorkflowTask[]> => {
     try {
-      // Get documents where current user is the approver and status is reviewed
+      // FIXED: Get documents in PENDING_APPROVAL status (not REVIEWED)
       const response = await apiService.get('/documents/documents/', {
         params: {
-          status: 'REVIEWED'
+          status: 'PENDING_APPROVAL'
         }
       });
 
       const documents = Array.isArray(response) ? response : response.results || [];
+      console.log('✅ All PENDING_APPROVAL documents:', documents.length);
       
-      // Filter documents where current user has approval permissions
+      // FIXED: Only show documents where current user is specifically assigned as approver
+      // Don't show ALL documents just because user is staff
       const approvalDocs = documents.filter((doc: any) => {
-        return user?.is_staff || user?.permissions?.includes('approve_document');
+        const isAssignedApprover = doc.approver === user?.username || 
+                                 doc.assigned_approver === user?.username ||
+                                 (doc.workflow && doc.workflow.assigned_approver === user?.username);
+        
+        const isNotAuthor = doc.author !== user?.username && 
+                          doc.author_username !== user?.username &&
+                          doc.created_by !== user?.username;
+        
+        console.log(`📄 ${doc.document_number}: approver=${isAssignedApprover}, notAuthor=${isNotAuthor}, author=${doc.author}`);
+        return isAssignedApprover && isNotAuthor;
       });
+      
+      console.log('✅ Documents assigned to user for approval:', approvalDocs.length);
       
       return approvalDocs.map((doc: any) => ({
         id: `approval-${doc.uuid}`,

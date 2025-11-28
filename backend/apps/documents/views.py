@@ -326,6 +326,18 @@ class DocumentViewSet(viewsets.ModelViewSet):
                 new_major = document.version_major
                 new_minor = document.version_minor + 1
             
+            # Validate version limits (1-99 for major, 0-99 for minor)
+            if new_major > 99:
+                return Response(
+                    {'error': 'Major version cannot exceed 99. Consider starting a new document series.'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            if new_minor > 99:
+                return Response(
+                    {'error': 'Minor version cannot exceed 99. Consider incrementing major version.'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            
             # Create new document version
             new_document = Document.objects.create(
                 title=document.title,
@@ -394,12 +406,26 @@ class DocumentViewSet(viewsets.ModelViewSet):
                 try:
                     processed_file_path = docx_processor.process_docx_template(document, request.user)
                     
-                    # Read the processed file
-                    with open(processed_file_path, 'rb') as f:
-                        file_content = f.read()
+                    # FIXED: Ensure file exists before reading and properly handle exceptions
+                    if not os.path.exists(processed_file_path):
+                        raise FileNotFoundError(f"Processed file not found: {processed_file_path}")
                     
-                    # Clean up temporary file
-                    os.unlink(processed_file_path)
+                    # Read the processed file with proper error handling
+                    try:
+                        with open(processed_file_path, 'rb') as f:
+                            file_content = f.read()
+                    except Exception as read_error:
+                        # Clean up on read error
+                        if os.path.exists(processed_file_path):
+                            os.unlink(processed_file_path)
+                        raise Exception(f"Failed to read processed file: {read_error}")
+                    
+                    # Clean up temporary file after successful read
+                    try:
+                        os.unlink(processed_file_path)
+                    except Exception as cleanup_error:
+                        # Log cleanup error but don't fail the download
+                        print(f"Warning: Failed to cleanup temp file {processed_file_path}: {cleanup_error}")
                     
                     # Create response for processed .docx
                     response = HttpResponse(
@@ -431,19 +457,13 @@ class DocumentViewSet(viewsets.ModelViewSet):
             # Generate text annotation content (default behavior or fallback)
             annotation_content = annotation_processor.generate_annotated_document_content(document, request.user)
             
-            # Create temporary file with annotation
-            with tempfile.NamedTemporaryFile(mode='w', suffix='.txt', delete=False) as temp_file:
-                temp_file.write(annotation_content)
-                temp_file_path = temp_file.name
+            # FIXED: Ensure content is properly encoded to bytes
+            if isinstance(annotation_content, str):
+                file_content = annotation_content.encode('utf-8')
+            else:
+                file_content = annotation_content
             
-            # Read the file and serve it
-            with open(temp_file_path, 'rb') as f:
-                file_content = f.read()
-            
-            # Clean up temp file
-            os.unlink(temp_file_path)
-            
-            # Create response
+            # Create response directly without temporary file to avoid corruption
             response = HttpResponse(
                 file_content,
                 content_type='text/plain; charset=utf-8'
@@ -1150,6 +1170,87 @@ class DocumentViewSet(viewsets.ModelViewSet):
         document.status = 'PENDING_APPROVAL'
         document.approver = approver
         document.save()
+        
+        # CREATE WORKFLOW TASK FOR THE APPROVER
+        from apps.workflows.models import WorkflowTask, DocumentWorkflow
+        from apps.scheduler.notification_service import notification_service
+        from django.utils import timezone
+        
+        try:
+            # Get or create workflow instance
+            workflow, created = DocumentWorkflow.objects.get_or_create(
+                document=document,
+                defaults={
+                    'current_assignee': approver,
+                    'initiated_by': request.user,
+                    'workflow_data': {
+                        'routed_by': request.user.username,
+                        'routing_comment': request.data.get('comment', ''),
+                        'routing_date': timezone.now().isoformat()
+                    }
+                }
+            )
+            
+            if not created:
+                # Update existing workflow
+                workflow.current_assignee = approver
+                workflow.save()
+            
+            # Create approval task for the approver
+            task = WorkflowTask.objects.create(
+                workflow_instance=workflow,
+                name=f"Approve Document: {document.document_number}",
+                description=f"Review and approve document '{document.title}' (v{document.version_string}). This document has been reviewed and is ready for your approval.",
+                task_type='APPROVE',
+                priority='NORMAL',
+                assigned_to=approver,
+                assigned_by=request.user,
+                due_date=timezone.now() + timezone.timedelta(days=5),  # 5 day deadline
+                task_data={
+                    'document_uuid': str(document.uuid),
+                    'document_number': document.document_number,
+                    'document_title': document.title,
+                    'action_required': 'approve_document',
+                    'routed_by': request.user.username
+                }
+            )
+            
+            print(f"✅ Created approval task {task.uuid} for {approver.username}")
+            
+            # Send notification to approver
+            notification_sent = notification_service.send_immediate_notification(
+                recipients=[approver],
+                subject=f"Document Approval Required: {document.document_number}",
+                message=f"""
+Document Approval Request
+
+Document: {document.title}
+Document Number: {document.document_number}
+Version: {document.version_string}
+Author: {document.author.get_full_name()}
+Routed by: {request.user.get_full_name()}
+
+This document has completed review and requires your approval.
+
+Please log into EDMS to review and approve this document:
+http://localhost:3000/my-tasks
+
+Task Details:
+- Priority: Normal
+- Due Date: {task.due_date.strftime('%Y-%m-%d')}
+- Status: Pending Approval
+
+Action Required: Review the document and either approve or reject with comments.
+                """.strip(),
+                notification_type='APPROVAL_REQUEST'
+            )
+            
+            print(f"✅ Notification sent to {approver.username}: {notification_sent}")
+            
+        except Exception as e:
+            print(f"❌ Error creating task/notification: {e}")
+            import traceback
+            traceback.print_exc()
         
         # Log workflow action
         log_document_access(

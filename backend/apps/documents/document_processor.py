@@ -271,7 +271,7 @@ class PDFProcessor:
         
         try:
             # Create footer content
-            footer_text = f"Document: {document.document_number} v{document.version_major}.{document.version_minor} | "
+            footer_text = f"Document: {document.document_number} v{document.version_major:02d}.{document.version_minor:02d} | "
             footer_text += f"Effective: {document.effective_date or 'TBD'} | "
             footer_text += f"Status: {document.status} | "
             footer_text += f"Downloaded: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
@@ -393,9 +393,9 @@ class TemplateProcessor:
         return {
             '{{DOCUMENT_NUMBER}}': document.document_number or 'TBD',
             '{{DOCUMENT_TITLE}}': document.title or 'Untitled',
-            '{{VERSION_MAJOR}}': str(document.version_major),
-            '{{VERSION_MINOR}}': str(document.version_minor),
-            '{{VERSION_FULL}}': f"{document.version_major}.{document.version_minor}",
+            '{{VERSION_MAJOR}}': f"{document.version_major:02d}",
+            '{{VERSION_MINOR}}': f"{document.version_minor:02d}",
+            '{{VERSION_FULL}}': f"{document.version_major:02d}.{document.version_minor:02d}",
             '{{DOCUMENT_TYPE}}': str(document.document_type) if document.document_type else 'Unknown',
             '{{DOCUMENT_SOURCE}}': str(document.document_source) if document.document_source else 'Unknown',
             '{{AUTHOR}}': document.author.get_full_name() if document.author else 'Unknown',

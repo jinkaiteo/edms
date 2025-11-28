@@ -230,14 +230,15 @@ const AuditTrailViewer: React.FC<AuditTrailViewerProps> = ({ className = '' }) =
         // Get real audit trail data from backend API
         try {
           const response = await apiService.getAuditTrail(filters);
-          setDebugInfo({
-            hasResults: !!(response.results),
-            hasData: !!(response.data), 
-            resultsLength: response.results?.length || 0,
-            dataLength: response.data?.length || 0,
-            count: response.count,
-            firstResult: response.results?.[0] || response.data?.[0]
-          });
+          // Debug info removed to prevent errors
+          // setDebugInfo({
+          //   hasResults: !!(response.results),
+          //   hasData: !!(response.data), 
+          //   resultsLength: response.results?.length || 0,
+          //   dataLength: response.data?.length || 0,
+          //   count: response.count,
+          //   firstResult: response.results?.[0] || response.data?.[0]
+          // });
           
           // Transform API data to match frontend format (simplified)
           const auditData = (response.results || response.data || []).map((item: any, index: number) => ({

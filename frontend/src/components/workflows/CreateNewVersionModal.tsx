@@ -46,15 +46,70 @@ const CreateNewVersionModal: React.FC<CreateNewVersionModalProps> = ({
   const [versionComment, setVersionComment] = useState<string>('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [checkingExistingVersions, setCheckingExistingVersions] = useState(false);
+  const [hasOngoingVersion, setHasOngoingVersion] = useState(false);
+  const [ongoingVersionInfo, setOngoingVersionInfo] = useState<any>(null);
 
   const getNewVersionString = () => {
+    const currentMajor = document?.version_major || 0;
+    const currentMinor = document?.version_minor || 0;
+    
     if (versionType === 'major') {
-      return `${document.version_major + 1}.0`;
+      return `${(currentMajor + 1).toString().padStart(2, '0')}.00`;
     } else {
-      return `${document.version_major}.${document.version_minor + 1}`;
+      return `${currentMajor.toString().padStart(2, '0')}.${(currentMinor + 1).toString().padStart(2, '0')}`;
     }
   };
 
+
+  const checkForOngoingVersions = async () => {
+    setCheckingExistingVersions(true);
+    try {
+      const token = localStorage.getItem('accessToken');
+      if (!token) {
+        throw new Error('No authentication token found');
+      }
+
+      // Check for existing documents with same base number but higher versions in draft/review status
+      const response = await fetch(`http://localhost:8000/api/v1/documents/documents/?search=${document.document_number}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        const documents = data.results || [];
+        
+        // Look for documents with same base number but in draft/review status (ongoing versions)
+        const baseDocNumber = document.document_number.split('-v')[0]; // Extract base: SOP-2025-0001 from SOP-2025-0001-v01.00
+        
+        const ongoingVersions = documents.filter((doc: any) => {
+          const docBaseNumber = doc.document_number.split('-v')[0];
+          return (
+            docBaseNumber === baseDocNumber && 
+            doc.uuid !== document.uuid && // Not the current document
+            ['DRAFT', 'UNDER_REVIEW', 'REVIEWED', 'PENDING_APPROVAL'].includes(doc.status) // Ongoing workflow states
+          );
+        });
+
+        if (ongoingVersions.length > 0) {
+          setHasOngoingVersion(true);
+          setOngoingVersionInfo(ongoingVersions[0]); // Show info about the first ongoing version
+          setError(`Cannot create new version: There is already an ongoing version (${ongoingVersions[0].document_number}) in ${ongoingVersions[0].status} status.`);
+        } else {
+          setHasOngoingVersion(false);
+          setOngoingVersionInfo(null);
+        }
+      }
+    } catch (error: any) {
+      console.error('Error checking for ongoing versions:', error);
+      // Don't block version creation if check fails, just log the error
+    } finally {
+      setCheckingExistingVersions(false);
+    }
+  };
 
   const handleCreateNewVersion = async () => {
     try {
@@ -65,6 +120,11 @@ const CreateNewVersionModal: React.FC<CreateNewVersionModalProps> = ({
 
       if (!changeSummary.trim()) {
         setError('Please provide a summary of changes');
+        return;
+      }
+
+      if (hasOngoingVersion) {
+        setError('Cannot create new version while another version is in progress');
         return;
       }
 
@@ -132,6 +192,13 @@ const CreateNewVersionModal: React.FC<CreateNewVersionModalProps> = ({
     }
   };
 
+  // Check for ongoing versions when modal opens
+  React.useEffect(() => {
+    if (isOpen) {
+      checkForOngoingVersions();
+    }
+  }, [isOpen, document.uuid]);
+
   if (!isOpen) return null;
 
   return (
@@ -179,8 +246,34 @@ const CreateNewVersionModal: React.FC<CreateNewVersionModalProps> = ({
             </div>
           </div>
 
+          {/* Loading Check */}
+          {checkingExistingVersions && (
+            <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-md">
+              <div className="flex items-center space-x-2">
+                <ClockIcon className="h-5 w-5 text-blue-400 animate-spin" />
+                <p className="text-sm text-blue-700">Checking for ongoing version workflows...</p>
+              </div>
+            </div>
+          )}
+
+          {/* Ongoing Version Warning */}
+          {hasOngoingVersion && ongoingVersionInfo && (
+            <div className="mb-4 p-4 bg-amber-50 border border-amber-200 rounded-md">
+              <div className="flex items-start space-x-3">
+                <ExclamationTriangleIcon className="h-5 w-5 text-amber-400 mt-0.5" />
+                <div>
+                  <h4 className="font-medium text-amber-900">Ongoing Version Detected</h4>
+                  <div className="text-sm text-amber-700 mt-1">
+                    <p><strong>{ongoingVersionInfo.document_number}</strong> is currently in <strong>{ongoingVersionInfo.status}</strong> status.</p>
+                    <p className="mt-1">Please wait for this version to complete its workflow before creating a new version.</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* Error Display */}
-          {error && (
+          {error && !hasOngoingVersion && (
             <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-md">
               <div className="flex items-center space-x-2">
                 <ExclamationTriangleIcon className="h-5 w-5 text-red-400" />
@@ -205,7 +298,7 @@ const CreateNewVersionModal: React.FC<CreateNewVersionModalProps> = ({
                 />
                 <div>
                   <div className="font-medium text-gray-900">
-                    Minor Version ({document.version_major}.{document.version_minor + 1})
+                    Minor Version ({(document?.version_major || 0).toString().padStart(2, '0')}.{((document?.version_minor || 0) + 1).toString().padStart(2, '0')})
                   </div>
                   <div className="text-sm text-gray-600">
                     Small changes, corrections, or updates that don't affect the core content significantly.
@@ -225,7 +318,7 @@ const CreateNewVersionModal: React.FC<CreateNewVersionModalProps> = ({
                 />
                 <div>
                   <div className="font-medium text-gray-900">
-                    Major Version ({document.version_major + 1}.0)
+                    Major Version ({((document?.version_major || 0) + 1).toString().padStart(2, '0')}.00)
                   </div>
                   <div className="text-sm text-gray-600">
                     Significant changes that substantially alter the document content or structure.
@@ -326,7 +419,7 @@ const CreateNewVersionModal: React.FC<CreateNewVersionModalProps> = ({
           </button>
           <button
             onClick={handleCreateNewVersion}
-            disabled={loading || !reasonForChange.trim() || !changeSummary.trim()}
+            disabled={loading || !reasonForChange.trim() || !changeSummary.trim() || hasOngoingVersion || checkingExistingVersions}
             className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 flex items-center space-x-2"
           >
             {loading && <ClockIcon className="h-4 w-4 animate-spin" />}

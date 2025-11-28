@@ -10,7 +10,7 @@ import os
 import hashlib
 from django.db import models
 from django.contrib.auth import get_user_model
-from django.core.validators import RegexValidator, MinValueValidator
+from django.core.validators import RegexValidator, MinValueValidator, MaxValueValidator
 from django.utils.translation import gettext_lazy as _
 from django.conf import settings
 from django.core.exceptions import ValidationError
@@ -196,8 +196,16 @@ class Document(models.Model):
     keywords = models.CharField(max_length=500, blank=True, help_text="Comma-separated keywords for search")
     
     # Version control
-    version_major = models.PositiveIntegerField(default=1)
-    version_minor = models.PositiveIntegerField(default=0)
+    version_major = models.PositiveIntegerField(
+        default=1,
+        validators=[MinValueValidator(1), MaxValueValidator(99)],
+        help_text="Major version number (1-99)"
+    )
+    version_minor = models.PositiveIntegerField(
+        default=0,
+        validators=[MinValueValidator(0), MaxValueValidator(99)],
+        help_text="Minor version number (0-99)"
+    )
     
     # Document classification
     document_type = models.ForeignKey(
@@ -319,28 +327,34 @@ class Document(models.Model):
         ]
         constraints = [
             models.CheckConstraint(
-                check=models.Q(version_major__gte=1),
-                name='version_major_positive'
+                check=models.Q(version_major__gte=1, version_major__lte=99),
+                name='version_major_range'
             ),
             models.CheckConstraint(
-                check=models.Q(version_minor__gte=0),
-                name='version_minor_non_negative'
+                check=models.Q(version_minor__gte=0, version_minor__lte=99),
+                name='version_minor_range'
             ),
         ]
     
     def __str__(self):
-        return f"{self.document_number} - {self.title} (v{self.version_major}.{self.version_minor})"
+        return f"{self.document_number} - {self.title} (v{self.version_major:02d}.{self.version_minor:02d})"
     
     @property
     def version_string(self):
-        """Return formatted version string."""
-        return f"{self.version_major}.{self.version_minor}"
+        """Return formatted version string with zero padding."""
+        return f"{self.version_major:02d}.{self.version_minor:02d}"
     
     @property
     def full_file_path(self):
         """Return the full file path."""
         if self.file_path:
-            return os.path.join(settings.MEDIA_ROOT, self.file_path)
+            # Handle both new and legacy file path formats
+            if self.file_path.startswith('storage/documents/'):
+                # Legacy format: storage/documents/uuid.docx
+                return os.path.join(settings.BASE_DIR, self.file_path)
+            else:
+                # New format: documents/uuid/filename.docx
+                return os.path.join(settings.MEDIA_ROOT, self.file_path)
         return None
     
     def save(self, *args, **kwargs):
@@ -348,13 +362,8 @@ class Document(models.Model):
         # Auto-generate document number if not set
         if not self.document_number:
             base_number = self.generate_document_number()
-            # For new documents (v1.0), don't append version suffix to avoid conflicts
-            # Version suffix is only used for up-versioned documents
-            if self.version_major == 1 and self.version_minor == 0:
-                self.document_number = base_number
-            else:
-                # Append version for up-versioned documents
-                self.document_number = f"{base_number}-v{self.version_major}.{self.version_minor}"
+            # Always use zero-padded version suffix for consistency
+            self.document_number = f"{base_number}-v{self.version_major:02d}.{self.version_minor:02d}"
         
         # Calculate file checksum if file exists
         if self.file_path and not self.file_checksum:
@@ -496,6 +505,93 @@ class Document(models.Model):
             role__permission_level__in=['review', 'approve', 'admin'],
             is_active=True
         ).exists()
+    
+    def can_terminate(self, user):
+        """Check if user can terminate this document."""
+        # Only author can terminate
+        if self.author != user:
+            return False
+        
+        # Only terminable statuses (pre-effective)
+        terminable_statuses = ['DRAFT', 'PENDING_REVIEW', 'UNDER_REVIEW', 'PENDING_APPROVAL']
+        return self.status in terminable_statuses
+    
+    def terminate_document(self, terminated_by, reason=''):
+        """Terminate document before it becomes effective."""
+        if not self.can_terminate(terminated_by):
+            raise ValueError("User cannot terminate this document")
+        
+        # Update document status
+        old_status = self.status
+        self.status = 'TERMINATED'
+        self.obsoleted_by = terminated_by
+        self.obsolescence_reason = f"TERMINATED: {reason}" if reason else "TERMINATED: No reason provided"
+        self.is_active = False  # Mark as inactive
+        
+        # Save changes
+        self.save()
+        
+        # Clean up pending workflow tasks for terminated document
+        from ..workflows.models import WorkflowTask, WorkflowInstance
+        from django.contrib.contenttypes.models import ContentType
+        
+        # Get all active workflow instances for this document
+        content_type = ContentType.objects.get_for_model(self)
+        workflow_instances = WorkflowInstance.objects.filter(
+            content_type=content_type,
+            object_id=str(self.id),
+            is_active=True
+        )
+        
+        # Cancel all pending tasks for this document
+        cancelled_tasks_count = 0
+        for instance in workflow_instances:
+            pending_tasks = instance.tasks.filter(status__in=['PENDING', 'IN_PROGRESS'])
+            for task in pending_tasks:
+                task.status = 'CANCELLED'
+                task.completed_at = tz.now()
+                task.completion_note = f'Task cancelled due to document termination: {reason}'
+                task.save()
+                cancelled_tasks_count += 1
+            
+            # Mark workflow instances as completed
+            instance.complete_workflow(f'Document terminated: {reason}')
+        
+        # Create audit trail
+        from django.utils import timezone as tz
+        from ..audit.models import AuditTrail
+        
+        AuditTrail.objects.create(
+            user=terminated_by,
+            action='DOCUMENT_TERMINATED',
+            content_object=self,
+            description=f'Document {self.document_number} terminated by author. Cancelled {cancelled_tasks_count} pending workflow tasks.',
+            field_changes={
+                'old_status': old_status,
+                'new_status': 'TERMINATED',
+                'termination_reason': reason,
+                'terminated_at': tz.now().isoformat(),
+                'cancelled_tasks_count': cancelled_tasks_count
+            },
+            ip_address=getattr(terminated_by, '_current_ip', None),
+            user_agent=getattr(terminated_by, '_current_user_agent', 'System')
+        )
+        
+        # Trigger automatic workflow task cleanup after termination
+        try:
+            from ..scheduler.automated_tasks import cleanup_workflow_tasks
+            # Schedule cleanup to run in 30 seconds to ensure all related changes are committed
+            cleanup_workflow_tasks.apply_async(
+                kwargs={'dry_run': False},
+                countdown=30
+            )
+            print(f"🧹 Scheduled automatic workflow cleanup after termination of {self.document_number}")
+        except Exception as e:
+            print(f"⚠️ Failed to schedule automatic cleanup: {str(e)}")
+            # Don't fail termination if cleanup scheduling fails
+            pass
+        
+        return True
 
 
 class DocumentVersion(models.Model):
@@ -550,12 +646,12 @@ class DocumentVersion(models.Model):
         ]
     
     def __str__(self):
-        return f"{self.document.document_number} v{self.version_major}.{self.version_minor}"
+        return f"{self.document.document_number} v{self.version_major:02d}.{self.version_minor:02d}"
     
     @property
     def version_string(self):
-        """Return formatted version string."""
-        return f"{self.version_major}.{self.version_minor}"
+        """Return formatted version string with zero padding."""
+        return f"{self.version_major:02d}.{self.version_minor:02d}"
 
 class DocumentDependency(models.Model):
     """

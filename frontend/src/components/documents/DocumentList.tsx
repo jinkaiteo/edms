@@ -18,14 +18,14 @@ interface Document {
 
 interface DocumentListProps {
   onDocumentSelect?: (document: Document) => void;
-  onDocumentEdit?: (document: Document) => void;
-  onDocumentDelete?: (document: Document) => void;
+  refreshTrigger?: number; // Add refresh trigger prop
+  selectedDocument?: Document | null; // Add selected document prop
 }
 
 const DocumentList: React.FC<DocumentListProps> = ({
   onDocumentSelect,
-  onDocumentEdit,
-  onDocumentDelete,
+  refreshTrigger,
+  selectedDocument,
 }) => {
   const [documents, setDocuments] = useState<Document[]>([]);
   const [loading, setLoading] = useState(true);
@@ -34,7 +34,7 @@ const DocumentList: React.FC<DocumentListProps> = ({
   const [sortBy, setSortBy] = useState<'title' | 'created_at' | 'status' | 'document_type'>('created_at');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
-  const [showObsolete, setShowObsolete] = useState(false);
+  const [showInactive, setShowInactive] = useState(false);
 
   // Helper function to extract base document number (remove version suffix)
   const getBaseDocumentNumber = (documentNumber: string): string => {
@@ -59,11 +59,11 @@ const DocumentList: React.FC<DocumentListProps> = ({
     // Sort each group by version (newest first)
     Object.keys(groups).forEach(baseNumber => {
       groups[baseNumber].sort((a, b) => {
-        // Extract version numbers for proper sorting
+        // Extract version numbers for proper sorting (supports zero-padded versions)
         const getVersionNumber = (docNum: string) => {
           const versionMatch = docNum.match(/-v(\d+)\.(\d+)$/);
           if (versionMatch) {
-            return { major: parseInt(versionMatch[1]), minor: parseInt(versionMatch[2]) };
+            return { major: parseInt(versionMatch[1], 10), minor: parseInt(versionMatch[2], 10) };
           }
           return { major: 1, minor: 0 }; // Default version
         };
@@ -119,6 +119,7 @@ const DocumentList: React.FC<DocumentListProps> = ({
       case 'effective': return '📋';
       case 'superseded': return '📂';
       case 'obsolete': return '🗂️';
+      case 'terminated': return '🛑';
       default: return '📄';
     }
   };
@@ -134,15 +135,25 @@ const DocumentList: React.FC<DocumentListProps> = ({
       case 'effective': return 'bg-green-100 text-green-800';
       case 'superseded': return 'bg-gray-100 text-gray-600';
       case 'obsolete': return 'bg-red-100 text-red-800';
+      case 'terminated': return 'bg-red-100 text-red-800';
       default: return 'bg-gray-100 text-gray-800';
     }
   };
+
+  // Helper function to check if document is selected
+  const isDocumentSelected = (document: Document) => {
+    if (!selectedDocument) return false;
+    return selectedDocument.uuid === document.uuid || 
+           (selectedDocument.id && document.id && selectedDocument.id === document.id);
+  };
+
 
   // Fetch documents
   useEffect(() => {
     const fetchDocuments = async () => {
       try {
         setLoading(true);
+        console.log('🔄 DocumentList: Fetching documents...', refreshTrigger ? `(trigger: ${refreshTrigger})` : '(initial load)');
         const response = await apiService.get('/documents/documents/');
         if (response.results) {
           setDocuments(response.results);
@@ -151,9 +162,10 @@ const DocumentList: React.FC<DocumentListProps> = ({
         } else {
           setDocuments(response);
         }
+        console.log('✅ DocumentList: Documents fetched successfully:', response.results?.length || response.data?.length || response.length, 'documents');
         setError(null);
       } catch (error) {
-        console.error('Error fetching documents:', error);
+        console.error('❌ DocumentList: Error fetching documents:', error);
         setError('Failed to fetch documents');
       } finally {
         setLoading(false);
@@ -161,7 +173,7 @@ const DocumentList: React.FC<DocumentListProps> = ({
     };
 
     fetchDocuments();
-  }, []);
+  }, [refreshTrigger]); // Add refreshTrigger to dependency array
 
   if (loading) {
     return <div className="text-center py-8">Loading documents...</div>;
@@ -171,10 +183,10 @@ const DocumentList: React.FC<DocumentListProps> = ({
     return <div className="text-center py-8 text-red-600">Error: {error}</div>;
   }
 
-  // Filter documents based on obsolete toggle
-  const filteredDocuments = showObsolete 
+  // Filter documents based on inactive status toggle (hide obsolete and terminated by default)
+  const filteredDocuments = showInactive 
     ? documents 
-    : documents.filter(doc => doc.status !== 'OBSOLETE');
+    : documents.filter(doc => doc.status !== 'OBSOLETE' && doc.status !== 'TERMINATED');
 
   // Group filtered documents and get current versions for sorting
   const documentGroups = groupDocumentsByBase(filteredDocuments);
@@ -223,16 +235,16 @@ const DocumentList: React.FC<DocumentListProps> = ({
             <h3 className="text-lg font-medium text-gray-900">Documents</h3>
             
             <div className="flex items-center space-x-4">
-              {/* Show Obsolete Toggle */}
+              {/* Show Inactive Documents Toggle */}
               <label className="flex items-center space-x-2 cursor-pointer">
                 <input
                   type="checkbox"
-                  checked={showObsolete}
-                  onChange={(e) => setShowObsolete(e.target.checked)}
+                  checked={showInactive}
+                  onChange={(e) => setShowInactive(e.target.checked)}
                   className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 focus:ring-2"
                 />
                 <span className="text-sm font-medium text-gray-700">
-                  Show Obsolete ({documents.filter(doc => doc.status === 'OBSOLETE').length})
+                  Show Inactive ({documents.filter(doc => doc.status === 'OBSOLETE' || doc.status === 'TERMINATED').length})
                 </span>
               </label>
               
@@ -276,7 +288,7 @@ const DocumentList: React.FC<DocumentListProps> = ({
 
         {filteredDocuments.length === 0 ? (
           <div className="text-center py-8 text-gray-500">
-            {showObsolete ? 'No documents found.' : 'No active documents found. Toggle "Show Obsolete" to see retired documents.'}
+            {showInactive ? 'No documents found.' : 'No active documents found. Toggle "Show Inactive" to see obsolete and terminated documents.'}
           </div>
         ) : viewMode === 'list' ? (
           // Grouped list view with version history
@@ -291,7 +303,11 @@ const DocumentList: React.FC<DocumentListProps> = ({
                 <div key={baseNumber} className="border border-gray-200 rounded-lg">
                   {/* Current Version */}
                   <div
-                    className="p-4 hover:shadow-md transition-shadow cursor-pointer"
+                    className={`p-4 hover:shadow-md transition-all cursor-pointer ${
+                      isDocumentSelected(currentVersion) 
+                        ? 'bg-blue-50 border-l-4 border-blue-500 shadow-md' 
+                        : 'hover:bg-gray-50'
+                    }`}
                     onClick={() => onDocumentSelect?.(currentVersion)}
                   >
                     <div className="flex justify-between items-start">
@@ -324,30 +340,6 @@ const DocumentList: React.FC<DocumentListProps> = ({
                         </div>
                       </div>
                       
-                      <div className="flex items-center space-x-2">
-                        {onDocumentEdit && (
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              onDocumentEdit(currentVersion);
-                            }}
-                            className="text-blue-600 hover:text-blue-900 text-sm font-medium"
-                          >
-                            Edit
-                          </button>
-                        )}
-                        {onDocumentDelete && (
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              onDocumentDelete(currentVersion);
-                            }}
-                            className="text-red-600 hover:text-red-900 text-sm font-medium"
-                          >
-                            Delete
-                          </button>
-                        )}
-                      </div>
                     </div>
                   </div>
 
@@ -380,7 +372,11 @@ const DocumentList: React.FC<DocumentListProps> = ({
                           {olderVersions.map((oldVersion) => (
                             <div
                               key={oldVersion.id || oldVersion.uuid}
-                              className="px-4 py-3 hover:bg-gray-100 cursor-pointer border-b border-gray-100 last:border-b-0"
+                              className={`px-4 py-3 cursor-pointer border-b border-gray-100 last:border-b-0 transition-all ${
+                                isDocumentSelected(oldVersion)
+                                  ? 'bg-blue-100 border-l-4 border-blue-500'
+                                  : 'hover:bg-gray-100'
+                              }`}
                               onClick={(e) => {
                                 e.stopPropagation();
                                 onDocumentSelect?.(oldVersion);
@@ -430,7 +426,11 @@ const DocumentList: React.FC<DocumentListProps> = ({
               {filteredDocuments.map((document) => (
                 <div
                   key={document.id || document.uuid || Math.random()}
-                  className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow cursor-pointer"
+                  className={`border rounded-lg p-4 transition-all cursor-pointer ${
+                    isDocumentSelected(document)
+                      ? 'border-blue-500 bg-blue-50 shadow-md ring-2 ring-blue-200'
+                      : 'border-gray-200 hover:shadow-md hover:border-gray-300'
+                  }`}
                   onClick={() => onDocumentSelect?.(document)}
                 >
                   <div className="space-y-3">
@@ -464,6 +464,7 @@ const DocumentList: React.FC<DocumentListProps> = ({
           </div>
         )}
       </div>
+      
     </div>
   );
 };

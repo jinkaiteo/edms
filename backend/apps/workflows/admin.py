@@ -57,12 +57,16 @@ class DocumentStateAdmin(admin.ModelAdmin):
     
     def workflows_count(self, obj):
         """Count workflows currently in this state."""
-        from .models import DocumentWorkflow
-        count = DocumentWorkflow.objects.filter(current_state=obj).count()
-        if count > 0:
-            url = reverse('admin:workflows_documentworkflow_changelist') + f'?current_state__id={obj.id}'
-            return format_html('<a href="{}">{} workflows</a>', url, count)
-        return '0 workflows'
+        try:
+            from .models_simple import DocumentWorkflow
+            count = DocumentWorkflow.objects.filter(current_state=obj).count()
+            if count > 0:
+                url = reverse('admin:workflows_documentworkflow_changelist') + f'?current_state__exact={obj.code}'
+                return format_html('<a href="{}">{} workflows</a>', url, count)
+            return '0 workflows'
+        except Exception as e:
+            # Handle any database or import errors gracefully
+            return f'Error: {str(e)}'
     workflows_count.short_description = 'Current Workflows'
 
 

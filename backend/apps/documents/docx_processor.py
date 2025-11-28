@@ -64,18 +64,37 @@ class DocxTemplateProcessor:
             # Render the template
             doc_template.render(context)
             
-            # Create temporary file for the processed document
-            processed_file = tempfile.NamedTemporaryFile(
-                mode='wb',
+            # FIXED: Create temporary file with proper handling for DOCX output
+            # Use NamedTemporaryFile but close it before saving to avoid file handle conflicts
+            with tempfile.NamedTemporaryFile(
                 suffix='_processed.docx',
                 delete=False
-            )
+            ) as temp_file:
+                temp_file_path = temp_file.name
             
-            # Save the processed document
-            doc_template.save(processed_file.name)
-            processed_file.close()
-            
-            return processed_file.name
+            try:
+                # Save the processed document to the temporary file path
+                doc_template.save(temp_file_path)
+                
+                # Verify the file was created and has content
+                if not os.path.exists(temp_file_path):
+                    raise RuntimeError("Failed to create processed DOCX file")
+                
+                file_size = os.path.getsize(temp_file_path)
+                if file_size == 0:
+                    raise RuntimeError("Generated DOCX file is empty")
+                
+                print(f"✅ DOCX processing successful: {temp_file_path} ({file_size} bytes)")
+                return temp_file_path
+                
+            except Exception as save_error:
+                # Clean up failed file
+                if os.path.exists(temp_file_path):
+                    try:
+                        os.unlink(temp_file_path)
+                    except:
+                        pass
+                raise RuntimeError(f"Failed to save processed DOCX: {save_error}")
             
         except Exception as e:
             raise RuntimeError(f"Failed to process .docx template: {str(e)}")

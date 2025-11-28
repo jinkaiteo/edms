@@ -49,43 +49,71 @@ const SubmitForReviewModal: React.FC<SubmitForReviewModalProps> = ({
   const loadReviewers = async () => {
     try {
       setLoading(true);
+      setError(null);
       
-      // Try to load users from API, fallback to mock data
-      try {
-        const response = await apiService.get('/auth/users/');
-        const usersList = Array.isArray(response) ? response : response.results || [];
-        const availableReviewers = usersList.filter(user => user.id !== document?.author);
-        setReviewers(availableReviewers);
-      } catch (apiError) {
-        // Use test users from EDMS_Test_Users_Credentials.md
-        const testReviewers = [
-          {
-            id: 4,
-            username: 'reviewer',
-            first_name: 'Document',
-            last_name: 'Reviewer', 
-            email: 'reviewer@edms.local'
-          },
-          {
-            id: 5,
-            username: 'approver',
-            first_name: 'Document',
-            last_name: 'Approver',
-            email: 'approver@edms.local' 
-          },
-          {
-            id: 1,
-            username: 'admin',
-            first_name: 'Admin',
-            last_name: 'User',
-            email: 'admin@edms.local'
-          }
-        ];
-        setReviewers(testReviewers);
+      const token = localStorage.getItem('accessToken');
+      if (!token) {
+        throw new Error('No authentication token found');
       }
+
+      console.log('🔍 Loading eligible reviewers with role-based filtering...');
+      
+      // Use the users API to get all users, then filter for reviewers
+      const response = await fetch('http://localhost:8000/api/v1/users/users/', {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        const allUsers = data.results || [];
+        
+        // Filter for users with reviewer/approver/admin roles and exclude current user
+        const eligibleReviewers = allUsers.filter((user: any) => {
+          console.log(`Checking reviewer ${user.username}: active_roles =`, user.active_roles, 'is_superuser =', user.is_superuser);
+          
+          // Check if user has review/approval permissions through active_roles
+          const hasReviewRole = user.active_roles && user.active_roles.some((role: any) => 
+            role.name === 'Document Reviewer' || 
+            role.name === 'Document Approver' ||
+            role.name === 'Senior Document Approver' ||
+            role.permission_level === 'review' ||
+            role.permission_level === 'approve'
+          );
+          
+          // Include superusers and exclude current user (self-review prevention)
+          const isEligible = (user.is_superuser || hasReviewRole) && user.id !== document?.author_id;
+          
+          console.log(`Reviewer ${user.username} eligible: ${isEligible} (hasReviewRole: ${hasReviewRole}, not self: ${user.id !== document?.author_id})`);
+          return isEligible;
+        });
+        
+        console.log(`✅ Found ${eligibleReviewers.length} eligible reviewers with proper review roles`);
+        
+        if (eligibleReviewers.length === 0) {
+          setError('No eligible reviewers found with proper review permissions. Please contact an administrator.');
+          setReviewers([]);
+          return;
+        }
+        
+        setReviewers(eligibleReviewers.map((user: any) => ({
+          id: user.id,
+          username: user.username,
+          first_name: user.first_name,
+          last_name: user.last_name,
+          email: user.email
+        })));
+        
+      } else {
+        throw new Error(`Failed to load users: HTTP ${response.status}`);
+      }
+      
     } catch (error: any) {
-      console.error('❌ Error loading reviewers:', error);
-      setError('Failed to load available reviewers');
+      console.error('❌ Error loading eligible reviewers:', error);
+      setError(`Failed to load eligible reviewers: ${error.message || 'Unknown error'}`);
+      setReviewers([]);
     } finally {
       setLoading(false);
     }
@@ -222,8 +250,13 @@ const SubmitForReviewModal: React.FC<SubmitForReviewModalProps> = ({
               </select>
             )}
             
+            {reviewers.length > 0 && (
+              <div className="mt-2 text-sm text-gray-600">
+                <p>Found {reviewers.length} eligible reviewer{reviewers.length !== 1 ? 's' : ''} with review permissions</p>
+              </div>
+            )}
             {reviewers.length === 0 && !loading && (
-              <p className="text-sm text-red-600 mt-1">No reviewers available. Please contact an administrator.</p>
+              <p className="text-sm text-red-600 mt-1">No eligible reviewers found with proper review permissions. Please contact an administrator.</p>
             )}
           </div>
 

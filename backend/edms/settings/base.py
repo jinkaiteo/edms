@@ -164,7 +164,7 @@ OFFICIAL_PDF_CONFIG = {
     'ENABLE_PDF_GENERATION': True,
     'PDF_ENGINE': 'reportlab',  # 'reportlab' or 'weasyprint'
     'SIGNATURE_ALGORITHM': 'RSA-SHA256',
-    'CERTIFICATE_STORAGE_PATH': os.path.join(str(MEDIA_ROOT), 'certificates'),
+    'CERTIFICATE_STORAGE_PATH': os.path.join(str(BASE_DIR.parent / 'storage' / 'media'), 'certificates'),
     'PDF_WATERMARK': True,
     'INCLUDE_QR_VERIFICATION': True,
     'FALLBACK_TO_ANNOTATED': True,
@@ -244,6 +244,18 @@ CORS_ALLOW_CREDENTIALS = True
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:3000",  # React development server
     "http://127.0.0.1:3000",
+]
+CORS_ALLOW_ALL_ORIGINS = False
+CORS_ALLOWED_HEADERS = [
+    'accept',
+    'accept-encoding',
+    'authorization',
+    'content-type',
+    'dnt',
+    'origin',
+    'user-agent',
+    'x-csrftoken',
+    'x-requested-with',
 ]
 
 # File Upload Configuration

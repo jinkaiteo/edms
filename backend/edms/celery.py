@@ -62,12 +62,56 @@ app.conf.beat_schedule = {
             'priority': 4,    # Low priority
         }
     },
+    
+    # S3 Notification Queue Processing - runs every 5 minutes
+    'process-notification-queue': {
+        'task': 'apps.scheduler.notification_service.process_notification_queue',
+        'schedule': crontab(minute='*/5'),  # Every 5 minutes
+        'options': {
+            'expires': 300,   # Task expires after 5 minutes
+            'priority': 9,    # Highest priority
+        }
+    },
+    
+    # S3 Daily Summary Notifications - runs daily at 8 AM
+    'send-daily-summary': {
+        'task': 'apps.scheduler.notification_service.send_daily_summary_notifications',
+        'schedule': crontab(hour=8, minute=0),  # Daily at 8 AM
+        'options': {
+            'expires': 3600,  # Task expires after 1 hour
+            'priority': 7,    # High priority
+        }
+    },
+    
+    # S3 Workflow Task Cleanup - runs every 6 hours
+    'cleanup-workflow-tasks': {
+        'task': 'apps.scheduler.automated_tasks.cleanup_workflow_tasks',
+        'schedule': crontab(minute=0, hour='*/6'),  # 00:00, 06:00, 12:00, 18:00
+        'kwargs': {'dry_run': False},
+        'options': {
+            'expires': 3600,  # Task expires after 1 hour
+            'priority': 6,    # Medium priority
+        }
+    },
+    
+    # S3 Weekly Comprehensive Cleanup - runs Sundays at 2 AM
+    'weekly-comprehensive-cleanup': {
+        'task': 'apps.scheduler.automated_tasks.cleanup_workflow_tasks',
+        'schedule': crontab(minute=0, hour=2, day_of_week=0),  # Sunday 02:00
+        'kwargs': {'dry_run': False},
+        'options': {
+            'expires': 7200,  # Task expires after 2 hours
+            'priority': 5,    # Lower priority for weekly maintenance
+        }
+    },
 }
 
 # Task routing configuration
 app.conf.task_routes = {
     'apps.documents.tasks.*': {'queue': 'documents'},
     'apps.workflows.tasks.*': {'queue': 'workflows'},
+    'apps.scheduler.automated_tasks.cleanup_workflow_tasks': {'queue': 'maintenance'},
+    'apps.scheduler.automated_tasks.*': {'queue': 'scheduler'},
     'apps.backup.tasks.*': {'queue': 'maintenance'},
     'apps.audit.tasks.*': {'queue': 'maintenance'},
 }

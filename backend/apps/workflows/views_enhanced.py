@@ -32,102 +32,86 @@ class WorkflowUserSelectionViewSet(viewsets.ViewSet):
     def reviewers(self, request):
         """
         Get available users for document review.
-        Filters users with review permissions.
+        Uses strict role-based filtering with proper permissions.
         """
+        from .approver_selection import approver_selection_service
+        
         document_type = request.query_params.get('document_type')
-        department = request.query_params.get('department')
+        exclude_author = request.query_params.get('exclude_author')
         
-        # Base query for users with review permissions
-        reviewers = User.objects.filter(
-            Q(groups__name__icontains='reviewer') |
-            Q(user_permissions__codename='can_review_document') |
-            Q(is_staff=True)
-        ).filter(is_active=True).distinct()
+        # Get current user to exclude if they are the author
+        exclude_user = None
+        if exclude_author == 'true' and hasattr(request, 'user') and request.user.is_authenticated:
+            exclude_user = request.user
         
-        # Filter by document type if specified
-        if document_type:
-            # Add document type specific filtering logic here
-            reviewers = reviewers.filter(
-                Q(groups__name__icontains=document_type.lower()) |
-                Q(groups__name__icontains='reviewer')
-            )
+        # Get eligible reviewers using the selection service
+        reviewer_data = approver_selection_service.get_eligible_reviewers(
+            document_type=document_type,
+            exclude_user=exclude_user
+        )
         
-        # Add workload information
-        reviewer_data = []
-        for user in reviewers:
-            # Count active review tasks
-            active_reviews = DocumentWorkflow.objects.filter(
-                current_assignee=user,
-                current_state__code__in=['UNDER_REVIEW', 'PENDING_REVIEW']
-            ).count()
-            
-            reviewer_data.append({
-                'id': user.id,
-                'username': user.username,
-                'first_name': user.first_name,
-                'last_name': user.last_name,
-                'email': user.email,
-                'active_reviews': active_reviews,
-                'workload_status': 'high' if active_reviews > 5 else 'normal' if active_reviews > 2 else 'low',
-                'department': getattr(user, 'department', 'Unknown'),
-                'is_available': active_reviews < 10  # Simple availability check
-            })
+        # Add summary statistics
+        total_count = len(reviewer_data)
+        available_count = len([r for r in reviewer_data if r['is_available']])
+        recommended_count = len([r for r in reviewer_data if r['is_recommended']])
         
         return Response({
             'reviewers': reviewer_data,
-            'total_count': len(reviewer_data)
+            'total_count': total_count,
+            'available_count': available_count,
+            'recommended_count': recommended_count,
+            'filters_applied': {
+                'document_type': document_type,
+                'exclude_author': exclude_author == 'true'
+            }
         })
 
     @action(detail=False, methods=['get'])
     def approvers(self, request):
         """
         Get available users for document approval.
-        Filters users with approval permissions.
+        Uses strict role-based filtering with proper permissions.
         """
+        from .approver_selection import approver_selection_service
+        
         document_type = request.query_params.get('document_type')
         criticality = request.query_params.get('criticality', 'normal')
+        exclude_author = request.query_params.get('exclude_author')
         
-        # Base query for users with approval permissions
-        approvers = User.objects.filter(
-            Q(groups__name__icontains='approver') |
-            Q(groups__name__icontains='manager') |
-            Q(user_permissions__codename='can_approve_document') |
-            Q(is_superuser=True)
-        ).filter(is_active=True).distinct()
+        # Get current user to exclude if they are the author
+        exclude_user = None
+        if exclude_author == 'true' and hasattr(request, 'user') and request.user.is_authenticated:
+            exclude_user = request.user
         
-        # Filter by criticality level
-        if criticality == 'high':
-            approvers = approvers.filter(
-                Q(groups__name__icontains='senior') |
-                Q(groups__name__icontains='manager') |
-                Q(is_superuser=True)
-            )
+        # Get eligible approvers using the selection service
+        approver_data = approver_selection_service.get_eligible_approvers(
+            document_type=document_type,
+            criticality=criticality,
+            exclude_user=exclude_user
+        )
         
-        # Add workload information
-        approver_data = []
-        for user in approvers:
-            # Count active approval tasks
-            active_approvals = DocumentWorkflow.objects.filter(
-                current_assignee=user,
-                current_state__code__in=['UNDER_APPROVAL', 'PENDING_APPROVAL']
-            ).count()
-            
-            approver_data.append({
-                'id': user.id,
-                'username': user.username,
-                'first_name': user.first_name,
-                'last_name': user.last_name,
-                'email': user.email,
-                'active_approvals': active_approvals,
-                'workload_status': 'high' if active_approvals > 3 else 'normal' if active_approvals > 1 else 'low',
-                'approval_level': 'senior' if user.groups.filter(name__icontains='senior').exists() else 'standard',
-                'department': getattr(user, 'department', 'Unknown'),
-                'is_available': active_approvals < 5  # Simple availability check
-            })
+        # Filter out users who don't meet criticality requirements
+        filtered_approvers = []
+        for approver in approver_data:
+            if approver['can_approve_criticality']:
+                filtered_approvers.append(approver)
+        
+        # Add summary statistics
+        total_count = len(filtered_approvers)
+        available_count = len([a for a in filtered_approvers if a['is_available']])
+        recommended_count = len([a for a in filtered_approvers if a['is_recommended']])
         
         return Response({
-            'approvers': approver_data,
-            'total_count': len(approver_data)
+            'approvers': filtered_approvers,
+            'total_count': total_count,
+            'available_count': available_count,
+            'recommended_count': recommended_count,
+            'criticality_filter': criticality,
+            'filters_applied': {
+                'document_type': document_type,
+                'criticality': criticality,
+                'exclude_author': exclude_author == 'true'
+            }
         })
 
     @action(detail=False, methods=['get'])

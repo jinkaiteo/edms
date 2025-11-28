@@ -209,9 +209,11 @@ class DocumentLifecycleService:
         if not comment:
             raise ValidationError("Review comment is required")
         
+        # Complete the workflow transition
+        success = False
         if approved:
             # Review approved - transition to REVIEWED state for author to route to approval
-            return self._transition_workflow(
+            success = self._transition_workflow(
                 workflow=workflow,
                 to_state_code='REVIEWED',
                 user=user,
@@ -220,13 +222,25 @@ class DocumentLifecycleService:
             )
         else:
             # Reject back to draft
-            return self._transition_workflow(
+            success = self._transition_workflow(
                 workflow=workflow,
                 to_state_code='DRAFT',
                 user=user,
                 comment=f'Review rejected: {comment}',
                 assignee=document.author
             )
+        
+        # Send notification to author about review completion
+        if success:
+            from .author_notifications import author_notification_service
+            author_notification_service.notify_author_review_completed(
+                document=document,
+                reviewer=user,
+                approved=approved,
+                comment=comment
+            )
+        
+        return success
     
     def route_for_approval(self, document: Document, user: User, 
                           approver: User, comment: str = '') -> bool:
@@ -313,13 +327,26 @@ class DocumentLifecycleService:
             comment_suffix = f' - Pending effective {effective_date}'
 
         # Transition to appropriate state
-        return self._transition_workflow(
+        success = self._transition_workflow(
             workflow=workflow,
             to_state_code=target_state,
             user=user,
             comment=(comment or f'Document approved by {user.get_full_name()}') + comment_suffix,
             assignee=None  # No further assignment needed for intentional workflow
         )
+        
+        # Send notification to author about approval completion
+        if success:
+            from .author_notifications import author_notification_service
+            author_notification_service.notify_author_approval_completed(
+                document=document,
+                approver=user,
+                approved=True,
+                comment=comment,
+                effective_date=effective_date
+            )
+        
+        return success
     
     def activate_pending_effective_documents(self, user: User = None) -> int:
         """
@@ -404,6 +431,12 @@ class DocumentLifecycleService:
                 major_increment=new_version_data.get('major_increment', False)
             )
             
+            # Validate version limits (1-99 for major, 0-99 for minor)
+            if major > 99:
+                raise ValidationError("Major version cannot exceed 99. Consider starting a new document series.")
+            if minor > 99:
+                raise ValidationError("Minor version cannot exceed 99. Consider incrementing major version.")
+            
             # Generate versioned document number to maintain uniqueness while showing relationship
             # Extract base document number by removing any existing version suffix
             base_doc_number = existing_document.document_number
@@ -411,7 +444,7 @@ class DocumentLifecycleService:
                 # Remove existing version (e.g., "SOP-2025-0001-v1.0" -> "SOP-2025-0001")
                 base_doc_number = base_doc_number.split('-v')[0]
             
-            versioned_doc_number = f"{base_doc_number}-v{major}.{minor}"
+            versioned_doc_number = f"{base_doc_number}-v{major:02d}.{minor:02d}"
             
             # Check for conflicts and resolve them
             conflict_count = 0
@@ -420,18 +453,18 @@ class DocumentLifecycleService:
                 conflict_count += 1
                 if conflict_count == 1:
                     # Try next minor version
-                    versioned_doc_number = f"{base_doc_number}-v{major}.{minor + 1}"
                     minor += 1
+                    versioned_doc_number = f"{base_doc_number}-v{major:02d}.{minor:02d}"
                 elif conflict_count == 2:
                     # Try next major version
-                    versioned_doc_number = f"{base_doc_number}-v{major + 1}.0"
                     major += 1
                     minor = 0
+                    versioned_doc_number = f"{base_doc_number}-v{major:02d}.{minor:02d}"
                 else:
                     # Add unique suffix to avoid infinite loop
                     import uuid
                     unique_suffix = str(uuid.uuid4())[:8]
-                    versioned_doc_number = f"{base_doc_number}-v{major}.{minor}-{unique_suffix}"
+                    versioned_doc_number = f"{base_doc_number}-v{major:02d}.{minor:02d}-{unique_suffix}"
                     break
                     
                 # Prevent infinite loop

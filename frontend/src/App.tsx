@@ -41,6 +41,7 @@ function AppContent() {
         <Route path="/document-management" element={<DocumentManagement />} />
         <Route path="/my-tasks" element={<MyTasksStandalone />} />
         <Route path="/tasks" element={<MyTasksStandalone />} />
+        {/* Audit trail moved to admin interface - route kept for direct access only */}
         <Route path="/audit-trail" element={<AuditTrail />} />
         <Route path="/workflows" element={<Navigate to="/admin" replace />} />
         <Route path="/users" element={<Navigate to="/admin" replace />} />

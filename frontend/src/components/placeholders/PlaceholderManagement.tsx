@@ -30,14 +30,17 @@ const PlaceholderManagement: React.FC<PlaceholderManagementProps> = ({ className
       
       if (response.ok) {
         const data = await response.json();
+        console.log(`✅ Successfully fetched ${data.length} placeholders from API`);
+        console.log(`🔍 First 3 placeholder types:`, data.slice(0, 3).map(p => p.placeholder_type));
         setPlaceholders(data);
       } else {
-        console.error('Failed to fetch placeholders');
+        console.error(`❌ Failed to fetch placeholders: ${response.status} ${response.statusText}`);
         // Fallback to mock data
         setPlaceholders(mockPlaceholders);
       }
     } catch (error) {
-      console.error('Error fetching placeholders:', error);
+      console.error('❌ Error fetching placeholders:', error);
+      console.log('🔄 Falling back to mock data (5 placeholders)');
       // Fallback to mock data
       setPlaceholders(mockPlaceholders);
     } finally {
@@ -253,13 +256,7 @@ const PlaceholderManagement: React.FC<PlaceholderManagementProps> = ({ className
     }
   ];
 
-  React.useEffect(() => {
-    // Simulate API call
-    setTimeout(() => {
-      setPlaceholders(mockPlaceholders);
-      setLoading(false);
-    }, 800);
-  }, []);
+  // Removed duplicate useEffect that was overriding the API call with mock data
 
   const handleCreatePlaceholder = useCallback(() => {
     setSelectedPlaceholder(null);

@@ -1,0 +1,163 @@
+# Secure Docker Compose for EDMS
+# Only frontend exposed externally, all other services internal
+
+services:
+  # PostgreSQL Database - INTERNAL ONLY
+  db:
+    image: postgres:18
+    container_name: edms_db
+    environment:
+      POSTGRES_DB: edms_db
+      POSTGRES_USER: edms_user
+      POSTGRES_PASSWORD: edms_password
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    # NO PORTS EXPOSED - internal only
+    networks:
+      - edms_network
+    restart: unless-stopped
+
+  # Redis Cache and Message Broker - INTERNAL ONLY
+  redis:
+    image: redis:7-alpine
+    container_name: edms_redis
+    command: redis-server --appendonly yes
+    volumes:
+      - redis_data:/data
+    # NO PORTS EXPOSED - internal only
+    networks:
+      - edms_network
+    restart: unless-stopped
+
+  # Django Backend - INTERNAL ONLY
+  backend:
+    build:
+      context: ./backend
+      dockerfile: ../infrastructure/containers/Dockerfile.backend
+    container_name: edms_backend
+    volumes:
+      - ./backend:/app
+      - ./storage:/app/storage
+      - ./logs:/app/logs
+    # NO PORTS EXPOSED - internal only, frontend communicates via network
+    environment:
+      - DEBUG=False
+      - DJANGO_SETTINGS_MODULE=edms.settings.production
+      - DB_HOST=db
+      - DB_NAME=edms_db
+      - DB_USER=edms_user
+      - DB_PASSWORD=edms_password
+      - DB_PORT=5432
+      - REDIS_URL=redis://redis:6379/1
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - ALLOWED_HOSTS=backend,localhost,127.0.0.1
+      # For frontend to communicate with backend within network
+      - CORS_ALLOWED_ORIGINS=http://frontend:3000,http://localhost:3000
+    depends_on:
+      - db
+      - redis
+    networks:
+      - edms_network
+    restart: unless-stopped
+    command: >
+      sh -c "sleep 10 &&
+             python manage.py migrate --run-syncdb &&
+             python manage.py collectstatic --noinput &&
+             gunicorn edms.wsgi:application --bind 0.0.0.0:8000 --workers 3"
+
+  # Celery Worker - INTERNAL ONLY
+  celery_worker:
+    build:
+      context: ./backend
+      dockerfile: ../infrastructure/containers/Dockerfile.backend
+    container_name: edms_celery_worker
+    volumes:
+      - ./backend:/app
+      - ./storage:/app/storage
+      - ./logs:/app/logs
+    environment:
+      - DEBUG=False
+      - DB_HOST=db
+      - DB_NAME=edms_db
+      - DB_USER=edms_user
+      - DB_PASSWORD=edms_password
+      - REDIS_URL=redis://redis:6379/1
+      - CELERY_BROKER_URL=redis://redis:6379/0
+    depends_on:
+      - db
+      - redis
+      - backend
+    networks:
+      - edms_network
+    restart: unless-stopped
+    command: celery -A edms worker -l info
+
+  # Celery Beat Scheduler - INTERNAL ONLY
+  celery_beat:
+    build:
+      context: ./backend
+      dockerfile: ../infrastructure/containers/Dockerfile.backend
+    container_name: edms_celery_beat
+    volumes:
+      - ./backend:/app
+      - ./storage:/app/storage
+      - ./logs:/app/logs
+    environment:
+      - DEBUG=False
+      - DB_HOST=db
+      - REDIS_URL=redis://redis:6379/1
+      - CELERY_BROKER_URL=redis://redis:6379/0
+    depends_on:
+      - db
+      - redis
+      - backend
+    networks:
+      - edms_network
+    restart: unless-stopped
+    command: celery -A edms beat -l info
+
+  # React Frontend - ONLY EXTERNALLY EXPOSED SERVICE
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: ../infrastructure/containers/Dockerfile.frontend.prod
+    container_name: edms_frontend
+    ports:
+      - "3000:80"  # ONLY external port - frontend on port 80 via nginx
+    environment:
+      # Frontend communicates with backend via internal network
+      - REACT_APP_API_URL=http://backend:8000/api/v1
+    depends_on:
+      - backend
+    networks:
+      - edms_network
+    restart: unless-stopped
+
+  # Nginx Reverse Proxy (Optional but recommended)
+  nginx:
+    image: nginx:alpine
+    container_name: edms_nginx
+    ports:
+      - "80:80"    # Main web interface
+      - "443:443"  # HTTPS (when certificates added)
+    volumes:
+      - ./infrastructure/nginx/nginx.prod.conf:/etc/nginx/nginx.conf:ro
+      - ./frontend/build:/var/www/html:ro
+    depends_on:
+      - frontend
+      - backend
+    networks:
+      - edms_network
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+  redis_data:
+
+networks:
+  edms_network:
+    driver: bridge
+    internal: false  # Allow external access only for designated services
+    ipam:
+      config:
+        - subnet: 172.18.0.0/16

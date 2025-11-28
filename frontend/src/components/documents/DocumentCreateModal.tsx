@@ -8,6 +8,7 @@
 import React, { useState, useRef, useCallback, useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContext.tsx';
 import apiService from '../../services/api.ts';
+import DocumentSelector from './DocumentSelector.tsx';
 
 interface DocumentCreateModalProps {
   isOpen: boolean;
@@ -63,6 +64,23 @@ const DocumentCreateModal: React.FC<DocumentCreateModalProps> = ({
   const [selectedDependencies, setSelectedDependencies] = useState<number[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [dependencies, setDependencies] = useState<Array<{
+    id: number;
+    document_number: string;
+    title: string;
+    dependency_type: string;
+    is_critical: boolean;
+  }>>([]);
+
+  // Dependency types for the select dropdown
+  const dependencyTypes = [
+    { value: 'references', label: 'References' },
+    { value: 'template', label: 'Template' },
+    { value: 'supersedes', label: 'Supersedes' },
+    { value: 'incorporates', label: 'Incorporates' },
+    { value: 'supports', label: 'Supports' },
+    { value: 'implements', label: 'Implements' }
+  ];
 
   // Load reference data and populate form for edit mode
   useEffect(() => {
@@ -127,33 +145,47 @@ const DocumentCreateModal: React.FC<DocumentCreateModalProps> = ({
       if (editDocument.dependencies && Array.isArray(editDocument.dependencies)) {
         console.log('🔍 Raw editDocument.dependencies:', editDocument.dependencies);
         
-        // Extract depends_on IDs from DocumentDependency objects
-        const dependencyIds = editDocument.dependencies.map(dep => {
+        // Convert backend dependencies to local dependencies format
+        const mappedDependencies = editDocument.dependencies.map(dep => {
+          let docId, dependencyType = 'references', isCritical = false;
+          
           // The backend returns DocumentDependency objects with 'depends_on' field
           if (typeof dep === 'object' && dep.depends_on) {
-            return dep.depends_on; // This is the document ID we want
+            docId = dep.depends_on; // This is the document ID we want
+            dependencyType = dep.dependency_type || 'references';
+            isCritical = dep.is_critical || false;
           } else if (typeof dep === 'object' && dep.id) {
-            return dep.id; // Fallback for different object structure
+            docId = dep.id; // Fallback for different object structure
           } else {
-            return dep; // Fallback for primitive values
+            docId = dep; // Fallback for primitive values
           }
-        });
-        
-        console.log('🔍 Mapped dependencyIds:', dependencyIds);
-        console.log('🔍 Available documents for comparison:', availableDocuments.map(doc => doc.id));
-        
-        // Filter out any IDs that don't exist in availableDocuments
-        const validDependencyIds = dependencyIds.filter(id => 
-          availableDocuments.some(doc => doc.id === id)
+
+          // Find the document details from available documents
+          const docDetails = availableDocuments.find(doc => doc.id === docId);
+          
+          return {
+            id: docId,
+            document_number: docDetails?.document_number || 'Unknown',
+            title: docDetails?.title || 'Unknown Document',
+            dependency_type: dependencyType,
+            is_critical: isCritical
+          };
+        }).filter(dep => 
+          // Only include dependencies where we found the document details
+          availableDocuments.some(doc => doc.id === dep.id)
         );
-        console.log('🔍 Filtered valid dependencyIds:', validDependencyIds);
         
-        setSelectedDependencies(validDependencyIds);
-        console.log('🔍 Dependencies populated (filtered):', validDependencyIds);
+        console.log('🔍 Mapped dependencies:', mappedDependencies);
+        
+        // Set both dependencies and selectedDependencies
+        setDependencies(mappedDependencies);
+        setSelectedDependencies(mappedDependencies.map(dep => dep.id));
+        console.log('🔍 Dependencies populated:', mappedDependencies.length, 'items');
       } else {
         // Clear dependencies if none exist
+        setDependencies([]);
         setSelectedDependencies([]);
-        console.log('🔍 No dependencies to populate, cleared array');
+        console.log('🔍 No dependencies to populate, cleared arrays');
       }
       
       // Note: File information is available but not pre-populated for security reasons
@@ -215,6 +247,57 @@ const DocumentCreateModal: React.FC<DocumentCreateModalProps> = ({
     } finally {
       setLoading(false);
     }
+  };
+
+  // Dependency management functions
+  const handleDependencyAdd = (document: any) => {
+    console.log('🔍 Adding dependency:', document);
+    
+    // Check if already added
+    if (dependencies.some(dep => dep.id === document.id)) {
+      console.log('❌ Dependency already exists:', document.id);
+      return;
+    }
+
+    const newDependency = {
+      id: document.id,
+      document_number: document.document_number,
+      title: document.title,
+      dependency_type: 'references', // Default type
+      is_critical: false
+    };
+
+    setDependencies(prev => [...prev, newDependency]);
+    setSelectedDependencies(prev => [...prev, document.id]);
+    console.log('✅ Dependency added:', newDependency);
+  };
+
+  const removeDependency = (dependencyId: number) => {
+    console.log('🗑️ Removing dependency:', dependencyId);
+    setDependencies(prev => prev.filter(dep => dep.id !== dependencyId));
+    setSelectedDependencies(prev => prev.filter(id => id !== dependencyId));
+  };
+
+  const updateDependencyType = (dependencyId: number, newType: string) => {
+    console.log('🔄 Updating dependency type:', dependencyId, 'to', newType);
+    setDependencies(prev => 
+      prev.map(dep => 
+        dep.id === dependencyId 
+          ? { ...dep, dependency_type: newType }
+          : dep
+      )
+    );
+  };
+
+  const toggleDependencyCritical = (dependencyId: number) => {
+    console.log('🔄 Toggling dependency critical status:', dependencyId);
+    setDependencies(prev => 
+      prev.map(dep => 
+        dep.id === dependencyId 
+          ? { ...dep, is_critical: !dep.is_critical }
+          : dep
+      )
+    );
   };
 
   // File handling
@@ -365,18 +448,19 @@ const DocumentCreateModal: React.FC<DocumentCreateModalProps> = ({
       }
 
       // Add dependencies BEFORE debugging FormData
+      console.log('🔍 Debug - dependencies:', dependencies);
+      console.log('🔍 Debug - dependencies length:', dependencies.length);
       console.log('🔍 Debug - selectedDependencies:', selectedDependencies);
-      console.log('🔍 Debug - selectedDependencies length:', selectedDependencies.length);
-      console.log('🔍 Debug - selectedDependencies type:', typeof selectedDependencies);
       
-      if (selectedDependencies.length > 0) {
+      if (dependencies.length > 0) {
         console.log('✅ Adding dependencies to FormData...');
-        selectedDependencies.forEach((depId, index) => {
-          console.log(`  Adding dependency ${index}: ${depId}`);
-          formData.append(`dependencies[${index}]`, depId.toString());
+        dependencies.forEach((dep, index) => {
+          console.log(`  Adding dependency ${index}: ${dep.id}`);
+          // Backend expects simple array of dependency IDs
+          formData.append(`dependencies[${index}]`, dep.id.toString());
         });
       } else {
-        console.log('❌ No dependencies to add (selectedDependencies is empty)');
+        console.log('❌ No dependencies to add (dependencies array is empty)');
       }
 
       // Debug FormData contents
@@ -475,7 +559,7 @@ const DocumentCreateModal: React.FC<DocumentCreateModalProps> = ({
 
   const handleClose = () => {
     // Reset form with debugging
-    console.log('🔍 Form reset - before clearing dependencies:', selectedDependencies);
+    console.log('🔍 Form reset - before clearing dependencies:', dependencies);
     setTitle('');
     setDescription('');
     setKeywords('');
@@ -485,8 +569,11 @@ const DocumentCreateModal: React.FC<DocumentCreateModalProps> = ({
     setRequiresTraining(false);
     setSelectedFile(null);
     setSelectedDependencies([]);
+    setDependencies([]);
     console.log('🔍 Form reset - after clearing dependencies: []');
     setError(null);
+    setDocumentTypeChanged(false);
+    setShowNumberChangeWarning(false);
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
     }
@@ -635,6 +722,109 @@ const DocumentCreateModal: React.FC<DocumentCreateModalProps> = ({
                   onChange={handleFileInputChange}
                   className="hidden"
                 />
+              </div>
+            </div>
+
+            {/* Document Dependencies */}
+            <div className="mb-6">
+              <div className="flex items-center justify-between mb-3">
+                <label className="block text-sm font-medium text-gray-700">
+                  Document Dependencies
+                </label>
+                <span className="text-xs text-gray-500">
+                  {dependencies.length} selected
+                </span>
+              </div>
+              
+              <div className="space-y-4">
+                {/* Search and Add Dependencies */}
+                <div>
+                  <DocumentSelector 
+                    onSelect={handleDependencyAdd}
+                    placeholder="Search for documents to add as dependencies..."
+                    excludeIds={dependencies.map(dep => dep.id)}
+                    className="w-full"
+                  />
+                  <p className="text-xs text-gray-500 mt-1">
+                    Search by document number, title, or type to add dependencies
+                  </p>
+                </div>
+                
+                {/* Selected Dependencies List */}
+                {dependencies.length > 0 && (
+                  <div className="border rounded-lg p-4 bg-gray-50">
+                    <h4 className="text-sm font-medium text-gray-900 mb-3">
+                      Selected Dependencies ({dependencies.length})
+                    </h4>
+                    <div className="space-y-3">
+                      {dependencies.map((dep) => (
+                        <div 
+                          key={dep.id} 
+                          className="flex items-start justify-between p-3 bg-white border rounded-lg"
+                        >
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center space-x-2 mb-2">
+                              <p className="text-sm font-medium text-gray-900">
+                                {dep.document_number}
+                              </p>
+                              {dep.is_critical && (
+                                <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-red-100 text-red-800">
+                                  Critical
+                                </span>
+                              )}
+                            </div>
+                            <p className="text-sm text-gray-600 mb-2">
+                              {dep.title}
+                            </p>
+                            
+                            {/* Dependency Type Selection */}
+                            <div className="flex items-center space-x-3">
+                              <select
+                                value={dep.dependency_type}
+                                onChange={(e) => updateDependencyType(dep.id, e.target.value)}
+                                className="text-sm border border-gray-300 rounded px-2 py-1 focus:ring-blue-500 focus:border-blue-500"
+                              >
+                                {dependencyTypes.map((type) => (
+                                  <option key={type.value} value={type.value}>
+                                    {type.label}
+                                  </option>
+                                ))}
+                              </select>
+                              
+                              {/* Critical Dependency Toggle */}
+                              <label className="flex items-center space-x-1">
+                                <input
+                                  type="checkbox"
+                                  checked={dep.is_critical}
+                                  onChange={() => toggleDependencyCritical(dep.id)}
+                                  className="h-4 w-4 text-red-600 focus:ring-red-500 border-gray-300 rounded"
+                                />
+                                <span className="text-xs text-gray-600">Critical</span>
+                              </label>
+                            </div>
+                          </div>
+                          
+                          {/* Remove Button */}
+                          <button
+                            type="button"
+                            onClick={() => removeDependency(dep.id)}
+                            className="ml-3 text-red-600 hover:text-red-800 text-sm"
+                          >
+                            Remove
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                    
+                    <div className="mt-3 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                      <p className="text-xs text-blue-800">
+                        <strong>Dependency Types:</strong> References (cites content), Template (based on), 
+                        Supersedes (replaces), Incorporates (includes content), Supports (supporting doc), 
+                        Implements (implements requirements). Critical dependencies require notification when changed.
+                      </p>
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
 
@@ -806,36 +996,6 @@ const DocumentCreateModal: React.FC<DocumentCreateModalProps> = ({
               </div>
             </div>
 
-            {/* Document Dependencies */}
-            {availableDocuments.length > 0 && (
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Document Dependencies <span className="text-xs text-gray-500">(Only approved and effective documents)</span>
-                </label>
-                <div className="max-h-32 overflow-y-auto border border-gray-300 rounded-md p-2 space-y-1">
-                  {availableDocuments.map((doc) => (
-                    <label key={`doc-${doc.id}`} className="flex items-center">
-                      <input
-                        type="checkbox"
-                        checked={selectedDependencies.includes(doc.id)}
-                        onChange={(e) => {
-                          if (e.target.checked) {
-                            setSelectedDependencies([...selectedDependencies, doc.id]);
-                          } else {
-                            setSelectedDependencies(selectedDependencies.filter(id => id !== doc.id));
-                          }
-                        }}
-                        className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-                        disabled={loading}
-                      />
-                      <span className="ml-2 text-sm text-gray-700">
-                        {doc.document_number} - {doc.title}
-                      </span>
-                    </label>
-                  ))}
-                </div>
-              </div>
-            )}
           </div>
 
           {/* Action Buttons */}

@@ -22,6 +22,7 @@ from .views import (
     DocumentExportView,
 )
 from .workflow_integration import document_workflow_endpoint, document_workflow_history
+from .termination_views import terminate_document, can_terminate_document
 
 # Router for viewsets
 router = DefaultRouter()
@@ -46,6 +47,14 @@ urlpatterns = [
     path('documents/<uuid:uuid>/workflow/history/', 
          document_workflow_history, 
          name='document_workflow_history_compatible'),
+    
+    # Document termination endpoints
+    path('documents/<int:document_id>/terminate/', 
+         terminate_document, 
+         name='terminate_document'),
+    path('documents/<int:document_id>/can-terminate/', 
+         can_terminate_document, 
+         name='can_terminate_document'),
     
     # Document search
     path('search/', 

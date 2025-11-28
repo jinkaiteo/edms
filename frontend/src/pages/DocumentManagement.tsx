@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import { Document, SearchFilters, DocumentType } from '../types/api';
 import Layout from '../components/common/Layout.tsx';
 // DocumentUpload removed - replaced with EDMS-compliant DocumentCreateModal
@@ -17,6 +17,19 @@ const DocumentManagement: React.FC = () => {
   const [viewMode, setViewMode] = useState<'split' | 'full-list' | 'full-viewer'>('split');
   const [uploadSuccess, setUploadSuccess] = useState<string | null>(null);
   const [uploadError, setUploadError] = useState<string | null>(null);
+  const [documentListRefresh, setDocumentListRefresh] = useState<number>(0);
+
+  // Add event listener for clear selection
+  useEffect(() => {
+    const handleClearSelection = () => {
+      setSelectedDocument(null);
+    };
+
+    window.addEventListener('clearDocumentSelection', handleClearSelection);
+    return () => {
+      window.removeEventListener('clearDocumentSelection', handleClearSelection);
+    };
+  }, []);
 
   // Mock document types for the upload component
   const documentTypes: DocumentType[] = [
@@ -50,12 +63,17 @@ const DocumentManagement: React.FC = () => {
           console.log('✅ DocumentManagement: Updated document received:', {
             hasFile: !!(updatedDocument.file_path && updatedDocument.file_name),
             fileName: updatedDocument.file_name,
-            documentNumber: updatedDocument.document_number
+            documentNumber: updatedDocument.document_number,
+            status: updatedDocument.status
           });
           
           // Update the selected document with fresh data
           setSelectedDocument(updatedDocument);
           console.log('✅ DocumentManagement: selectedDocument state updated!');
+          
+          // CRITICAL: Also refresh the document list to show updated status
+          setDocumentListRefresh(prev => prev + 1);
+          console.log('🔄 DocumentManagement: Document list refresh triggered after workflow action');
         } else {
           console.error('Failed to refresh document:', response.status);
         }
@@ -68,11 +86,17 @@ const DocumentManagement: React.FC = () => {
   // EDMS Step 1: Document creation handlers
   const handleCreateDocumentSuccess = useCallback((document: any) => {
     const documentTitle = document?.title || document?.document_number || 'New Document';
+    console.log('🎉 DocumentManagement: Document created successfully, triggering list refresh');
+    
     setUploadSuccess(`Document "${documentTitle}" created successfully! (EDMS Step 1 Complete)`);
     setUploadError(null);
+    
+    // Trigger document list refresh
+    setDocumentListRefresh(prev => prev + 1);
+    console.log('🔄 DocumentManagement: Document list refresh triggered');
+    
     // Clear success message after 5 seconds
     setTimeout(() => setUploadSuccess(null), 5000);
-    // No page reload - let the document list refresh naturally
   }, []);
 
   const handleCreateDocumentError = useCallback((error: string) => {
@@ -143,9 +167,8 @@ const DocumentManagement: React.FC = () => {
             />
             <DocumentList
               onDocumentSelect={handleDocumentSelect}
-              onDocumentEdit={handleDocumentEdit}
-              onDocumentDelete={handleDocumentDelete}
-              filters={getSearchFilters()}
+              refreshTrigger={documentListRefresh}
+              selectedDocument={selectedDocument}
             />
           </div>
         );
@@ -173,19 +196,32 @@ const DocumentManagement: React.FC = () => {
               />
               <DocumentList
                 onDocumentSelect={handleDocumentSelect}
-                onDocumentEdit={handleDocumentEdit}
-                onDocumentDelete={handleDocumentDelete}
-                filters={getSearchFilters()}
+                refreshTrigger={documentListRefresh}
+                selectedDocument={selectedDocument}
               />
             </div>
             <div className="lg:sticky lg:top-6 lg:h-fit">
-              <DocumentViewer
-                document={selectedDocument}
-                onEdit={handleDocumentEdit}
-                onSign={handleDocumentSign}
-                onWorkflowAction={handleWorkflowAction}
-                onRefresh={handleDocumentRefresh}
-              />
+              {selectedDocument ? (
+                <DocumentViewer
+                  document={selectedDocument}
+                  onEdit={handleDocumentEdit}
+                  onSign={handleDocumentSign}
+                  onWorkflowAction={handleWorkflowAction}
+                  onRefresh={handleDocumentRefresh}
+                />
+              ) : (
+                <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-8">
+                  <div className="text-center">
+                    <div className="text-6xl text-gray-300 mb-4">📄</div>
+                    <h3 className="text-lg font-medium text-gray-900 mb-2">No Document Selected</h3>
+                    <p className="text-gray-500 mb-4">Select a document from the list to view its details and manage workflow actions.</p>
+                    {/* Show clear selection button if we came from a previous selection */}
+                    <div className="text-xs text-gray-400">
+                      Tip: Click on any document card to select it
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         );
@@ -264,24 +300,6 @@ const DocumentManagement: React.FC = () => {
           </div>
         </div>
 
-        {/* EDMS Workflow Information */}
-        {!showUpload && (
-          <div className="mb-6 bg-blue-50 border border-blue-200 rounded-lg p-4">
-            <h3 className="text-sm font-semibold text-blue-900 mb-2">📋 EDMS Two-Step Document Workflow</h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-              <div className="bg-white rounded-md p-3 border border-blue-200">
-                <h4 className="font-medium text-blue-800 mb-1">📝 Step 1: Create Document</h4>
-                <p className="text-blue-700">Create document placeholder with basic information (Title, Type, Source, etc.)</p>
-                <p className="text-blue-600 text-xs mt-1">Status: DRAFT • No reviewer selection yet</p>
-              </div>
-              <div className="bg-white rounded-md p-3 border border-blue-200">
-                <h4 className="font-medium text-blue-800 mb-1">📤 Step 2: Submit for Review</h4>
-                <p className="text-blue-700">Select reviewer and route document through approval workflow</p>
-                <p className="text-blue-600 text-xs mt-1">Status: DRAFT → PENDING_REVIEW → EFFECTIVE</p>
-              </div>
-            </div>
-          </div>
-        )}
 
         {/* Main Content */}
         {renderContent()}

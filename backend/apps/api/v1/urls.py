@@ -11,6 +11,7 @@ from rest_framework.documentation import include_docs_urls
 from drf_spectacular.views import (
     SpectacularAPIView, SpectacularRedocView, SpectacularSwaggerView
 )
+from apps.api.news_feed_views import my_documents, my_tasks, recent_notifications, system_status
 
 from .views import (
     # Core API views
@@ -107,6 +108,12 @@ urlpatterns = [
     
     # Compliance reports
     path('compliance/reports/', ComplianceReportView.as_view(), name='compliance-reports'),
+    
+    # News feed endpoints (for dashboard)
+    path('documents/my-documents/', my_documents, name='my-documents'),
+    path('workflows/my-tasks/', my_tasks, name='my-tasks'), 
+    path('notifications/recent/', recent_notifications, name='recent-notifications'),
+    path('scheduler/system-status/', system_status, name='system-status'),
     
     # Include router URLs
     path('', include(router.urls)),

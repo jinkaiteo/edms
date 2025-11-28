@@ -4,7 +4,8 @@ import { useAuth } from '../contexts/AuthContext.tsx';
 import Layout from '../components/common/Layout.tsx';
 import LoadingSpinner from '../components/common/LoadingSpinner.tsx';
 import { useDashboardUpdates } from '../hooks/useDashboardUpdates.ts';
-import { DashboardStats, ActivityItem } from '../types/api.ts';
+import { DashboardStats } from '../types/api.ts';
+import NewsFeed from '../components/common/NewsFeed.tsx';
 
 const Dashboard: React.FC = () => {
   const { user, authenticated, loading, logout } = useAuth();
@@ -352,40 +353,14 @@ const Dashboard: React.FC = () => {
               </div>
             </div>
 
-            {/* Recent Activity */}
+            {/* News Feed */}
             <div className="lg:col-span-2">
               <div className="bg-white shadow rounded-lg">
                 <div className="px-4 py-5 sm:p-6">
-                  <h3 className="text-lg leading-6 font-medium text-gray-900">Recent Activity</h3>
-                  <div className="mt-6 flow-root">
-                    <ul className="-my-5 divide-y divide-gray-200">
-                      {stats.recent_activity.map((item) => (
-                        <li key={item.id} className="py-5">
-                          <div className="flex items-center space-x-4">
-                            <div className="flex-shrink-0">
-                              <div className={`h-8 w-8 rounded-full ${item.iconColor} flex items-center justify-center`}>
-                                <span className="text-white text-sm">{item.icon}</span>
-                              </div>
-                            </div>
-                            <div className="flex-1 min-w-0">
-                              <p className="text-sm font-medium text-gray-900 truncate">{item.title}</p>
-                              <p className="text-sm text-gray-500 truncate">{item.description}</p>
-                            </div>
-                            <div className="flex-shrink-0 text-sm text-gray-500">
-                              {formatRelativeTime(item.timestamp)}
-                            </div>
-                          </div>
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
+                  <h3 className="text-lg leading-6 font-medium text-gray-900">📰 What's New</h3>
+                  <p className="text-sm text-gray-500 mt-1">Your personalized activity and task summary</p>
                   <div className="mt-6">
-                    <button
-                      onClick={() => navigate('/audit-trail')}
-                      className="w-full flex justify-center items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
-                    >
-                      View all activity
-                    </button>
+                    <NewsFeed maxItems={6} />
                   </div>
                 </div>
               </div>

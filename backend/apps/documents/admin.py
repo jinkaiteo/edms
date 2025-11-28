@@ -192,7 +192,7 @@ class DocumentAdmin(admin.ModelAdmin):
     
     def version_display(self, obj):
         """Display version in a formatted way."""
-        return f"v{obj.version_major}.{obj.version_minor}"
+        return f"v{obj.version_major:02d}.{obj.version_minor:02d}"
     version_display.short_description = _('Version')
     version_display.admin_order_field = 'version_major'
     

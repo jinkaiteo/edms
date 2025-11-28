@@ -28,6 +28,7 @@ interface Approver {
   username: string;
   full_name: string;
   email: string;
+  role: string;
 }
 
 interface RouteForApprovalModalProps {
@@ -59,26 +60,68 @@ const RouteForApprovalModal: React.FC<RouteForApprovalModalProps> = ({
     try {
       setError(null);
       
-      // Load users with approval permissions
-      try {
-        const response = await apiService.get('/users/users/', {
-          params: {
-            role: 'approver',
-            permissions: 'approve_document'
-          }
-        });
-        setApprovers(Array.isArray(response) ? response : response.results || []);
-      } catch (apiError) {
-        // Fallback to test approvers if API not available
-        const testApprovers = [
-          { id: 'approver', username: 'approver', full_name: 'Document Approver', email: 'approver@edms.com' },
-          { id: 'admin', username: 'admin', full_name: 'System Administrator', email: 'admin@edms.com' }
-        ];
-        setApprovers(testApprovers);
+      const token = localStorage.getItem('accessToken');
+      if (!token) {
+        throw new Error('No authentication token found');
       }
+
+      console.log(`🔍 Loading approvers for document: ${document.document_number}`);
+      
+      // Use the users API to get all users, then filter for approvers  
+      // Using direct backend URL due to proxy timeout issue
+      const response = await fetch('http://localhost:8000/api/v1/users/users/', {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        const allUsers = data.results || [];
+        
+        // Filter for users with actual approver roles and exclude current user (self-approval prevention)
+        const approverUsers = allUsers.filter((user: any) => {
+          console.log(`Checking approver ${user.username}: is_superuser =`, user.is_superuser, 'active_roles =', user.active_roles);
+          
+          // Check if user has approval permissions through active_roles
+          const hasApprovalRole = user.active_roles && user.active_roles.some((role: any) => 
+            role.name === 'Document Approver' || 
+            role.name === 'Senior Document Approver' ||
+            role.permission_level === 'approve'
+          );
+          
+          // Include superusers and approval users, but exclude current user (self-approval prevention)
+          const isEligible = (user.is_superuser || hasApprovalRole) && user.id !== document?.author_id;
+          
+          console.log(`Approver ${user.username} eligible: ${isEligible} (hasApprovalRole: ${hasApprovalRole}, not self: ${user.id !== document?.author_id})`);
+          return isEligible;
+        });
+        
+        console.log(`✅ Found ${approverUsers.length} eligible approvers with approval roles`);
+        
+        if (approverUsers.length === 0) {
+          setError('No eligible approvers found. Please contact an administrator.');
+          setApprovers([]);
+          return;
+        }
+        
+        setApprovers(approverUsers.map((user: any) => ({
+          id: user.id,
+          username: user.username,
+          full_name: user.full_name || `${user.first_name} ${user.last_name}`.trim() || user.username,
+          email: user.email,
+          role: 'approver'
+        })));
+        
+      } else {
+        throw new Error(`Failed to load users: HTTP ${response.status}`);
+      }
+      
     } catch (error: any) {
-      console.error('Error loading approvers:', error);
-      setError('Failed to load approvers. Please try again.');
+      console.error('❌ Error loading eligible approvers:', error);
+      setError(`Failed to load eligible approvers: ${error.message || 'Unknown error'}`);
+      setApprovers([]);
     }
   };
 
@@ -209,10 +252,15 @@ const RouteForApprovalModal: React.FC<RouteForApprovalModalProps> = ({
                 ))}
               </select>
             </div>
-            {approvers.length === 0 && (
+            {approvers.length === 0 && !error && (
               <p className="mt-2 text-sm text-amber-600">
-                Loading available approvers...
+                Loading eligible approvers with approval permissions...
               </p>
+            )}
+            {approvers.length > 0 && (
+              <div className="mt-2 text-sm text-gray-600">
+                <p>Found {approvers.length} eligible approver{approvers.length !== 1 ? 's' : ''} with approval permissions</p>
+              </div>
             )}
           </div>
 
