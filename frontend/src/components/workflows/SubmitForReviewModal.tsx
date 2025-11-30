@@ -59,7 +59,7 @@ const SubmitForReviewModal: React.FC<SubmitForReviewModalProps> = ({
       console.log('🔍 Loading eligible reviewers with role-based filtering...');
       
       // Use the users API to get all users, then filter for reviewers
-      const response = await fetch('http://localhost:8000/api/v1/users/users/', {
+      const response = await fetch('/api/v1/users/users/', {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json',
@@ -120,51 +120,64 @@ const SubmitForReviewModal: React.FC<SubmitForReviewModalProps> = ({
   };
 
   const handleSubmitForReview = async () => {
+    console.log('🚀 FRONTEND DEBUG: Submit for review started');
+    console.log('📄 FRONTEND DEBUG: Document UUID:', document.uuid);
+    console.log('👤 FRONTEND DEBUG: Selected reviewer ID:', selectedReviewer);
+    
+    if (!selectedReviewer) {
+      console.log('❌ FRONTEND DEBUG: No reviewer selected');
+      setError('Please select a reviewer');
+      return;
+    }
+
+    setLoading(true);
+    setError(null);
+
     try {
-      if (!selectedReviewer) {
-        setError('Please select a reviewer');
-        return;
-      }
+      console.log('🔄 FRONTEND DEBUG: Step 1 - Assigning reviewer...');
+      
+      // Step 1: Assign reviewer to document
+      const assignResponse = await apiService.patch(`/documents/documents/${document.uuid}/`, {
+        reviewer: selectedReviewer
+      });
+      
+      console.log('✅ FRONTEND DEBUG: Reviewer assignment response:', assignResponse);
 
-
-      setLoading(true);
-      setError(null);
-
-      // Step 1: Assign reviewer to document (ignore audit logging errors)
-      let reviewerAssigned = false;
-      try {
-        const assignResponse = await apiService.patch(`/documents/documents/${document.uuid}/`, {
-          reviewer: selectedReviewer
-        });
-        reviewerAssigned = true;
-      } catch (reviewerError: any) {
-        console.error('❌ Failed to assign reviewer:', reviewerError);
-        throw new Error(`Failed to assign reviewer: ${reviewerError.message || 'Unknown error'}`);
-      }
-
+      console.log('🔄 FRONTEND DEBUG: Step 2 - Calling workflow API...');
+      
       // Step 2: Submit for review using workflow action  
-      try {
-        const workflowResponse = await apiService.post(`/documents/documents/${document.uuid}/workflow/`, {
-          action: 'submit_for_review',
-          comment: submissionComment || 'Document submitted for review'
-        });
-      } catch (workflowError: any) {
-        console.error('❌ WORKFLOW: Failed to submit for review:', workflowError);
-        throw new Error(`Failed to submit document for review: ${workflowError.message || 'Unknown error'}`);
+      const workflowResponse = await apiService.post(`/documents/documents/${document.uuid}/workflow/`, {
+        action: 'submit_for_review',
+        comment: submissionComment || 'Document submitted for review'
+      });
+
+      console.log('📊 FRONTEND DEBUG: Workflow API response:', workflowResponse);
+      console.log('📊 FRONTEND DEBUG: Response status code:', workflowResponse.status || 'unknown');
+      console.log('📊 FRONTEND DEBUG: Response data:', workflowResponse);
+
+      // Check if the response indicates success or failure
+      if (workflowResponse.success === false) {
+        console.error('❌ FRONTEND DEBUG: Backend returned success=false');
+        console.error('❌ FRONTEND DEBUG: Error details:', workflowResponse.error);
+        console.error('❌ FRONTEND DEBUG: Debug info:', workflowResponse.debug_info);
+        throw new Error(workflowResponse.error || 'Workflow submission failed');
       }
 
-      // Success - check if we have reviewer assignment
-      if (reviewerAssigned) {
-        onSubmitSuccess();
-        onClose();
-      } else {
-        throw new Error('Failed to assign reviewer to document');
-      }
+      console.log('🎉 FRONTEND DEBUG: All API calls successful, calling onSubmitSuccess');
+      
+      // Success
+      onSubmitSuccess();
+      onClose();
 
     } catch (error: any) {
-      console.error('❌ WORKFLOW: Failed to submit for review - full error:', error);
-      setError('Failed to submit document for review. Please try again.');
+      console.error('💥 FRONTEND DEBUG: Error occurred:', error);
+      console.error('💥 FRONTEND DEBUG: Error response:', error.response);
+      console.error('💥 FRONTEND DEBUG: Error data:', error.response?.data);
+      
+      const errorMessage = error.response?.data?.error || error.message || 'Failed to submit document for review. Please try again.';
+      setError(errorMessage);
     } finally {
+      console.log('🏁 FRONTEND DEBUG: Setting loading to false');
       setLoading(false);
     }
   };

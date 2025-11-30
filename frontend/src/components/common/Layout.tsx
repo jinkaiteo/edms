@@ -25,6 +25,7 @@ import {
 import { useAuth } from '../../contexts/AuthContext.tsx';
 import { ApiStatus } from '../../types/api';
 import { apiService } from '../../services/api.ts';
+import NotificationBell from '../notifications/NotificationBell.tsx';
 
 interface LayoutProps {
   children?: React.ReactNode;
@@ -45,7 +46,6 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
   const navigate = useNavigate();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [apiStatus, setApiStatus] = useState<ApiStatus | null>(null);
-  const [notifications, setNotifications] = useState(0);
 
   // Check API status on mount - temporarily disabled
   useEffect(() => {
@@ -75,7 +75,8 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
     const baseItems: NavigationItem[] = [
       { name: 'Dashboard', href: '/dashboard', icon: HomeIcon },
       { name: 'Document Management', href: '/document-management', icon: DocumentArrowUpIcon },
-      { name: 'My Tasks', href: '/tasks', icon: ClipboardDocumentListIcon, badge: notifications > 0 ? notifications : undefined },
+      { name: 'My Tasks', href: '/tasks', icon: ClipboardDocumentListIcon },
+      { name: 'Notifications', href: '/notifications', icon: BellIcon },
     ];
 
     // Add role-based items
@@ -214,23 +215,15 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                 {location.pathname === '/dashboard' && 'Dashboard'}
                 {location.pathname === '/document-management' && 'Document Management'}
                 {location.pathname === '/tasks' && 'My Tasks'}
+                {location.pathname === '/notifications' && 'Notifications'}
                 {location.pathname === '/admin' && 'Administration'}
               </h2>
             </div>
             
             {/* Right side */}
             <div className="ml-4 flex items-center md:ml-6">
-              <button
-                type="button"
-                className="bg-white p-1 rounded-full text-gray-400 hover:text-gray-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
-              >
-                <BellIcon className="h-6 w-6" />
-                {notifications > 0 && (
-                  <span className="absolute -mt-2 -ml-2 px-2 py-1 text-xs font-bold leading-none text-red-100 bg-red-600 rounded-full">
-                    {notifications}
-                  </span>
-                )}
-              </button>
+              {/* Notification Bell Component */}
+              <NotificationBell className="text-gray-400 hover:text-gray-500" />
 
               {/* Profile dropdown */}
               <div className="ml-3 relative">

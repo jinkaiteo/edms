@@ -45,6 +45,13 @@ from .views import (
     SystemConfigurationViewSet, UICustomizationViewSet, FeatureToggleViewSet,
 )
 
+# Import authentication views
+from .auth_views import LoginView, LogoutView, CurrentUserView, CSRFTokenView, auth_status
+from rest_framework_simplejwt.views import TokenObtainPairView
+
+# Import notification views
+from .notification_views import NotificationViewSet
+
 # Create router for ViewSets
 router = DefaultRouter()
 
@@ -62,6 +69,9 @@ router.register(r'user-roles', UserRoleViewSet, basename='userrole')
 router.register(r'workflows', WorkflowViewSet, basename='workflow')
 router.register(r'workflow-instances', WorkflowInstanceViewSet, basename='workflowinstance')
 router.register(r'workflow-tasks', WorkflowTaskViewSet, basename='workflowtask')
+
+# Notification endpoints
+router.register(r'notifications', NotificationViewSet, basename='notification')
 
 # Search endpoints
 router.register(r'search', SearchViewSet, basename='search')
@@ -114,6 +124,15 @@ urlpatterns = [
     path('workflows/my-tasks/', my_tasks, name='my-tasks'), 
     path('notifications/recent/', recent_notifications, name='recent-notifications'),
     path('scheduler/system-status/', system_status, name='system-status'),
+    
+    # Authentication endpoints  
+    path('auth/login/', LoginView.as_view(), name='auth-login'),
+    path('auth/token/', TokenObtainPairView.as_view(), name='auth-token'),  # Proper JWT endpoint
+    path('auth/logout/', LogoutView.as_view(), name='auth-logout'),  
+    path('auth/user/', CurrentUserView.as_view(), name='auth-user'),  # Use existing CurrentUserView
+    path('auth/profile/', CurrentUserView.as_view(), name='auth-profile'),
+    path('auth/status/', auth_status, name='auth-status'),
+    path('auth/csrf/', CSRFTokenView.as_view(), name='auth-csrf'),
     
     # Include router URLs
     path('', include(router.urls)),

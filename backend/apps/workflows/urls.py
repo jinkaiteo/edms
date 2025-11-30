@@ -15,6 +15,8 @@ from .views import (
     DocumentWorkflowViewSet,
 )
 from .api_views import workflow_types
+from .task_api_views import author_tasks, task_summary, complete_task
+from .user_task_api_views import user_tasks, user_task_summary, complete_user_task
 
 # Router for simple viewsets
 router = DefaultRouter()
@@ -40,6 +42,16 @@ urlpatterns = [
     path('my-tasks/', 
          SimpleMyTasksAPIView.as_view(), 
          name='simple_my_tasks'),
+    
+    # Task API endpoints (matching frontend expectations)
+    path('tasks/author/', author_tasks, name='author_tasks'),
+    path('tasks/summary/', task_summary, name='task_summary'),
+    path('tasks/<uuid:task_uuid>/complete/', complete_task, name='complete_task'),
+    
+    # Alternative task API endpoints (bypass routing conflicts)
+    path('tasks/user-tasks/', user_tasks, name='user_tasks'),
+    path('tasks/user-summary/', user_task_summary, name='user_task_summary'),
+    path('tasks/<uuid:task_uuid>/user-complete/', complete_user_task, name='complete_user_task'),
     
     # Workflow types endpoint
     path('types/', workflow_types, name='workflow_types'),

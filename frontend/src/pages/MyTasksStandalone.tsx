@@ -53,29 +53,21 @@ const MyTasksStandalone: React.FC = () => {
       setLoading(true);
       setError(null);
 
-      console.log(`🔍 Loading tasks for user: ${user?.username}`);
+      console.log(`🔍 Loading tasks for user: ${user?.username} via CORRECTED WorkflowTask API`);
 
-      // Load documents assigned for review
-      const reviewTasks = await loadReviewTasks();
-      console.log(`📖 Loaded review tasks: ${reviewTasks.length}`);
-      
-      // Load documents assigned for approval (if user has approval permissions)
-      const approvalTasks = await loadApprovalTasks();
-      console.log(`✅ Loaded approval tasks: ${approvalTasks.length}`);
-      
-      // Combine all tasks
-      const allTasks = [...reviewTasks, ...approvalTasks];
-      setTasks(allTasks);
+      // UPDATED: Use our new task API endpoints instead of fetching documents directly
+      const tasks = await loadTasksFromAPI();
+      setTasks(tasks);
 
-      console.log(`📊 FINAL TASK COUNT for ${user?.username}: ${allTasks.length}`);
+      console.log(`📊 FINAL TASK COUNT for ${user?.username}: ${tasks.length} (from WorkflowTask API)`);
       console.log('📋 Task breakdown:', {
-        review: reviewTasks.length,
-        approval: approvalTasks.length,
-        total: allTasks.length
+        review: tasks.filter(t => t.task_type === 'review').length,
+        approval: tasks.filter(t => t.task_type === 'approval').length,
+        total: tasks.length
       });
 
-      if (allTasks.length === 0) {
-        console.log('✨ User has no tasks - this is correct for author01 since SOP-2025-0004 is waiting for reviewer01');
+      if (tasks.length === 0) {
+        console.log('✨ User has no tasks - all caught up!');
       }
 
     } catch (err: any) {
@@ -86,103 +78,78 @@ const MyTasksStandalone: React.FC = () => {
     }
   };
 
-  const loadReviewTasks = async (): Promise<WorkflowTask[]> => {
+  const loadTasksFromAPI = async (): Promise<WorkflowTask[]> => {
     try {
-      // FIXED: Get documents in PENDING_REVIEW status and filter properly
-      const response = await apiService.get('/documents/documents/', {
-        params: {
-          status: 'PENDING_REVIEW'
-        }
-      });
-
-      const documents = Array.isArray(response) ? response : response.results || [];
-      console.log('📖 All PENDING_REVIEW documents:', documents.length);
+      console.log('🎯 Fetching tasks from WORKING API endpoint: /api/v1/workflows/tasks/user-tasks/');
       
-      // FIXED: Only show documents where current user is specifically assigned as reviewer
-      // AND they are NOT the document author (authors don't review their own documents)
-      const userReviewDocs = documents.filter((doc: any) => {
-        const isAssignedReviewer = doc.reviewer === user?.username || 
-                                 doc.assigned_reviewer === user?.username ||
-                                 (doc.workflow && doc.workflow.assigned_reviewer === user?.username);
-        
-        const isNotAuthor = doc.author !== user?.username && 
-                          doc.author_username !== user?.username &&
-                          doc.created_by !== user?.username;
-        
-        console.log(`📄 ${doc.document_number}: reviewer=${isAssignedReviewer}, notAuthor=${isNotAuthor}, author=${doc.author}`);
-        return isAssignedReviewer && isNotAuthor;
-      });
+      // Use the WORKING user-tasks endpoint that exists in the backend
+      const response = await apiService.get('/workflows/tasks/user-tasks/');
+      console.log(`📋 TASKS DEBUG: Raw API response:`, response);
+      console.log(`📋 TASKS DEBUG: Response type:`, typeof response);
+      console.log(`📋 TASKS DEBUG: Response keys:`, Object.keys(response || {}));
       
-      console.log('📖 Documents assigned to user for review:', userReviewDocs.length);
+      // Handle different response structures
+      let tasksArray = [];
+      if (response && response.tasks && Array.isArray(response.tasks)) {
+        tasksArray = response.tasks;
+        console.log(`📋 TASKS DEBUG: Using response.tasks array (${tasksArray.length} items)`);
+      } else if (response && Array.isArray(response.results)) {
+        tasksArray = response.results;
+        console.log(`📋 TASKS DEBUG: Using response.results array (${tasksArray.length} items)`);
+      } else if (Array.isArray(response)) {
+        tasksArray = response;
+        console.log(`📋 TASKS DEBUG: Using response as array (${tasksArray.length} items)`);
+      } else {
+        console.error(`❌ TASKS DEBUG: Unexpected response structure:`, response);
+        tasksArray = [];
+      }
       
-      return userReviewDocs.map((doc: any) => ({
-        id: `review-${doc.uuid}`,
-        document_uuid: doc.uuid,
-        document_number: doc.document_number || 'N/A',
-        document_title: doc.title,
-        task_type: 'review' as const,
+      console.log(`📋 TASKS DEBUG: Final tasks array:`, tasksArray);
+      
+      // Transform tasks to frontend format (no filtering needed - API already returns user's tasks)
+      const apiTasks = tasksArray.map((task: any) => ({
+        id: task.id || task.uuid,
+        document_uuid: task.document_uuid || '',
+        document_number: task.document_number || 'Unknown',
+        document_title: task.document_title || task.name || 'Unknown Task',
+        task_type: task.task_type === 'APPROVE' ? 'approval' : 'review',
+        status: (task.status || 'pending').toLowerCase(),
+        priority: (task.priority || 'normal').toLowerCase(),
+        assigned_date: task.assigned_date || task.created_at,
+        due_date: task.due_date,
+        assignee_display: task.assignee_display || user?.username || 'Unknown',
+        author_display: task.author_display || task.assigned_by || 'Unknown',
+        comments_count: task.comments_count || 0
+      }));
+      
+      console.log(`✅ API returned ${tasksArray.length} tasks, transformed to ${apiTasks.length} for ${user?.username}`);
+      
+      // Convert API task format to our component's WorkflowTask format
+      return apiTasks.map((apiTask: any) => ({
+        id: apiTask.id,
+        document_uuid: apiTask.document_uuid,
+        document_number: apiTask.document_number || 'N/A',
+        document_title: apiTask.document_title || apiTask.name,
+        task_type: apiTask.task_type === 'REVIEW' ? 'review' : 
+                  apiTask.task_type === 'APPROVE' ? 'approval' : 'review',
         status: 'pending' as const,
-        priority: getPriority(doc.created_at),
-        assigned_date: doc.created_at,
-        due_date: calculateDueDate(doc.created_at),
+        priority: (apiTask.priority?.toLowerCase() || 'medium') as 'low' | 'medium' | 'high' | 'urgent',
+        assigned_date: apiTask.created_at,
+        due_date: apiTask.due_date,
         assignee_display: user?.full_name || user?.username || 'You',
-        author_display: doc.author_display || 'Unknown',
+        author_display: apiTask.assigned_by || 'System',
         comments_count: 0
       }));
+      
     } catch (error) {
-      console.error('Error loading review tasks:', error);
+      console.error('Error loading tasks from API:', error);
+      console.log('⚠️ Falling back to empty task list');
       return [];
     }
   };
 
-  const loadApprovalTasks = async (): Promise<WorkflowTask[]> => {
-    try {
-      // FIXED: Get documents in PENDING_APPROVAL status (not REVIEWED)
-      const response = await apiService.get('/documents/documents/', {
-        params: {
-          status: 'PENDING_APPROVAL'
-        }
-      });
-
-      const documents = Array.isArray(response) ? response : response.results || [];
-      console.log('✅ All PENDING_APPROVAL documents:', documents.length);
-      
-      // FIXED: Only show documents where current user is specifically assigned as approver
-      // Don't show ALL documents just because user is staff
-      const approvalDocs = documents.filter((doc: any) => {
-        const isAssignedApprover = doc.approver === user?.username || 
-                                 doc.assigned_approver === user?.username ||
-                                 (doc.workflow && doc.workflow.assigned_approver === user?.username);
-        
-        const isNotAuthor = doc.author !== user?.username && 
-                          doc.author_username !== user?.username &&
-                          doc.created_by !== user?.username;
-        
-        console.log(`📄 ${doc.document_number}: approver=${isAssignedApprover}, notAuthor=${isNotAuthor}, author=${doc.author}`);
-        return isAssignedApprover && isNotAuthor;
-      });
-      
-      console.log('✅ Documents assigned to user for approval:', approvalDocs.length);
-      
-      return approvalDocs.map((doc: any) => ({
-        id: `approval-${doc.uuid}`,
-        document_uuid: doc.uuid,
-        document_number: doc.document_number || 'N/A',
-        document_title: doc.title,
-        task_type: 'approval' as const,
-        status: 'pending' as const,
-        priority: getPriority(doc.updated_at || doc.created_at),
-        assigned_date: doc.updated_at || doc.created_at,
-        due_date: calculateDueDate(doc.updated_at || doc.created_at),
-        assignee_display: user?.full_name || user?.username || 'You',
-        author_display: doc.author_display || 'Unknown',
-        comments_count: 0
-      }));
-    } catch (error) {
-      console.error('Error loading approval tasks:', error);
-      return [];
-    }
-  };
+  // REMOVED: loadApprovalTasks - now handled by single API call
+  // All tasks (review, approval, etc.) come from the unified task API
 
   const getPriority = (date: string): 'low' | 'medium' | 'high' | 'urgent' => {
     const daysOld = Math.floor((Date.now() - new Date(date).getTime()) / (1000 * 60 * 60 * 24));

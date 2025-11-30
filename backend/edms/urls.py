@@ -35,7 +35,11 @@ api_urlpatterns = [
     # Core modules
     path('documents/', include('apps.documents.urls')),
     path('workflows/', include('apps.workflows.urls')),
+    path('workflows/', include('apps.workflows.urls_enhanced')),
     path('audit/', include('apps.audit.urls')),
+    
+    # Notification endpoints
+    path('notifications/', include('apps.api.v1.notification_urls')),
     
     # Service modules
     path('placeholders/', include('apps.placeholders.urls')),

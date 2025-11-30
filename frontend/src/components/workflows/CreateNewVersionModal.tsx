@@ -71,7 +71,7 @@ const CreateNewVersionModal: React.FC<CreateNewVersionModalProps> = ({
       }
 
       // Check for existing documents with same base number but higher versions in draft/review status
-      const response = await fetch(`http://localhost:8000/api/v1/documents/documents/?search=${document.document_number}`, {
+      const response = await fetch(`/api/v1/documents/documents/?search=${document.document_number}`, {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json',

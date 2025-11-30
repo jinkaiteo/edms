@@ -21,7 +21,7 @@ const PlaceholderManagement: React.FC<PlaceholderManagementProps> = ({ className
   const fetchPlaceholders = async () => {
     try {
       setLoading(true);
-      const response = await fetch('http://localhost:8000/api/v1/placeholders/definitions/', {
+      const response = await fetch('/api/v1/placeholders/definitions/', {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('accessToken')}`,
           'Content-Type': 'application/json',

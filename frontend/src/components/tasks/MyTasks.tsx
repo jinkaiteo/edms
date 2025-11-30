@@ -42,44 +42,80 @@ const MyTasks: React.FC = () => {
   const { user } = useAuth();
 
   const fetchTasks = async () => {
+    console.log('🔍 TASKS DEBUG: Starting fetchTasks...');
+    console.log('👤 TASKS DEBUG: Current user:', user?.username);
+    
     try {
       setLoading(true);
       setError(null);
 
       const token = localStorage.getItem('accessToken');
+      console.log('🔑 TASKS DEBUG: Token exists:', !!token);
+      
       if (!token) {
         throw new Error('No authentication token found');
       }
 
-      // Fetch tasks and summary in parallel
-      const [tasksResponse, summaryResponse] = await Promise.all([
-        fetch('/api/v1/workflows/tasks/author/', {
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json',
-          },
-        }),
-        fetch('/api/v1/workflows/tasks/summary/', {
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json',
-          },
-        })
-      ]);
+      // Fetch tasks using the WorkflowTask API endpoint
+      const tasksUrl = '/api/v1/workflows/tasks/?status=PENDING';
+      console.log('📡 TASKS DEBUG: Calling API:', tasksUrl);
+      
+      const tasksResponse = await fetch(tasksUrl, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      console.log('📊 TASKS DEBUG: Response status:', tasksResponse.status);
+      console.log('📊 TASKS DEBUG: Response headers:', Object.fromEntries(tasksResponse.headers.entries()));
 
       if (!tasksResponse.ok) {
-        throw new Error('Failed to fetch tasks');
-      }
-
-      if (!summaryResponse.ok) {
-        throw new Error('Failed to fetch task summary');
+        const errorText = await tasksResponse.text();
+        console.error('❌ TASKS DEBUG: API error response:', errorText);
+        throw new Error(`HTTP error! status: ${tasksResponse.status} - ${errorText}`);
       }
 
       const tasksData = await tasksResponse.json();
-      const summaryData = await summaryResponse.json();
+      console.log('📋 TASKS DEBUG: Raw API response:', tasksData);
 
-      setTasks(tasksData.tasks || []);
-      setTaskSummary(summaryData.summary);
+      // Filter tasks for current user and transform to expected format
+      const userTasks = (tasksData.results || tasksData || []).filter((task: any) => {
+        const isAssigned = task.assigned_to?.username === user?.username;
+        console.log(`📄 TASKS DEBUG: Task ${task.name} assigned to ${task.assigned_to?.username}, current user: ${user?.username}, match: ${isAssigned}`);
+        return isAssigned;
+      }).map((task: any) => ({
+        id: task.uuid,
+        name: task.name,
+        description: task.description,
+        task_type: task.task_type,
+        priority: task.priority || 'NORMAL',
+        status: task.status,
+        created_at: task.created_at,
+        due_date: task.due_date,
+        is_overdue: false,
+        assigned_by: task.assigned_by?.username || 'Unknown',
+        workflow_type: 'document_workflow',
+        document_uuid: task.task_data?.document_uuid,
+        document_number: task.task_data?.document_number,
+        document_title: task.task_data?.document_number,
+        priority_class: 'bg-yellow-100 text-yellow-800'
+      }));
+
+      console.log('📋 TASKS DEBUG: Filtered user tasks:', userTasks);
+      console.log('📋 TASKS DEBUG: User tasks count:', userTasks.length);
+
+      setTasks(userTasks);
+      setTaskSummary({
+        total_tasks: userTasks.length,
+        overdue_tasks: 0,
+        high_priority_tasks: userTasks.filter(t => t.priority === 'HIGH' || t.priority === 'URGENT').length,
+        upcoming_due_count: 0,
+        task_types: userTasks.reduce((acc, task) => {
+          acc[task.task_type] = (acc[task.task_type] || 0) + 1;
+          return acc;
+        }, {} as Record<string, number>)
+      });
 
     } catch (err: any) {
       console.error('Error fetching tasks:', err);
@@ -99,7 +135,7 @@ const MyTasks: React.FC = () => {
         throw new Error('No authentication token found');
       }
 
-      const response = await fetch(`/api/v1/workflows/tasks/${taskId}/complete/`, {
+      const response = await fetch(`/api/v1/workflows/tasks/${taskId}/user-complete/`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,

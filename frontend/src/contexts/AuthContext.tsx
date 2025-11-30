@@ -47,7 +47,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         if (accessToken && refreshToken) {
           
           // Try to get user profile with stored token
-          const profileResponse = await fetch('http://localhost:8000/api/v1/auth/profile/', {
+          const profileResponse = await fetch('/api/v1/auth/profile/', {
             headers: {
               'Authorization': `Bearer ${accessToken}`,
               'Content-Type': 'application/json',
@@ -84,7 +84,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     setLoading(true);
     
     try {
-      const response = await fetch('http://localhost:8000/api/v1/auth/token/', {
+      const response = await fetch('/api/v1/auth/token/', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -108,7 +108,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         apiService.setAuthToken(data.access);
         
         // Fetch user profile with the token
-        const profileResponse = await fetch('http://localhost:8000/api/v1/auth/profile/', {
+        const profileResponse = await fetch('/api/v1/auth/profile/', {
           headers: {
             'Authorization': `Bearer ${data.access}`,
             'Content-Type': 'application/json',
@@ -141,7 +141,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       const accessToken = localStorage.getItem('accessToken');
       
       if (accessToken) {
-        await fetch('http://localhost:8000/api/v1/auth/logout/', {
+        await fetch('/api/v1/auth/logout/', {
           method: 'POST',
           headers: {
             'Authorization': `Bearer ${accessToken}`,

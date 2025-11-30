@@ -65,12 +65,6 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({
   const loadDocumentData = async () => {
     if (!document) return;
 
-    console.log('🔄 Loading document data for:', {
-      id: document.id,
-      uuid: document.uuid,
-      title: document.title,
-      status: document.status
-    });
 
     setLoading(true);
     try {
@@ -79,9 +73,8 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({
       
       // Add workflow status call if we have document UUID
       if (document.uuid) {
-        console.log('📡 Fetching workflow status for UUID:', document.uuid);
         apiCalls.push(
-          fetch(`http://localhost:8000/api/v1/workflows/documents/${document.uuid}/status/`, {
+          fetch(`/api/v1/workflows/documents/${document.uuid}/status/`, {
             headers: {
               'Authorization': `Bearer ${localStorage.getItem('accessToken')}`,
               'Content-Type': 'application/json',
@@ -89,15 +82,13 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({
           }).then(res => res.ok ? res.json() : null).catch(() => null)
         );
       } else {
-        console.log('⚠️ No document UUID available, skipping workflow status fetch');
         apiCalls.push(Promise.resolve(null));
       }
       
       // Add signatures call if we have document ID
       if (document.id && document.id !== undefined) {
-        console.log('📡 Fetching signatures for document ID:', document.id);
         apiCalls.push(
-          fetch(`http://localhost:8000/api/v1/security/signatures/?document_id=${document.id}`, {
+          fetch(`/api/v1/security/signatures/?document_id=${document.id}`, {
             headers: {
               'Authorization': `Bearer ${localStorage.getItem('accessToken')}`,
               'Content-Type': 'application/json',
@@ -105,7 +96,6 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({
           }).then(res => res.ok ? res.json() : null).catch(() => null)
         );
       } else {
-        console.log('⚠️ No valid document ID available, skipping signatures fetch. ID was:', document.id);
         apiCalls.push(Promise.resolve(null));
       }
 
@@ -414,7 +404,6 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({
     setEditingDocument(null);
     
     // Force reload of the current document data
-    console.log('🔄 Reloading document data after update...');
     
     // Fetch the latest document data to update the workflow buttons
     if (document && document.uuid) {
@@ -433,8 +422,7 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({
 
   const fetchUpdatedDocumentData = async (documentUuid: string) => {
     try {
-      console.log('🔄 Fetching updated document data to refresh workflow buttons...');
-      const response = await fetch(`http://localhost:8000/api/v1/documents/documents/${documentUuid}/`, {
+      const response = await fetch(`/api/v1/documents/documents/${documentUuid}/`, {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('accessToken')}`,
           'Content-Type': 'application/json',
@@ -443,12 +431,6 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({
       
       if (response.ok) {
         const freshDocumentData = await response.json();
-        console.log('✅ Fresh document data received:', {
-          hasFile: !!(freshDocumentData.file_path && freshDocumentData.file_name),
-          fileName: freshDocumentData.file_name,
-          filePath: freshDocumentData.file_path,
-          status: freshDocumentData.status
-        });
         
         // CRITICAL: We need to update the parent component's document state
         // Dispatch event with the fresh document data
@@ -462,7 +444,6 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({
         
         // Force parent component to refresh its document data
         if (onRefresh) {
-          console.log('🔄 Calling onRefresh to update parent component...');
           onRefresh();
         }
         
@@ -481,7 +462,6 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({
   const forceRefreshDocumentState = async () => {
     if (!document?.uuid) return;
     
-    console.log('🔄 Force refreshing document state after workflow action...');
     
     try {
       // 1. Fetch latest document data
@@ -506,7 +486,7 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({
         setLoading(true);
         
         // Fetch full document details using the document UUID
-        const response = await fetch(`http://localhost:8000/api/v1/documents/documents/${document.uuid}/`, {
+        const response = await fetch(`/api/v1/documents/documents/${document.uuid}/`, {
           headers: {
             'Authorization': `Bearer ${localStorage.getItem('accessToken')}`,
             'Content-Type': 'application/json',
@@ -700,19 +680,11 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({
         // Per EDMS_details.txt line 114: Author must upload document before submitting for review
         const hasUploadedFile = !!(document.file_path && document.file_name);
         
-        // Debug logging for workflow button logic
-        console.log('🔍 WORKFLOW BUTTON DEBUG for', document.document_number);
-        console.log('  document.file_path:', document.file_path);
-        console.log('  document.file_name:', document.file_name);
-        console.log('  hasUploadedFile:', hasUploadedFile);
-        console.log('  hasWritePermission:', hasWritePermission);
-        console.log('  document.status:', document.status);
         
         // Only document author can upload files and submit for review
         if (isDocumentAuthor) {
           if (!hasUploadedFile) {
             // Step 1: File upload required first
-            console.log('  📁 Showing: Upload File button (author only)');
             actions.push({ 
               key: 'upload_file', 
               label: '📁 Upload File (Required)', 
@@ -721,7 +693,6 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({
             });
           } else {
             // Step 2: File uploaded, can now submit for review
-            console.log('  📤 Showing: Submit for Review button (author only)');
             actions.push({ 
               key: 'submit_for_review', 
               label: '📤 Submit for Review (Step 2)', 
@@ -731,7 +702,6 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({
           }
           
           // Terminate button - available to document author for pre-effective statuses
-          console.log('  🗑️ Showing: Terminate button (author only, DRAFT status)');
           actions.push({
             key: 'terminate_document',
             label: '🗑️ Terminate Document',
@@ -764,7 +734,6 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({
         
         // Terminate button - available to document author for pre-effective statuses
         if (isDocumentAuthor) {
-          console.log('  🗑️ Showing: Terminate button (author only, PENDING_REVIEW status)');
           actions.push({
             key: 'terminate_document',
             label: '🗑️ Terminate Document',
@@ -797,7 +766,6 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({
         
         // Terminate button - available to document author for pre-effective statuses
         if (isDocumentAuthor) {
-          console.log('  🗑️ Showing: Terminate button (author only, UNDER_REVIEW status)');
           actions.push({
             key: 'terminate_document',
             label: '🗑️ Terminate Document',
@@ -819,7 +787,6 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({
           });
           
           // Terminate button - available to document author for pre-effective statuses
-          console.log('  🗑️ Showing: Terminate button (author only, REVIEW_COMPLETED status)');
           actions.push({
             key: 'terminate_document',
             label: '🗑️ Terminate Document',
@@ -858,7 +825,6 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({
         
         // Terminate button - available to document author for pre-effective statuses
         if (isDocumentAuthor) {
-          console.log('  🗑️ Showing: Terminate button (author only, PENDING_APPROVAL status)');
           actions.push({
             key: 'terminate_document',
             label: '🗑️ Terminate Document',

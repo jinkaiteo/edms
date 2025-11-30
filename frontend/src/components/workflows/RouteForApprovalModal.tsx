@@ -69,7 +69,7 @@ const RouteForApprovalModal: React.FC<RouteForApprovalModalProps> = ({
       
       // Use the users API to get all users, then filter for approvers  
       // Using direct backend URL due to proxy timeout issue
-      const response = await fetch('http://localhost:8000/api/v1/users/users/', {
+      const response = await fetch('/api/v1/users/users/', {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json',

@@ -96,7 +96,7 @@ class DocumentLifecycleService:
             # Create workflow
             workflow = DocumentWorkflow.objects.create(
                 document=document,
-                workflow_type=workflow_type,
+                workflow_type=workflow_type.workflow_type,  # CRITICAL FIX: Use string value, not model instance
                 current_state=self.states['DRAFT'],
                 initiated_by=initiated_by,
                 current_assignee=document.author,
@@ -123,29 +123,66 @@ class DocumentLifecycleService:
         Returns:
             bool: True if successful
         """
-        workflow = self._get_active_workflow(document)
-        if not workflow:
-            raise ValidationError("No active workflow found for document")
+        print(f"🔍 submit_for_review called for {document.document_number}")
+        print(f"   Document status: {document.status}")
+        print(f"   User: {user.username}")
+        print(f"   Reviewer assigned: {document.reviewer.username if document.reviewer else 'None'}")
+        
+        # Validate document can be submitted
+        if document.status != 'DRAFT':
+            print(f"❌ Cannot submit: document status is {document.status}, not DRAFT")
+            raise ValidationError(f"Cannot submit document for review. Current status: {document.status}")
         
         # Validate user can submit
         if document.author != user and not user.is_superuser:
+            print(f"❌ Cannot submit: user {user.username} is not document author {document.author.username}")
             raise ValidationError("Only document author can submit for review")
-        
-        # Validate current state
-        if workflow.current_state.code != 'DRAFT':
-            raise ValidationError(f"Cannot submit from state: {workflow.current_state.code}")
         
         # Validate reviewer is assigned
         if not document.reviewer:
+            print(f"❌ Cannot submit: no reviewer assigned")
             raise ValidationError("Document must have a reviewer assigned")
         
-        return self._transition_workflow(
+        # Get or create workflow
+        workflow = self._get_active_workflow(document)
+        if not workflow:
+            print(f"🔧 No active workflow found, creating new workflow...")
+            workflow = self.start_review_workflow(
+                document=document,
+                initiated_by=user,
+                reviewer=document.reviewer,
+                approver=document.approver
+            )
+            print(f"   ✅ Workflow created: ID {workflow.id}, state: {workflow.current_state.code}")
+        else:
+            print(f"✅ Found existing workflow: ID {workflow.id}, state: {workflow.current_state.code}")
+        
+        # Validate current workflow state
+        if workflow.current_state.code != 'DRAFT':
+            print(f"❌ Cannot submit from workflow state: {workflow.current_state.code}")
+            raise ValidationError(f"Cannot submit from state: {workflow.current_state.code}")
+        
+        print(f"🔄 Transitioning workflow from DRAFT to PENDING_REVIEW...")
+        
+        # Execute the transition
+        success = self._transition_workflow(
             workflow=workflow,
             to_state_code='PENDING_REVIEW',
             user=user,
             comment=comment or 'Document submitted for review',
             assignee=document.reviewer
         )
+        
+        print(f"📊 Transition result: {success}")
+        
+        if success:
+            # Refresh document to verify status change
+            document.refresh_from_db()
+            print(f"✅ Document status after transition: {document.status}")
+        else:
+            print(f"❌ Transition failed")
+        
+        return success
     
     def start_review(self, document: Document, user: User, 
                     comment: str = '') -> bool:
@@ -230,15 +267,21 @@ class DocumentLifecycleService:
                 assignee=document.author
             )
         
-        # Send notification to author about review completion
+        # Send notification to author about review completion and create task
         if success:
             from .author_notifications import author_notification_service
-            author_notification_service.notify_author_review_completed(
-                document=document,
-                reviewer=user,
-                approved=approved,
-                comment=comment
-            )
+            try:
+                notification_sent = author_notification_service.notify_author_review_completed(
+                    document=document,
+                    reviewer=user,
+                    approved=approved,
+                    comment=comment
+                )
+                print(f"✅ Author notification sent for review completion: {notification_sent}")
+            except Exception as e:
+                print(f"❌ Failed to send author notification: {e}")
+                import traceback
+                traceback.print_exc()
         
         return success
     
@@ -335,16 +378,22 @@ class DocumentLifecycleService:
             assignee=None  # No further assignment needed for intentional workflow
         )
         
-        # Send notification to author about approval completion
+        # Send notification to author about approval completion  
         if success:
             from .author_notifications import author_notification_service
-            author_notification_service.notify_author_approval_completed(
-                document=document,
-                approver=user,
-                approved=True,
-                comment=comment,
-                effective_date=effective_date
-            )
+            try:
+                notification_sent = author_notification_service.notify_author_approval_completed(
+                    document=document,
+                    approver=user,
+                    approved=True,
+                    comment=comment,
+                    effective_date=effective_date
+                )
+                print(f"✅ Author notification sent for approval completion: {notification_sent}")
+            except Exception as e:
+                print(f"❌ Failed to send author notification: {e}")
+                import traceback
+                traceback.print_exc()
         
         return success
     
@@ -979,26 +1028,169 @@ class DocumentLifecycleService:
                 # Update workflow state
                 workflow.current_state = to_state
                 workflow.current_assignee = assignee
-                
-                # Handle workflow completion - DocumentWorkflow doesn't have is_active/completed_at fields
-                # Just update the state
-                
                 workflow.save()
+                print(f"✅ Workflow state updated to: {workflow.current_state.code}")
                 
-                # Update document status
-                workflow.document.status = to_state_code
-                workflow.document.save()
+                # Update document status - CRITICAL FIX: Force refresh and verify save
+                document = workflow.document
+                document.status = to_state_code
+                document.save()
+                
+                # Verify the save actually worked
+                document.refresh_from_db()
+                print(f"✅ Document status updated to: {document.status}")
+                print(f"✅ Database verification: {document.status == to_state_code}")
+                
+                if document.status != to_state_code:
+                    print(f"❌ CRITICAL: Document status save failed!")
+                    print(f"   Expected: {to_state_code}, Got: {document.status}")
+                    return False
+                
+                # CRITICAL FIX: Defer task creation to prevent transaction rollback
+                # Task creation moved to post-transaction to prevent database errors from affecting main workflow
                 
                 # Handle post-transition actions
                 self._handle_post_transition(workflow, transition)
+                
+                # Schedule task creation after transaction commits successfully
+                if assignee:
+                    from django.db import transaction as db_transaction
+                    db_transaction.on_commit(
+                        lambda: self._create_workflow_task_safe(workflow.id, to_state.code, assignee.id, user.id, comment)
+                    )
                 
                 return True
                 
         except Exception as e:
             # Log error for debugging
             print(f"Workflow transition failed: {e}")
+            import traceback
+            traceback.print_exc()
             return False
     
+    def _create_workflow_task_for_assignee(self, workflow: DocumentWorkflow, to_state, 
+                                          assignee: User, transitioned_by: User, comment: str):
+        """Create WorkflowTask when workflow is assigned to a user."""
+        if not assignee:
+            return
+            
+        try:
+            # Use ScheduledTask with metadata for task tracking
+            from ..scheduler.models import ScheduledTask
+            document = workflow.document
+            
+            # Determine task type and details based on state
+            task_mapping = {
+                'PENDING_REVIEW': {
+                    'task_type': 'REVIEW',
+                    'name': f'Review Document: {document.document_number}',
+                    'description': f'Review "{document.title}" and provide feedback. Document submitted by {transitioned_by.get_full_name()}.',
+                    'priority': 'normal',
+                    'due_days': 5
+                },
+                'PENDING_APPROVAL': {
+                    'task_type': 'APPROVE', 
+                    'name': f'Approve Document: {document.document_number}',
+                    'description': f'Final approval required for "{document.title}". Document has passed review stage.',
+                    'priority': 'high',
+                    'due_days': 3
+                },
+                'UNDER_REVIEW': {
+                    'task_type': 'REVIEW',
+                    'name': f'Continue Review: {document.document_number}',
+                    'description': f'Continue reviewing "{document.title}". Review started by {transitioned_by.get_full_name()}.',
+                    'priority': 'normal',
+                    'due_days': 3
+                }
+            }
+            
+            task_config = task_mapping.get(to_state.code)
+            if task_config:
+                # Check if task already exists to avoid duplicates
+                existing_task = ScheduledTask.objects.filter(
+                    name__icontains=document.document_number,
+                    metadata__assignee=assignee.username,
+                    status='PENDING',
+                    task_type='workflow_task'
+                ).first()
+                
+                if not existing_task:
+                    # Create a scheduled task that represents the workflow task
+                    due_date = timezone.now() + timezone.timedelta(days=task_config['due_days'])
+                    
+                    task = ScheduledTask.objects.create(
+                        name=task_config['name'],
+                        description=task_config['description'], 
+                        task_type='workflow_task',
+                        task_function='workflow.task.execute',
+                        task_module='apps.workflows.tasks',
+                        status='PENDING',
+                        created_by=transitioned_by,
+                        metadata={
+                            'assignee': assignee.username,
+                            'assignee_id': assignee.id,
+                            'task_type': task_config['task_type'],
+                            'document_id': document.id,
+                            'document_uuid': str(document.uuid),
+                            'document_number': document.document_number,
+                            'document_title': document.title,
+                            'workflow_id': workflow.id,
+                            'workflow_uuid': str(workflow.uuid),
+                            'state_code': to_state.code,
+                            'transition_comment': comment,
+                            'priority': task_config['priority'],
+                            'due_date': due_date.isoformat(),
+                            'assigned_by': transitioned_by.username,
+                            'assigned_by_id': transitioned_by.id
+                        }
+                    )
+                    print(f"✅ Created workflow task for {assignee.username}: {task.name}")
+                    
+                    # Notification is now handled separately to prevent transaction rollback
+                else:
+                    print(f"ℹ️ Task already exists for {assignee.username} on document {document.document_number}")
+                    
+        except Exception as e:
+            print(f"❌ Failed to create workflow task: {e}")
+            import traceback
+            traceback.print_exc()
+
+    def _send_task_assignment_notification_simple(self, task, assigned_by: User, assignee: User):
+        """Send notification when a task is assigned."""
+        try:
+            from ..scheduler.notification_service import notification_service
+            
+            task_metadata = task.metadata
+            due_date_str = task_metadata.get('due_date', timezone.now().isoformat())[:10]  # Get date part only
+            
+            subject = f"New Task Assigned: {task.name}"
+            message = f"""
+You have been assigned a new workflow task.
+
+Task: {task.name}
+Description: {task.description}
+Priority: {task_metadata.get('priority', 'normal').upper()}
+Due Date: {due_date_str}
+Assigned by: {assigned_by.get_full_name()}
+
+Please log into EDMS to complete this task:
+http://localhost:3000/my-tasks
+
+Document Details:
+- Number: {task_metadata.get('document_number', 'N/A')}
+- Title: {task_metadata.get('document_title', 'N/A')}
+            """.strip()
+            
+            notification_service.send_immediate_notification(
+                recipients=[assignee],
+                subject=subject,
+                message=message,
+                notification_type='TASK_ASSIGNED'
+            )
+            print(f"📧 Sent task assignment notification to {assignee.username}")
+        except Exception as e:
+            print(f"❌ Failed to send task assignment notification: {e}")
+
     def _handle_post_transition(self, workflow: DocumentWorkflow, 
                               transition: DocumentTransition):
         """Handle actions after successful transition."""
@@ -1012,6 +1204,222 @@ class DocumentLifecycleService:
         if workflow_type.timeout_days:
             return timezone.now() + timezone.timedelta(days=workflow_type.timeout_days)
         return None
+
+    def _send_task_assignment_notification_safe(self, task, assigned_by: User, assignee: User):
+        """Send notification when a task is assigned - safe version that doesn't affect transactions."""
+    try:
+        # Import notification service
+        from apps.scheduler.notification_service import notification_service
+        
+        # Create notification data
+        notification_data = {
+            'task_id': str(task.uuid),
+            'task_name': task.name,
+            'task_description': task.description,
+            'document_number': task.task_data.get('document_number', 'Unknown'),
+            'document_uuid': task.task_data.get('document_uuid', ''),
+            'assigned_by': assigned_by.get_full_name(),
+            'due_date': task.due_date.isoformat() if task.due_date else None,
+            'priority': task.priority
+        }
+        
+        # Send the notification - just send email, don't store in database to avoid field type issues
+        from django.core.mail import send_mail
+        from django.conf import settings
+        
+        subject = f"New Task Assigned: {task.name}"
+        message = f"""You have been assigned a new workflow task.
+
+Task: {task.name}
+Description: {task.description}
+Priority: {task.priority}
+Due Date: {task.due_date or 'Not specified'}
+Assigned by: {assigned_by.get_full_name()}
+
+Please log into EDMS to complete this task:
+http://localhost:3000/my-tasks
+
+Document Details:
+- Number: {notification_data['document_number']}
+"""
+        
+        send_mail(
+            subject,
+            message,
+            getattr(settings, 'DEFAULT_FROM_EMAIL', 'noreply@edms-project.com'),
+            [assignee.email],
+            fail_silently=True
+        )
+        
+        print(f"📧 Sent task assignment notification to {assignee.username}")
+        
+    except Exception as e:
+        print(f"⚠️ Failed to send task assignment notification (non-critical): {e}")
+        # Don't re-raise - notification failures shouldn't break workflow transitions
+    
+    def _send_task_notification_simple(self, task, assigned_by: User, assignee: User):
+        """Send simple email notification without database storage to avoid transaction issues."""
+        try:
+            from apps.scheduler.notification_service import notification_service
+            
+            subject = f"New Task Assigned: {task.name}"
+            message = f"""You have been assigned a new workflow task.
+
+Task: {task.name}
+Description: {task.description}
+Priority: {task.priority}
+Due Date: {task.due_date or 'Not specified'}
+Assigned by: {assigned_by.get_full_name()}
+
+Please log into EDMS to complete this task:
+http://localhost:3000/my-tasks
+
+Document Details:
+- Number: {task.task_data.get('document_number', 'Unknown')}
+"""
+            
+            # Use the correct notification service method signature
+            success = notification_service.send_immediate_notification(
+                recipients=[assignee],  # Pass list of User objects
+                subject=subject,
+                message=message,
+                notification_type='TASK_ASSIGNMENT'
+            )
+            
+            print(f"📧 Sent task notification to {assignee.username}: {success}")
+            
+        except Exception as e:
+            print(f"⚠️ Failed to send task notification: {e}")
+    
+    def _create_workflow_task_safe(self, workflow_id: int, state_code: str, assignee_id: int, transitioned_by_id: int, comment: str):
+        """Create workflow task safely after transaction commits."""
+        try:
+            from .models import DocumentWorkflow, DocumentState
+            from django.contrib.auth import get_user_model
+            
+            User = get_user_model()
+            
+            workflow = DocumentWorkflow.objects.get(id=workflow_id)
+            to_state = DocumentState.objects.get(code=state_code)
+            assignee = User.objects.get(id=assignee_id)
+            transitioned_by = User.objects.get(id=transitioned_by_id)
+            
+            # Create task without affecting the main transaction
+            task = self._create_workflow_task_for_assignee(workflow, to_state, assignee, transitioned_by, comment)
+            if task:
+                print(f"✅ Post-commit task creation successful")
+            
+        except Exception as e:
+            print(f"⚠️ Post-commit task creation failed (non-critical): {e}")
+    
+    def _create_workflow_task_for_assignee(self, workflow: DocumentWorkflow, to_state,
+                                           assignee: User, transitioned_by: User, comment: str):
+        """Create WorkflowTask when workflow is assigned to a user."""
+        try:
+            from .models import WorkflowTask, WorkflowInstance, WorkflowType
+            from django.contrib.contenttypes.models import ContentType
+            
+            # Get or create WorkflowInstance to bridge DocumentWorkflow and WorkflowTask
+            workflow_instance = self._get_or_create_workflow_instance(workflow, transitioned_by)
+            
+            # Determine task type based on state
+            task_type_map = {
+                'PENDING_REVIEW': 'REVIEW',
+                'PENDING_APPROVAL': 'APPROVE', 
+                'REVIEWED': 'REVIEW'
+            }
+            
+            task_type = task_type_map.get(to_state.code, 'REVIEW')
+            
+            # Create the task with proper schema alignment
+            task = WorkflowTask.objects.create(
+                workflow_instance=workflow_instance,  # Required field
+                name=f"Review Document - {workflow.document.document_number}",
+                description=f"Review document {workflow.document.document_number} - {workflow.document.title}",
+                task_type=task_type,
+                assigned_to=assignee,
+                assigned_by=transitioned_by,
+                status='PENDING',
+                priority='NORMAL',
+                due_date=workflow.due_date,
+                task_data={
+                    'document_uuid': str(workflow.document.uuid),
+                    'document_workflow_id': workflow.id,
+                    'document_number': workflow.document.document_number,
+                    'action_required': to_state.code,
+                    'comment': comment
+                },
+                metadata={
+                    'workflow_type': workflow.workflow_type,
+                    'current_state': to_state.code,
+                    'bridge_mode': 'document_workflow'  # Indicate this is bridged
+                }
+            )
+            
+            print(f"✅ Created workflow task {task.uuid} for {assignee.username}")
+            
+            # Send notification separately to avoid transaction rollback
+            try:
+                self._send_task_notification_simple(task, transitioned_by, assignee)
+            except Exception as notif_error:
+                print(f"⚠️ Task created but notification failed: {notif_error}")
+            
+            return task
+            
+        except Exception as e:
+            print(f"❌ Failed to create workflow task: {e}")
+            import traceback
+            traceback.print_exc()
+            return None
+    
+    def _get_or_create_workflow_instance(self, workflow: DocumentWorkflow, user: User):
+        """Get or create WorkflowInstance to bridge DocumentWorkflow and WorkflowTask systems."""
+        try:
+            from .models import WorkflowInstance, WorkflowType
+            from django.contrib.contenttypes.models import ContentType
+            
+            # Try to find existing WorkflowInstance for this document
+            document_ct = ContentType.objects.get_for_model(workflow.document)
+            
+            instance = WorkflowInstance.objects.filter(
+                content_type=document_ct,
+                object_id=str(workflow.document.uuid)
+            ).first()
+            
+            if not instance:
+                # Get or create workflow type
+                workflow_type, created = WorkflowType.objects.get_or_create(
+                    workflow_type='REVIEW',
+                    defaults={
+                        'name': 'Document Review Workflow',
+                        'description': 'Standard document review workflow',
+                        'created_by': user
+                    }
+                )
+                
+                # Create new WorkflowInstance
+                instance = WorkflowInstance.objects.create(
+                    workflow_type=workflow_type,
+                    content_type=document_ct,
+                    object_id=str(workflow.document.uuid),
+                    initiated_by=user,
+                    current_assignee=workflow.current_assignee,
+                    state=workflow.current_state.code,
+                    due_date=workflow.due_date,
+                    workflow_data={
+                        'document_workflow_id': workflow.id,
+                        'bridge_mode': True
+                    }
+                )
+                print(f"✅ Created WorkflowInstance bridge for document {workflow.document.document_number}")
+            
+            return instance
+            
+        except Exception as e:
+            print(f"❌ Failed to create WorkflowInstance: {e}")
+            import traceback
+            traceback.print_exc()
+            return None
     
     def _can_review(self, document: Document, user: User) -> bool:
         """Check if user can review document."""

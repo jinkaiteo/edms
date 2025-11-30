@@ -212,14 +212,20 @@ class DocumentListSerializer(serializers.ModelSerializer):
     approver_display = serializers.CharField(source='approver.get_full_name', read_only=True)
     status_display = serializers.CharField(source='get_status_display', read_only=True)
     
+    # Add username fields for frontend compatibility
+    author_username = serializers.CharField(source='author.username', read_only=True)
+    reviewer_username = serializers.CharField(source='reviewer.username', read_only=True)
+    approver_username = serializers.CharField(source='approver.username', read_only=True)
+    
     class Meta:
         model = Document
         fields = [
             'id', 'uuid', 'document_number', 'title', 'version_string',
             'status', 'status_display', 'document_type_display',
-            'author', 'author_display', 'reviewer', 'reviewer_display', 
-            'approver', 'approver_display', 'created_at', 'effective_date',
-            'is_controlled', 'requires_training',
+            'author', 'author_display', 'author_username',
+            'reviewer', 'reviewer_display', 'reviewer_username',
+            'approver', 'approver_display', 'approver_username',
+            'created_at', 'effective_date', 'is_controlled', 'requires_training',
             # Add file information for workflow button logic
             'file_name', 'file_path', 'file_size'
         ]

@@ -21,8 +21,8 @@ const BaseWorkflowModal: React.FC<BaseWorkflowModalProps> = ({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-lg shadow-xl max-w-4xl w-full mx-4 max-h-[90vh] overflow-hidden">
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] overflow-hidden flex flex-col">
         {/* Modal Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 bg-gray-50">
           <div>
@@ -83,8 +83,8 @@ const BaseWorkflowModal: React.FC<BaseWorkflowModalProps> = ({
           </div>
         </div>
 
-        {/* Modal Content */}
-        <div className="flex-1 overflow-y-auto">
+        {/* Modal Content - Scrollable Area */}
+        <div className="flex-1 overflow-y-auto min-h-0">
           {children}
         </div>
       </div>

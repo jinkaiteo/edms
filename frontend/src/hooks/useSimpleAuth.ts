@@ -24,7 +24,7 @@ export const useSimpleAuth = () => {
     
     try {
       // Make direct API call to login endpoint
-      const response = await fetch('http://localhost:8000/api/v1/auth/login/', {
+      const response = await fetch('/api/v1/auth/login/', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -59,7 +59,7 @@ export const useSimpleAuth = () => {
 
   const logout = async () => {
     try {
-      await fetch('http://localhost:8000/api/v1/auth/logout/', {
+      await fetch('/api/v1/auth/logout/', {
         method: 'POST',
         credentials: 'include',
       });

@@ -487,8 +487,8 @@ const DocumentCreateModal: React.FC<DocumentCreateModalProps> = ({
 
       // Use direct fetch for FormData uploads (create or update)
       const apiUrl = editDocument 
-        ? `http://localhost:8000/api/v1/documents/documents/${editDocument.uuid}/`
-        : 'http://localhost:8000/api/v1/documents/documents/';
+        ? `/api/v1/documents/documents/${editDocument.uuid}/`
+        : '/api/v1/documents/documents/';
       
       const method = editDocument ? 'PATCH' : 'POST';
       

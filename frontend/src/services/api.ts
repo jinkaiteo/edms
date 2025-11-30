@@ -39,7 +39,7 @@ class ApiService {
   private token: string | null = null;
 
   constructor() {
-    this.baseURL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:8000/api/v1';
+    this.baseURL = process.env.REACT_APP_API_URL || '/api/v1';
     
     this.client = axios.create({
       baseURL: this.baseURL,
@@ -260,7 +260,7 @@ class ApiService {
   }
 
   async getCurrentUser(): Promise<User> {
-    const response = await this.client.get<User>('/auth/user/');
+    const response = await this.client.get<User>('/auth/profile/');
     return response.data;
   }
 
@@ -478,7 +478,7 @@ class ApiService {
   // System Status
   async getApiStatus(): Promise<ApiStatus> {
     // Use the available health endpoint
-    const response = await axios.get('http://localhost:8000/health/', {
+    const response = await axios.get('/health/', {
       withCredentials: true,
       timeout: 5000
     });

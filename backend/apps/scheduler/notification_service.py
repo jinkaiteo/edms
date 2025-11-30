@@ -92,7 +92,7 @@ class NotificationService:
                                    notification_type: str = 'SYSTEM_ALERT',
                                    html_message: Optional[str] = None) -> bool:
         """
-        Send notification immediately without queuing.
+        Send notification immediately without queuing and store in database.
         
         Args:
             recipients: List of User objects
@@ -104,6 +104,8 @@ class NotificationService:
         Returns:
             Success status
         """
+        notifications_created = []
+        
         try:
             recipient_emails = [user.email for user in recipients if user.email]
             
@@ -111,6 +113,25 @@ class NotificationService:
                 logger.warning(f"No valid email addresses for {notification_type} notification")
                 return False
             
+            # Store notifications in database first
+            for user in recipients:
+                if user.email:
+                    try:
+                        notification = NotificationQueue.objects.create(
+                            subject=subject,
+                            message=message,
+                            notification_type=notification_type,
+                            priority='NORMAL',
+                            status='PENDING'
+                        )
+                        # Set many-to-many field after creation
+                        notification.recipients.set([user.email])
+                        notifications_created.append(notification)
+                        print(f"✅ Stored notification in database for {user.email}: {subject}")
+                    except Exception as db_error:
+                        logger.error(f"Failed to store notification in database: {db_error}")
+            
+            # Send email
             if html_message:
                 # Send HTML email
                 email = EmailMultiAlternatives(
@@ -131,11 +152,25 @@ class NotificationService:
                     fail_silently=False
                 )
             
+            # Update notification status to SENT
+            for notification in notifications_created:
+                notification.status = 'SENT'
+                notification.sent_at = timezone.now()
+                notification.save()
+            
             logger.info(f"Sent {notification_type} notification to {len(recipient_emails)} recipients")
+            print(f"✅ Email sent successfully to {len(recipient_emails)} recipients")
             return True
             
         except Exception as e:
             logger.error(f"Failed to send immediate notification: {e}")
+            
+            # Update notification status to FAILED
+            for notification in notifications_created:
+                notification.status = 'FAILED'
+                notification.error_message = str(e)
+                notification.save()
+            
             return False
     
     def send_document_effective_notification(self, document: Document) -> bool:

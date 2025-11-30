@@ -59,7 +59,8 @@ services:
       sh -c "sleep 10 &&
              python manage.py migrate --run-syncdb &&
              python manage.py collectstatic --noinput &&
-             python manage.py runserver 0.0.0.0:8000"
+             pip install daphne &&
+             daphne -b 0.0.0.0 -p 8000 edms.asgi:application"
 
   # Celery Worker
   celery_worker:
@@ -117,7 +118,9 @@ services:
     ports:
       - "3000:3000"
     environment:
-      - REACT_APP_API_URL=http://localhost:8000/api/v1
+      - REACT_APP_API_URL=/api/v1
+      - REACT_APP_WS_BASE_URL=/ws
+      - PROXY_TARGET=http://backend:8000
       - CHOKIDAR_USEPOLLING=true
     depends_on:
       - backend

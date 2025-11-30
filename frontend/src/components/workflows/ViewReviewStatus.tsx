@@ -86,14 +86,14 @@ const ViewReviewStatus: React.FC<ViewReviewStatusProps> = ({
       
       // Fetch workflow status and transitions
       const [workflowResponse, transitionsResponse] = await Promise.all([
-        fetch(`http://localhost:8000/api/v1/workflows/documents/${document.uuid}/status/`, {
+        fetch(`/api/v1/workflows/documents/${document.uuid}/status/`, {
           headers: {
             'Authorization': `Bearer ${localStorage.getItem('accessToken')}`,
             'Content-Type': 'application/json',
           },
         }).then(res => res.ok ? res.json() : null).catch(() => null),
         
-        fetch(`http://localhost:8000/api/v1/workflows/documents/${document.uuid}/history/`, {
+        fetch(`/api/v1/workflows/documents/${document.uuid}/history/`, {
           headers: {
             'Authorization': `Bearer ${localStorage.getItem('accessToken')}`,
             'Content-Type': 'application/json',

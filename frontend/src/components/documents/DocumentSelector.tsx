@@ -85,7 +85,7 @@ const DocumentSelector: React.FC<DocumentSelectorProps> = ({
         throw new Error('No authentication token found');
       }
 
-      const response = await fetch('http://localhost:8000/api/v1/documents/documents/', {
+      const response = await fetch('/api/v1/documents/documents/', {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json',

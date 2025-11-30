@@ -13,6 +13,8 @@ from django.db import transaction
 from .models import WorkflowTask, WorkflowNotification, DocumentWorkflow
 from ..scheduler.notification_service import notification_service
 from ..documents.models import Document
+from channels.layers import get_channel_layer
+import asyncio
 
 User = get_user_model()
 
@@ -110,16 +112,32 @@ The document has been returned to DRAFT status for revision.
                     notification_type=notification_type
                 )
                 
-                # Create workflow notification record
-                WorkflowNotification.objects.create(
-                    workflow_instance=workflow,
-                    notification_type='COMPLETION' if approved else 'REJECTION',
-                    recipient=document.author,
-                    subject=subject,
-                    message=message,
-                    status='SENT' if notification_success else 'FAILED',
-                    sent_at=timezone.now() if notification_success else None
-                )
+                # Create workflow notification record  
+                try:
+                    workflow_notification = WorkflowNotification.objects.create(
+                        workflow_instance=workflow,
+                        notification_type='COMPLETION' if approved else 'REJECTION',
+                        recipient=document.author,
+                        subject=subject,
+                        message=message,
+                        status='SENT' if notification_success else 'FAILED',
+                        sent_at=timezone.now() if notification_success else None
+                    )
+                    print(f"✅ Created WorkflowNotification record for review: {workflow_notification.id}")
+                    
+                    # Send real-time notification via WebSocket
+                    self._send_realtime_notification(document.author.id, {
+                        'id': str(workflow_notification.id),
+                        'subject': subject,
+                        'message': message,
+                        'notification_type': workflow_notification.notification_type,
+                        'priority': 'HIGH' if not approved else 'NORMAL',
+                        'status': 'SENT',
+                        'created_at': workflow_notification.created_at.isoformat()
+                    })
+                    
+                except Exception as wf_error:
+                    print(f"❌ Failed to create WorkflowNotification: {wf_error}")
                 
                 # Create task for author
                 task = WorkflowTask.objects.create(
@@ -297,12 +315,51 @@ The document has been returned to DRAFT status for revision.
             List of task dictionaries
         """
         try:
-            # Get active workflow tasks
+            # Get active workflow tasks - FIXED: Use ScheduledTask instead of WorkflowTask
+            from ..scheduler.models import ScheduledTask
+            
+            # Use our new ScheduledTask approach that actually works
+            scheduled_tasks = ScheduledTask.objects.filter(
+                task_type='workflow_task',
+                metadata__assignee=author.username,
+                status='PENDING'
+            ).order_by('-created_at')
+            
+            tasks = []
+            for task in scheduled_tasks:
+                metadata = task.metadata
+                task_data = {
+                    'id': str(task.uuid),
+                    'name': task.name,
+                    'description': task.description,
+                    'task_type': metadata.get('task_type', 'UNKNOWN'),
+                    'priority': metadata.get('priority', 'normal').upper(),
+                    'status': task.status,
+                    'created_at': task.created_at,
+                    'due_date': metadata.get('due_date'),
+                    'is_overdue': False,  # Calculate if needed
+                    'assigned_by': metadata.get('assigned_by', 'System'),
+                    'workflow_type': 'REVIEW',
+                    'document_id': metadata.get('document_id'),
+                    'document_uuid': metadata.get('document_uuid'),
+                    'document_number': metadata.get('document_number'),
+                    'document_title': metadata.get('document_title'),
+                    'document_status': metadata.get('state_code', 'UNKNOWN'),
+                    'document_version': 'v1.0'
+                }
+                tasks.append(task_data)
+            
+            return tasks
+            
+            # OLD CODE BELOW - KEEP FOR REFERENCE BUT DON'T EXECUTE
+            return []  # Early return to skip the old broken code
+            
+            # OLD BROKEN CODE (do not execute):
             active_tasks = WorkflowTask.objects.filter(
                 assigned_to=author,
                 status__in=['PENDING', 'IN_PROGRESS']
             ).select_related(
-                'workflow_instance__content_object',
+                'workflow_instance__content_object',  # This is what's failing
                 'assigned_by'
             ).order_by('-priority', 'due_date')
             
@@ -370,12 +427,32 @@ The document has been returned to DRAFT status for revision.
     def _get_active_workflow(self, document: Document) -> Optional[DocumentWorkflow]:
         """Get active workflow for a document."""
         try:
-            from .models_simple import DocumentWorkflow
-            return DocumentWorkflow.objects.filter(
+            from .models_simple import DocumentWorkflow as SimpleDocumentWorkflow
+            return SimpleDocumentWorkflow.objects.filter(
                 document=document
             ).order_by('-created_at').first()
         except:
             return None
+    
+    def _send_realtime_notification(self, user_id: int, notification_data: dict):
+        """Send real-time notification via WebSocket."""
+        try:
+            channel_layer = get_channel_layer()
+            if channel_layer:
+                # Send to user's notification group
+                asyncio.run_coroutine_threadsafe(
+                    channel_layer.group_send(
+                        f'notifications_{user_id}',
+                        {
+                            'type': 'notification_created',
+                            'notification': notification_data
+                        }
+                    ),
+                    asyncio.get_event_loop()
+                )
+                print(f"🔔 Sent real-time notification to user {user_id}")
+        except Exception as e:
+            print(f"⚠️ Failed to send real-time notification: {e}")
 
 
 # Service instance

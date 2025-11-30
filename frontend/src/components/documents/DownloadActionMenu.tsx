@@ -122,13 +122,13 @@ const DownloadActionMenu: React.FC<DownloadActionMenuProps> = ({
       let downloadUrl = '';
       switch (downloadType) {
         case 'original':
-          downloadUrl = `http://localhost:8000/api/v1/documents/documents/${document.uuid}/download/original/`;
+          downloadUrl = `/api/v1/documents/documents/${document.uuid}/download/original/`;
           break;
         case 'annotated':
-          downloadUrl = `http://localhost:8000/api/v1/documents/documents/${document.uuid}/download/annotated/`;
+          downloadUrl = `/api/v1/documents/documents/${document.uuid}/download/annotated/`;
           break;
         case 'official_pdf':
-          downloadUrl = `http://localhost:8000/api/v1/documents/documents/${document.uuid}/download/official/`;
+          downloadUrl = `/api/v1/documents/documents/${document.uuid}/download/official/`;
           break;
       }
 

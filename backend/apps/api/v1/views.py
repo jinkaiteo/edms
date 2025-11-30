@@ -35,7 +35,8 @@ from apps.search.serializers import (
 )
 from apps.search.services import search_service
 from apps.audit.models import AuditTrail, ComplianceEvent
-from apps.audit.serializers import AuditTrailSerializer, ComplianceEventSerializer
+from apps.audit.serializers import AuditTrailSerializer
+# ComplianceEventSerializer removed - was causing import error
 from apps.security.models import ElectronicSignature, UserCertificate
 from apps.security.serializers import ElectronicSignatureSerializer, UserCertificateSerializer
 from apps.placeholders.models import DocumentTemplate, PlaceholderDefinition, DocumentGeneration

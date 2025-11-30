@@ -196,7 +196,14 @@ const UnifiedWorkflowInterface: React.FC<UnifiedWorkflowInterfaceProps> = ({
         decision: decision
       });
 
-      const action = mode === 'review' ? 'complete_review' : 'approve_document';
+      // Handle workflow state logic for review mode
+      let action = mode === 'review' ? 'complete_review' : 'approve_document';
+      
+      // CRITICAL FIX: For review mode, check if we need to start review first
+      if (mode === 'review' && document.status === 'PENDING_REVIEW') {
+        console.log('🔄 Document is in PENDING_REVIEW, need to start review first');
+        action = 'start_review';
+      }
       
       const requestBody: any = {
         action: action,
@@ -210,9 +217,9 @@ const UnifiedWorkflowInterface: React.FC<UnifiedWorkflowInterfaceProps> = ({
       }
       
       console.log('📤 Request body:', requestBody);
-      console.log('🎯 API endpoint:', `http://localhost:8000/api/v1/documents/documents/${document.uuid}/workflow/`);
+      console.log('🎯 API endpoint:', `/api/v1/documents/documents/${document.uuid}/workflow/`);
       
-      const response = await fetch(`http://localhost:8000/api/v1/documents/documents/${document.uuid}/workflow/`, {
+      const response = await fetch(`/api/v1/documents/documents/${document.uuid}/workflow/`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -227,6 +234,38 @@ const UnifiedWorkflowInterface: React.FC<UnifiedWorkflowInterfaceProps> = ({
       if (response.ok) {
         const successData = await response.json();
         console.log('✅ Workflow submission successful:', successData);
+        
+        // CRITICAL FIX: Handle two-step review process
+        if (mode === 'review' && action === 'start_review') {
+          console.log('🔄 Review started, now completing the review...');
+          
+          // Automatically complete the review in the same interaction
+          const completeRequestBody = {
+            action: 'complete_review',
+            approved: decision === 'approve',
+            comment: comment
+          };
+          
+          console.log('📤 Completing review with:', completeRequestBody);
+          
+          const completeResponse = await fetch(`/api/v1/documents/documents/${document.uuid}/workflow/`, {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${token}`,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(completeRequestBody)
+          });
+          
+          if (completeResponse.ok) {
+            const completeData = await completeResponse.json();
+            console.log('✅ Review completion successful:', completeData);
+          } else {
+            const completeError = await completeResponse.json().catch(() => ({ error: 'Failed to complete review' }));
+            console.error('❌ Failed to complete review:', completeError);
+            throw new Error(completeError.error || 'Failed to complete review');
+          }
+        }
         
         // Dispatch update event
         window.dispatchEvent(new CustomEvent('documentUpdated', { 
@@ -266,7 +305,7 @@ const UnifiedWorkflowInterface: React.FC<UnifiedWorkflowInterfaceProps> = ({
       subtitle={currentConfig.subtitle}
       document={document}
     >
-      <div className="p-6 space-y-6">
+      <div className="p-6 space-y-6 overflow-y-auto">
         {/* Error Display */}
         {error && (
           <div className="bg-red-50 border border-red-200 rounded-md p-4">

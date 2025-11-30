@@ -49,9 +49,8 @@ const DocumentManagement: React.FC = () => {
   const handleDocumentRefresh = useCallback(async () => {
     // Refresh the currently selected document with latest data from API
     if (selectedDocument && selectedDocument.uuid) {
-      console.log('🔄 DocumentManagement: Refreshing selected document data...');
       try {
-        const response = await fetch(`http://localhost:8000/api/v1/documents/documents/${selectedDocument.uuid}/`, {
+        const response = await fetch(`/api/v1/documents/documents/${selectedDocument.uuid}/`, {
           headers: {
             'Authorization': `Bearer ${localStorage.getItem('accessToken')}`,
             'Content-Type': 'application/json',

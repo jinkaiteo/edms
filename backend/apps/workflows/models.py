@@ -442,6 +442,10 @@ class WorkflowNotification(models.Model):
     status = models.CharField(max_length=20, choices=NOTIFICATION_STATUS, default='PENDING')
     error_message = models.TextField(blank=True)
     
+    # Read status for in-app notifications
+    is_read = models.BooleanField(default=False)
+    read_at = models.DateTimeField(null=True, blank=True)
+    
     # Channels (email, in-app, etc.)
     channels = models.JSONField(default=list, blank=True)
     

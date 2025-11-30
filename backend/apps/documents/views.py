@@ -1036,7 +1036,9 @@ class DocumentViewSet(viewsets.ModelViewSet):
             )
         
         try:
-            if action_type == 'submit_review':
+            if action_type == 'submit_for_review':
+                return self._handle_submit_for_review(document, request)
+            elif action_type == 'submit_review':
                 return self._handle_submit_review(document, request)
             elif action_type == 'route_for_approval':
                 return self._handle_route_for_approval(document, request)
@@ -1056,6 +1058,102 @@ class DocumentViewSet(viewsets.ModelViewSet):
             
             return Response(
                 {'error': f'Workflow action failed: {str(e)}'},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+    
+    def _handle_submit_for_review(self, document, request):
+        """Handle submitting document for review (author action)."""
+        print(f"🚀 API DEBUG: _handle_submit_for_review called")
+        print(f"📄 API DEBUG: Document {document.document_number} (UUID: {document.uuid})")
+        print(f"📄 API DEBUG: Current status: {document.status}")
+        print(f"👤 API DEBUG: Author: {document.author.username}, Reviewer: {document.reviewer.username if document.reviewer else 'None'}")
+        print(f"🔐 API DEBUG: Request user: {request.user.username}")
+        
+        # Validate that user is document author
+        if document.author != request.user:
+            print(f"❌ API DEBUG: Authorization failed - user {request.user.username} is not author {document.author.username}")
+            return Response(
+                {'error': 'Only the document author can submit for review'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+        
+        # Validate document status
+        if document.status != 'DRAFT':
+            print(f"❌ API DEBUG: Invalid status - expected DRAFT, got {document.status}")
+            return Response(
+                {'error': f'Only DRAFT documents can be submitted for review. Current status: {document.status}'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # Validate reviewer assignment
+        if not document.reviewer:
+            print(f"❌ API DEBUG: No reviewer assigned")
+            return Response(
+                {'error': 'Reviewer must be assigned before submission'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        print(f"✅ API DEBUG: All validations passed, calling workflow service...")
+        
+        # Use the workflow service to handle the submission
+        try:
+            from apps.workflows.services import get_simple_workflow_service
+            workflow_service = get_simple_workflow_service()
+            
+            comment = request.data.get('comment', 'Document submitted for review')
+            print(f"💬 API DEBUG: Comment: {comment}")
+            
+            print(f"🔄 API DEBUG: Calling workflow_service.submit_for_review...")
+            # Submit for review using the working workflow service
+            success = workflow_service.submit_for_review(document, request.user, comment)
+            print(f"📊 API DEBUG: Workflow service returned: {success}")
+            
+            # Refresh document to get updated status and verify the transition actually happened
+            document.refresh_from_db()
+            print(f"📊 API DEBUG: Document status after refresh: {document.status}")
+            
+            # CRITICAL: Verify the workflow transition actually succeeded by checking document status
+            if success and document.status == 'PENDING_REVIEW':
+                print(f"🎉 API DEBUG: Success! Document transitioned to PENDING_REVIEW")
+                return Response({
+                    'success': True,
+                    'message': 'Document successfully submitted for review',
+                    'status': document.status,
+                    'reviewer': document.reviewer.username if document.reviewer else None,
+                    'workflow_status': {
+                        'current_state': 'PENDING_REVIEW',
+                        'assigned_to': document.reviewer.username if document.reviewer else None
+                    }
+                }, status=status.HTTP_200_OK)
+            else:
+                # The workflow service failed silently - provide detailed error
+                print(f"❌ API DEBUG: Workflow service returned {success} but document status is {document.status}")
+                
+                # Check workflow state for more details
+                from apps.workflows.models import DocumentWorkflow
+                workflow = DocumentWorkflow.objects.filter(document=document).first()
+                if workflow:
+                    print(f"📊 API DEBUG: Workflow exists - state: {workflow.current_state.code}, assignee: {workflow.current_assignee.username if workflow.current_assignee else 'None'}")
+                else:
+                    print(f"📊 API DEBUG: No workflow found for document")
+                
+                return Response({
+                    'success': False,
+                    'error': f'Workflow transition failed silently. Document status: {document.status}, Expected: PENDING_REVIEW',
+                    'debug_info': {
+                        'workflow_service_result': success,
+                        'document_status': document.status,
+                        'expected_status': 'PENDING_REVIEW'
+                    }
+                }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+                
+        except Exception as e:
+            print(f"❌ Workflow submission error: {e}")
+            import traceback
+            traceback.print_exc()
+            
+            return Response(
+                {'error': f'Workflow submission failed: {str(e)}'},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
     
@@ -1304,6 +1402,44 @@ Action Required: Review the document and either approve or reject with comments.
         old_status = document.status
         if decision == 'approve':
             document.status = 'APPROVED_AND_EFFECTIVE'
+            
+            # Create notification for document author
+            try:
+                from apps.workflows.models import WorkflowNotification
+                from django.utils import timezone
+                
+                notification = WorkflowNotification.objects.create(
+                    notification_type='COMPLETION',
+                    recipient=document.author,
+                    subject=f'Document Approved: {document.document_number}',
+                    message=f'Congratulations! Your document "{document.title}" (ID: {document.document_number}) has been approved and is now effective{f" as of {effective_date}" if effective_date else ""}. Approver comment: {comments or "No comment provided."}',
+                    status='SENT',
+                    sent_at=timezone.now(),
+                    is_read=False
+                )
+                
+                # Send real-time notification
+                try:
+                    from apps.workflows.author_notifications import author_notification_service
+                    service = author_notification_service
+                    
+                    service._send_realtime_notification(document.author.id, {
+                        'id': str(notification.id),
+                        'subject': notification.subject,
+                        'message': notification.message,
+                        'notification_type': notification.notification_type,
+                        'priority': 'HIGH',
+                        'status': 'SENT',
+                        'created_at': notification.created_at.isoformat()
+                    })
+                    
+                    print(f"✅ Approval notification sent to {document.author.username}")
+                    
+                except Exception as rt_error:
+                    print(f"⚠️ Real-time notification failed: {rt_error}")
+                    
+            except Exception as notif_error:
+                print(f"❌ Failed to create approval notification: {notif_error}")
             if effective_date:
                 from django.utils.dateparse import parse_date
                 document.effective_date = parse_date(effective_date) or timezone.now().date()
@@ -1576,6 +1712,97 @@ class DocumentWorkflowView(APIView):
         
         document.status = 'PENDING_REVIEW'
         document.save()
+        
+        # Create notification and task for reviewer
+        try:
+            from apps.workflows.models import WorkflowNotification, WorkflowTask, WorkflowInstance
+            from django.utils import timezone
+            
+            if document.reviewer:
+                # Create or get workflow instance using correct fields
+                from django.contrib.contenttypes.models import ContentType
+                document_content_type = ContentType.objects.get_for_model(Document)
+                
+                # Get or create a default workflow type
+                from apps.workflows.models import WorkflowType
+                workflow_type = WorkflowType.objects.filter(name__icontains='Review').first()
+                if not workflow_type:
+                    workflow_type, _ = WorkflowType.objects.get_or_create(
+                        name='Document Review Workflow',
+                        defaults={
+                            'description': 'Basic document review workflow',
+                            'workflow_type': 'REVIEW',
+                            'is_active': True,
+                            'created_by': request.user
+                        }
+                    )
+                
+                workflow_instance, created = WorkflowInstance.objects.get_or_create(
+                    content_type=document_content_type,
+                    object_id=document.id,
+                    defaults={
+                        'workflow_type': workflow_type,
+                        'is_active': True,
+                        'initiated_by': request.user,
+                        'state': 'PENDING_REVIEW',
+                        'started_at': timezone.now()
+                    }
+                )
+                
+                # Create WorkflowTask for reviewer
+                workflow_task = WorkflowTask.objects.create(
+                    workflow_instance=workflow_instance,
+                    name=f'Review Document: {document.document_number}',
+                    description=f'Review document "{document.title}" and provide feedback. Author comment: {comment or "No comment provided."}',
+                    task_type='REVIEW',
+                    priority='HIGH',
+                    assigned_to=document.reviewer,
+                    assigned_by=request.user,
+                    assigned_at=timezone.now(),
+                    due_date=timezone.now() + timezone.timedelta(days=5),
+                    status='PENDING'
+                )
+                
+                # Create notification for reviewer
+                notification = WorkflowNotification.objects.create(
+                    notification_type='ASSIGNMENT',
+                    recipient=document.reviewer,
+                    subject=f'Review Assignment: {document.document_number}',
+                    message=f'You have been assigned to review document "{document.title}" (ID: {document.document_number}). Please complete the review within the specified timeframe. Author comment: {comment or "No comment provided."}',
+                    status='SENT',
+                    sent_at=timezone.now(),
+                    is_read=False
+                )
+                
+                # Send real-time notification
+                try:
+                    from apps.workflows.author_notifications import author_notification_service
+                    service = author_notification_service
+                    
+                    service._send_realtime_notification(document.reviewer.id, {
+                        'id': str(notification.id),
+                        'subject': notification.subject,
+                        'message': notification.message,
+                        'notification_type': notification.notification_type,
+                        'priority': 'HIGH',
+                        'status': 'SENT',
+                        'created_at': notification.created_at.isoformat()
+                    })
+                    
+                    print(f"✅ Review notification and task created for {document.reviewer.username}")
+                    print(f"   WorkflowTask ID: {workflow_task.id}")
+                    print(f"   Notification ID: {notification.id}")
+                    
+                except Exception as rt_error:
+                    print(f"⚠️ Real-time notification failed: {rt_error}")
+                    
+            else:
+                print(f"⚠️ No reviewer assigned to document {document.document_number}")
+                
+        except Exception as notif_error:
+            print(f"❌ Failed to create review notification/task: {notif_error}")
+            import traceback
+            traceback.print_exc()
         
         # Add comment if provided
         if comment:
