@@ -73,8 +73,23 @@ class SimpleDocumentWorkflowAPIView(APIView):
                 approved = request.data.get('approved', True)
                 result = lifecycle_service.complete_review(document, request.user, approved, comment)
             elif action_type == 'approve_document':
+                approved = request.data.get('approved', True)
                 effective_date = request.data.get('effective_date')
-                result = lifecycle_service.approve_document(document, request.user, comment, effective_date)
+                
+                # APPROVAL REJECTION DEBUG LOGS
+                print(f"🔥 APPROVAL DEBUG: action_type = {action_type}")
+                print(f"🔥 APPROVAL DEBUG: raw request.data = {request.data}")
+                print(f"🔥 APPROVAL DEBUG: approved = {approved} (type: {type(approved)})")
+                print(f"🔥 APPROVAL DEBUG: effective_date = {effective_date}")
+                print(f"🔥 APPROVAL DEBUG: comment = {comment}")
+                print(f"🔥 APPROVAL DEBUG: user = {request.user.username}")
+                print(f"🔥 APPROVAL DEBUG: document = {document.document_number}")
+                print(f"🔥 APPROVAL DEBUG: document status = {document.status}")
+                
+                # Call the enhanced approve_document method
+                print(f"🔥 APPROVAL DEBUG: Calling approve_document with approved={approved}")
+                result = lifecycle_service.approve_document(document, request.user, effective_date, comment, approved)
+                print(f"🔥 APPROVAL DEBUG: approve_document result = {result}")
             elif action_type == 'make_effective':
                 result = lifecycle_service.make_effective(document, request.user, comment)
             elif action_type == 'terminate_workflow':
@@ -193,10 +208,21 @@ class SimpleDocumentWorkflowAPIView(APIView):
                         'status': 'scheduled_for_obsolescence'
                     })
             elif action_type == 'obsolete_document_directly':
+                # OBSOLESCENCE DEBUG LOGGING
+                print(f"🔥 OBSOLESCENCE DEBUG: Starting obsolescence process")
+                print(f"🔥 OBSOLESCENCE DEBUG: Document = {document.document_number} (UUID: {document.uuid})")
+                print(f"🔥 OBSOLESCENCE DEBUG: Document Status = {document.status}")
+                print(f"🔥 OBSOLESCENCE DEBUG: User = {request.user.username}")
+                print(f"🔥 OBSOLESCENCE DEBUG: Raw request data = {request.data}")
+                
                 reason = request.data.get('reason')
                 obsolescence_date = request.data.get('obsolescence_date')  # Required
                 
+                print(f"🔥 OBSOLESCENCE DEBUG: Reason = {reason}")
+                print(f"🔥 OBSOLESCENCE DEBUG: Obsolescence date = {obsolescence_date}")
+                
                 if not reason:
+                    print(f"🔥 OBSOLESCENCE DEBUG: ERROR - No reason provided")
                     return Response({
                         'error': 'Reason for obsolescence is required'
                     }, status=status.HTTP_400_BAD_REQUEST)
@@ -220,32 +246,53 @@ class SimpleDocumentWorkflowAPIView(APIView):
                     }, status=status.HTTP_400_BAD_REQUEST)
                 
                 # Check user authority
+                print(f"🔥 OBSOLESCENCE DEBUG: Checking user authority...")
+                print(f"🔥 OBSOLESCENCE DEBUG: Document approver = {document.approver.username if document.approver else None}")
+                print(f"🔥 OBSOLESCENCE DEBUG: User is approver = {request.user == document.approver}")
+                print(f"🔥 OBSOLESCENCE DEBUG: User is staff = {request.user.is_staff}")
+                print(f"🔥 OBSOLESCENCE DEBUG: User is superuser = {request.user.is_superuser}")
+                
                 has_authority = (
                     request.user == document.approver or  # Document approver
                     request.user.is_staff or  # System admin
                     request.user.is_superuser  # Superuser
                 )
                 
+                print(f"🔥 OBSOLESCENCE DEBUG: Has authority = {has_authority}")
+                
                 if not has_authority:
+                    print(f"🔥 OBSOLESCENCE DEBUG: ERROR - No authority")
                     return Response({
                         'error': 'You do not have authority to obsolete this document'
                     }, status=status.HTTP_403_FORBIDDEN)
                 
                 try:
+                    print(f"🔥 OBSOLESCENCE DEBUG: Calling obsolete_document_directly method...")
                     result = lifecycle_service.obsolete_document_directly(
                         document, request.user, reason, obsolescence_date_obj
                     )
+                    print(f"🔥 OBSOLESCENCE DEBUG: Method result = {result}")
+                    
                     if result:
+                        print(f"🔥 OBSOLESCENCE DEBUG: SUCCESS - Obsolescence scheduled")
                         return Response({
                             'success': True,
                             'message': 'Document scheduled for obsolescence successfully',
                             'obsolescence_date': obsolescence_date,
                             'status': 'scheduled_for_obsolescence'
                         })
+                    else:
+                        print(f"🔥 OBSOLESCENCE DEBUG: ERROR - Method returned False")
+                        
                 except ValidationError as ve:
+                    print(f"🔥 OBSOLESCENCE DEBUG: VALIDATION ERROR - {ve}")
                     return Response({
                         'error': str(ve)
                     }, status=status.HTTP_400_BAD_REQUEST)
+                except Exception as e:
+                    print(f"🔥 OBSOLESCENCE DEBUG: UNEXPECTED ERROR - {e}")
+                    import traceback
+                    traceback.print_exc()
             elif action_type == 'approve_obsolescence':
                 result = lifecycle_service.approve_obsolescence(document, request.user, comment)
                 if result:

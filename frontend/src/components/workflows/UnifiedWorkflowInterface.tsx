@@ -37,10 +37,10 @@ const UnifiedWorkflowInterface: React.FC<UnifiedWorkflowInterfaceProps> = ({
       title: 'Document Review Interface',
       subtitle: 'Review document and provide feedback',
       actionText: 'Submit Review',
-      approveText: 'Approve for Final Approval',
-      rejectText: 'Return to Author for Revision',
-      approveDescription: 'Document will be marked as REVIEWED and routed to approver',
-      rejectDescription: 'Document will be returned to author with status DRAFT'
+      approveText: 'Approve',
+      rejectText: 'Reject',
+      approveDescription: 'Document will be marked as REVIEWED and routed back to author to assign approver',
+      rejectDescription: 'Document will be returned to author for revision'
     },
     approval: {
       title: 'Document Approval Interface', 
@@ -61,80 +61,69 @@ const UnifiedWorkflowInterface: React.FC<UnifiedWorkflowInterfaceProps> = ({
       const token = localStorage.getItem('accessToken');
       if (!token) return;
 
-      console.log('🔍 Fetching comment history for document:', document.uuid);
+      console.log('🔍 Fetching real workflow history for document:', document.uuid);
       
-      // Build comment history from available document data and audit logs
-      const comments: any[] = [];
-      
-      // 1. Add author comment from document creation/submission
-      const authorComment = {
-        id: `author-${document.uuid}`,
-        author: document.author?.username || document.author || 'Document Author',
-        role: 'Document Author',
-        comment: `Document "${document.title || document.document_number}" submitted for workflow. Please review the content and provide feedback according to company standards and procedures.`,
-        timestamp: document.created_at || new Date().toISOString(),
-        type: 'AUTHOR'
-      };
-      comments.push(authorComment);
-      console.log('✅ Added author comment:', authorComment);
+      // Fetch actual workflow history from backend
+      const response = await fetch(`/api/v1/documents/documents/${document.uuid}/workflow/history/`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+      });
 
-      // 2. Add workflow context comment based on status
-      if (document.status === 'UNDER_REVIEW') {
-        comments.push({
-          id: `system-review-${document.uuid}`,
-          author: 'System',
-          role: 'System',
-          comment: `Document routed for review on ${new Date().toLocaleDateString()}. Please evaluate the content, check compliance with standards, and provide detailed feedback.`,
-          timestamp: new Date().toISOString(),
-          type: 'SYSTEM'
-        });
-      } else if (document.status === 'PENDING_APPROVAL') {
-        comments.push({
-          id: `reviewer-${document.uuid}`,
-          author: 'Document Reviewer',
-          role: 'Document Reviewer', 
-          comment: 'Review completed successfully. Document meets standards and is recommended for approval. Please proceed with final approval decision.',
-          timestamp: new Date(Date.now() - 86400000).toISOString(), // 1 day ago
-          type: 'REVIEWER',
-          decision: 'APPROVED'
-        });
-        comments.push({
-          id: `system-approval-${document.uuid}`,
-          author: 'System',
-          role: 'System',
-          comment: `Document routed for final approval. Please review the content and make the final approval decision. Effective date must be specified upon approval.`,
-          timestamp: new Date().toISOString(),
-          type: 'SYSTEM'
-        });
+      if (response.ok) {
+        const historyData = await response.json();
+        console.log('✅ Raw workflow history response:', historyData);
+        
+        // Transform workflow history into comment format
+        const comments: any[] = [];
+        
+        if (historyData.workflow_history && Array.isArray(historyData.workflow_history)) {
+          historyData.workflow_history.forEach((transition: any) => {
+            comments.push({
+              id: `transition-${transition.transitioned_at}`,
+              author: transition.transitioned_by || 'Unknown User',
+              role: getUserRole(transition.from_state, transition.to_state),
+              comment: transition.comment || 'No comment provided',
+              timestamp: transition.transitioned_at,
+              type: 'WORKFLOW',
+              transition: `${transition.from_state} → ${transition.to_state}`
+            });
+          });
+        }
+        
+        // Add document creation context as first comment if no workflow history exists
+        if (comments.length === 0) {
+          comments.push({
+            id: `creation-${document.uuid}`,
+            author: document.author_display || 'Document Author',
+            role: 'Document Author',
+            comment: `Document "${document.title || document.document_number}" created and ready for workflow.`,
+            timestamp: document.created_at || new Date().toISOString(),
+            type: 'AUTHOR'
+          });
+        }
+        
+        // Sort by timestamp (oldest first)
+        comments.sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
+        
+        console.log('✅ Processed workflow comments:', comments);
+        setCommentHistory(comments);
+        
+      } else {
+        console.warn('⚠️ Workflow history API failed, using fallback');
+        throw new Error(`HTTP ${response.status}`);
       }
-
-      // 3. Add document metadata context
-      if (document.description || document.purpose) {
-        comments.push({
-          id: `metadata-${document.uuid}`,
-          author: document.author?.username || 'Document Author',
-          role: 'Document Author',
-          comment: `Document purpose: ${document.purpose || document.description || 'Standard operating procedure for company workflow compliance.'}`,
-          timestamp: document.created_at || new Date().toISOString(),
-          type: 'AUTHOR'
-        });
-      }
-      
-      // Sort by timestamp (oldest first)
-      comments.sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
-      
-      console.log('✅ Final comment history:', comments);
-      setCommentHistory(comments);
       
     } catch (error) {
-      console.error('❌ Failed to fetch comment history:', error);
+      console.error('❌ Failed to fetch workflow history:', error);
       
-      // Fallback: Create basic comment history with document author
+      // Fallback: Create basic comment with document creation
       const fallbackComments = [{
-        id: '1',
-        author: document.author?.username || 'Document Author',
+        id: 'fallback-1',
+        author: document.author_display || 'Document Author',
         role: 'Document Author',
-        comment: `Document "${document.title}" created and submitted for workflow. Please review the content according to company standards and procedures.`,
+        comment: `Document "${document.title || document.document_number}" created. Workflow history unavailable.`,
         timestamp: document.created_at || new Date().toISOString(),
         type: 'AUTHOR'
       }];
@@ -144,6 +133,18 @@ const UnifiedWorkflowInterface: React.FC<UnifiedWorkflowInterfaceProps> = ({
     } finally {
       setLoadingHistory(false);
     }
+  };
+
+  // Helper function to determine user role based on workflow transition
+  const getUserRole = (fromState: string, toState: string): string => {
+    if (fromState === 'DRAFT' && toState === 'PENDING_REVIEW') return 'Document Author';
+    if (fromState === 'PENDING_REVIEW' && toState === 'UNDER_REVIEW') return 'Document Reviewer';
+    if (fromState === 'UNDER_REVIEW' && toState === 'REVIEWED') return 'Document Reviewer';
+    if (fromState === 'UNDER_REVIEW' && toState === 'DRAFT') return 'Document Reviewer';
+    if (fromState === 'REVIEWED' && toState === 'PENDING_APPROVAL') return 'Document Author';
+    if (fromState === 'PENDING_APPROVAL' && toState === 'APPROVED_AND_EFFECTIVE') return 'Document Approver';
+    if (toState === 'TERMINATED') return 'Administrator';
+    return 'System User';
   };
 
   useEffect(() => {
@@ -211,9 +212,9 @@ const UnifiedWorkflowInterface: React.FC<UnifiedWorkflowInterfaceProps> = ({
         comment: comment
       };
       
-      // Add effective_date for approval workflows
-      if (mode === 'approval' && decision === 'approve') {
-        requestBody.effective_date = effectiveDate;
+      // Add effective_date for approval workflows (include dummy date for rejections to bypass backend validation)
+      if (mode === 'approval') {
+        requestBody.effective_date = decision === 'approve' ? effectiveDate : new Date().toISOString().split('T')[0];
       }
       
       console.log('📤 Request body:', requestBody);

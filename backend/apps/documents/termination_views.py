@@ -12,7 +12,7 @@ from django.shortcuts import get_object_or_404
 from django.utils import timezone
 
 from .models import Document
-from .serializers import DocumentListSerializer as DocumentSerializer
+from .serializers import DocumentListSerializer
 
 
 @api_view(['POST'])
@@ -57,7 +57,7 @@ def terminate_document(request, document_id):
         document.terminate_document(request.user, reason)
         
         # Return updated document
-        serializer = DocumentSerializer(document)
+        serializer = DocumentListSerializer(document)
         
         return Response({
             'message': f'Document {document.document_number} has been terminated',

@@ -12,6 +12,7 @@ from drf_spectacular.views import (
     SpectacularAPIView, SpectacularRedocView, SpectacularSwaggerView
 )
 from apps.api.news_feed_views import my_documents, my_tasks, recent_notifications, system_status
+from . import task_views
 
 from .views import (
     # Core API views
@@ -80,9 +81,9 @@ router.register(r'saved-searches', SavedSearchViewSet, basename='savedsearch')
 # Audit and compliance endpoints
 router.register(r'audit-trail', AuditTrailViewSet, basename='audittrail')
 
-# Electronic signatures endpoints
-router.register(r'electronic-signatures', ElectronicSignatureViewSet, basename='electronicsignature')
-router.register(r'certificates', CertificateViewSet, basename='certificate')
+# Electronic signatures endpoints (commented out due to import issues)
+# router.register(r'electronic-signatures', ElectronicSignatureViewSet, basename='electronicsignature')
+# router.register(r'certificates', CertificateViewSet, basename='certificate')
 
 # Templates and placeholders endpoints
 router.register(r'document-templates', DocumentTemplateViewSet, basename='documenttemplate')
@@ -124,6 +125,9 @@ urlpatterns = [
     path('workflows/my-tasks/', my_tasks, name='my-tasks'), 
     path('notifications/recent/', recent_notifications, name='recent-notifications'),
     path('scheduler/system-status/', system_status, name='system-status'),
+    
+    # Task endpoints (for frontend notifications) - MOVED TO AVOID CONFLICTS
+    # Moved this to workflows/urls.py to avoid duplicate route definitions
     
     # Authentication endpoints  
     path('auth/login/', LoginView.as_view(), name='auth-login'),

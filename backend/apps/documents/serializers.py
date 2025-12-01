@@ -243,6 +243,11 @@ class DocumentDetailSerializer(serializers.ModelSerializer):
     status_display = serializers.CharField(source='get_status_display', read_only=True)
     priority_display = serializers.CharField(source='get_priority_display', read_only=True)
     
+    # Add username fields for frontend compatibility
+    author_username = serializers.CharField(source='author.username', read_only=True)
+    reviewer_username = serializers.CharField(source='reviewer.username', read_only=True)
+    approver_username = serializers.CharField(source='approver.username', read_only=True)
+    
     # Related objects (custom methods to filter active only)
     dependencies = serializers.SerializerMethodField()
     dependents = serializers.SerializerMethodField()
@@ -261,8 +266,9 @@ class DocumentDetailSerializer(serializers.ModelSerializer):
             'uuid', 'document_number', 'title', 'description', 'keywords',
             'version_major', 'version_minor', 'version_string',
             'document_type', 'document_source', 'status', 'status_display',
-            'priority', 'priority_display', 'author', 'author_display',
-            'reviewer', 'reviewer_display', 'approver', 'approver_display',
+            'priority', 'priority_display', 'author', 'author_display', 'author_username',
+            'reviewer', 'reviewer_display', 'reviewer_username',
+            'approver', 'approver_display', 'approver_username',
             'file_name', 'file_path', 'file_size', 'file_checksum', 'mime_type',
             'is_encrypted', 'created_at', 'updated_at', 'review_date',
             'approval_date', 'effective_date', 'review_due_date', 'obsolete_date',

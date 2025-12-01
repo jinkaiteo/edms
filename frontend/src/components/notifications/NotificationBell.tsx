@@ -1,25 +1,46 @@
 import React from 'react';
+import { useSimpleNotifications } from '../../hooks/useSimpleNotifications.ts';
 
 interface NotificationBellProps {
   className?: string;
 }
 
 /**
- * Temporary simplified NotificationBell - no hook dependencies
- * This allows the system to work while we resolve the hook import issues
+ * Enhanced NotificationBell - now shows actual task counts with loading states
+ * Uses simplified HTTP polling for reliable notification updates
  */
 export const NotificationBell: React.FC<NotificationBellProps> = ({ className = '' }) => {
+  const { taskCount, loading, error } = useSimpleNotifications();
+  
   const handleBellClick = () => {
-    // Simple redirect to tasks page instead of complex hook logic
+    // Redirect to tasks page to view actual tasks
     window.location.href = '/my-tasks';
   };
+
+  const getBadgeContent = () => {
+    if (loading) return '⟳';
+    if (error) return '!';
+    if (taskCount > 0) return taskCount > 99 ? '99+' : taskCount.toString();
+    return null; // No badge if no tasks
+  };
+
+  const getBadgeColor = () => {
+    if (error) return 'bg-red-600';
+    if (loading) return 'bg-gray-400';
+    if (taskCount > 0) return 'bg-blue-600';
+    return 'bg-gray-400';
+  };
+
+  const badgeContent = getBadgeContent();
+  const badgeColor = getBadgeColor();
 
   return (
     <div className={`relative ${className}`}>
       <button
         onClick={handleBellClick}
         className="relative p-2 text-gray-600 hover:text-gray-800 focus:outline-none focus:text-gray-800"
-        aria-label="View my tasks"
+        aria-label={`View my tasks${taskCount > 0 ? ` (${taskCount} pending)` : ''}`}
+        title={error ? 'Error loading notifications' : `${taskCount} pending tasks`}
       >
         {/* Bell Icon */}
         <svg
@@ -36,10 +57,12 @@ export const NotificationBell: React.FC<NotificationBellProps> = ({ className = 
           />
         </svg>
 
-        {/* Simple badge - shows "!" to indicate tasks may be available */}
-        <span className="absolute top-0 right-0 inline-flex items-center justify-center px-2 py-1 text-xs font-bold leading-none text-white transform translate-x-1/2 -translate-y-1/2 bg-blue-600 rounded-full">
-          !
-        </span>
+        {/* Dynamic badge - shows actual task count, loading state, or error */}
+        {badgeContent && (
+          <span className={`absolute top-0 right-0 inline-flex items-center justify-center px-2 py-1 text-xs font-bold leading-none text-white transform translate-x-1/2 -translate-y-1/2 ${badgeColor} rounded-full min-w-[20px] h-5`}>
+            {badgeContent}
+          </span>
+        )}
       </button>
     </div>
   );

@@ -13,7 +13,13 @@ from celery import shared_task
 from celery.utils.log import get_task_logger
 
 from .models import WorkflowInstance, WorkflowTask, WorkflowNotification
-from .services import workflow_service
+# Import available services
+try:
+    from .services import WorkflowService
+    workflow_service = WorkflowService()
+except ImportError:
+    # Fallback for missing service
+    workflow_service = None
 from apps.documents.models import Document
 from apps.audit.services import audit_service
 

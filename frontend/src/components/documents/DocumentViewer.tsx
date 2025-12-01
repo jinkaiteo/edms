@@ -1469,6 +1469,7 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({
         <MarkObsoleteModal
           isOpen={showMarkObsoleteModal}
           onClose={() => setShowMarkObsoleteModal(false)}
+          onSuccess={handleObsolescenceInitiated}
           document={document}
           onObsolescenceInitiated={handleObsolescenceInitiated}
         />

@@ -324,7 +324,7 @@ class DocumentLifecycleService:
         )
 
     def approve_document(self, document: Document, user: User, 
-                        effective_date: date, comment: str = '') -> bool:
+                        effective_date: date, comment: str = '', approved: bool = True) -> bool:
         """
         Approve document with required effective date (PENDING_APPROVAL → APPROVED_PENDING_EFFECTIVE or APPROVED_AND_EFFECTIVE).
         
@@ -341,7 +341,7 @@ class DocumentLifecycleService:
         if not workflow:
             raise ValidationError("No active workflow found for document")
         
-        # Validate user can approve
+        # Validate user can approve/reject
         if not self._can_approve(document, user):
             raise ValidationError("User is not authorized to approve this document")
         
@@ -349,7 +349,11 @@ class DocumentLifecycleService:
         if workflow.current_state.code != 'PENDING_APPROVAL':
             raise ValidationError(f"Cannot approve from state: {workflow.current_state.code}")
         
-        # Validate effective_date is provided
+        # Handle rejection path
+        if not approved:
+            return self.reject_document(document, user, comment)
+        
+        # Validate effective_date is provided for approvals only
         if not effective_date:
             raise ValidationError("Effective date is required for approval")
 
@@ -390,6 +394,61 @@ class DocumentLifecycleService:
                     effective_date=effective_date
                 )
                 print(f"✅ Author notification sent for approval completion: {notification_sent}")
+            except Exception as e:
+                print(f"❌ Failed to send author notification: {e}")
+                import traceback
+                traceback.print_exc()
+        
+        return success
+    
+    def reject_document(self, document: Document, user: User, comment: str = '') -> bool:
+        """
+        Reject document during approval process (PENDING_APPROVAL → DRAFT).
+        
+        Args:
+            document: Document to reject
+            user: User rejecting (must be assigned approver)
+            comment: Rejection comment (required)
+            
+        Returns:
+            bool: True if successful
+        """
+        workflow = self._get_active_workflow(document)
+        if not workflow:
+            raise ValidationError("No active workflow found for document")
+        
+        # Validate user can reject
+        if not self._can_approve(document, user):
+            raise ValidationError("User is not authorized to reject this document")
+        
+        # Validate current state
+        if workflow.current_state.code != 'PENDING_APPROVAL':
+            raise ValidationError(f"Cannot reject from state: {workflow.current_state.code}")
+        
+        if not comment:
+            raise ValidationError("Rejection comment is required")
+
+        # Transition back to DRAFT for revision
+        success = self._transition_workflow(
+            workflow=workflow,
+            to_state_code='DRAFT',
+            user=user,
+            comment=f'Document rejected: {comment}',
+            assignee=document.author  # Return to author for revision
+        )
+        
+        # Send notification to author about rejection
+        if success:
+            from .author_notifications import author_notification_service
+            try:
+                notification_sent = author_notification_service.notify_author_approval_completed(
+                    document=document,
+                    approver=user,
+                    approved=False,
+                    comment=comment,
+                    effective_date=None
+                )
+                print(f"✅ Author notification sent for document rejection: {notification_sent}")
             except Exception as e:
                 print(f"❌ Failed to send author notification: {e}")
                 import traceback
@@ -623,12 +682,25 @@ class DocumentLifecycleService:
             if not reason:
                 raise ValidationError("Reason for obsolescence is required")
             
-            # Check for dependent documents
-            dependencies = document.dependents.filter(is_active=True, is_critical=True)
-            if dependencies.exists():
-                dependent_docs = [dep.document.document_number for dep in dependencies]
+            # Check for dependent documents - ENHANCED DEPENDENCY PROTECTION
+            # Any document that lists this document as a dependency (regardless of workflow status)
+            # must be in a final state (TERMINATED, SUPERSEDED, or OBSOLETE) to allow obsolescence
+            from apps.documents.models import DocumentDependency
+            
+            active_dependents = DocumentDependency.objects.filter(
+                depends_on=document
+            ).exclude(
+                document__status__in=['TERMINATED', 'SUPERSEDED', 'OBSOLETE']
+            )
+            
+            if active_dependents.exists():
+                dependent_docs = []
+                for dep in active_dependents:
+                    dependent_docs.append(f"{dep.document.document_number} (Status: {dep.document.status})")
+                
                 raise ValidationError(
-                    f"Cannot obsolete document with critical dependencies: {', '.join(dependent_docs)}"
+                    f"Cannot obsolete document while other documents depend on it. "
+                    f"The following dependent documents must be terminated, superseded, or obsoleted first: {'; '.join(dependent_docs)}"
                 )
             
             # Get obsolete workflow type - use simple string instead of WorkflowType object
@@ -732,18 +804,32 @@ class DocumentLifecycleService:
 
     def _validate_obsolescence_eligibility(self, document: Document):
         """Enhanced validation for obsolescence eligibility with conflict detection."""
-        # Check for dependent documents
-        critical_dependencies = document.dependents.filter(is_active=True, is_critical=True)
-        if critical_dependencies.exists():
-            dependent_docs = [dep.document.document_number for dep in critical_dependencies]
+        # Check for dependent documents - ENHANCED DEPENDENCY PROTECTION
+        # Any document that lists this document as a dependency (regardless of workflow status)
+        # must be in a final state (TERMINATED, SUPERSEDED, or OBSOLETE) to allow obsolescence
+        from apps.documents.models import DocumentDependency
+        
+        active_dependents = DocumentDependency.objects.filter(
+            depends_on=document
+        ).exclude(
+            document__status__in=['TERMINATED', 'SUPERSEDED', 'OBSOLETE']
+        )
+        
+        if active_dependents.exists():
+            dependent_docs = []
+            for dep in active_dependents:
+                dependent_docs.append(f"{dep.document.document_number} (Status: {dep.document.status})")
+            
             raise ValidationError(
-                f"Cannot obsolete document with critical dependencies: {', '.join(dependent_docs)}"
+                f"Cannot obsolete document while other documents depend on it. "
+                f"The following dependent documents must be terminated, superseded, or obsoleted first: {'; '.join(dependent_docs)}"
             )
         
         # Check for active workflows on this document
         active_workflows = DocumentWorkflow.objects.filter(
             document=document,
-            workflow_type__in=['REVIEW', 'UP_VERSION']
+            workflow_type__in=['REVIEW', 'UP_VERSION'],
+            is_terminated=False  # Only consider non-terminated workflows as active
         ).exclude(current_state__code__in=['TERMINATED', 'COMPLETED', 'OBSOLETE'])
         
         if active_workflows.exists():
@@ -1052,6 +1138,13 @@ class DocumentLifecycleService:
                 # Handle post-transition actions
                 self._handle_post_transition(workflow, transition)
                 
+                # Complete current assignee's existing task before creating new one
+                if workflow.current_assignee and workflow.current_assignee != assignee:
+                    from django.db import transaction as db_transaction
+                    db_transaction.on_commit(
+                        lambda: self._complete_current_task_safe(workflow.current_assignee.id, workflow.document.document_number, user.id)
+                    )
+                
                 # Schedule task creation after transaction commits successfully
                 if assignee:
                     from django.db import transaction as db_transaction
@@ -1291,6 +1384,36 @@ Document Details:
         except Exception as e:
             print(f"⚠️ Failed to send task notification: {e}")
     
+    def _complete_current_task_safe(self, current_assignee_id: int, document_number: str, completed_by_id: int):
+        """Complete current assignee's task safely after transaction commits."""
+        try:
+            from .models import WorkflowTask
+            from django.contrib.auth import get_user_model
+            from django.utils import timezone
+            
+            User = get_user_model()
+            current_assignee = User.objects.get(id=current_assignee_id)
+            completed_by = User.objects.get(id=completed_by_id)
+            
+            # Find and complete the pending task for current assignee on this document
+            pending_task = WorkflowTask.objects.filter(
+                assigned_to=current_assignee,
+                status='PENDING',
+                task_data__document_number=document_number
+            ).first()
+            
+            if pending_task:
+                pending_task.status = 'COMPLETED'
+                pending_task.completed_at = timezone.now()
+                pending_task.completion_note = f'Task completed via workflow transition by {completed_by.username}'
+                pending_task.save()
+                print(f"✅ Marked existing task as COMPLETED for {current_assignee.username}")
+            else:
+                print(f"ℹ️ No pending task found for {current_assignee.username} on document {document_number}")
+                
+        except Exception as e:
+            print(f"⚠️ Task completion failed (non-critical): {e}")
+
     def _create_workflow_task_safe(self, workflow_id: int, state_code: str, assignee_id: int, transitioned_by_id: int, comment: str):
         """Create workflow task safely after transaction commits."""
         try:

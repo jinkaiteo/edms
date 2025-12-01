@@ -18,3 +18,8 @@ bandit==1.7.5
 # Documentation
 sphinx==7.2.6
 sphinx-rtd-theme==1.3.0
+
+# WebSocket and ASGI support (required for Django Channels)
+channels==4.0.0
+channels-redis==4.1.0
+daphne==4.0.0

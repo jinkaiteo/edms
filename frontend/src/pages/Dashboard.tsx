@@ -35,19 +35,7 @@ const Dashboard: React.FC = () => {
               Welcome back, {user?.username || 'User'}! Here's what's happening with your documents.
             </p>
           </div>
-          <div className="mt-4 flex md:mt-0 md:ml-4">
-            <button
-              onClick={() => window.location.href = '/my-tasks'}
-              className="ml-3 inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700"
-            >
-              {stats.pendingTasks > 0 && (
-                <span className="mr-2 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
-                  {stats.pendingTasks}
-                </span>
-              )}
-              View My Tasks
-            </button>
-          </div>
+          {/* Removed redundant "View My Tasks" button - use notification bell instead */}
         </div>
 
         {/* Stats Cards */}
@@ -140,18 +128,14 @@ const Dashboard: React.FC = () => {
                 View Documents
               </button>
               <button
-                onClick={() => window.location.href = '/my-tasks'}
-                className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-green-600 hover:bg-green-700"
+                onClick={() => window.location.href = '/settings'}
+                className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-purple-600 hover:bg-purple-700"
               >
                 <svg className="mr-2 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
                 </svg>
-                My Tasks
-                {stats.pendingTasks > 0 && (
-                  <span className="ml-2 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-white text-green-800">
-                    {stats.pendingTasks}
-                  </span>
-                )}
+                System Settings
               </button>
               <button
                 onClick={() => window.location.href = '/notifications'}

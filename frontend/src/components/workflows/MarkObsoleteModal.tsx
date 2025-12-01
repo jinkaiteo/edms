@@ -46,14 +46,61 @@ const MarkObsoleteModal: React.FC<MarkObsoleteModalProps> = ({
       const response = await apiService.get(`/documents/documents/${document.uuid}/dependencies/`);
       
       if (response?.dependents) {
-        const activeDependents = response.dependents.filter((dep: any) => dep.is_active);
-        setDependencies(activeDependents);
+        // Enhanced dependency check - filter by document status, not just is_active flag
+        // Any dependent document NOT in final states (TERMINATED, SUPERSEDED, OBSOLETE) blocks obsolescence
+        const blockingDependents = [];
         
-        if (activeDependents.length > 0) {
-          console.log('⚠️ Document has dependencies:', activeDependents);
+        for (const dep of response.dependents) {
+          // Fetch the dependent document's current status using UUID, not database ID
+          try {
+            // We need to get the document UUID from the database ID
+            // First get the document using its ID to find its UUID
+            console.log('🔍 Checking dependency:', dep);
+            
+            // Use the document display name to find the document by document_number
+            const searchResponse = await apiService.get(`/documents/documents/?search=${encodeURIComponent(dep.document_display)}`);
+            
+            let depDocStatus;
+            if (searchResponse?.results && searchResponse.results.length > 0) {
+              const depDoc = searchResponse.results[0];
+              depDocStatus = depDoc.status;
+              console.log(`📄 Found dependent document ${dep.document_display}: Status = ${depDocStatus}`);
+            } else {
+              throw new Error(`Document ${dep.document_display} not found`);
+            }
+            
+            // Check if dependent document is in a non-final state
+            if (!['TERMINATED', 'SUPERSEDED', 'OBSOLETE'].includes(depDocStatus)) {
+              blockingDependents.push({
+                ...dep,
+                document_status: depDocStatus,
+                document_number: dep.document_display || `Document ${dep.document}`
+              });
+            }
+          } catch (docError) {
+            console.error('Error fetching dependent document status:', docError);
+            // If we can't get status, assume it's blocking to be safe
+            blockingDependents.push({
+              ...dep,
+              document_status: 'UNKNOWN',
+              document_number: dep.document_display || `Document ${dep.document}`
+            });
+          }
+        }
+        
+        setDependencies(blockingDependents);
+        
+        if (blockingDependents.length > 0) {
+          console.log('⚠️ Document has blocking dependencies:', blockingDependents);
+          setDependencyError(
+            `Cannot obsolete: ${blockingDependents.length} dependent document(s) must be terminated, superseded, or obsoleted first.`
+          );
+        } else {
+          setDependencyError(null);
         }
       } else {
         setDependencies([]);
+        setDependencyError(null);
       }
     } catch (error) {
       console.error('Error checking dependencies:', error);
@@ -158,7 +205,7 @@ const MarkObsoleteModal: React.FC<MarkObsoleteModalProps> = ({
         
         <span className="hidden sm:inline-block sm:align-middle sm:h-screen">&#8203;</span>
         
-        <div className="inline-block align-bottom bg-white rounded-lg px-4 pt-5 pb-4 text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-2xl sm:w-full sm:p-6">
+        <div className="inline-block align-bottom bg-white rounded-lg px-4 pt-5 pb-4 text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-2xl sm:w-full sm:p-6 max-h-[90vh] overflow-y-auto">
           {/* Header */}
           <div className="flex items-center justify-between mb-6">
             <h3 className="text-lg font-medium text-gray-900">Mark Document Obsolete</h3>
@@ -222,7 +269,32 @@ const MarkObsoleteModal: React.FC<MarkObsoleteModalProps> = ({
               </p>
             </div>
 
-            {/* Error Display */}
+            {/* Dependency Error Display */}
+            {dependencyError && (
+              <div className="mb-4 p-4 bg-orange-50 border border-orange-200 rounded-md">
+                <div className="flex items-start space-x-3">
+                  <ExclamationTriangleIcon className="h-5 w-5 text-orange-500 mt-0.5" />
+                  <div>
+                    <h4 className="font-medium text-orange-900 mb-2">Dependency Conflict</h4>
+                    <p className="text-sm text-orange-700 mb-2">{dependencyError}</p>
+                    {dependencies.length > 0 && (
+                      <div className="text-sm text-orange-700">
+                        <p className="font-medium mb-1">Blocking documents:</p>
+                        <ul className="list-disc list-inside space-y-1">
+                          {dependencies.map((dep, index) => (
+                            <li key={index}>
+                              <strong>{dep.document_number}</strong> (Status: {dep.document_status})
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* General Error Display */}
             {error && (
               <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-md">
                 <div className="flex items-center space-x-2">
@@ -232,32 +304,6 @@ const MarkObsoleteModal: React.FC<MarkObsoleteModalProps> = ({
               </div>
             )}
 
-            {/* Process Information */}
-            <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-              <div className="flex items-start space-x-3">
-                <InformationCircleIcon className="h-5 w-5 text-blue-600 mt-0.5" />
-                <div>
-                  <h4 className="font-medium text-blue-900">Direct Obsolescence Process</h4>
-                  <div className="text-sm text-blue-700 mt-1 space-y-1">
-                    <p>
-                      • Document will be <strong>scheduled for obsolescence</strong> on the selected date
-                    </p>
-                    <p>
-                      • All stakeholders will be <strong>notified immediately</strong>
-                    </p>
-                    <p>
-                      • Document becomes <strong>OBSOLETE</strong> automatically on the obsolescence date
-                    </p>
-                    <p>
-                      • Obsolete documents are retained for historical reference and audit trail
-                    </p>
-                    <p className="font-medium text-blue-800">
-                      • As an authorized user, you can obsolete this document directly
-                    </p>
-                  </div>
-                </div>
-              </div>
-            </div>
 
             {/* Action Buttons */}
             <div className="flex justify-end space-x-3">

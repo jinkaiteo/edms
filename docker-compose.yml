@@ -59,7 +59,6 @@ services:
       sh -c "sleep 10 &&
              python manage.py migrate --run-syncdb &&
              python manage.py collectstatic --noinput &&
-             pip install daphne &&
              daphne -b 0.0.0.0 -p 8000 edms.asgi:application"
 
   # Celery Worker
@@ -82,7 +81,9 @@ services:
       - redis
     networks:
       - edms_network
-    command: celery -A edms worker -l info
+    command: >
+      sh -c "sleep 15 &&
+             celery -A edms worker -l info"
 
   # Celery Beat (Scheduler)
   celery_beat:
@@ -104,7 +105,9 @@ services:
       - redis
     networks:
       - edms_network
-    command: celery -A edms beat -l info
+    command: >
+      sh -c "sleep 20 &&
+             celery -A edms beat -l info"
 
   # React Frontend
   frontend:

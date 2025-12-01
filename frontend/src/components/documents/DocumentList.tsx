@@ -20,13 +20,16 @@ interface DocumentListProps {
   onDocumentSelect?: (document: Document) => void;
   refreshTrigger?: number; // Add refresh trigger prop
   selectedDocument?: Document | null; // Add selected document prop
+  filterType?: 'pending' | 'approved' | 'archived' | 'obsolete';
 }
 
 const DocumentList: React.FC<DocumentListProps> = ({
   onDocumentSelect,
   refreshTrigger,
   selectedDocument,
+  filterType = 'approved',
 }) => {
+  console.log('🔍 DocumentList: Received props:', { filterType, refreshTrigger, selectedDocument: selectedDocument?.uuid });
   const [documents, setDocuments] = useState<Document[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -153,27 +156,47 @@ const DocumentList: React.FC<DocumentListProps> = ({
     const fetchDocuments = async () => {
       try {
         setLoading(true);
-        console.log('🔄 DocumentList: Fetching documents...', refreshTrigger ? `(trigger: ${refreshTrigger})` : '(initial load)');
-        const response = await apiService.get('/documents/documents/');
-        if (response.results) {
-          setDocuments(response.results);
-        } else if (response.data) {
-          setDocuments(response.data);
+        console.log('🔄 DocumentList: Fetching documents...', refreshTrigger ? `(trigger: ${refreshTrigger})` : '(initial load)', `[filter: ${filterType}]`);
+        console.log('📍 DocumentList: Current URL:', window.location.pathname);
+        
+        // Build API endpoint with filter parameter
+        const filterParam = filterType === 'approved' ? 'approved_latest' : 
+                           filterType === 'pending' ? 'my_tasks' :
+                           filterType === 'archived' ? 'archived' :
+                           filterType === 'obsolete' ? 'obsolete' : '';
+        
+        console.log('🔧 DocumentList: Filter mapping:', { filterType, filterParam });
+        
+        const endpoint = filterParam ? `/documents/documents/?filter=${filterParam}` : '/documents/documents/';
+        const response = await apiService.get(endpoint);
+        console.log('📥 DocumentList: Raw API response:', response);
+        
+        let documentsData = [];
+        if (response && response.results && Array.isArray(response.results)) {
+          documentsData = response.results;
+        } else if (response && response.data && Array.isArray(response.data)) {
+          documentsData = response.data;
+        } else if (response && Array.isArray(response)) {
+          documentsData = response;
         } else {
-          setDocuments(response);
+          console.warn('⚠️ DocumentList: Unexpected response format, defaulting to empty array');
+          documentsData = [];
         }
-        console.log('✅ DocumentList: Documents fetched successfully:', response.results?.length || response.data?.length || response.length, 'documents');
+        
+        setDocuments(documentsData);
+        console.log('✅ DocumentList: Documents set successfully:', documentsData.length, 'documents');
         setError(null);
       } catch (error) {
         console.error('❌ DocumentList: Error fetching documents:', error);
         setError('Failed to fetch documents');
+        setDocuments([]); // Ensure documents is always an array
       } finally {
         setLoading(false);
       }
     };
 
     fetchDocuments();
-  }, [refreshTrigger]); // Add refreshTrigger to dependency array
+  }, [refreshTrigger, filterType]); // Add filterType to dependency array to refetch when filter changes
 
   if (loading) {
     return <div className="text-center py-8">Loading documents...</div>;
@@ -184,9 +207,11 @@ const DocumentList: React.FC<DocumentListProps> = ({
   }
 
   // Filter documents based on inactive status toggle (hide obsolete and terminated by default)
+  // Safety check to ensure documents is an array
+  const documentsArray = Array.isArray(documents) ? documents : [];
   const filteredDocuments = showInactive 
-    ? documents 
-    : documents.filter(doc => doc.status !== 'OBSOLETE' && doc.status !== 'TERMINATED');
+    ? documentsArray 
+    : documentsArray.filter(doc => doc.status !== 'OBSOLETE' && doc.status !== 'TERMINATED');
 
   // Group filtered documents and get current versions for sorting
   const documentGroups = groupDocumentsByBase(filteredDocuments);
@@ -437,7 +462,7 @@ const DocumentList: React.FC<DocumentListProps> = ({
                     <div className="flex items-center justify-between">
                       <span className="text-3xl">{getStatusIcon(document.status)}</span>
                       <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(document.status)}`}>
-                        {document.status.replace('_', ' ')}
+                        {document.status.replace(/_/g, ' ')}
                       </span>
                     </div>
                     <div>

@@ -72,7 +72,7 @@ const BaseWorkflowModal: React.FC<BaseWorkflowModalProps> = ({
             </div>
             <div>
               <span className="font-semibold text-gray-700">Author:</span>
-              <div className="text-gray-900 mt-1">{document.author?.username || 'Unknown'}</div>
+              <div className="text-gray-900 mt-1">{document.author_display || 'Unknown Author'}</div>
             </div>
             <div>
               <span className="font-semibold text-gray-700">Created:</span>

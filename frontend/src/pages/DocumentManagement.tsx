@@ -8,7 +8,18 @@ import DocumentViewer from '../components/documents/DocumentViewer.tsx';
 import DocumentSearch from '../components/documents/DocumentSearch.tsx';
 import DocumentUploadNewModal from '../components/documents/DocumentUploadNewModal';
 
-const DocumentManagement: React.FC = () => {
+interface DocumentManagementProps {
+  filterType?: 'pending' | 'approved' | 'archived' | 'obsolete';
+}
+
+const DocumentManagement: React.FC<DocumentManagementProps> = ({ 
+  filterType = 'approved' 
+}) => {
+  console.log('📄 DocumentManagement: Rendering with filterType:', filterType);
+  console.log('📍 DocumentManagement: Current URL:', window.location.pathname);
+  
+  // Debug the actual props being passed to DocumentList
+  console.log('🔗 DocumentManagement: About to pass filterType to DocumentList:', filterType);
   const [selectedDocument, setSelectedDocument] = useState<Document | null>(null);
   const [showUpload, setShowUpload] = useState(false);
   const [showUploadModal, setShowUploadModal] = useState(false);
@@ -19,7 +30,7 @@ const DocumentManagement: React.FC = () => {
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [documentListRefresh, setDocumentListRefresh] = useState<number>(0);
 
-  // Add event listener for clear selection
+  // Add event listener for clear selection only (document refresh handled separately)
   useEffect(() => {
     const handleClearSelection = () => {
       setSelectedDocument(null);
@@ -81,6 +92,32 @@ const DocumentManagement: React.FC = () => {
       }
     }
   }, [selectedDocument]);
+
+  // Add event listener for document updates (after handleDocumentRefresh is defined)
+  useEffect(() => {
+    const handleDocumentUpdated = (event: any) => {
+      console.log('📢 DocumentManagement: Received documentUpdated event:', event.detail);
+      
+      // Refresh the document list immediately
+      setDocumentListRefresh(prev => {
+        const newRefresh = prev + 1;
+        console.log('🔄 DocumentManagement: Document list refresh triggered by event:', newRefresh);
+        return newRefresh;
+      });
+      
+      // If the updated document is currently selected, refresh it too
+      if (selectedDocument && event.detail?.documentId === selectedDocument.uuid) {
+        console.log('🔄 DocumentManagement: Refreshing selected document after workflow action');
+        handleDocumentRefresh();
+      }
+    };
+
+    window.addEventListener('documentUpdated', handleDocumentUpdated);
+    
+    return () => {
+      window.removeEventListener('documentUpdated', handleDocumentUpdated);
+    };
+  }, [selectedDocument, handleDocumentRefresh]);
 
   // EDMS Step 1: Document creation handlers
   const handleCreateDocumentSuccess = useCallback((document: any) => {
@@ -168,6 +205,7 @@ const DocumentManagement: React.FC = () => {
               onDocumentSelect={handleDocumentSelect}
               refreshTrigger={documentListRefresh}
               selectedDocument={selectedDocument}
+              filterType={filterType}
             />
           </div>
         );
@@ -197,6 +235,7 @@ const DocumentManagement: React.FC = () => {
                 onDocumentSelect={handleDocumentSelect}
                 refreshTrigger={documentListRefresh}
                 selectedDocument={selectedDocument}
+                filterType={filterType}
               />
             </div>
             <div className="lg:sticky lg:top-6 lg:h-fit">
@@ -234,9 +273,17 @@ const DocumentManagement: React.FC = () => {
         <div className="mb-8">
           <div className="flex justify-between items-center">
             <div>
-              <h1 className="text-3xl font-bold text-gray-900">Document Management</h1>
+              <h1 className="text-3xl font-bold text-gray-900">
+                {filterType === 'pending' ? 'My Tasks' :
+                 filterType === 'obsolete' ? 'Obsolete Documents' :
+                 filterType === 'archived' ? 'Archived Documents' :
+                 'Document Management'}
+              </h1>
               <p className="text-gray-600 mt-2">
-                Manage, upload, and review documents in your EDMS system
+                {filterType === 'pending' ? 'Documents requiring your action and review' :
+                 filterType === 'obsolete' ? 'View obsolete, superseded, and scheduled for obsolescence documents' :
+                 filterType === 'archived' ? 'View archived document versions and terminated workflows' :
+                 'Manage, upload, and review documents in your EDMS system'}
               </p>
             </div>
             <div className="flex items-center space-x-3">

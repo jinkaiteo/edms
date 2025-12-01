@@ -76,6 +76,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
       { name: 'Dashboard', href: '/dashboard', icon: HomeIcon },
       { name: 'Document Management', href: '/document-management', icon: DocumentArrowUpIcon },
       { name: 'My Tasks', href: '/tasks', icon: ClipboardDocumentListIcon },
+      { name: 'Obsolete Documents', href: '/obsolete-documents', icon: DocumentTextIcon },
       { name: 'Notifications', href: '/notifications', icon: BellIcon },
     ];
 
@@ -215,6 +216,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                 {location.pathname === '/dashboard' && 'Dashboard'}
                 {location.pathname === '/document-management' && 'Document Management'}
                 {location.pathname === '/tasks' && 'My Tasks'}
+                {location.pathname === '/obsolete-documents' && 'Obsolete Documents'}
                 {location.pathname === '/notifications' && 'Notifications'}
                 {location.pathname === '/admin' && 'Administration'}
               </h2>

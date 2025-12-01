@@ -390,49 +390,67 @@ class DocumentAutomationService:
         
         try:
             with transaction.atomic():
-                # 1. Clean up tasks for terminated/obsolete documents
-                terminated_obsolete_tasks = WorkflowTask.objects.filter(
-                    content_object__status__in=['TERMINATED', 'OBSOLETE'],
-                    status__in=['PENDING', 'IN_PROGRESS']
-                ).select_related('content_object')
+                # 1. Clean up tasks for terminated/obsolete documents (via task_data)
+                from apps.documents.models import Document
+                
+                terminated_obsolete_docs = Document.objects.filter(
+                    status__in=['TERMINATED', 'OBSOLETE']
+                ).values_list('document_number', flat=True)
+                
+                # Using raw SQL for JSON field comparison due to PostgreSQL casting requirements
+                terminated_obsolete_tasks = WorkflowTask.objects.extra(
+                    where=["task_data->>'document_number' = ANY(%s)", "status IN %s"],
+                    params=[list(terminated_obsolete_docs), ('PENDING', 'IN_PROGRESS')]
+                )
                 
                 for task in terminated_obsolete_tasks:
+                    doc_number = task.task_data.get('document_number', 'Unknown')
+                    try:
+                        doc = Document.objects.get(document_number=doc_number)
+                        doc_status = doc.status
+                    except Document.DoesNotExist:
+                        doc_status = 'MISSING'
+                    
                     if not dry_run:
                         task.status = 'CANCELLED'
                         task.completed_at = timezone.now()
-                        task.completion_note = f'Auto-cancelled: Document status is {task.content_object.status}'
+                        task.completion_note = f'Auto-cancelled: Document status is {doc_status}'
                         task.save()
                     
                     results['terminated_document_tasks'] += 1
                     results['details'].append({
                         'type': 'terminated_obsolete',
                         'task_id': task.id,
-                        'document': getattr(task.content_object, 'document_number', 'Unknown'),
-                        'document_status': getattr(task.content_object, 'status', 'Unknown'),
+                        'document': doc_number,
+                        'document_status': doc_status,
                         'task_type': task.task_type,
                         'assigned_to': task.assigned_to.username if task.assigned_to else 'Unassigned'
                     })
                 
                 # 2. Clean up tasks for documents that no longer exist
-                orphaned_content_tasks = WorkflowTask.objects.filter(
-                    content_object__isnull=True,
+                all_tasks_with_doc_numbers = WorkflowTask.objects.filter(
                     status__in=['PENDING', 'IN_PROGRESS']
-                )
+                ).extra(where=["task_data ? 'document_number'"])
                 
-                for task in orphaned_content_tasks:
-                    if not dry_run:
-                        task.status = 'CANCELLED'
-                        task.completed_at = timezone.now()
-                        task.completion_note = 'Auto-cancelled: Associated document no longer exists'
-                        task.save()
-                    
-                    results['nonexistent_document_tasks'] += 1
-                    results['details'].append({
-                        'type': 'nonexistent_document',
-                        'task_id': task.id,
-                        'task_type': task.task_type,
-                        'assigned_to': task.assigned_to.username if task.assigned_to else 'Unassigned'
-                    })
+                existing_doc_numbers = set(Document.objects.values_list('document_number', flat=True))
+                
+                for task in all_tasks_with_doc_numbers:
+                    doc_number = task.task_data.get('document_number')
+                    if doc_number and doc_number not in existing_doc_numbers:
+                        if not dry_run:
+                            task.status = 'CANCELLED'
+                            task.completed_at = timezone.now()
+                            task.completion_note = 'Auto-cancelled: Associated document no longer exists'
+                            task.save()
+                        
+                        results['nonexistent_document_tasks'] += 1
+                        results['details'].append({
+                            'type': 'nonexistent_document',
+                            'task_id': task.id,
+                            'document': doc_number,
+                            'task_type': task.task_type,
+                            'assigned_to': task.assigned_to.username if task.assigned_to else 'Unassigned'
+                        })
                 
                 # 3. Clean up tasks for inactive workflow instances
                 inactive_workflow_tasks = WorkflowTask.objects.filter(
@@ -458,39 +476,73 @@ class DocumentAutomationService:
                 
                 # 4. Clean up duplicate pending tasks (same document, same user, same task type)
                 from django.db.models import Count
-                duplicate_groups = WorkflowTask.objects.filter(
-                    status='PENDING'
-                ).values(
-                    'content_type', 'object_id', 'assigned_to', 'task_type'
-                ).annotate(
-                    count=Count('id')
-                ).filter(count__gt=1)
+                from django.db import connection
                 
-                for group in duplicate_groups:
-                    duplicate_tasks = WorkflowTask.objects.filter(
-                        content_type=group['content_type'],
-                        object_id=group['object_id'],
-                        assigned_to=group['assigned_to'],
-                        task_type=group['task_type'],
-                        status='PENDING'
-                    ).order_by('created_at')[1:]  # Keep the first (oldest) task
+                # Use raw SQL to find duplicates due to JSON field complexity
+                with connection.cursor() as cursor:
+                    cursor.execute("""
+                        SELECT task_data->>'document_number' as doc_number, assigned_to_id, task_type, COUNT(*) as cnt
+                        FROM workflow_tasks 
+                        WHERE status = 'PENDING' AND task_data ? 'document_number'
+                        GROUP BY task_data->>'document_number', assigned_to_id, task_type 
+                        HAVING COUNT(*) > 1
+                    """)
                     
-                    for task in duplicate_tasks:
-                        if not dry_run:
-                            task.status = 'CANCELLED'
-                            task.completed_at = timezone.now()
-                            task.completion_note = 'Auto-cancelled: Duplicate task removed'
-                            task.save()
+                    for row in cursor.fetchall():
+                        doc_number, assigned_to_id, task_type, count = row
+                        duplicate_tasks = WorkflowTask.objects.filter(
+                            assigned_to_id=assigned_to_id,
+                            task_type=task_type,
+                            status='PENDING'
+                        ).extra(
+                            where=["task_data->>'document_number' = %s"],
+                            params=[doc_number]
+                        ).order_by('created_at')[1:]  # Keep the first (oldest) task
                         
-                        results['duplicate_tasks'] += 1
-                        results['details'].append({
-                            'type': 'duplicate',
-                            'task_id': task.id,
-                            'task_type': task.task_type,
-                            'assigned_to': task.assigned_to.username if task.assigned_to else 'Unassigned'
-                        })
+                        for task in duplicate_tasks:
+                            if not dry_run:
+                                task.status = 'CANCELLED'
+                                task.completed_at = timezone.now()
+                                task.completion_note = 'Auto-cancelled: Duplicate task removed'
+                                task.save()
+                            
+                            results['duplicate_tasks'] += 1
+                            results['details'].append({
+                                'type': 'duplicate',
+                                'task_id': task.id,
+                                'task_type': task.task_type,
+                                'assigned_to': task.assigned_to.username if task.assigned_to else 'Unassigned'
+                            })
                 
-                # 5. Clean up tasks that have been pending too long (default: 30 days)
+                # 5. Clean up tasks for documents in final states (APPROVED_AND_EFFECTIVE, EFFECTIVE, OBSOLETE)
+                from apps.documents.models import Document
+                
+                final_state_documents = Document.objects.filter(
+                    status__in=['APPROVED_AND_EFFECTIVE', 'EFFECTIVE', 'OBSOLETE']
+                ).values_list('document_number', flat=True)
+                
+                final_state_tasks = WorkflowTask.objects.extra(
+                    where=["task_data->>'document_number' = ANY(%s)", "status = %s"],
+                    params=[list(final_state_documents), 'PENDING']
+                )
+                
+                for task in final_state_tasks:
+                    if not dry_run:
+                        task.status = 'COMPLETED'
+                        task.completed_at = timezone.now()
+                        task.completion_note = f'Auto-completed: Document reached final status'
+                        task.save()
+                    
+                    results['orphaned_tasks'] += 1
+                    results['details'].append({
+                        'type': 'final_state_document',
+                        'task_id': task.id,
+                        'document': task.task_data.get('document_number', 'Unknown'),
+                        'task_type': task.task_type,
+                        'assigned_to': task.assigned_to.username if task.assigned_to else 'Unassigned'
+                    })
+                
+                # 6. Clean up tasks that have been pending too long (default: 30 days)
                 expiry_threshold = timezone.now() - timedelta(days=getattr(settings, 'WORKFLOW_TASK_EXPIRY_DAYS', 30))
                 expired_tasks = WorkflowTask.objects.filter(
                     status='PENDING',
@@ -529,7 +581,7 @@ class DocumentAutomationService:
                         action='WORKFLOW_TASK_CLEANUP',
                         description=f'Automated workflow task cleanup completed. Cleaned {total_cleaned} tasks.',
                         field_changes=results,
-                        ip_address='system',
+                        ip_address='127.0.0.1',
                         user_agent='Scheduler/AutomatedTasks'
                     )
                 
@@ -538,7 +590,7 @@ class DocumentAutomationService:
                 logger.info(f"✅ Workflow task cleanup completed in {execution_time:.2f}s")
                 logger.info(f"   - Terminated/Obsolete document tasks: {results['terminated_document_tasks']}")
                 logger.info(f"   - Nonexistent document tasks: {results['nonexistent_document_tasks']}")
-                logger.info(f"   - Orphaned tasks: {results['orphaned_tasks']}")
+                logger.info(f"   - Orphaned tasks (includes final state docs): {results['orphaned_tasks']}")
                 logger.info(f"   - Duplicate tasks: {results['duplicate_tasks']}")
                 logger.info(f"   - Expired tasks: {results['expired_tasks']}")
                 

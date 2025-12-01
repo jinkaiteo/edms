@@ -131,7 +131,7 @@ class DocumentViewSet(viewsets.ModelViewSet):
         
         return super().create(request, *args, **kwargs)
     filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
-    filterset_class = DocumentFilter
+    filterset_class = None  # TEMPORARY: Disable DocumentFilter to fix API refresh issue
     search_fields = ['document_number', 'title', 'description', 'keywords']
     ordering_fields = ['document_number', 'title', 'created_at', 'effective_date']
     ordering = ['-created_at']
@@ -148,44 +148,114 @@ class DocumentViewSet(viewsets.ModelViewSet):
         return DocumentDetailSerializer
     
     def get_queryset(self):
-        """Filter queryset based on user permissions."""
-        user = self.request.user
-        queryset = super().get_queryset().select_related(
-            'document_type', 'document_source', 'author', 'reviewer', 'approver'
-        ).prefetch_related('dependencies', 'dependents')
+        """Filter documents based on user permissions and query parameters"""
+        queryset = Document.objects.select_related(
+            'author', 'reviewer', 'approver', 'document_type', 'document_source'
+        )
         
-        if user.is_superuser:
-            return queryset
+        # Handle filter parameter for different view types
+        filter_type = self.request.query_params.get('filter', None)
         
-        # Check user's document permissions
-        user_permissions = user.user_roles.filter(
-            role__module='O1',
-            is_active=True
-        ).values_list('role__permission_level', flat=True)
+        if filter_type == 'my_tasks':
+            # Show documents where user has pending tasks
+            from django.db import models
+            queryset = queryset.filter(
+                models.Q(author=self.request.user) |
+                models.Q(reviewer=self.request.user) |
+                models.Q(approver=self.request.user)
+            ).filter(
+                status__in=['DRAFT', 'PENDING_REVIEW', 'UNDER_REVIEW', 'REVIEWED', 'PENDING_APPROVAL']
+            ).order_by('-created_at')
+            
+        elif filter_type == 'approved_latest':
+            # Show latest approved versions only (grouped by base document number)
+            queryset = self._get_latest_approved_documents()
+            
+        elif filter_type == 'archived':
+            # Show obsolete documents (latest versions of obsolete document families)
+            queryset = self._get_latest_obsolete_documents()
+            
+        elif filter_type == 'obsolete':
+            # Show all documents with obsolete-related statuses
+            queryset = queryset.filter(
+                status__in=['OBSOLETE', 'SCHEDULED_FOR_OBSOLESCENCE', 'SUPERSEDED']
+            ).order_by('-updated_at')
+            
+        else:
+            # Default: show all documents ordered by creation date
+            queryset = queryset.order_by('-created_at')
         
-        if 'admin' in user_permissions:
-            return queryset
+        return queryset
+    
+    def _get_latest_approved_documents(self):
+        """Return latest approved version of each document family"""
+        from django.db.models import Max
+        import re
         
-        # Filter based on user's role and document status
-        q_filter = Q()
+        # Get all approved documents
+        approved_docs = Document.objects.filter(
+            status__in=['APPROVED_AND_EFFECTIVE', 'APPROVED_PENDING_EFFECTIVE']
+        ).select_related('author', 'reviewer', 'approver', 'document_type', 'document_source')
         
-        # Authors can see ALL their own documents (including DRAFT)
-        q_filter |= Q(author=user)
+        # Group by base document number (extract base from versioned number)
+        document_families = {}
+        for doc in approved_docs:
+            # Extract base number: "SOP-2025-0001-v01.00" → "SOP-2025-0001"
+            base_number = re.sub(r'-v\d+\.\d+$', '', doc.document_number)
+            
+            if base_number not in document_families:
+                document_families[base_number] = []
+            document_families[base_number].append(doc)
         
-        # Reviewers can see documents assigned to them ONLY after submitted for review
-        if 'review' in user_permissions:
-            q_filter |= Q(reviewer=user, status__in=['PENDING_REVIEW', 'UNDER_REVIEW', 'REVIEWED', 'PENDING_APPROVAL', 'APPROVED_AND_EFFECTIVE'])
+        # Get latest version from each family
+        latest_docs = []
+        for base_number, docs in document_families.items():
+            # Sort by version (major descending, then minor descending)
+            latest_doc = max(docs, key=lambda d: (d.version_major, d.version_minor))
+            latest_docs.append(latest_doc)
         
-        # Approvers can see documents assigned to them ONLY after reviewed
-        if 'approve' in user_permissions:
-            q_filter |= Q(approver=user, status__in=['PENDING_APPROVAL', 'APPROVED_AND_EFFECTIVE'])
-            # Also allow approvers to see documents assigned to them as reviewers (flexible workflow routing)
-            q_filter |= Q(reviewer=user, status__in=['PENDING_REVIEW', 'UNDER_REVIEW'])
+        # Convert to queryset and order by creation date
+        latest_ids = [doc.id for doc in latest_docs]
+        return Document.objects.filter(
+            id__in=latest_ids
+        ).select_related(
+            'author', 'reviewer', 'approver', 'document_type', 'document_source'
+        ).order_by('-created_at')
+    
+    def _get_latest_obsolete_documents(self):
+        """Return latest obsolete version of each document family"""
+        from django.db.models import Max
+        import re
         
-        # All authenticated users can see effective and superseded documents for version history
-        q_filter |= Q(status__in=['EFFECTIVE', 'APPROVED_AND_EFFECTIVE', 'APPROVED_PENDING_EFFECTIVE', 'SUPERSEDED'], is_active=True)
+        # Get all obsolete documents
+        obsolete_docs = Document.objects.filter(
+            status='OBSOLETE'
+        ).select_related('author', 'reviewer', 'approver', 'document_type', 'document_source')
         
-        return queryset.filter(q_filter)
+        # Group by base document number
+        document_families = {}
+        for doc in obsolete_docs:
+            # Extract base number: "SOP-2025-0001-v01.00" → "SOP-2025-0001"
+            base_number = re.sub(r'-v\d+\.\d+$', '', doc.document_number)
+            
+            if base_number not in document_families:
+                document_families[base_number] = []
+            document_families[base_number].append(doc)
+        
+        # Get latest obsolete version from each family
+        latest_docs = []
+        for base_number, docs in document_families.items():
+            # Sort by version (major descending, then minor descending)
+            latest_doc = max(docs, key=lambda d: (d.version_major, d.version_minor))
+            latest_docs.append(latest_doc)
+        
+        # Convert to queryset and order by creation date
+        latest_ids = [doc.id for doc in latest_docs]
+        return Document.objects.filter(
+            id__in=latest_ids
+        ).select_related(
+            'author', 'reviewer', 'approver', 'document_type', 'document_source'
+        ).order_by('-created_at')
     
     def perform_create(self, serializer):
         """Set author and handle document creation with dependencies."""

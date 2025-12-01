@@ -33,11 +33,15 @@ interface WorkflowTask {
   assignee_display: string;
   author_display: string;
   comments_count: number;
+  completed_at?: string;
+  completion_note?: string;
 }
 
 const MyTasksStandalone: React.FC = () => {
   const { user, authenticated } = useAuth();
   const [tasks, setTasks] = useState<WorkflowTask[]>([]);
+  const [completedTasks, setCompletedTasks] = useState<WorkflowTask[]>([]);
+  const [activeTab, setActiveTab] = useState<'pending' | 'completed'>('pending');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedFilter, setSelectedFilter] = useState<string>('all');
@@ -45,6 +49,7 @@ const MyTasksStandalone: React.FC = () => {
   useEffect(() => {
     if (authenticated) {
       loadMyTasks();
+      loadCompletedTasks();
     }
   }, [authenticated]);
 
@@ -53,37 +58,44 @@ const MyTasksStandalone: React.FC = () => {
       setLoading(true);
       setError(null);
 
-      console.log(`🔍 Loading tasks for user: ${user?.username} via CORRECTED WorkflowTask API`);
+      console.log(`🔍 Loading pending tasks for user: ${user?.username} via WorkflowTask API`);
 
-      // UPDATED: Use our new task API endpoints instead of fetching documents directly
-      const tasks = await loadTasksFromAPI();
+      // Load pending tasks
+      const tasks = await loadTasksFromAPI('pending');
       setTasks(tasks);
 
-      console.log(`📊 FINAL TASK COUNT for ${user?.username}: ${tasks.length} (from WorkflowTask API)`);
-      console.log('📋 Task breakdown:', {
-        review: tasks.filter(t => t.task_type === 'review').length,
-        approval: tasks.filter(t => t.task_type === 'approval').length,
-        total: tasks.length
-      });
-
-      if (tasks.length === 0) {
-        console.log('✨ User has no tasks - all caught up!');
-      }
+      console.log(`📊 PENDING TASK COUNT for ${user?.username}: ${tasks.length}`);
 
     } catch (err: any) {
-      console.error('Error loading tasks:', err);
+      console.error('Error loading pending tasks:', err);
       setError('Failed to load tasks. Please try again.');
     } finally {
       setLoading(false);
     }
   };
 
-  const loadTasksFromAPI = async (): Promise<WorkflowTask[]> => {
+  const loadCompletedTasks = async () => {
     try {
-      console.log('🎯 Fetching tasks from WORKING API endpoint: /api/v1/workflows/tasks/user-tasks/');
+      console.log(`🔍 Loading completed tasks for user: ${user?.username}`);
+
+      // Load completed tasks
+      const tasks = await loadTasksFromAPI('completed');
+      setCompletedTasks(tasks);
+
+      console.log(`📊 COMPLETED TASK COUNT for ${user?.username}: ${tasks.length}`);
+
+    } catch (err: any) {
+      console.error('Error loading completed tasks:', err);
+      // Don't set error for completed tasks - just log it
+    }
+  };
+
+  const loadTasksFromAPI = async (status: 'pending' | 'completed' = 'pending'): Promise<WorkflowTask[]> => {
+    try {
+      console.log(`🎯 Fetching ${status} tasks from API endpoint: /api/v1/workflows/tasks/user-tasks/?status=${status}`);
       
-      // Use the WORKING user-tasks endpoint that exists in the backend
-      const response = await apiService.get('/workflows/tasks/user-tasks/');
+      // Use the WORKING user-tasks endpoint with proper status filtering
+      const response = await apiService.get(`/workflows/tasks/user-tasks/?status=${status}`);
       console.log(`📋 TASKS DEBUG: Raw API response:`, response);
       console.log(`📋 TASKS DEBUG: Response type:`, typeof response);
       console.log(`📋 TASKS DEBUG: Response keys:`, Object.keys(response || {}));
@@ -106,39 +118,26 @@ const MyTasksStandalone: React.FC = () => {
       
       console.log(`📋 TASKS DEBUG: Final tasks array:`, tasksArray);
       
-      // Transform tasks to frontend format (no filtering needed - API already returns user's tasks)
-      const apiTasks = tasksArray.map((task: any) => ({
-        id: task.id || task.uuid,
-        document_uuid: task.document_uuid || '',
-        document_number: task.document_number || 'Unknown',
-        document_title: task.document_title || task.name || 'Unknown Task',
-        task_type: task.task_type === 'APPROVE' ? 'approval' : 'review',
-        status: (task.status || 'pending').toLowerCase(),
-        priority: (task.priority || 'normal').toLowerCase(),
-        assigned_date: task.assigned_date || task.created_at,
-        due_date: task.due_date,
-        assignee_display: task.assignee_display || user?.username || 'Unknown',
-        author_display: task.author_display || task.assigned_by || 'Unknown',
-        comments_count: task.comments_count || 0
-      }));
-      
-      console.log(`✅ API returned ${tasksArray.length} tasks, transformed to ${apiTasks.length} for ${user?.username}`);
+      console.log(`🔍 Backend returned ${tasksArray.length} ${status} tasks (pre-filtered)`);
       
       // Convert API task format to our component's WorkflowTask format
-      return apiTasks.map((apiTask: any) => ({
-        id: apiTask.id,
-        document_uuid: apiTask.document_uuid,
-        document_number: apiTask.document_number || 'N/A',
-        document_title: apiTask.document_title || apiTask.name,
-        task_type: apiTask.task_type === 'REVIEW' ? 'review' : 
-                  apiTask.task_type === 'APPROVE' ? 'approval' : 'review',
-        status: 'pending' as const,
+      // No client-side filtering needed since backend already filtered by status
+      return tasksArray.map((apiTask: any) => ({
+        id: apiTask.id || apiTask.uuid,
+        document_uuid: apiTask.document_uuid || '',
+        document_number: apiTask.document_number || 'Unknown',
+        document_title: apiTask.document_title || apiTask.name || 'Unknown Task',
+        task_type: apiTask.task_type === 'APPROVE' ? 'approval' : 
+                  apiTask.task_type === 'REVIEW' ? 'review' : 'review',
+        status: (apiTask.status || status).toLowerCase() as 'pending' | 'completed',
         priority: (apiTask.priority?.toLowerCase() || 'medium') as 'low' | 'medium' | 'high' | 'urgent',
-        assigned_date: apiTask.created_at,
+        assigned_date: apiTask.created_at || apiTask.assigned_date,
         due_date: apiTask.due_date,
         assignee_display: user?.full_name || user?.username || 'You',
         author_display: apiTask.assigned_by || 'System',
-        comments_count: 0
+        comments_count: 0,
+        completed_at: apiTask.completed_at,
+        completion_note: apiTask.completion_note
       }));
       
     } catch (error) {
@@ -208,7 +207,10 @@ const MyTasksStandalone: React.FC = () => {
     window.location.href = `/document-management?document=${task.document_uuid}`;
   };
 
-  const filteredTasks = tasks.filter(task => {
+  // Get the current task list based on active tab
+  const currentTasks = activeTab === 'pending' ? tasks : completedTasks;
+  
+  const filteredTasks = currentTasks.filter(task => {
     if (selectedFilter === 'all') return true;
     if (selectedFilter === 'pending') return task.status === 'pending';
     if (selectedFilter === 'review') return task.task_type === 'review';
@@ -218,7 +220,8 @@ const MyTasksStandalone: React.FC = () => {
 
   const taskStats = {
     total: tasks.length,
-    pending: tasks.filter(t => t.status === 'pending').length,
+    pending: tasks.length,
+    completed: completedTasks.length,
     review: tasks.filter(t => t.task_type === 'review').length,
     approval: tasks.filter(t => t.task_type === 'approval').length
   };
@@ -316,28 +319,73 @@ const MyTasksStandalone: React.FC = () => {
           </div>
         </div>
 
-        {/* Filter Tabs */}
+        {/* Main Tabs: Pending vs Completed */}
+        <div className="border-b border-gray-200 mb-6">
+          <nav className="-mb-px flex space-x-8">
+            <button
+              onClick={() => {
+                setActiveTab('pending');
+                setSelectedFilter('all');
+              }}
+              className={`${
+                activeTab === 'pending'
+                  ? 'border-blue-500 text-blue-600'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+              } whitespace-nowrap py-2 px-1 border-b-2 font-medium text-sm`}
+            >
+              Pending Tasks
+              {taskStats.pending > 0 && (
+                <span className={`ml-2 py-0.5 px-2 rounded-full text-xs ${
+                  activeTab === 'pending' ? 'bg-blue-100 text-blue-600' : 'bg-gray-100 text-gray-600'
+                }`}>
+                  {taskStats.pending}
+                </span>
+              )}
+            </button>
+            <button
+              onClick={() => {
+                setActiveTab('completed');
+                setSelectedFilter('all');
+              }}
+              className={`${
+                activeTab === 'completed'
+                  ? 'border-blue-500 text-blue-600'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+              } whitespace-nowrap py-2 px-1 border-b-2 font-medium text-sm`}
+            >
+              Completed Tasks
+              {taskStats.completed > 0 && (
+                <span className={`ml-2 py-0.5 px-2 rounded-full text-xs ${
+                  activeTab === 'completed' ? 'bg-blue-100 text-blue-600' : 'bg-gray-100 text-gray-600'
+                }`}>
+                  {taskStats.completed}
+                </span>
+              )}
+            </button>
+          </nav>
+        </div>
+
+        {/* Filter Sub-tabs */}
         <div className="border-b border-gray-200 mb-6">
           <nav className="-mb-px flex space-x-8">
             {[
-              { key: 'all', name: 'All Tasks', count: taskStats.total },
-              { key: 'pending', name: 'Pending', count: taskStats.pending },
-              { key: 'review', name: 'Reviews', count: taskStats.review },
-              { key: 'approval', name: 'Approvals', count: taskStats.approval }
+              { key: 'all', name: 'All', count: currentTasks.length },
+              { key: 'review', name: 'Reviews', count: currentTasks.filter(t => t.task_type === 'review').length },
+              { key: 'approval', name: 'Approvals', count: currentTasks.filter(t => t.task_type === 'approval').length }
             ].map((tab) => (
               <button
                 key={tab.key}
                 onClick={() => setSelectedFilter(tab.key)}
                 className={`${
                   selectedFilter === tab.key
-                    ? 'border-blue-500 text-blue-600'
-                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                    ? 'border-gray-500 text-gray-600'
+                    : 'border-transparent text-gray-400 hover:text-gray-600 hover:border-gray-300'
                 } whitespace-nowrap py-2 px-1 border-b-2 font-medium text-sm`}
               >
                 {tab.name}
                 {tab.count > 0 && (
                   <span className={`ml-2 py-0.5 px-2 rounded-full text-xs ${
-                    selectedFilter === tab.key ? 'bg-blue-100 text-blue-600' : 'bg-gray-100 text-gray-600'
+                    selectedFilter === tab.key ? 'bg-gray-100 text-gray-600' : 'bg-gray-50 text-gray-500'
                   }`}>
                     {tab.count}
                   </span>
@@ -404,7 +452,20 @@ const MyTasksStandalone: React.FC = () => {
                         <p className="text-xs text-gray-400">
                           Assigned {new Date(task.assigned_date).toLocaleDateString()}
                           {task.due_date && ` • Due ${new Date(task.due_date).toLocaleDateString()}`}
+                          {task.completed_at && (
+                            <>
+                              {' • '}
+                              <span className="text-green-600 font-medium">
+                                Completed {new Date(task.completed_at).toLocaleDateString()}
+                              </span>
+                            </>
+                          )}
                         </p>
+                        {task.completion_note && (
+                          <p className="text-xs text-gray-500 mt-1">
+                            <span className="font-medium">Note:</span> {task.completion_note}
+                          </p>
+                        )}
                       </div>
                     </div>
                     <div className="flex items-center space-x-2">
@@ -421,7 +482,10 @@ const MyTasksStandalone: React.FC = () => {
         {/* Refresh Button */}
         <div className="mt-6 flex justify-center">
           <button
-            onClick={loadMyTasks}
+            onClick={() => {
+              loadMyTasks();
+              loadCompletedTasks();
+            }}
             disabled={loading}
             className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 disabled:opacity-50 flex items-center space-x-2"
           >
