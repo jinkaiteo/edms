@@ -1213,13 +1213,13 @@ Document Details:
         
         # Create notification data
         notification_data = {
-            'task_id': str(created_task.uuid),
+            'task_id': str(workflow_task.uuid),
             'task_name': task_type,
             'task_description': task_type + " task",
-            'document_number': created_task.task_data.get('document_number', 'Unknown'),
-            'document_uuid': created_task.task_data.get('document_uuid', ''),
+            'document_number': workflow_task.task_data.get('document_number', 'Unknown'),
+            'document_uuid': workflow_task.task_data.get('document_uuid', ''),
             'assigned_by': assigned_by.get_full_name(),
-            'due_date': created_task.due_date.isoformat() if created_task.due_date else None,
+            'due_date': workflow_task.due_date.isoformat() if workflow_task.due_date else None,
             'priority': workflow_task.priority
         }
         
@@ -1233,7 +1233,7 @@ Document Details:
 Task: {task_type}
 Description: {task_type + " task"}
 Priority: {workflow_task.priority}
-Due Date: {created_task.due_date or 'Not specified'}
+Due Date: {workflow_task.due_date or 'Not specified'}
 Assigned by: {assigned_by.get_full_name()}
 
 Please log into EDMS to complete this task:
@@ -1268,14 +1268,14 @@ Document Details:
 Task: {task_type}
 Description: {task_type + " task"}
 Priority: {workflow_task.priority}
-Due Date: {created_task.due_date or 'Not specified'}
+Due Date: {workflow_task.due_date or 'Not specified'}
 Assigned by: {assigned_by.get_full_name()}
 
 Please log into EDMS to complete this task:
 http://localhost:3000/my-tasks
 
 Document Details:
-- Number: {created_task.task_data.get('document_number', 'Unknown')}
+- Number: {workflow_task.task_data.get('document_number', 'Unknown')}
 """
             
             # Use the correct notification service method signature
@@ -1356,7 +1356,7 @@ Document Details:
                 }
             )
             
-            print(f"✅ Created workflow task {created_task.uuid} for {assignee.username}")
+            print(f"✅ Created workflow task {workflow_task.uuid} for {assignee.username}")
             
             # Send notification separately to avoid transaction rollback
             try:
