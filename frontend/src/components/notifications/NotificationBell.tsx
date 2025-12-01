@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useSimpleNotifications } from 'hooks/useSimpleNotifications';
+import { useTaskNotifications } from '../hooks/useTaskNotifications';
 
 interface NotificationBellProps {
   className?: string;
@@ -10,7 +10,7 @@ interface NotificationBellProps {
  * No WebSocket complexity - reliable and simple
  */
 export const NotificationBell: React.FC<NotificationBellProps> = ({ className = '' }) => {
-  const { taskCount, tasks, loading, error, refreshTasks } = useSimpleNotifications();
+  const { taskCount, tasks, loading, error, refreshTasks } = useTaskNotifications();
   const [isOpen, setIsOpen] = useState(false);
 
   const handleBellClick = () => {

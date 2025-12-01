@@ -1,12 +1,12 @@
 import React from 'react';
-import { useSimpleNotifications } from 'hooks/useSimpleNotifications';
+import { useTaskNotifications } from '../hooks/useTaskNotifications';
 
 /**
  * Simplified Notifications page using HTTP polling
  * No WebSocket dependency - simple and reliable
  */
 const Notifications: React.FC = () => {
-  const { tasks, taskCount, loading, error, refreshTasks } = useSimpleNotifications();
+  const { tasks, taskCount, loading, error, refreshTasks } = useTaskNotifications();
 
   return (
     <div className="container mx-auto px-4 py-6">
