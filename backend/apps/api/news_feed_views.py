@@ -92,13 +92,11 @@ def my_tasks(request):
 def recent_notifications(request):
     """Get recent notifications for news feed."""
     try:
-        from apps.scheduler.models import NotificationQueue
         user = request.user
         
         # Get recent notifications for user
         recent_date = timezone.now() - timedelta(days=7)
-        notifications = NotificationQueue.objects.filter(
-            models.Q(recipients=user) | models.Q(created_by=user),
+        notifications = []  # Simplified - no NotificationQueue
             created_at__gte=recent_date
         ).distinct().order_by('-created_at')[:10]
         
