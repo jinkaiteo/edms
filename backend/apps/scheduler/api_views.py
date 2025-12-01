@@ -31,9 +31,7 @@ class NotificationViewSet(viewsets.ReadOnlyModelViewSet):
     
     def get_queryset(self):
         """Return notifications relevant to current user."""
-        return []  # Simplified - no NotificationQueue
-            Q(created_by=self.request.user)
-        ).distinct()
+        return []  # Simplified - no NotificationQueue queries needed
     
     @action(detail=False, methods=['get'])
     def recent(self, request):

@@ -1,15 +1,10 @@
 """
-Notification URL configuration for v1 API
+Simplified notification URL configuration
 """
-
-from django.urls import path, include
-from rest_framework.routers import DefaultRouter
-from .notification_views import NotificationViewSet
-
-# Create router for notification endpoints
-router = DefaultRouter()
-router.register(r'', NotificationViewSet, basename='notification')
+from django.urls import path
+from . import notification_views
 
 urlpatterns = [
-    path('', include(router.urls)),
+    path('my_notifications/', notification_views.my_notifications, name='my-notifications'),
+    path('mark_read/<int:notification_id>/', notification_views.mark_notification_read, name='mark-notification-read'),
 ]
