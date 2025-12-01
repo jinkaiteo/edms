@@ -122,6 +122,8 @@ services:
       - REACT_APP_WS_BASE_URL=/ws
       - PROXY_TARGET=http://backend:8000
       - CHOKIDAR_USEPOLLING=true
+      - WDS_SOCKET_HOST=0.0.0.0
+      - WDS_SOCKET_PORT=3000
     depends_on:
       - backend
     networks:
