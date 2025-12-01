@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useSimpleNotifications } from '../../hooks/useSimpleNotifications';
+import { useSimpleNotifications } from 'hooks/useSimpleNotifications';
 
 interface NotificationBellProps {
   className?: string;

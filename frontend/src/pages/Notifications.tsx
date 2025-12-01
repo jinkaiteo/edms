@@ -1,5 +1,5 @@
 import React from 'react';
-import { useSimpleNotifications } from '../hooks/useSimpleNotifications';
+import { useSimpleNotifications } from 'hooks/useSimpleNotifications';
 
 /**
  * Simplified Notifications page using HTTP polling
