@@ -218,20 +218,19 @@ class NotificationConsumer(AsyncWebsocketConsumer):
     @database_sync_to_async
     def mark_all_notifications_read(self):
         """Mark all user's notifications as read."""
-        from apps.workflows.models import WorkflowNotification
+        from apps.scheduler.models import NotificationQueue
         
         user = self.scope.get('user')
         if not user:
             return 0
         
         recent_date = timezone.now() - timedelta(days=30)
-        count = WorkflowNotification.objects.filter(
-            recipient=user,
+        count = NotificationQueue.objects.filter(
+            recipients=user,
             created_at__gte=recent_date,
-            is_read=False
+            status='SENT'
         ).update(
-            is_read=True,
-            read_at=timezone.now()
+            status='READ'
         )
         return count
     

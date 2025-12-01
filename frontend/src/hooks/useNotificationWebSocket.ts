@@ -60,7 +60,7 @@ export const useNotificationWebSocket = ({
     sendMessage,
     lastMessage
   } = useWebSocket({
-    url: `ws://localhost:8000/ws/notifications/`,
+    url: `ws://localhost:3000/ws/notifications/`,
     enabled,
     shouldReconnect: false, // Disable auto-reconnect to prevent spam
     onOpen: () => {
