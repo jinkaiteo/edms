@@ -22,13 +22,44 @@ def user_tasks(request):
         print(f"🎯 USER_TASKS API - User: {user.username} (ID: {user.id})")
         
         # FIXED: Get tasks from WorkflowTask model (where the actual tasks are stored)
-        from apps.workflows.models import WorkflowTask
+        from apps.workflows.models import WorkflowTask, DocumentWorkflow
+        
+        # Get only tasks for ACTIVE workflows and documents still in review/approval stages
         tasks = WorkflowTask.objects.filter(
             assigned_to=user,
-            status='PENDING'
+            status='PENDING',
+            workflow_instance__is_active=True,  # Workflow must be active
+            workflow_instance__is_completed=False  # Workflow must not be completed
         ).order_by('-created_at')
         
-        print(f"📊 USER_TASKS API - Found {tasks.count()} tasks")
+        # Additional filter: Only show tasks for documents that are not yet approved/effective
+        valid_tasks = []
+        for task in tasks:
+            try:
+                # Get the document through the workflow_instance
+                workflow_instance = task.workflow_instance
+                document = workflow_instance.content_object
+                
+                if document:
+                    # Check document status - exclude if already approved and effective
+                    if document.status not in ['APPROVED_AND_EFFECTIVE', 'EFFECTIVE', 'SUPERSEDED', 'OBSOLETE', 'TERMINATED']:
+                        # Also check DocumentWorkflow state
+                        doc_workflow = DocumentWorkflow.objects.filter(document=document).first()
+                        if doc_workflow and doc_workflow.current_state:
+                            # Only include tasks for documents still in review/approval stages
+                            if doc_workflow.current_state.code not in ['APPROVED_AND_EFFECTIVE', 'EFFECTIVE', 'SUPERSEDED', 'OBSOLETE', 'TERMINATED']:
+                                valid_tasks.append(task)
+                        else:
+                            # If no workflow state, include based on document status only
+                            valid_tasks.append(task)
+            except Exception as e:
+                print(f"⚠️ Error checking task validity for task {task.id}: {e}")
+                # Include task if we can't determine status (fail safe)
+                valid_tasks.append(task)
+        
+        tasks = valid_tasks
+        
+        print(f"📊 USER_TASKS API - Found {len(tasks)} valid tasks after filtering")
         
         # Convert WorkflowTasks to frontend expected format
         task_list = []

@@ -12,8 +12,8 @@ from django.utils import timezone
 from datetime import timedelta
 # from django.db.models import Q  # Not needed anymore
 
-from apps.workflows.models import WorkflowNotification
-from apps.workflows.serializers import WorkflowNotificationSerializer
+from apps.scheduler.models import NotificationQueue
+# from apps.workflows.serializers import WorkflowNotificationSerializer
 
 User = get_user_model()
 
@@ -26,15 +26,15 @@ class NotificationViewSet(viewsets.ReadOnlyModelViewSet):
     """
     
     permission_classes = [permissions.IsAuthenticated]
-    serializer_class = WorkflowNotificationSerializer
+    # serializer_class = WorkflowNotificationSerializer  # Not needed for custom response
     
     def get_queryset(self):
         """Return notifications relevant to current user."""
         if hasattr(self, 'request') and self.request and self.request.user:
-            return WorkflowNotification.objects.filter(
-                recipient=self.request.user
+            return NotificationQueue.objects.filter(
+                recipients=self.request.user
             ).order_by('-created_at')
-        return WorkflowNotification.objects.none()
+        return NotificationQueue.objects.none()
     
     @action(detail=False, methods=['get'])
     def my_notifications(self, request):
@@ -42,29 +42,29 @@ class NotificationViewSet(viewsets.ReadOnlyModelViewSet):
         try:
             # Get recent notifications (last 30 days)
             recent_date = timezone.now() - timedelta(days=30)
-            notifications = WorkflowNotification.objects.filter(
-                recipient=request.user,
+            notifications = NotificationQueue.objects.filter(
+                recipients=request.user,
                 created_at__gte=recent_date
             ).order_by('-created_at')[:20]
             
             # Get unread count from full queryset before slicing
-            unread_count = WorkflowNotification.objects.filter(
-                recipient=request.user,
+            unread_count = NotificationQueue.objects.filter(
+                recipients=request.user,
                 created_at__gte=recent_date,
-                is_read=False
+                status='SENT'  # SENT notifications are unread in NotificationQueue
             ).count()
             
             notification_data = []
             for notif in notifications:
                 notification_data.append({
                     'id': str(notif.id),
-                    'subject': notif.subject or f"{notif.notification_type.replace('_', ' ').title()}: Notification",
-                    'message': notif.message or f"Workflow notification",
+                    'subject': notif.subject,
+                    'message': notif.message,
                     'notification_type': notif.notification_type,
-                    'priority': 'NORMAL',  # Default priority since it's not in the model
-                    'status': 'READ' if getattr(notif, 'is_read', False) else 'SENT',
+                    'priority': notif.priority,
+                    'status': notif.status,  # PENDING, SENT, FAILED, CANCELLED
                     'created_at': notif.created_at.isoformat(),
-                    'read_at': getattr(notif, 'read_at', None).isoformat() if getattr(notif, 'read_at', None) else None
+                    'sent_at': notif.sent_at.isoformat() if notif.sent_at else None
                 })
             
             return Response({
@@ -84,9 +84,9 @@ class NotificationViewSet(viewsets.ReadOnlyModelViewSet):
     def mark_read(self, request, pk=None):
         """Mark a specific notification as read."""
         try:
-            notification = WorkflowNotification.objects.get(
+            notification = NotificationQueue.objects.get(
                 pk=pk,
-                recipient=request.user
+                recipients=request.user
             )
             
             # Handle fields that may not exist yet
@@ -101,7 +101,7 @@ class NotificationViewSet(viewsets.ReadOnlyModelViewSet):
                 'message': 'Notification marked as read'
             })
             
-        except WorkflowNotification.DoesNotExist:
+        except NotificationQueue.DoesNotExist:
             return Response(
                 {'error': 'Notification not found'}, 
                 status=status.HTTP_404_NOT_FOUND

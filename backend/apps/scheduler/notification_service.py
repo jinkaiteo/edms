@@ -125,7 +125,7 @@ class NotificationService:
                             status='PENDING'
                         )
                         # Set many-to-many field after creation
-                        notification.recipients.set([user.email])
+                        notification.recipients.set([user])
                         notifications_created.append(notification)
                         print(f"✅ Stored notification in database for {user.email}: {subject}")
                     except Exception as db_error:
