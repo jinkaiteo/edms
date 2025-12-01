@@ -1144,7 +1144,7 @@ class DocumentLifecycleService:
                             'assigned_by_id': transitioned_by.id
                         }
                     )
-                    print(f"✅ Created workflow task for {assignee.username}: {workflow_task.name}")
+                    print(f"✅ Created workflow task for {assignee.username}: {task_type}")
                     
                     # Notification is now handled separately to prevent transaction rollback
                 else:
@@ -1160,15 +1160,15 @@ class DocumentLifecycleService:
         try:
             from ..scheduler.notification_service import notification_service
             
-            task_metadata = workflow_task.metadata
+            task_metadata = task_metadata
             due_date_str = task_metadata.get('due_date', timezone.now().isoformat())[:10]  # Get date part only
             
-            subject = f"New Task Assigned: {workflow_task.name}"
+            subject = f"New Task Assigned: {task_type}"
             message = f"""
 You have been assigned a new workflow task.
 
-Task: {workflow_task.name}
-Description: {workflow_task.description}
+Task: {task_type}
+Description: {task_type + " task"}
 Priority: {task_metadata.get('priority', 'normal').upper()}
 Due Date: {due_date_str}
 Assigned by: {assigned_by.get_full_name()}
@@ -1213,13 +1213,13 @@ Document Details:
         
         # Create notification data
         notification_data = {
-            'task_id': str(workflow_task.uuid),
-            'task_name': workflow_task.name,
-            'task_description': workflow_task.description,
-            'document_number': workflow_task.task_data.get('document_number', 'Unknown'),
-            'document_uuid': workflow_task.task_data.get('document_uuid', ''),
+            'task_id': str(created_task.uuid),
+            'task_name': task_type,
+            'task_description': task_type + " task",
+            'document_number': created_task.task_data.get('document_number', 'Unknown'),
+            'document_uuid': created_task.task_data.get('document_uuid', ''),
             'assigned_by': assigned_by.get_full_name(),
-            'due_date': workflow_task.due_date.isoformat() if workflow_task.due_date else None,
+            'due_date': created_task.due_date.isoformat() if created_task.due_date else None,
             'priority': workflow_task.priority
         }
         
@@ -1227,13 +1227,13 @@ Document Details:
         from django.core.mail import send_mail
         from django.conf import settings
         
-        subject = f"New Task Assigned: {workflow_task.name}"
+        subject = f"New Task Assigned: {task_type}"
         message = f"""You have been assigned a new workflow task.
 
-Task: {workflow_task.name}
-Description: {workflow_task.description}
+Task: {task_type}
+Description: {task_type + " task"}
 Priority: {workflow_task.priority}
-Due Date: {workflow_task.due_date or 'Not specified'}
+Due Date: {created_task.due_date or 'Not specified'}
 Assigned by: {assigned_by.get_full_name()}
 
 Please log into EDMS to complete this task:
@@ -1262,20 +1262,20 @@ Document Details:
         try:
             from apps.scheduler.notification_service import notification_service
             
-            subject = f"New Task Assigned: {workflow_task.name}"
+            subject = f"New Task Assigned: {task_type}"
             message = f"""You have been assigned a new workflow task.
 
-Task: {workflow_task.name}
-Description: {workflow_task.description}
+Task: {task_type}
+Description: {task_type + " task"}
 Priority: {workflow_task.priority}
-Due Date: {workflow_task.due_date or 'Not specified'}
+Due Date: {created_task.due_date or 'Not specified'}
 Assigned by: {assigned_by.get_full_name()}
 
 Please log into EDMS to complete this task:
 http://localhost:3000/my-tasks
 
 Document Details:
-- Number: {workflow_task.task_data.get('document_number', 'Unknown')}
+- Number: {created_task.task_data.get('document_number', 'Unknown')}
 """
             
             # Use the correct notification service method signature
@@ -1356,7 +1356,7 @@ Document Details:
                 }
             )
             
-            print(f"✅ Created workflow task {workflow_task.uuid} for {assignee.username}")
+            print(f"✅ Created workflow task {created_task.uuid} for {assignee.username}")
             
             # Send notification separately to avoid transaction rollback
             try:
