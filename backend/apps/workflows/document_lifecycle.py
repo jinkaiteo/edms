@@ -1181,15 +1181,7 @@ Document Details:
 - Title: {task_metadata.get('document_title', 'N/A')}
             """.strip()
             
-            notification_service.send_immediate_notification(
-                recipients=[assignee],
-                subject=subject,
-                message=message,
-                notification_type='TASK_ASSIGNED'
-            )
-            print(f"📧 Sent task assignment notification to {assignee.username}")
         except Exception as e:
-            print(f"❌ Failed to send task assignment notification: {e}")
 
     def _handle_post_transition(self, workflow: DocumentWorkflow, 
                               transition: DocumentTransition):
@@ -1209,7 +1201,6 @@ Document Details:
         """Send notification when a task is assigned - safe version that doesn't affect transactions."""
     try:
         # Import notification service
-        from apps.scheduler.notification_service import notification_service
         
         # Create notification data
         notification_data = {
@@ -1254,13 +1245,11 @@ Document Details:
         print(f"📧 Sent task assignment notification to {assignee.username}")
         
     except Exception as e:
-        print(f"⚠️ Failed to send task assignment notification (non-critical): {e}")
         # Don't re-raise - notification failures shouldn't break workflow transitions
     
     def _send_task_notification_simple(self, task, assigned_by: User, assignee: User):
         """Send simple email notification without database storage to avoid transaction issues."""
         try:
-            from apps.scheduler.notification_service import notification_service
             
             subject = f"New Task Assigned: {task_type}"
             message = f"""You have been assigned a new workflow task.
@@ -1279,14 +1268,6 @@ Document Details:
 """
             
             # Use the correct notification service method signature
-            success = notification_service.send_immediate_notification(
-                recipients=[assignee],  # Pass list of User objects
-                subject=subject,
-                message=message,
-                notification_type='TASK_ASSIGNMENT'
-            )
-            
-            print(f"📧 Sent task notification to {assignee.username}: {success}")
             
         except Exception as e:
             print(f"⚠️ Failed to send task notification: {e}")
@@ -1496,3 +1477,18 @@ def get_document_lifecycle_service():
     if _document_lifecycle_service is None:
         _document_lifecycle_service = DocumentLifecycleService()
     return _document_lifecycle_service
+    def _prepare_task_email_notification(self, task, assigned_user, document):
+        """Prepare email notification for task assignment (future implementation)"""
+        from apps.scheduler.notification_service import notification_service
+        
+        try:
+            result = notification_service.send_task_email(
+                user=assigned_user,
+                task_type=task.task_type,
+                document=document
+            )
+            print(f"📧 Email notification prepared for {assigned_user.username}")
+            return result
+        except Exception as e:
+            print(f"⚠️ Email preparation failed (non-critical): {e}")
+            return False
