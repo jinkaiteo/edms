@@ -140,7 +140,7 @@ class NotificationConsumer(AsyncWebsocketConsumer):
     @database_sync_to_async
     def get_user_notifications(self):
         """Get user's notifications from database."""
-        from apps.workflows.models import WorkflowNotification
+        from apps.scheduler.models import NotificationQueue
         
         user = self.scope.get('user')
         if not user:
@@ -148,29 +148,29 @@ class NotificationConsumer(AsyncWebsocketConsumer):
         
         # Get recent notifications (last 30 days)
         recent_date = timezone.now() - timedelta(days=30)
-        notifications = WorkflowNotification.objects.filter(
-            recipient=user,
+        notifications = NotificationQueue.objects.filter(
+            recipients=user,
             created_at__gte=recent_date
         ).order_by('-created_at')[:20]
         
-        # Get unread count
-        unread_count = WorkflowNotification.objects.filter(
-            recipient=user,
+        # Get unread count (SENT notifications are unread)
+        unread_count = NotificationQueue.objects.filter(
+            recipients=user,
             created_at__gte=recent_date,
-            is_read=False
+            status='SENT'
         ).count()
         
         notification_data = []
         for notif in notifications:
             notification_data.append({
                 'id': str(notif.id),
-                'subject': notif.subject or f"{notif.notification_type.replace('_', ' ').title()}: Notification",
-                'message': notif.message or f"Workflow notification",
+                'subject': notif.subject,
+                'message': notif.message,
                 'notification_type': notif.notification_type,
-                'priority': 'NORMAL',
-                'status': 'READ' if getattr(notif, 'is_read', False) else 'SENT',
+                'priority': notif.priority,
+                'status': notif.status,
                 'created_at': notif.created_at.isoformat(),
-                'read_at': getattr(notif, 'read_at', None).isoformat() if getattr(notif, 'read_at', None) else None
+                'sent_at': notif.sent_at.isoformat() if notif.sent_at else None
             })
         
         return {
@@ -182,38 +182,37 @@ class NotificationConsumer(AsyncWebsocketConsumer):
     @database_sync_to_async
     def get_unread_count(self):
         """Get user's unread notification count."""
-        from apps.workflows.models import WorkflowNotification
+        from apps.scheduler.models import NotificationQueue
         
         user = self.scope.get('user')
         if not user:
             return 0
         
         recent_date = timezone.now() - timedelta(days=30)
-        return WorkflowNotification.objects.filter(
-            recipient=user,
+        return NotificationQueue.objects.filter(
+            recipients=user,
             created_at__gte=recent_date,
-            is_read=False
+            status='SENT'
         ).count()
     
     @database_sync_to_async
     def mark_notification_read(self, notification_id):
         """Mark specific notification as read."""
-        from apps.workflows.models import WorkflowNotification
+        from apps.scheduler.models import NotificationQueue
         
         user = self.scope.get('user')
         if not user or not notification_id:
             return False
         
         try:
-            notification = WorkflowNotification.objects.get(
+            notification = NotificationQueue.objects.get(
                 id=notification_id,
-                recipient=user
+                recipients=user
             )
-            notification.is_read = True
-            notification.read_at = timezone.now()
-            notification.save(update_fields=['is_read', 'read_at'])
+            notification.status = 'READ'
+            notification.save(update_fields=['status'])
             return True
-        except WorkflowNotification.DoesNotExist:
+        except NotificationQueue.DoesNotExist:
             return False
     
     @database_sync_to_async
