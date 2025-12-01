@@ -21,5 +21,14 @@ module.exports = function (app) {
     })
   );
   
-  // Note: WebSocket connections bypass proxy and connect directly to backend
+  // Proxy WebSocket connections
+  app.use(
+    "/ws",
+    createProxyMiddleware({
+      target: "http://backend:8000",
+      changeOrigin: true,
+      ws: true,  // Enable WebSocket proxying
+      logLevel: 'debug'
+    })
+  );
 };
