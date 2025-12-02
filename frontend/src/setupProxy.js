@@ -21,14 +21,5 @@ module.exports = function (app) {
     })
   );
   
-  // Proxy WebSocket connections
-  app.use(
-    "/ws",
-    createProxyMiddleware({
-      target: "http://backend:8000",
-      changeOrigin: true,
-      ws: true,  // Enable WebSocket proxying
-      logLevel: 'debug'
-    })
-  );
+  // WebSocket proxy removed - HTTP polling used instead
 };

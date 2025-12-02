@@ -28,9 +28,7 @@ celery==5.3.4
 redis==5.0.1
 django-redis==5.4.0
 
-# WebSocket Support
-channels==4.0.0
-channels-redis==4.1.0
+# WebSocket Support removed - HTTP polling used instead
 
 # API Documentation
 drf-spectacular==0.26.5

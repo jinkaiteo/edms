@@ -1,33 +1,75 @@
-import React from 'react';
-import { useSimpleNotifications } from '../../hooks/useSimpleNotifications.ts';
+import React, { useState, useEffect } from 'react';
 
 interface NotificationBellProps {
   className?: string;
 }
 
 /**
- * Enhanced NotificationBell - now shows actual task counts with loading states
- * Uses simplified HTTP polling for reliable notification updates
+ * Document-focused NotificationBell - shows pending document counts
+ * Uses document filtering instead of separate task system
  */
 export const NotificationBell: React.FC<NotificationBellProps> = ({ className = '' }) => {
-  const { taskCount, loading, error } = useSimpleNotifications();
+  const [documentCount, setDocumentCount] = useState<number>(0);
+  const [loading, setLoading] = useState<boolean>(false);
+  const [error, setError] = useState<string | null>(null);
+  // Using direct fetch instead of useApi hook to avoid circular dependencies
+
+  // Poll for pending documents every 60 seconds
+  useEffect(() => {
+    const fetchPendingDocuments = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+        
+        // Get documents requiring user action using document filter
+        const response = await fetch('/api/v1/documents/documents/?filter=pending_my_action', {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${localStorage.getItem('accessToken') || ''}`
+          }
+        });
+        
+        if (response.ok) {
+          const data = await response.json();
+          setDocumentCount(data.results ? data.results.length : 0);
+        } else {
+          throw new Error(`HTTP ${response.status}`);
+        }
+      } catch (err) {
+        console.error('Failed to fetch pending documents:', err);
+        setError('Failed to load notifications');
+        setDocumentCount(0);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    // Initial fetch
+    fetchPendingDocuments();
+
+    // Set up polling every 60 seconds
+    const interval = setInterval(fetchPendingDocuments, 60000);
+
+    return () => clearInterval(interval);
+  }, []);
   
   const handleBellClick = () => {
-    // Redirect to tasks page to view actual tasks
-    window.location.href = '/my-tasks';
+    // Redirect to document management with pending filter
+    window.location.href = '/document-management?filter=pending';
   };
 
   const getBadgeContent = () => {
     if (loading) return '⟳';
     if (error) return '!';
-    if (taskCount > 0) return taskCount > 99 ? '99+' : taskCount.toString();
-    return null; // No badge if no tasks
+    if (documentCount > 0) return documentCount > 99 ? '99+' : documentCount.toString();
+    return null; // No badge if no pending documents
   };
 
   const getBadgeColor = () => {
     if (error) return 'bg-red-600';
     if (loading) return 'bg-gray-400';
-    if (taskCount > 0) return 'bg-blue-600';
+    if (documentCount > 0) return 'bg-blue-600';
     return 'bg-gray-400';
   };
 
@@ -39,8 +81,8 @@ export const NotificationBell: React.FC<NotificationBellProps> = ({ className = 
       <button
         onClick={handleBellClick}
         className="relative p-2 text-gray-600 hover:text-gray-800 focus:outline-none focus:text-gray-800"
-        aria-label={`View my tasks${taskCount > 0 ? ` (${taskCount} pending)` : ''}`}
-        title={error ? 'Error loading notifications' : `${taskCount} pending tasks`}
+        aria-label={`View pending documents${documentCount > 0 ? ` (${documentCount} pending)` : ''}`}
+        title={error ? 'Error loading notifications' : `${documentCount} pending documents`}
       >
         {/* Bell Icon */}
         <svg

@@ -59,7 +59,7 @@ services:
       sh -c "sleep 10 &&
              python manage.py migrate --run-syncdb &&
              python manage.py collectstatic --noinput &&
-             daphne -b 0.0.0.0 -p 8000 edms.asgi:application"
+             python manage.py runserver 0.0.0.0:8000"
 
   # Celery Worker
   celery_worker:

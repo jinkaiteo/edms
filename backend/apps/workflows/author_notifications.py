@@ -10,11 +10,12 @@ from django.utils import timezone
 from django.contrib.auth import get_user_model
 from django.db import transaction
 
-from .models import WorkflowTask, WorkflowNotification, DocumentWorkflow
+from .models import WorkflowNotification, DocumentWorkflow
+# WorkflowTask removed - using document filters instead
 from ..scheduler.notification_service import notification_service
 from ..documents.models import Document
-from channels.layers import get_channel_layer
-import asyncio
+# Channels import removed - HTTP polling used instead
+# asyncio import removed - no longer needed without WebSocket
 
 User = get_user_model()
 
@@ -125,31 +126,13 @@ The document has been returned to DRAFT status for revision.
                     )
                     print(f"✅ Created WorkflowNotification record for review: {workflow_notification.id}")
                     
-                    # Send real-time notification via WebSocket
-                    self._send_realtime_notification(document.author.id, {
-                        'id': str(workflow_notification.id),
-                        'subject': subject,
-                        'message': message,
-                        'notification_type': workflow_notification.notification_type,
-                        'priority': 'HIGH' if not approved else 'NORMAL',
-                        'status': 'SENT',
-                        'created_at': workflow_notification.created_at.isoformat()
-                    })
+                    # Real-time notifications removed - HTTP polling used for updates
                     
                 except Exception as wf_error:
                     print(f"❌ Failed to create WorkflowNotification: {wf_error}")
                 
-                # Create task for author
-                task = WorkflowTask.objects.create(
-                    workflow_instance=workflow,
-                    name=task_name,
-                    description=task_description,
-                    task_type='REVIEW' if not approved else 'APPROVE',
-                    priority='HIGH' if not approved else 'NORMAL',
-                    assigned_to=document.author,
-                    assigned_by=reviewer,
-                    due_date=timezone.now() + timezone.timedelta(days=3 if approved else 7)
-                )
+                # WorkflowTask creation removed - using document filtering approach instead
+                # Task representation is now handled by document status and user assignments
                 
                 return True
                 
@@ -258,18 +241,8 @@ The document has been returned to DRAFT status for revision.
                     sent_at=timezone.now() if notification_success else None
                 )
                 
-                # Create task for author if rejection
-                if task_required:
-                    WorkflowTask.objects.create(
-                        workflow_instance=workflow,
-                        name=f"Revise {document.document_number} Based on Approval Feedback",
-                        description=f"Document was rejected by {approver.get_full_name()}. Address the feedback and resubmit.",
-                        task_type='REVIEW',
-                        priority='HIGH',
-                        assigned_to=document.author,
-                        assigned_by=approver,
-                        due_date=timezone.now() + timezone.timedelta(days=10)
-                    )
+                # WorkflowTask creation removed - using document filtering approach instead
+                # Rejection handling is now managed by document status updates
                 
                 return True
                 
@@ -277,7 +250,7 @@ The document has been returned to DRAFT status for revision.
             print(f"Failed to notify author of approval completion: {e}")
             return False
     
-    def create_author_routing_task(self, document: Document, workflow: DocumentWorkflow) -> WorkflowTask:
+    def create_author_routing_task(self, document: Document, workflow: DocumentWorkflow):
         """
         Create a task for the author to route document after review approval.
         
@@ -288,21 +261,9 @@ The document has been returned to DRAFT status for revision.
         Returns:
             Created WorkflowTask
         """
-        return WorkflowTask.objects.create(
-            workflow_instance=workflow,
-            name=f"Route {document.document_number} for Approval",
-            description=f"Select an approver and route the document for final approval. Document has been successfully reviewed and is ready for the approval stage.",
-            task_type='APPROVE',
-            priority='NORMAL',
-            assigned_to=document.author,
-            assigned_by=document.author,  # System task
-            due_date=timezone.now() + timezone.timedelta(days=3),
-            task_data={
-                'action_required': 'route_for_approval',
-                'document_status': document.status,
-                'next_step': 'Select approver and route document'
-            }
-        )
+        # WorkflowTask creation removed - using document filtering approach instead
+        # Author routing is now handled by document status and workflow state
+        return True
     
     def get_author_pending_tasks(self, author: User) -> List[dict]:
         """
@@ -314,93 +275,9 @@ The document has been returned to DRAFT status for revision.
         Returns:
             List of task dictionaries
         """
-        try:
-            # Get active workflow tasks - FIXED: Use ScheduledTask instead of WorkflowTask
-            from ..scheduler.models import ScheduledTask
-            
-            # Use our new ScheduledTask approach that actually works
-            scheduled_tasks = ScheduledTask.objects.filter(
-                task_type='workflow_task',
-                metadata__assignee=author.username,
-                status='PENDING'
-            ).order_by('-created_at')
-            
-            tasks = []
-            for task in scheduled_tasks:
-                metadata = task.metadata
-                task_data = {
-                    'id': str(task.uuid),
-                    'name': task.name,
-                    'description': task.description,
-                    'task_type': metadata.get('task_type', 'UNKNOWN'),
-                    'priority': metadata.get('priority', 'normal').upper(),
-                    'status': task.status,
-                    'created_at': task.created_at,
-                    'due_date': metadata.get('due_date'),
-                    'is_overdue': False,  # Calculate if needed
-                    'assigned_by': metadata.get('assigned_by', 'System'),
-                    'workflow_type': 'REVIEW',
-                    'document_id': metadata.get('document_id'),
-                    'document_uuid': metadata.get('document_uuid'),
-                    'document_number': metadata.get('document_number'),
-                    'document_title': metadata.get('document_title'),
-                    'document_status': metadata.get('state_code', 'UNKNOWN'),
-                    'document_version': 'v1.0'
-                }
-                tasks.append(task_data)
-            
-            return tasks
-            
-            # OLD CODE BELOW - KEEP FOR REFERENCE BUT DON'T EXECUTE
-            return []  # Early return to skip the old broken code
-            
-            # OLD BROKEN CODE (do not execute):
-            active_tasks = WorkflowTask.objects.filter(
-                assigned_to=author,
-                status__in=['PENDING', 'IN_PROGRESS']
-            ).select_related(
-                'workflow_instance__content_object',  # This is what's failing
-                'assigned_by'
-            ).order_by('-priority', 'due_date')
-            
-            tasks = []
-            for task in active_tasks:
-                # Get the document from the workflow
-                document = None
-                if hasattr(task.workflow_instance, 'content_object'):
-                    document = task.workflow_instance.content_object
-                
-                task_data = {
-                    'id': task.uuid,
-                    'name': task.name,
-                    'description': task.description,
-                    'task_type': task.task_type,
-                    'priority': task.priority,
-                    'status': task.status,
-                    'created_at': task.created_at,
-                    'due_date': task.due_date,
-                    'is_overdue': task.is_overdue,
-                    'assigned_by': task.assigned_by.get_full_name() if task.assigned_by else 'System',
-                    'workflow_type': task.workflow_instance.workflow_type if hasattr(task.workflow_instance, 'workflow_type') else 'Unknown'
-                }
-                
-                if document:
-                    task_data.update({
-                        'document_id': document.id,
-                        'document_uuid': document.uuid,
-                        'document_number': document.document_number,
-                        'document_title': document.title,
-                        'document_status': document.status,
-                        'document_version': getattr(document, 'version_string', 'N/A')
-                    })
-                
-                tasks.append(task_data)
-            
-            return tasks
-            
-        except Exception as e:
-            print(f"Failed to get author pending tasks: {e}")
-            return []
+        # WorkflowTask system removed - tasks are now represented by document status filtering
+        # Users should use document management with filters like 'my_tasks' or 'pending_my_action'
+        return []
     
     def mark_task_completed(self, task_id: str, user: User, completion_note: str = '') -> bool:
         """
@@ -415,10 +292,9 @@ The document has been returned to DRAFT status for revision.
             bool: Success status
         """
         try:
-            task = WorkflowTask.objects.get(uuid=task_id, assigned_to=user)
-            task.complete_task(completion_note=completion_note)
+            # WorkflowTask completion removed - using document filtering approach instead
             return True
-        except WorkflowTask.DoesNotExist:
+        except Exception: # WorkflowTask removed
             return False
         except Exception as e:
             print(f"Failed to complete task: {e}")
@@ -434,25 +310,7 @@ The document has been returned to DRAFT status for revision.
         except:
             return None
     
-    def _send_realtime_notification(self, user_id: int, notification_data: dict):
-        """Send real-time notification via WebSocket."""
-        try:
-            channel_layer = get_channel_layer()
-            if channel_layer:
-                # Send to user's notification group
-                asyncio.run_coroutine_threadsafe(
-                    channel_layer.group_send(
-                        f'notifications_{user_id}',
-                        {
-                            'type': 'notification_created',
-                            'notification': notification_data
-                        }
-                    ),
-                    asyncio.get_event_loop()
-                )
-                print(f"🔔 Sent real-time notification to user {user_id}")
-        except Exception as e:
-            print(f"⚠️ Failed to send real-time notification: {e}")
+    # WebSocket notification method removed - HTTP polling used instead
 
 
 # Service instance

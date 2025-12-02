@@ -11,7 +11,8 @@ from django.urls import reverse
 from django.utils.safestring import mark_safe
 from .models import (
     WorkflowType, DocumentState, DocumentWorkflow, DocumentTransition,
-    WorkflowInstance, WorkflowTask, WorkflowRule, WorkflowNotification, WorkflowTemplate
+    WorkflowInstance, WorkflowRule, WorkflowNotification, WorkflowTemplate
+    # WorkflowTask removed - using document filters instead
 )
 
 
@@ -204,14 +205,7 @@ class WorkflowInstanceAdmin(admin.ModelAdmin):
     document_link.short_description = 'Document'
 
 
-@admin.register(WorkflowTask)
-class WorkflowTaskAdmin(admin.ModelAdmin):
-    """Admin interface for WorkflowTask management."""
-    
-    list_display = ['workflow_instance', 'task_type', 'assigned_to', 'due_date']
-    list_filter = ['task_type']
-    search_fields = ['assigned_to__username', 'task_data']
-    readonly_fields = ['uuid']
+# WorkflowTaskAdmin removed - using document filters instead of separate task management
 
 
 @admin.register(WorkflowRule)

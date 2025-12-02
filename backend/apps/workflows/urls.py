@@ -16,8 +16,8 @@ from .views import (
 )
 from .api_views import workflow_types
 from .task_api_views import author_tasks, task_summary, complete_task
-from .user_task_api_views import user_task_summary, complete_user_task
-from apps.api.v1 import task_views
+# user_task_api_views removed - using document filters instead
+# task_views import removed - using document filters instead
 
 # Router for simple viewsets
 router = DefaultRouter()
@@ -49,10 +49,7 @@ urlpatterns = [
     path('tasks/summary/', task_summary, name='task_summary'),
     path('tasks/<uuid:task_uuid>/complete/', complete_task, name='complete_task'),
     
-    # Enhanced task API endpoints (using new implementation)
-    path('tasks/user-tasks/', task_views.user_tasks, name='user_tasks'),
-    path('tasks/user-summary/', user_task_summary, name='user_task_summary'),
-    path('tasks/<uuid:task_uuid>/user-complete/', complete_user_task, name='complete_user_task'),
+    # Enhanced task API endpoints removed - using document filters instead
     
     # Workflow types endpoint
     path('types/', workflow_types, name='workflow_types'),

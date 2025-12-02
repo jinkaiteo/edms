@@ -12,7 +12,8 @@ from django.utils import timezone
 from .models import (
     DocumentState, DocumentWorkflow, DocumentTransition,
     WorkflowType, WorkflowInstance, WorkflowTransition,
-    WorkflowTask, WorkflowRule, WorkflowNotification,
+    WorkflowRule, WorkflowNotification,
+    # WorkflowTask removed - using document filters instead
     WorkflowTemplate
 )
 
@@ -109,34 +110,7 @@ class WorkflowTransitionSerializer(serializers.ModelSerializer):
         read_only_fields = '__all__'
 
 
-class WorkflowTaskSerializer(serializers.ModelSerializer):
-    """Serializer for WorkflowTask model."""
-    
-    workflow_instance_display = serializers.CharField(
-        source='workflow_instance.workflow_type.name', 
-        read_only=True
-    )
-    assigned_to_display = serializers.CharField(source='assigned_to.get_full_name', read_only=True)
-    assigned_by_display = serializers.CharField(source='assigned_by.get_full_name', read_only=True)
-    task_type_display = serializers.CharField(source='get_task_type_display', read_only=True)
-    priority_display = serializers.CharField(source='get_priority_display', read_only=True)
-    status_display = serializers.CharField(source='get_status_display', read_only=True)
-    is_overdue = serializers.ReadOnlyField()
-    
-    class Meta:
-        model = WorkflowTask
-        fields = [
-            'id', 'uuid', 'workflow_instance', 'workflow_instance_display',
-            'name', 'description', 'task_type', 'task_type_display',
-            'priority', 'priority_display', 'assigned_to', 'assigned_to_display',
-            'assigned_by', 'assigned_by_display', 'created_at', 'assigned_at',
-            'started_at', 'completed_at', 'due_date', 'status', 'status_display',
-            'completion_note', 'is_overdue', 'task_data', 'result_data', 'metadata'
-        ]
-        read_only_fields = [
-            'id', 'uuid', 'created_at', 'assigned_at', 'started_at', 'completed_at',
-            'assigned_by', 'is_overdue'
-        ]
+# WorkflowTaskSerializer removed - using document filters instead of separate task management
 
 
 class WorkflowRuleSerializer(serializers.ModelSerializer):

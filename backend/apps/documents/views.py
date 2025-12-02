@@ -1340,7 +1340,8 @@ class DocumentViewSet(viewsets.ModelViewSet):
         document.save()
         
         # CREATE WORKFLOW TASK FOR THE APPROVER
-        from apps.workflows.models import WorkflowTask, DocumentWorkflow
+        from apps.workflows.models import DocumentWorkflow
+        # WorkflowTask removed - using document filters instead
         from apps.scheduler.notification_service import notification_service
         from django.utils import timezone
         
@@ -1364,26 +1365,10 @@ class DocumentViewSet(viewsets.ModelViewSet):
                 workflow.current_assignee = approver
                 workflow.save()
             
-            # Create approval task for the approver
-            task = WorkflowTask.objects.create(
-                workflow_instance=workflow,
-                name=f"Approve Document: {document.document_number}",
-                description=f"Review and approve document '{document.title}' (v{document.version_string}). This document has been reviewed and is ready for your approval.",
-                task_type='APPROVE',
-                priority='NORMAL',
-                assigned_to=approver,
-                assigned_by=request.user,
-                due_date=timezone.now() + timezone.timedelta(days=5),  # 5 day deadline
-                task_data={
-                    'document_uuid': str(document.uuid),
-                    'document_number': document.document_number,
-                    'document_title': document.title,
-                    'action_required': 'approve_document',
-                    'routed_by': request.user.username
-                }
-            )
+            # WorkflowTask creation removed - using document filters instead
+            # Task tracking now handled via document status and workflow state
             
-            print(f"✅ Created approval task {task.uuid} for {approver.username}")
+            print("✅ Document routed for approval - task tracking via document status")
             
             # Send notification to approver
             notification_sent = notification_service.send_immediate_notification(
@@ -1785,7 +1770,8 @@ class DocumentWorkflowView(APIView):
         
         # Create notification and task for reviewer
         try:
-            from apps.workflows.models import WorkflowNotification, WorkflowTask, WorkflowInstance
+            from apps.workflows.models import WorkflowInstance
+            # WorkflowTask removed - using document filters instead
             from django.utils import timezone
             
             if document.reviewer:
@@ -1819,19 +1805,8 @@ class DocumentWorkflowView(APIView):
                     }
                 )
                 
-                # Create WorkflowTask for reviewer
-                workflow_task = WorkflowTask.objects.create(
-                    workflow_instance=workflow_instance,
-                    name=f'Review Document: {document.document_number}',
-                    description=f'Review document "{document.title}" and provide feedback. Author comment: {comment or "No comment provided."}',
-                    task_type='REVIEW',
-                    priority='HIGH',
-                    assigned_to=document.reviewer,
-                    assigned_by=request.user,
-                    assigned_at=timezone.now(),
-                    due_date=timezone.now() + timezone.timedelta(days=5),
-                    status='PENDING'
-                )
+                # WorkflowTask creation removed - using document filters instead
+                # Task tracking now handled via document status
                 
                 # Create notification for reviewer
                 notification = WorkflowNotification.objects.create(

@@ -32,7 +32,7 @@ const AdminDashboard: React.FC = () => {
   } = useDashboardUpdates({
     enabled: activeSection === 'overview', // Only load when overview is active
     autoRefreshInterval: 300000, // 5 minutes
-    useWebSocket: false, // Can enable WebSocket for admin dashboard later
+    // HTTP polling used for all dashboard updates
     onError: handleDashboardError,
     onUpdate: handleDashboardUpdate
   });

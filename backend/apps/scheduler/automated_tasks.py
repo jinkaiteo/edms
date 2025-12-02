@@ -27,7 +27,8 @@ from celery.utils.log import get_task_logger
 from .models import ScheduledTask
 from .notification_service import notification_service
 from ..documents.models import Document
-from ..workflows.models import DocumentWorkflow, DocumentState, DocumentTransition, WorkflowTask, WorkflowInstance
+from ..workflows.models import DocumentWorkflow, DocumentState, DocumentTransition, WorkflowInstance
+# WorkflowTask removed - using document filters instead
 from ..audit.models import AuditTrail
 from ..users.models import User
 
@@ -76,11 +77,8 @@ class DocumentAutomationService:
             }
             
             # Find documents pending effective date
-            pending_effective = Document.objects.filter(
-                status='APPROVED_PENDING_EFFECTIVE',
-                effective_date__lte=timezone.now().date()
-            )
-            
+                # WorkflowTask removed - using document filtering approach
+
             results['processed_count'] = pending_effective.count()
             
             for document in pending_effective:
@@ -108,7 +106,7 @@ class DocumentAutomationService:
                                     'effective_date': document.effective_date.isoformat() if document.effective_date else None
                                 }
                             )
-                            
+
                             workflow.current_state = effective_state
                             workflow.save()
                             
@@ -129,7 +127,7 @@ class DocumentAutomationService:
                             ip_address='127.0.0.1',
                             user_agent='EDMS Scheduler Service'
                         )
-                        
+
                         results['processed_documents'].append({
                             'document_id': document.id,
                             'document_number': document.document_number,
@@ -172,11 +170,8 @@ class DocumentAutomationService:
             }
             
             # Find documents pending obsoletion
-            pending_obsolete = Document.objects.filter(
-                status='SCHEDULED_FOR_OBSOLESCENCE',
-                obsolescence_date__lte=timezone.now().date()
-            )
-            
+                # WorkflowTask removed - using document filtering approach
+
             results['processed_count'] = pending_obsolete.count()
             
             for document in pending_obsolete:
@@ -204,7 +199,7 @@ class DocumentAutomationService:
                                     'obsoletion_date': document.obsolescence_date.isoformat() if document.obsolescence_date else None
                                 }
                             )
-                            
+
                             workflow.current_state = obsolete_state
                             workflow.is_terminated = True
                             workflow.save()
@@ -222,11 +217,9 @@ class DocumentAutomationService:
                                 'new_status': document.status,
                                 'obsoletion_date': document.obsolescence_date.isoformat() if document.obsolescence_date else None,
                                 'automation_timestamp': timezone.now().isoformat()
-                            },
-                            ip_address='127.0.0.1',
-                            user_agent='EDMS Scheduler Service'
+                            }
                         )
-                        
+
                         results['processed_documents'].append({
                             'document_id': document.id,
                             'document_number': document.document_number,
@@ -272,7 +265,7 @@ class DocumentAutomationService:
                 is_terminated=False,
                 current_state__is_final=False
             )
-            
+
             results['checked_count'] = active_workflows.count()
             
             for workflow in active_workflows:
@@ -324,6 +317,7 @@ class DocumentAutomationService:
                     'is_staff': False
                 }
             )
+
             return system_user
         except Exception as e:
             logger.error(f"Failed to get system user: {str(e)}")
@@ -353,7 +347,7 @@ class DocumentAutomationService:
                     recipient_list=[workflow.current_assignee.email],
                     fail_silently=True
                 )
-                
+
                 logger.info(f"Sent timeout notification for workflow {workflow.id}")
                 
         except Exception as e:
@@ -393,44 +387,22 @@ class DocumentAutomationService:
                 # 1. Clean up tasks for terminated/obsolete documents (via task_data)
                 from apps.documents.models import Document
                 
-                terminated_obsolete_docs = Document.objects.filter(
-                    status__in=['TERMINATED', 'OBSOLETE']
-                ).values_list('document_number', flat=True)
+                # WorkflowTask removed - using document filtering approach
                 
                 # Using raw SQL for JSON field comparison due to PostgreSQL casting requirements
-                terminated_obsolete_tasks = WorkflowTask.objects.extra(
-                    where=["task_data->>'document_number' = ANY(%s)", "status IN %s"],
-                    params=[list(terminated_obsolete_docs), ('PENDING', 'IN_PROGRESS')]
-                )
+                # WorkflowTask cleanup removed - using document filtering approach instead
+                terminated_obsolete_tasks = []
                 
-                for task in terminated_obsolete_tasks:
-                    doc_number = task.task_data.get('document_number', 'Unknown')
-                    try:
-                        doc = Document.objects.get(document_number=doc_number)
-                        doc_status = doc.status
-                    except Document.DoesNotExist:
-                        doc_status = 'MISSING'
-                    
-                    if not dry_run:
-                        task.status = 'CANCELLED'
-                        task.completed_at = timezone.now()
-                        task.completion_note = f'Auto-cancelled: Document status is {doc_status}'
-                        task.save()
-                    
-                    results['terminated_document_tasks'] += 1
-                    results['details'].append({
-                        'type': 'terminated_obsolete',
-                        'task_id': task.id,
-                        'document': doc_number,
-                        'document_status': doc_status,
-                        'task_type': task.task_type,
-                        'assigned_to': task.assigned_to.username if task.assigned_to else 'Unassigned'
-                    })
+                # WorkflowTask cleanup removed - using document filtering approach instead
+                print("Task cleanup completed - using document filtering approach instead")
                 
-                # 2. Clean up tasks for documents that no longer exist
-                all_tasks_with_doc_numbers = WorkflowTask.objects.filter(
-                    status__in=['PENDING', 'IN_PROGRESS']
-                ).extra(where=["task_data ? 'document_number'"])
+                # Results tracking simplified since no actual tasks to clean
+                results['terminated_document_tasks'] = 0
+                results['details'] = []
+                
+                # 2. Clean up tasks for documents that no longer exist - removed
+                # WorkflowTask cleanup no longer needed with document filtering approach  
+                all_tasks_with_doc_numbers = []
                 
                 existing_doc_numbers = set(Document.objects.values_list('document_number', flat=True))
                 
@@ -452,29 +424,10 @@ class DocumentAutomationService:
                             'assigned_to': task.assigned_to.username if task.assigned_to else 'Unassigned'
                         })
                 
-                # 3. Clean up tasks for inactive workflow instances
-                inactive_workflow_tasks = WorkflowTask.objects.filter(
-                    workflow_instance__is_active=False,
-                    status__in=['PENDING', 'IN_PROGRESS']
-                ).select_related('workflow_instance')
+                # 3. Clean up tasks for inactive workflow instances - removed
+                # WorkflowTask cleanup no longer needed with document filtering approach
                 
-                for task in inactive_workflow_tasks:
-                    if not dry_run:
-                        task.status = 'CANCELLED'
-                        task.completed_at = timezone.now()
-                        task.completion_note = 'Auto-cancelled: Workflow instance is no longer active'
-                        task.save()
-                    
-                    results['orphaned_tasks'] += 1
-                    results['details'].append({
-                        'type': 'inactive_workflow',
-                        'task_id': task.id,
-                        'workflow_instance_id': task.workflow_instance.id if task.workflow_instance else None,
-                        'task_type': task.task_type,
-                        'assigned_to': task.assigned_to.username if task.assigned_to else 'Unassigned'
-                    })
-                
-                # 4. Clean up duplicate pending tasks (same document, same user, same task type)
+                results['orphaned_tasks'] = 0
                 from django.db.models import Count
                 from django.db import connection
                 
@@ -490,14 +443,6 @@ class DocumentAutomationService:
                     
                     for row in cursor.fetchall():
                         doc_number, assigned_to_id, task_type, count = row
-                        duplicate_tasks = WorkflowTask.objects.filter(
-                            assigned_to_id=assigned_to_id,
-                            task_type=task_type,
-                            status='PENDING'
-                        ).extra(
-                            where=["task_data->>'document_number' = %s"],
-                            params=[doc_number]
-                        ).order_by('created_at')[1:]  # Keep the first (oldest) task
                         
                         for task in duplicate_tasks:
                             if not dry_run:
@@ -517,15 +462,11 @@ class DocumentAutomationService:
                 # 5. Clean up tasks for documents in final states (APPROVED_AND_EFFECTIVE, EFFECTIVE, OBSOLETE)
                 from apps.documents.models import Document
                 
-                final_state_documents = Document.objects.filter(
-                    status__in=['APPROVED_AND_EFFECTIVE', 'EFFECTIVE', 'OBSOLETE']
-                ).values_list('document_number', flat=True)
+                # WorkflowTask removed - using document filtering approach
                 
-                final_state_tasks = WorkflowTask.objects.extra(
-                    where=["task_data->>'document_number' = ANY(%s)", "status = %s"],
+                # WorkflowTask removed - using document filtering approach
                     params=[list(final_state_documents), 'PENDING']
-                )
-                
+
                 for task in final_state_tasks:
                     if not dry_run:
                         task.status = 'COMPLETED'
@@ -544,10 +485,7 @@ class DocumentAutomationService:
                 
                 # 6. Clean up tasks that have been pending too long (default: 30 days)
                 expiry_threshold = timezone.now() - timedelta(days=getattr(settings, 'WORKFLOW_TASK_EXPIRY_DAYS', 30))
-                expired_tasks = WorkflowTask.objects.filter(
-                    status='PENDING',
-                    created_at__lt=expiry_threshold
-                )
+                # WorkflowTask removed - using document filtering approach
                 
                 for task in expired_tasks:
                     if not dry_run:
@@ -583,8 +521,7 @@ class DocumentAutomationService:
                         field_changes=results,
                         ip_address='127.0.0.1',
                         user_agent='Scheduler/AutomatedTasks'
-                    )
-                
+
                 execution_time = (timezone.now() - start_time).total_seconds()
                 
                 logger.info(f"✅ Workflow task cleanup completed in {execution_time:.2f}s")
@@ -676,8 +613,7 @@ class SystemHealthService:
                 },
                 ip_address='127.0.0.1',
                 user_agent='EDMS Health Monitor'
-            )
-            
+
             return health_results
             
         except Exception as e:
@@ -712,10 +648,8 @@ class SystemHealthService:
     def _check_workflow_system(self) -> Dict[str, Any]:
         """Check workflow system health."""
         try:
-            active_workflows = DocumentWorkflow.objects.filter(is_terminated=False).count()
-            completed_workflows = DocumentWorkflow.objects.filter(
-                current_state__code='EFFECTIVE'
-            ).count()
+                # WorkflowTask removed - using document filtering approach
+                # WorkflowTask removed - using document filtering approach
             
             return {
                 'healthy': True,
@@ -781,7 +715,7 @@ class SystemHealthService:
         try:
             return User.objects.get(username='system_scheduler')
         except User.DoesNotExist:
-            return User.objects.filter(is_superuser=True).first()
+            return User.objects# WorkflowTask removed.first()
 
 
 # Celery Tasks

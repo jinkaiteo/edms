@@ -1,4 +1,5 @@
 import React, { useState, useCallback, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { Document, SearchFilters, DocumentType } from '../types/api';
 import Layout from '../components/common/Layout.tsx';
 // DocumentUpload removed - replaced with EDMS-compliant DocumentCreateModal
@@ -13,13 +14,17 @@ interface DocumentManagementProps {
 }
 
 const DocumentManagement: React.FC<DocumentManagementProps> = ({ 
-  filterType = 'approved' 
+  filterType: propFilterType = 'approved' 
 }) => {
-  console.log('📄 DocumentManagement: Rendering with filterType:', filterType);
-  console.log('📍 DocumentManagement: Current URL:', window.location.pathname);
+  const [searchParams] = useSearchParams();
   
-  // Debug the actual props being passed to DocumentList
-  console.log('🔗 DocumentManagement: About to pass filterType to DocumentList:', filterType);
+  // Get filter from URL query parameter or use prop as fallback
+  const urlFilter = searchParams.get('filter') as 'pending' | 'approved' | 'archived' | 'obsolete' | null;
+  const filterType = urlFilter || propFilterType;
+  
+  console.log('📄 DocumentManagement: URL filter:', urlFilter);
+  console.log('📄 DocumentManagement: Final filterType:', filterType);
+  console.log('📍 DocumentManagement: Current URL:', window.location.href);
   const [selectedDocument, setSelectedDocument] = useState<Document | null>(null);
   const [showUpload, setShowUpload] = useState(false);
   const [showUploadModal, setShowUploadModal] = useState(false);

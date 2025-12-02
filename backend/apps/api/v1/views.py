@@ -23,9 +23,9 @@ from apps.documents.serializers import (
 )
 from apps.users.models import User, Role, UserRole
 from apps.users.serializers import UserSerializer, RoleSerializer, UserRoleSerializer
-from apps.workflows.models import WorkflowInstance, WorkflowTransition, WorkflowTask
+from apps.workflows.models # WorkflowTask removed
 from apps.workflows.serializers import (
-    WorkflowInstanceSerializer, WorkflowTransitionSerializer, WorkflowTaskSerializer
+    WorkflowInstanceSerializer, WorkflowTransitionSerializer# WorkflowTask removedSerializer
 )
 from apps.search.models import SavedSearch
 from apps.search.serializers import (
@@ -291,7 +291,7 @@ class WorkflowInstanceViewSet(viewsets.ModelViewSet):
 class WorkflowTaskViewSet(viewsets.ModelViewSet):
     """Workflow task management API endpoints."""
     
-    queryset = WorkflowTask.objects.all()
+    queryset = # WorkflowTask removed - all()
     serializer_class = WorkflowTaskSerializer
     permission_classes = [permissions.IsAuthenticated]
     pagination_class = StandardResultsSetPagination

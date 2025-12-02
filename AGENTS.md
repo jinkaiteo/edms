@@ -40,6 +40,7 @@
 - **Comprehensive logging**: Add detailed console logs for complex workflows
 - **Error context**: Capture request/response details for API debugging  
 - **User-friendly fallbacks**: Always provide meaningful error messages and graceful degradation
+- **Targeted debug logging**: When troubleshooting complex workflows, add specific debug prints at each step rather than generic logging - this pinpoints exact failure points
 - Essential for troubleshooting production issues
 
 ### FormData Structure Alignment
@@ -62,10 +63,16 @@ These insights focus on patterns that prevent common development pitfalls and im
 - **API response field alignment**: Frontend components often expect specific field names (e.g., `reviewer_username` vs `reviewer`) - add serializer fields to match frontend expectations rather than changing frontend logic
 - **Database field validation**: Always verify actual model field names before writing code - assumptions about field names (`status` vs `is_active`, `created_by` vs `initiated_by`) cause runtime errors
 
-### WebSocket vs HTTP Polling Strategy
-- **HTTP polling as primary, WebSocket as enhancement**: Build reliable HTTP polling first, then add WebSocket as real-time improvement - this provides graceful degradation
-- **Authentication complexity**: WebSocket authentication is more complex than HTTP - implement HTTP endpoints fully before adding WebSocket real-time features
-- **User experience consideration**: Show connection status clearly (`🟢 Real-time` vs `🔄 Polling`) so users understand system behavior
+### HTTP Polling Strategy
+- **HTTP polling for dashboard updates**: Simple, reliable 60-second polling for document workflow status updates perfectly suits human-paced document management workflows
+- **Authentication simplicity**: HTTP authentication is straightforward and well-understood - no WebSocket complexity needed for document management use cases
+- **User experience**: Clear polling indicators show system is actively updating data
+
+### Architecture Migration Patterns
+- **Progressive elimination over rewriting**: When removing complex systems (like WorkflowTask), disable imports first, then remove dependencies systematically rather than attempting to fix all syntax errors
+- **Migration dependencies**: Check actual migration file dependencies before creating new migrations - auto-generated dependency references may not exist
+- **Component consolidation**: Replace multiple similar components (MyTasks, TaskList, etc.) with single configurable component using URL parameters for different views
+- **Direct fetch over hook complexity**: For simple polling scenarios, direct fetch calls can be more reliable than complex custom hooks that may have circular dependencies
 
 ### Database Migration and Development Flow
 - **Incremental database changes**: Add fields via proper migrations rather than manual SQL to avoid dependency issues
@@ -76,8 +83,34 @@ These insights focus on patterns that prevent common development pitfalls and im
 - **API endpoint verification first**: Always verify API endpoints exist and return expected data structure before debugging frontend logic
 - **Response structure mapping**: Frontend components may expect different data structures than backend provides - check actual API response format vs frontend expectations
 - **URL pattern matching**: Ensure URL patterns match between frontend calls (`my-notifications`) and backend routes (`my_notifications`) - hyphens vs underscores matter
+- **Navigation highlighting with query parameters**: When using URL query parameters for filtering (e.g., `/document-management?filter=pending`), navigation highlighting logic needs special handling to distinguish between base routes and filtered routes
+- **UX principle - proximity and single action**: Place counters/badges directly on navigation items rather than separate header elements to reduce cognitive load and provide clearer user affordance
 
 ### Development Environment Architecture
 - **Container networking over localhost**: Use service names (`backend:8000`) instead of `localhost:8000` for container-to-container communication
 - **Development vs production patterns**: Keep both localhost development configs and containerized configs for different use cases
-- **ASGI server requirements**: WebSocket functionality requires ASGI server (Daphne) instead of standard Django runserver
+- **Standard Django WSGI**: HTTP-only implementation uses standard Django WSGI deployment - no ASGI complexity needed
+
+## Container and Module Caching Issues
+
+### Python Module Caching in Docker
+- **Django module reloading problems**: Django may use cached bytecode even after file changes - use `docker compose restart` rather than just container restart
+- **Python cache clearing**: When code changes don't apply, manually clear Python cache with `find /app -name "*.pyc" -delete` and `find /app -name "__pycache__" -type d -exec rm -rf {} +`
+- **Force module reload**: Use `importlib.reload()` in Django shell for testing code changes without full container restart
+- **Docker volume mounting**: Ensure source code is properly mounted as volumes for development, not copied into container images
+
+### API Endpoint Consistency Patterns
+- **URL endpoint discrepancies**: Common API path mistakes include `/documents/documents/` vs `/documents/` - always verify the actual endpoint structure before debugging frontend issues
+- **Parameter validation order**: Backend method signatures matter - check parameter order (e.g., `approve_document(document, user, effective_date, comment, approved)`) when adding new parameters
+- **Boolean parameter handling**: JSON boolean `false` may not be properly detected in Django views - use explicit checks like `approved is False or str(approved).lower() == 'false'`
+
+### Workflow State Consistency
+- **Database state vs workflow state mismatches**: Documents marked as `APPROVED_AND_EFFECTIVE` may still have unterminated workflows (`is_terminated=False`) causing validation failures
+- **System-wide consistency fixes**: When fixing workflow state issues, check for patterns across multiple documents rather than fixing individual cases
+- **Validation logic enhancement**: Include `is_terminated=False` filters when checking for active workflows to prevent completed workflows from blocking operations
+
+### Backend Troubleshooting Strategy
+- **Systematic syntax error resolution**: When extensive model removal creates cascading syntax errors, use targeted approach: fix imports first, then disable problematic modules temporarily to get core functionality working
+- **Migration dependency verification**: Always check existing migration files before referencing dependencies in new migrations - don't assume migration names based on logical sequence
+- **Container restart vs rebuild**: For complex dependency changes, full container rebuild may be needed rather than just restart
+- **Temporary import disabling**: When removing complex systems, temporarily disable imports with minimal stub implementations to isolate core functionality

@@ -15,7 +15,7 @@ def my_notifications(request):
     No complex NotificationQueue - just WorkflowTask query
     """
     try:
-        from apps.workflows.models import WorkflowTask
+        # WorkflowTask removed - using document filters instead
         
         user = request.user
         

@@ -11,8 +11,9 @@ from rest_framework.documentation import include_docs_urls
 from drf_spectacular.views import (
     SpectacularAPIView, SpectacularRedocView, SpectacularSwaggerView
 )
-from apps.api.news_feed_views import my_documents, my_tasks, recent_notifications, system_status
-from . import task_views
+from apps.api.news_feed_views import my_documents, recent_notifications, system_status
+# my_tasks import removed - using document filters instead
+# task_views removed - using document filters instead
 
 from .views import (
     # Core API views
@@ -25,7 +26,8 @@ from .views import (
     UserViewSet, RoleViewSet, UserRoleViewSet,
     
     # Workflow management
-    WorkflowViewSet, WorkflowInstanceViewSet, WorkflowTaskViewSet,
+    WorkflowViewSet, WorkflowInstanceViewSet,
+    # WorkflowTaskViewSet removed - using document filters
     
     # Search functionality
     SearchViewSet, SavedSearchViewSet, SearchAnalyticsView,
@@ -69,7 +71,7 @@ router.register(r'user-roles', UserRoleViewSet, basename='userrole')
 # Workflow management endpoints
 router.register(r'workflows', WorkflowViewSet, basename='workflow')
 router.register(r'workflow-instances', WorkflowInstanceViewSet, basename='workflowinstance')
-router.register(r'workflow-tasks', WorkflowTaskViewSet, basename='workflowtask')
+# WorkflowTaskViewSet removed - using document filters instead
 
 # Notification endpoints
 router.register(r'notifications', NotificationViewSet, basename='notification')
@@ -122,12 +124,11 @@ urlpatterns = [
     
     # News feed endpoints (for dashboard)
     path('documents/my-documents/', my_documents, name='my-documents'),
-    path('workflows/my-tasks/', my_tasks, name='my-tasks'), 
+    # my-tasks endpoint removed - using document filters instead 
     path('notifications/recent/', recent_notifications, name='recent-notifications'),
     path('scheduler/system-status/', system_status, name='system-status'),
     
-    # Task endpoints (for frontend notifications) - MOVED TO AVOID CONFLICTS
-    # Moved this to workflows/urls.py to avoid duplicate route definitions
+    # Task endpoints removed - using document filters instead of separate task system
     
     # Authentication endpoints  
     path('auth/login/', LoginView.as_view(), name='auth-login'),

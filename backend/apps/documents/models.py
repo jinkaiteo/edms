@@ -532,7 +532,8 @@ class Document(models.Model):
         self.save()
         
         # Clean up pending workflow tasks for terminated document
-        from ..workflows.models import WorkflowTask, WorkflowInstance
+        from ..workflows.models import WorkflowInstance
+        # WorkflowTask removed - using document filters instead
         from django.contrib.contenttypes.models import ContentType
         
         # Get all active workflow instances for this document

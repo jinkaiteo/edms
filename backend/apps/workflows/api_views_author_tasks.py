@@ -11,7 +11,7 @@ from rest_framework.response import Response
 from django.contrib.auth import get_user_model
 
 from .author_notifications import author_notification_service
-from .models import WorkflowTask
+# WorkflowTask model removed - using document filters instead
 from ..documents.models import Document
 
 User = get_user_model()

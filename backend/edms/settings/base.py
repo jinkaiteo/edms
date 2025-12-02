@@ -35,7 +35,6 @@ THIRD_PARTY_APPS = [
     'django_filters',
     'drf_spectacular',
     'django_redis',
-    'channels',
     'django_celery_beat',  # S3 Scheduler Module - Celery Beat integration
 ]
 
@@ -68,17 +67,7 @@ MIDDLEWARE = [
 ]
 
 ROOT_URLCONF = 'edms.urls'
-ASGI_APPLICATION = 'edms.asgi.application'
-
-# Channels Configuration
-CHANNEL_LAYERS = {
-    "default": {
-        "BACKEND": "channels_redis.core.RedisChannelLayer",
-        "CONFIG": {
-            "hosts": [config('REDIS_URL', default='redis://127.0.0.1:6379/2')],
-        },
-    },
-}
+# ASGI application removed - using standard WSGI for HTTP-only communication
 
 TEMPLATES = [
     {

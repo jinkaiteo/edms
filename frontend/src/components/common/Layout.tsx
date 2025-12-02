@@ -25,7 +25,7 @@ import {
 import { useAuth } from '../../contexts/AuthContext.tsx';
 import { ApiStatus } from '../../types/api';
 import { apiService } from '../../services/api.ts';
-import NotificationBell from '../notifications/NotificationBell.tsx';
+// NotificationBell removed - counter moved to navigation item
 
 interface LayoutProps {
   children?: React.ReactNode;
@@ -46,6 +46,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
   const navigate = useNavigate();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [apiStatus, setApiStatus] = useState<ApiStatus | null>(null);
+  const [documentCount, setDocumentCount] = useState<number>(0);
 
   // Check API status on mount - temporarily disabled
   useEffect(() => {
@@ -70,13 +71,45 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
     }
   }, [authenticated]);
 
+  // Poll for pending documents count for "My Documents" badge
+  useEffect(() => {
+    const fetchPendingDocuments = async () => {
+      try {
+        const response = await fetch('/api/v1/documents/documents/?filter=pending_my_action', {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${localStorage.getItem('accessToken') || ''}`
+          }
+        });
+        
+        if (response.ok) {
+          const data = await response.json();
+          setDocumentCount(data.results ? data.results.length : 0);
+        }
+      } catch (err) {
+        console.error('Failed to fetch pending documents count:', err);
+        setDocumentCount(0);
+      }
+    };
+
+    if (authenticated && user) {
+      // Initial fetch
+      fetchPendingDocuments();
+      
+      // Poll every 60 seconds
+      const interval = setInterval(fetchPendingDocuments, 60000);
+      return () => clearInterval(interval);
+    }
+  }, [authenticated, user]);
+
   // Navigation items based on user roles
   const getNavigationItems = (): NavigationItem[] => {
     const baseItems: NavigationItem[] = [
       { name: 'Dashboard', href: '/dashboard', icon: HomeIcon },
       { name: 'Document Management', href: '/document-management', icon: DocumentArrowUpIcon },
-      { name: 'My Tasks', href: '/tasks', icon: ClipboardDocumentListIcon },
-      { name: 'Obsolete Documents', href: '/obsolete-documents', icon: DocumentTextIcon },
+      { name: 'My Documents', href: '/document-management?filter=pending', icon: ClipboardDocumentListIcon },
+      { name: 'Obsolete Documents', href: '/document-management?filter=obsolete', icon: DocumentTextIcon },
       { name: 'Notifications', href: '/notifications', icon: BellIcon },
     ];
 
@@ -96,10 +129,37 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
     return [...baseItems, ...filteredAdminItems];
   };
 
-  const navigation = getNavigationItems().map(item => ({
-    ...item,
-    current: location.pathname.startsWith(item.href)
-  }));
+  const navigation = getNavigationItems().map(item => {
+    // Handle query parameters for proper navigation highlighting
+    const currentUrl = location.pathname + location.search;
+    
+    // Special case for filtered document views with query parameters
+    if (item.href.includes('?filter=pending') || item.href.includes('?filter=obsolete')) {
+      return {
+        ...item,
+        current: currentUrl === item.href,
+        // Add counter badge to "My Documents"
+        badge: item.href.includes('?filter=pending') ? documentCount : undefined
+      };
+    }
+    
+    // For other items, check if pathname matches and no conflicting query params
+    const isPathMatch = location.pathname.startsWith(item.href);
+    const hasFilterParam = location.search.includes('filter=pending') || location.search.includes('filter=obsolete');
+    
+    // "Document Management" should not be active if we're viewing filtered documents
+    if (item.href === '/document-management' && hasFilterParam) {
+      return {
+        ...item,
+        current: false
+      };
+    }
+    
+    return {
+      ...item,
+      current: isPathMatch
+    };
+  });
 
   const handleLogout = async () => {
     try {
@@ -214,9 +274,10 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
             <div className="flex-1 flex items-center">
               <h2 className="text-lg font-medium text-gray-900">
                 {location.pathname === '/dashboard' && 'Dashboard'}
-                {location.pathname === '/document-management' && 'Document Management'}
+                {location.pathname === '/document-management' && location.search.includes('filter=pending') && 'My Documents'}
+                {location.pathname === '/document-management' && location.search.includes('filter=obsolete') && 'Obsolete Documents'}
+                {location.pathname === '/document-management' && !location.search.includes('filter=') && 'Document Management'}
                 {location.pathname === '/tasks' && 'My Tasks'}
-                {location.pathname === '/obsolete-documents' && 'Obsolete Documents'}
                 {location.pathname === '/notifications' && 'Notifications'}
                 {location.pathname === '/admin' && 'Administration'}
               </h2>
@@ -224,8 +285,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
             
             {/* Right side */}
             <div className="ml-4 flex items-center md:ml-6">
-              {/* Notification Bell Component */}
-              <NotificationBell className="text-gray-400 hover:text-gray-500" />
+              {/* NotificationBell removed - counter moved to "My Documents" navigation item */}
 
               {/* Profile dropdown */}
               <div className="ml-3 relative">

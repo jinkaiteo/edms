@@ -5,7 +5,7 @@ import Dashboard from './pages/Dashboard.tsx';
 import Login from './pages/Login.tsx';
 import DocumentManagement from './pages/DocumentManagement.tsx';
 import AdminDashboard from './pages/AdminDashboard.tsx';
-import MyTasksStandalone from './pages/MyTasksStandalone.tsx';
+// MyTasksStandalone removed - using document filters instead
 import AuditTrail from './pages/AuditTrail.tsx';
 import Notifications from './pages/Notifications.tsx';
 // Removed problematic standalone pages - functionality integrated into AdminDashboard
@@ -39,11 +39,11 @@ function AppContent() {
         <Route path="/login" element={<Login />} />
         <Route path="/dashboard" element={<Dashboard />} />
         <Route path="/" element={<Navigate to="/dashboard" replace />} />
-        <Route path="/document-management" element={<DocumentManagement filterType="approved" />} />
-        <Route path="/my-tasks" element={<DocumentManagement filterType="pending" />} />
-        <Route path="/tasks" element={<DocumentManagement filterType="pending" />} />
+        <Route path="/document-management" element={<DocumentManagement />} />
+        <Route path="/my-tasks" element={<Navigate to="/document-management?filter=pending" replace />} />
+        <Route path="/tasks" element={<Navigate to="/document-management?filter=pending" replace />} />
         <Route path="/archived-documents" element={<DocumentManagement filterType="archived" />} />
-        <Route path="/obsolete-documents" element={<DocumentManagement filterType="obsolete" />} />
+        <Route path="/obsolete-documents" element={<Navigate to="/document-management?filter=obsolete" replace />} />
         <Route path="/notifications" element={<Notifications />} />
         {/* Audit trail moved to admin interface - route kept for direct access only */}
         <Route path="/audit-trail" element={<AuditTrail />} />
