@@ -465,7 +465,7 @@ class DocumentAutomationService:
                 # WorkflowTask removed - using document filtering approach
                 
                 # WorkflowTask removed - using document filtering approach
-                    params=[list(final_state_documents), 'PENDING']
+                final_state_tasks = []  # No actual tasks to process
 
                 for task in final_state_tasks:
                     if not dry_run:
@@ -521,6 +521,7 @@ class DocumentAutomationService:
                         field_changes=results,
                         ip_address='127.0.0.1',
                         user_agent='Scheduler/AutomatedTasks'
+                    )
 
                 execution_time = (timezone.now() - start_time).total_seconds()
                 
@@ -613,6 +614,7 @@ class SystemHealthService:
                 },
                 ip_address='127.0.0.1',
                 user_agent='EDMS Health Monitor'
+            )
 
             return health_results
             

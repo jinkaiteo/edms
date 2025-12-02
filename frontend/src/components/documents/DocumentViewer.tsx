@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { Document, WorkflowInstance, ElectronicSignature } from '../../types/api';
 import UnifiedWorkflowInterface from '../workflows/UnifiedWorkflowInterface.tsx';
-import SubmitForReviewModal from '../workflows/SubmitForReviewModal.tsx';
-import RouteForApprovalModal from '../workflows/RouteForApprovalModal.tsx';
+import SubmitForReviewModalUnified from '../workflows/SubmitForReviewModalUnified.tsx';
+import RouteForApprovalModalUnified from '../workflows/RouteForApprovalModalUnified.tsx';
 // SetEffectiveDateModal removed - no longer needed in simplified workflow
 import CreateNewVersionModal from '../workflows/CreateNewVersionModal.tsx';
 import MarkObsoleteModal from '../workflows/MarkObsoleteModal.tsx';
@@ -11,6 +11,7 @@ import TerminateDocumentModal from './TerminateDocumentModal.tsx';
 import DownloadActionMenu from './DownloadActionMenu.tsx';
 import DocumentCreateModal from './DocumentCreateModal.tsx';
 import MyDraftDocuments from './MyDraftDocuments.tsx';
+import WorkflowHistory from '../workflows/WorkflowHistory.tsx';
 import { useAuth } from '../../contexts/AuthContext.tsx';
 import apiService from '../../services/api.ts';
 
@@ -1370,49 +1371,9 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({
 
         {activeTab === 'history' && (
           <div className="space-y-6">
-            <h3 className="text-lg font-medium text-gray-900">Document History</h3>
-            
-            <div className="space-y-4">
-              {/* Mock history entries */}
-              <div className="border-l-4 border-blue-500 pl-4">
-                <div className="flex justify-between items-start">
-                  <div>
-                    <h4 className="text-sm font-medium text-gray-900">Document Created</h4>
-                    <p className="text-sm text-gray-600">
-                      Document created by {document.created_by?.full_name || 'Unknown Author'}
-                    </p>
-                  </div>
-                  <span className="text-sm text-gray-500">{formatDate(document.created_at)}</span>
-                </div>
-              </div>
-              
-              {document.status.toLowerCase() !== 'draft' && (
-                <div className="border-l-4 border-yellow-500 pl-4">
-                  <div className="flex justify-between items-start">
-                    <div>
-                      <h4 className="text-sm font-medium text-gray-900">Status Changed</h4>
-                      <p className="text-sm text-gray-600">
-                        Status changed to {document.status.replace('_', ' ')}
-                      </p>
-                    </div>
-                    <span className="text-sm text-gray-500">{formatDate(document.updated_at)}</span>
-                  </div>
-                </div>
-              )}
-              
-              {document.status.toLowerCase() === 'effective' && (
-                <div className="border-l-4 border-green-500 pl-4">
-                  <div className="flex justify-between items-start">
-                    <div>
-                      <h4 className="text-sm font-medium text-gray-900">Document Approved</h4>
-                      <p className="text-sm text-gray-600">
-                        Document approved and made effective
-                      </p>
-                    </div>
-                    <span className="text-sm text-gray-500">{formatDate(document.updated_at)}</span>
-                  </div>
-                </div>
-              )}
+            <div>
+              <h3 className="text-lg font-medium text-gray-900 mb-4">Document History</h3>
+              <WorkflowHistory document={document} />
             </div>
           </div>
         )}
@@ -1433,7 +1394,7 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({
 
       {/* Submit for Review Modal (EDMS Step 2) */}
       {showSubmitForReviewModal && document && (
-        <SubmitForReviewModal
+        <SubmitForReviewModalUnified
           document={document}
           isOpen={showSubmitForReviewModal}
           onClose={() => setShowSubmitForReviewModal(false)}
@@ -1443,7 +1404,7 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({
 
       {/* Route for Approval Modal (EDMS Approval Routing) */}
       {showRouteForApprovalModal && document && (
-        <RouteForApprovalModal
+        <RouteForApprovalModalUnified
           isOpen={showRouteForApprovalModal}
           onClose={() => setShowRouteForApprovalModal(false)}
           document={document}

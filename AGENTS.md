@@ -56,6 +56,18 @@
 
 These insights focus on patterns that prevent common development pitfalls and improve code reliability across similar projects.
 
+## Component Unification Patterns
+
+### Modal Consolidation Benefits
+- **Code Deduplication**: Components with 90%+ similarity (SubmitForReviewModal vs RouteForApprovalModal) benefit from unification with configuration parameters
+- **Maintenance Reduction**: Single source of truth reduces bugs and simplifies testing
+- **Enhanced Features**: Unified components enable consistent feature rollout (e.g., rejection awareness across all workflow actions)
+
+### Permission-Based Routing Issues
+- **Document State Permissions**: can_edit() may restrict operations based on document status (e.g., REVIEWED documents can't be modified via PATCH)
+- **Workflow-Specific Permissions**: Route approval may need direct workflow API calls to bypass document-level edit restrictions
+- **API Strategy**: Different workflow actions may require different API approaches (PATCH + POST vs direct workflow API)
+
 ## Workflow Integration Patterns
 
 ### Notification System Architecture
@@ -79,17 +91,43 @@ These insights focus on patterns that prevent common development pitfalls and im
 - **Field existence verification**: Use `getattr()` and `hasattr()` when adding new fields to handle cases where migrations haven't run yet
 - **Container service dependencies**: When modifying database schema, ensure Django Channels dependencies are properly installed and container is rebuilt
 
-### Frontend-Backend Integration Debugging
+### API Endpoint and User Context Issues
+
+### Authentication Context Mismatches
+- **Multi-User Systems**: Always verify which user account frontend API calls are executing under - badge logic may fetch data for wrong user
+- **Consistent API Endpoints**: Ensure badge counts and page content use same API endpoints/filters for consistency
+- **User Session Verification**: Test API responses with actual logged-in user context, not assumed test users
+
+### Mock Data vs Real Data Problems
+- **History Tab Issue Pattern**: Components may show mock/placeholder data instead of real database content due to missing or incorrect API integration
+- **API Endpoint Verification**: Always confirm API endpoints exist and return expected data structure before assuming frontend component issues
+- **Progressive Fallback Strategy**: Implement graceful fallback from detailed API data → basic document data → mock data with clear user messaging
+
+## Frontend-Backend Integration Debugging
 - **API endpoint verification first**: Always verify API endpoints exist and return expected data structure before debugging frontend logic
 - **Response structure mapping**: Frontend components may expect different data structures than backend provides - check actual API response format vs frontend expectations
 - **URL pattern matching**: Ensure URL patterns match between frontend calls (`my-notifications`) and backend routes (`my_notifications`) - hyphens vs underscores matter
 - **Navigation highlighting with query parameters**: When using URL query parameters for filtering (e.g., `/document-management?filter=pending`), navigation highlighting logic needs special handling to distinguish between base routes and filtered routes
 - **UX principle - proximity and single action**: Place counters/badges directly on navigation items rather than separate header elements to reduce cognitive load and provide clearer user affordance
+- **Document-centric architecture benefits**: For document management systems, consolidating around document filtering with query parameters (/document-management?filter=type) provides better UX than separate pages for different document states
+- **Modern navigation patterns**: Following established app patterns (Gmail's inbox badges, Slack's channel counters) improves user adoption and reduces cognitive load
 
 ### Development Environment Architecture
 - **Container networking over localhost**: Use service names (`backend:8000`) instead of `localhost:8000` for container-to-container communication
 - **Development vs production patterns**: Keep both localhost development configs and containerized configs for different use cases
 - **Standard Django WSGI**: HTTP-only implementation uses standard Django WSGI deployment - no ASGI complexity needed
+
+## Container Rebuild Requirements
+
+### Docker Container Dependencies
+- **LibreOffice Installation**: When adding system dependencies like LibreOffice for PDF conversion, container rebuild is mandatory - code changes alone are insufficient
+- **System Package Changes**: Any modifications to Dockerfile (apt-get install) require `docker compose build <service>` before taking effect
+- **Development vs Production**: Both development and production Dockerfiles need synchronization when adding system dependencies
+
+### PDF Conversion Quality Indicators
+- **File Size Indicators**: PDF output size indicates conversion quality - 9KB suggests basic ReportLab fallback, 50-100KB+ indicates proper LibreOffice conversion
+- **Tool Priority**: LibreOffice headless → docx2pdf → ReportLab (decreasing quality)
+- **Container Verification**: Always test tool availability with `docker compose exec backend <tool> --version` after rebuild
 
 ## Container and Module Caching Issues
 
@@ -114,3 +152,4 @@ These insights focus on patterns that prevent common development pitfalls and im
 - **Migration dependency verification**: Always check existing migration files before referencing dependencies in new migrations - don't assume migration names based on logical sequence
 - **Container restart vs rebuild**: For complex dependency changes, full container rebuild may be needed rather than just restart
 - **Temporary import disabling**: When removing complex systems, temporarily disable imports with minimal stub implementations to isolate core functionality
+- **Iterative syntax fixing**: When automated cleanup creates multiple syntax errors, fix one at a time systematically rather than attempting to fix all at once - missing parentheses, commas, and orphaned code blocks are common patterns

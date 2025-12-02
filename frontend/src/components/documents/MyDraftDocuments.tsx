@@ -8,7 +8,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContext.tsx';
 import apiService from '../../services/api.ts';
-import SubmitForReviewModal from '../workflows/SubmitForReviewModal.tsx';
+import SubmitForReviewModalUnified from '../workflows/SubmitForReviewModalUnified.tsx';
 
 interface Document {
   uuid: string;
@@ -180,7 +180,7 @@ const MyDraftDocuments: React.FC = () => {
 
       {/* Submit for Review Modal */}
       {selectedDocument && (
-        <SubmitForReviewModal
+        <SubmitForReviewModalUnified
           document={selectedDocument}
           isOpen={submitModalOpen}
           onClose={handleCloseModal}

@@ -16,6 +16,8 @@ from .views import (
 )
 from .api_views import workflow_types
 from .task_api_views import author_tasks, task_summary, complete_task
+from .rejection_api_views import get_rejection_history, get_assignment_recommendations, submit_for_review_enhanced
+from .history_api_views import get_document_workflow_history
 # user_task_api_views removed - using document filters instead
 # task_views import removed - using document filters instead
 
@@ -53,6 +55,18 @@ urlpatterns = [
     
     # Workflow types endpoint
     path('types/', workflow_types, name='workflow_types'),
+    
+    # Enhanced rejection workflow endpoints
+    path('documents/<uuid:document_id>/rejection-history/', 
+         get_rejection_history, name='rejection-history'),
+    path('documents/<uuid:document_id>/assignment-recommendations/', 
+         get_assignment_recommendations, name='assignment-recommendations'),
+    path('documents/<uuid:document_id>/submit-for-review-enhanced/', 
+         submit_for_review_enhanced, name='submit-for-review-enhanced'),
+    
+    # Workflow history endpoint
+    path('documents/<uuid:document_id>/history/', 
+         get_document_workflow_history, name='workflow-history'),
     
     # Enhanced workflow user selection endpoints
     path('users/', include('apps.workflows.urls_enhanced')),

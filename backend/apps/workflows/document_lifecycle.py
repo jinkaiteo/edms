@@ -258,14 +258,38 @@ class DocumentLifecycleService:
                 assignee=document.author  # Return to author to select approver
             )
         else:
-            # Reject back to draft
-            success = self._transition_workflow(
-                workflow=workflow,
-                to_state_code='DRAFT',
-                user=user,
-                comment=f'Review rejected: {comment}',
-                assignee=document.author
-            )
+            # ENHANCEMENT: Clear reviewer assignment on rejection so author can reassign
+            with transaction.atomic():
+                # Store rejection info in workflow data for history
+                rejected_by_user = document.reviewer
+                rejection_comment = comment
+                
+                # Clear reviewer assignment - author will need to reassign
+                document.reviewer = None
+                document.save()
+                
+                # Transition back to draft
+                success = self._transition_workflow(
+                    workflow=workflow,
+                    to_state_code='DRAFT',
+                    user=user,
+                    comment=f'Review rejected by {user.get_full_name()}: {comment}',
+                    assignee=document.author
+                )
+                
+                # Store rejection metadata for history and recommendations
+                if success and workflow.workflow_data:
+                    workflow.workflow_data.update({
+                        'last_rejection': {
+                            'type': 'review',
+                            'rejected_by': user.id,
+                            'rejected_by_name': user.get_full_name(),
+                            'rejection_date': timezone.now().isoformat(),
+                            'comment': rejection_comment,
+                            'previous_reviewer': rejected_by_user.id if rejected_by_user else None
+                        }
+                    })
+                    workflow.save()
         
         # Send notification to author about review completion and create task
         if success:
@@ -428,14 +452,41 @@ class DocumentLifecycleService:
         if not comment:
             raise ValidationError("Rejection comment is required")
 
-        # Transition back to DRAFT for revision
-        success = self._transition_workflow(
-            workflow=workflow,
-            to_state_code='DRAFT',
-            user=user,
-            comment=f'Document rejected: {comment}',
-            assignee=document.author  # Return to author for revision
-        )
+        # ENHANCEMENT: Clear both reviewer and approver assignments on approval rejection
+        with transaction.atomic():
+            # Store rejection info before clearing assignments
+            rejected_by_user = document.approver
+            previous_reviewer = document.reviewer
+            rejection_comment = comment
+            
+            # Clear both reviewer and approver assignments - author will need to reassign
+            document.reviewer = None
+            document.approver = None
+            document.save()
+            
+            # Transition back to DRAFT for revision
+            success = self._transition_workflow(
+                workflow=workflow,
+                to_state_code='DRAFT',
+                user=user,
+                comment=f'Document rejected by {user.get_full_name()}: {comment}',
+                assignee=document.author  # Return to author for revision
+            )
+            
+            # Store rejection metadata for history and recommendations
+            if success and workflow.workflow_data:
+                workflow.workflow_data.update({
+                    'last_rejection': {
+                        'type': 'approval',
+                        'rejected_by': user.id,
+                        'rejected_by_name': user.get_full_name(),
+                        'rejection_date': timezone.now().isoformat(),
+                        'comment': rejection_comment,
+                        'previous_reviewer': previous_reviewer.id if previous_reviewer else None,
+                        'previous_approver': rejected_by_user.id if rejected_by_user else None
+                    }
+                })
+                workflow.save()
         
         # Send notification to author about rejection
         if success:
@@ -1006,6 +1057,94 @@ class DocumentLifecycleService:
         
         return success
     
+    # =================================================================
+    # REJECTION HISTORY AND ASSIGNMENT RECOMMENDATIONS
+    # =================================================================
+    
+    def get_rejection_history(self, document: Document) -> List[Dict[str, Any]]:
+        """
+        Get complete rejection history for a document to help authors make informed decisions.
+        
+        Args:
+            document: Document to get rejection history for
+            
+        Returns:
+            List of rejection events with details
+        """
+        # Get rejection history from transitions
+        workflow = DocumentWorkflow.objects.filter(document=document).first()
+        if not workflow:
+            return []
+        
+        rejection_transitions = DocumentTransition.objects.filter(
+            workflow=workflow,
+            to_state__code='DRAFT',
+            comment__icontains='rejected'
+        ).select_related('transitioned_by', 'from_state', 'to_state').order_by('-transitioned_at')
+        
+        rejections = []
+        for transition in rejection_transitions:
+            # Extract rejection type from comment or workflow data
+            rejection_type = 'review' if 'review rejected' in transition.comment.lower() else 'approval'
+            
+            rejections.append({
+                'rejection_date': transition.transitioned_at,
+                'rejection_type': rejection_type,
+                'rejected_by': transition.transitioned_by.get_full_name(),
+                'rejected_by_username': transition.transitioned_by.username,
+                'from_state': transition.from_state.name,
+                'comment': transition.comment,
+                'can_contact': True  # Author can contact the rejector for clarification
+            })
+        
+        return rejections
+    
+    def get_assignment_recommendations(self, document: Document) -> Dict[str, Any]:
+        """
+        Get smart recommendations for reviewer/approver assignment based on rejection history.
+        
+        Args:
+            document: Document to get recommendations for
+            
+        Returns:
+            Dictionary with recommendations and warnings
+        """
+        rejection_history = self.get_rejection_history(document)
+        
+        # Get previously rejected reviewers/approvers
+        rejected_reviewers = set()
+        rejected_approvers = set()
+        
+        for rejection in rejection_history:
+            if rejection['rejection_type'] == 'review':
+                rejected_reviewers.add(rejection['rejected_by_username'])
+            elif rejection['rejection_type'] == 'approval':
+                rejected_approvers.add(rejection['rejected_by_username'])
+        
+        # Get last rejection info from workflow data if available
+        workflow = DocumentWorkflow.objects.filter(document=document).first()
+        last_rejection_from_data = None
+        if workflow and hasattr(workflow, 'workflow_data') and workflow.workflow_data:
+            last_rejection_from_data = workflow.workflow_data.get('last_rejection')
+        
+        recommendations = {
+            'has_rejections': len(rejection_history) > 0,
+            'rejection_count': len(rejection_history),
+            'previously_rejected_reviewers': list(rejected_reviewers),
+            'previously_rejected_approvers': list(rejected_approvers),
+            'latest_rejection': rejection_history[0] if rejection_history else None,
+            'latest_rejection_details': last_rejection_from_data,
+            'recommendations': {
+                'prefer_same_reviewer': len(rejected_reviewers) > 0,  # ENCOURAGE same reviewer for continuity
+                'prefer_same_approver': len(rejected_approvers) > 0,  # ENCOURAGE same approver for continuity  
+                'review_rejection_comments': len(rejection_history) > 0,
+                'address_concerns_first': len(rejection_history) > 0,
+                'continuity_recommended': len(rejection_history) > 0  # Overall recommendation for continuity
+            }
+        }
+        
+        return recommendations
+
     # =================================================================
     # 4. WORKFLOW TERMINATION
     # =================================================================

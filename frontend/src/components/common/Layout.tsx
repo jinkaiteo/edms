@@ -71,11 +71,12 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
     }
   }, [authenticated]);
 
-  // Poll for pending documents count for "My Documents" badge
+  // Poll for "My Documents" count (documents in my tasks/pending states)
   useEffect(() => {
-    const fetchPendingDocuments = async () => {
+    const fetchMyDocumentsCount = async () => {
       try {
-        const response = await fetch('/api/v1/documents/documents/?filter=pending_my_action', {
+        // Use same API endpoint as My Documents page for consistency
+        const response = await fetch('/api/v1/documents/documents/?filter=my_tasks', {
           method: 'GET',
           headers: {
             'Content-Type': 'application/json',
@@ -85,20 +86,33 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
         
         if (response.ok) {
           const data = await response.json();
-          setDocumentCount(data.results ? data.results.length : 0);
+          const documents = data.results || [];
+          
+          // Count matches exactly what My Documents page shows
+          setDocumentCount(documents.length);
+          console.log(`📊 My Documents badge: ${documents.length} documents in my tasks`);
+          
+          // Debug: Show breakdown
+          if (documents.length > 0) {
+            const statusBreakdown = documents.reduce((acc: any, doc: any) => {
+              acc[doc.status] = (acc[doc.status] || 0) + 1;
+              return acc;
+            }, {});
+            console.log('📋 Status breakdown:', statusBreakdown);
+          }
         }
       } catch (err) {
-        console.error('Failed to fetch pending documents count:', err);
+        console.error('Failed to fetch my documents count:', err);
         setDocumentCount(0);
       }
     };
 
     if (authenticated && user) {
       // Initial fetch
-      fetchPendingDocuments();
+      fetchMyDocumentsCount();
       
       // Poll every 60 seconds
-      const interval = setInterval(fetchPendingDocuments, 60000);
+      const interval = setInterval(fetchMyDocumentsCount, 60000);
       return () => clearInterval(interval);
     }
   }, [authenticated, user]);
@@ -110,7 +124,6 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
       { name: 'Document Management', href: '/document-management', icon: DocumentArrowUpIcon },
       { name: 'My Documents', href: '/document-management?filter=pending', icon: ClipboardDocumentListIcon },
       { name: 'Obsolete Documents', href: '/document-management?filter=obsolete', icon: DocumentTextIcon },
-      { name: 'Notifications', href: '/notifications', icon: BellIcon },
     ];
 
     // Add role-based items
@@ -278,7 +291,6 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                 {location.pathname === '/document-management' && location.search.includes('filter=obsolete') && 'Obsolete Documents'}
                 {location.pathname === '/document-management' && !location.search.includes('filter=') && 'Document Management'}
                 {location.pathname === '/tasks' && 'My Tasks'}
-                {location.pathname === '/notifications' && 'Notifications'}
                 {location.pathname === '/admin' && 'Administration'}
               </h2>
             </div>

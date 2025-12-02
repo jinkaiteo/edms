@@ -13,6 +13,11 @@ RUN apt-get update && apt-get install -y \
     tesseract-ocr-eng \
     libtesseract-dev \
     poppler-utils \
+    libreoffice \
+    libreoffice-writer \
+    libreoffice-calc \
+    fonts-liberation \
+    fonts-dejavu-core \
     && rm -rf /var/lib/apt/lists/*
 
 # Set work directory
