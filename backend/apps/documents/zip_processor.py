@@ -266,7 +266,7 @@ class ZipDocumentProcessor:
                 elif isinstance(value, str) and len(value) > 60:
                     value = value[:57] + "..."
                 
-                lines.append(f"{{{{{{placeholder}}}}}}")
+                lines.append(f"{{{{{placeholder}}}}}")
                 lines.append(f"  → {value}")
                 lines.append("")
             
