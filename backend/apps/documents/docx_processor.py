@@ -248,12 +248,24 @@ class DocxTemplateProcessor:
                         
                 table.alignment = WD_TABLE_ALIGNMENT.LEFT
                 
-                # Set column widths
-                table.columns[0].width = Inches(1.0)   # Version
-                table.columns[1].width = Inches(1.2)   # Date  
-                table.columns[2].width = Inches(2.0)   # Author
-                table.columns[3].width = Inches(1.0)   # Status
-                table.columns[4].width = Inches(2.5)   # Comments
+                # Set table properties for better PDF rendering
+                table.autofit = False  # Prevent auto-resizing that could break margins
+                
+                # Set column widths optimized for PDF generation within standard margins
+                # Standard letter page: 8.5" wide - 1" margins each side = 6.5" usable width
+                table.columns[0].width = Inches(0.8)   # Version - 0.8"
+                table.columns[1].width = Inches(1.0)   # Date - 1.0"  
+                table.columns[2].width = Inches(1.5)   # Author - 1.5"
+                table.columns[3].width = Inches(0.8)   # Status - 0.8"
+                table.columns[4].width = Inches(2.4)   # Comments - 2.4"
+                # Total: 6.5" (fits perfectly within standard margins)
+                
+                # Set table-level properties for consistent PDF rendering
+                table_props = table._element
+                table_width = table_props.find('.//{http://schemas.openxmlformats.org/wordprocessingml/2006/main}tblW')
+                if table_width is not None:
+                    table_width.set('w', str(int(6.5 * 1440)))  # 6.5 inches in twips
+                    table_width.set('type', 'dxa')  # Fixed width
                 
                 # Add header row
                 header_cells = table.rows[0].cells
