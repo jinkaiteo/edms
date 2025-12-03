@@ -115,6 +115,28 @@ class Command(BaseCommand):
     
     def _create_placeholders(self, system_user):
         """Create EDMS standard placeholders."""
+        
+        # Define placeholder categories - Complete set for all placeholders
+        categories = {
+            'Document Metadata': 'Core document information',
+            'People Information': 'User and role information',
+            'Date Information': 'Date and time placeholders',
+            'File Information': 'File and storage details',
+            'System Information': 'System and organization data',
+            'Status Information': 'Document status and state',
+            'Version Information': 'Document versioning and history',
+            'Workflow Information': 'Workflow and approval data',
+            'User Information': 'User account and profile data',
+            'Organization Information': 'Company and department data',
+            'Technical Information': 'Technical metadata and system info',
+            'Conditional Information': 'Status-based conditional content',
+            'Format Information': 'Formatting and display options',
+            'Audit Information': 'Audit trail and tracking data',
+            'Template Information': 'Template processing and metadata',
+            'Security Information': 'Security and access control data',
+            'Dates and Timestamps': 'Date and time information',
+        }
+        
         placeholders_data = [
             # Document Metadata
             {
@@ -316,15 +338,15 @@ class Command(BaseCommand):
                 defaults={
                     'display_name': placeholder_data['display_name'],
                     'description': placeholder_data['description'],
-                    'placeholder_text': placeholder_data['placeholder_text'],
-                    'category': placeholder_data['category'],
-                    'data_type': placeholder_data['data_type'],
+                    'placeholder_type': placeholder_data.get('placeholder_type', 'SYSTEM'),
+                    'data_source': placeholder_data.get('data_source', 'DOCUMENT'),
+                    'source_field': placeholder_data.get('source_field', ''),
+                    'format_string': placeholder_data.get('format_string', ''),
                     'default_value': placeholder_data.get('default_value', ''),
-                    'validation_pattern': placeholder_data.get('validation_pattern', ''),
-                    'example_value': placeholder_data.get('example_value', ''),
+                    'validation_rules': placeholder_data.get('validation_rules', {}),
                     'is_active': True,
-                    'is_system_generated': placeholder_data.get('is_system_generated', False),
-                    'is_computed': placeholder_data.get('is_computed', False),
+                    'requires_permission': placeholder_data.get('requires_permission', ''),
+                    'cache_duration': placeholder_data.get('cache_duration', 300),
                     'created_by': system_user
                 }
             )

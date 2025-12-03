@@ -511,10 +511,18 @@ const UserManagement: React.FC<UserManagementProps> = ({ className = '' }) => {
                 <input
                   type="password"
                   required
+                  minLength={12}
                   className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
                   value={createUserForm.password}
                   onChange={(e) => setCreateUserForm({...createUserForm, password: e.target.value})}
+                  placeholder="Enter secure password..."
                 />
+                <div className="mt-1 flex items-center text-xs text-gray-500">
+                  <svg className="w-4 h-4 mr-1 text-blue-500" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+                  </svg>
+                  Password must be at least 12 characters long
+                </div>
               </div>
               
               <div>
@@ -522,10 +530,20 @@ const UserManagement: React.FC<UserManagementProps> = ({ className = '' }) => {
                 <input
                   type="password"
                   required
+                  minLength={12}
                   className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
                   value={createUserForm.password_confirm}
                   onChange={(e) => setCreateUserForm({...createUserForm, password_confirm: e.target.value})}
+                  placeholder="Confirm password..."
                 />
+                {createUserForm.password && createUserForm.password_confirm && createUserForm.password !== createUserForm.password_confirm && (
+                  <div className="mt-1 flex items-center text-xs text-red-600">
+                    <svg className="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                    </svg>
+                    Passwords do not match
+                  </div>
+                )}
               </div>
               
               <div>
@@ -647,10 +665,18 @@ const UserManagement: React.FC<UserManagementProps> = ({ className = '' }) => {
                 <input
                   type="password"
                   required
+                  minLength={12}
                   className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
                   value={passwordResetForm.new_password}
                   onChange={(e) => setPasswordResetForm({...passwordResetForm, new_password: e.target.value})}
+                  placeholder="Enter new secure password..."
                 />
+                <div className="mt-1 flex items-center text-xs text-gray-500">
+                  <svg className="w-4 h-4 mr-1 text-blue-500" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+                  </svg>
+                  Password must be at least 12 characters long
+                </div>
               </div>
               
               <div>
@@ -658,10 +684,20 @@ const UserManagement: React.FC<UserManagementProps> = ({ className = '' }) => {
                 <input
                   type="password"
                   required
+                  minLength={12}
                   className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
                   value={passwordResetForm.new_password_confirm}
                   onChange={(e) => setPasswordResetForm({...passwordResetForm, new_password_confirm: e.target.value})}
+                  placeholder="Confirm new password..."
                 />
+                {passwordResetForm.new_password && passwordResetForm.new_password_confirm && passwordResetForm.new_password !== passwordResetForm.new_password_confirm && (
+                  <div className="mt-1 flex items-center text-xs text-red-600">
+                    <svg className="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                    </svg>
+                    Passwords do not match
+                  </div>
+                )}
               </div>
               
               <div>

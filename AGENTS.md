@@ -183,3 +183,20 @@ These insights focus on patterns that prevent common development pitfalls and im
 ### UI Polish and Professional Appearance
 - **Step-based UI patterns**: Technical step indicators ("Step 1", "Step 2") in user-facing elements reduce professional appearance - replace with descriptive action labels
 - **Contextual refresh strategies**: Manual refresh buttons should be contextual to specific pages rather than global header elements - leverages existing auto-refresh infrastructure while providing user control
+
+## Module Analysis and Assessment Patterns
+
+### Comprehensive Module Evaluation
+- **Initial assessment vs reality**: Always verify actual integration points before concluding functionality status - modules may be more deeply integrated than initial API testing suggests
+- **Feature discovery methodology**: Test both individual components AND their integration workflows - a module's true value often lies in its integration with other systems rather than standalone functionality
+- **Production usage verification**: Check if seemingly "underutilized" features are actually core to business processes (e.g., placeholder processing in document generation pipelines)
+
+### API Endpoint Integration Debugging
+- **Endpoint mismatch patterns**: Frontend components using different endpoint paths than backend provides (`/auth/users/` vs `/users/users/`) is a common integration failure point
+- **Authentication endpoint alignment**: When API calls fail, verify both authentication AND endpoint path correctness before debugging component logic
+- **Service method parameter validation**: Backend API parameter expectations may not match frontend service method implementations - always verify actual API requirements
+
+### Management Command Debugging
+- **Missing dependencies pattern**: Management commands failing due to undefined variables (categories, models) should be debugged by checking all referenced objects exist in scope
+- **Field mapping validation**: When ORM operations fail, verify model field names match exactly with what the command attempts to create - use shell inspection to confirm actual model fields
+- **Progressive command fixes**: Fix one missing dependency at a time rather than attempting to predict all missing elements

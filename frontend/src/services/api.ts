@@ -118,16 +118,16 @@ class ApiService {
 
   // User Management methods  
   async getUser(id: number): Promise<User> {
-    const response = await this.client.get<User>(`/auth/users/${id}/`);
+    const response = await this.client.get<User>(`/users/users/${id}/`);
     return response.data;
   }
 
   async deleteUser(id: number): Promise<void> {
-    await this.client.delete(`/auth/users/${id}/`);
+    await this.client.delete(`/users/users/${id}/`);
   }
 
   async assignRole(userId: number, roleId: number, reason?: string): Promise<any> {
-    const response = await this.client.post(`/auth/users/${userId}/assign_role/`, { 
+    const response = await this.client.post(`/users/users/${userId}/assign_role/`, { 
       role_id: roleId,
       reason: reason || ''
     });
@@ -135,7 +135,7 @@ class ApiService {
   }
 
   async removeRole(userId: number, roleId: number, reason?: string): Promise<any> {
-    const response = await this.client.post(`/auth/users/${userId}/remove_role/`, { 
+    const response = await this.client.post(`/users/users/${userId}/remove_role/`, { 
       role_id: roleId,
       reason: reason || ''
     });
@@ -143,7 +143,7 @@ class ApiService {
   }
 
   async resetPassword(userId: number, newPassword: string, newPasswordConfirm: string, reason?: string): Promise<any> {
-    const response = await this.client.post(`/auth/users/${userId}/reset_password/`, {
+    const response = await this.client.post(`/users/users/${userId}/reset_password/`, {
       new_password: newPassword,
       new_password_confirm: newPasswordConfirm,
       reason: reason || ''
@@ -164,7 +164,7 @@ class ApiService {
     position?: string;
     role_id?: number;
   }): Promise<any> {
-    const response = await this.client.post('/auth/users/create_user/', userData);
+    const response = await this.client.post('/users/users/', userData);
     return response.data;
   }
 
@@ -178,17 +178,17 @@ class ApiService {
     position: string;
     is_active: boolean;
   }>): Promise<any> {
-    const response = await this.client.patch(`/auth/users/${userId}/`, userData);
+    const response = await this.client.patch(`/users/users/${userId}/`, userData);
     return response.data;
   }
 
   async getUsers(): Promise<any[]> {
-    const response = await this.client.get('/auth/users/');
+    const response = await this.client.get('/users/users/');
     return response.data.results || response.data;
   }
 
   async getRoles(params?: any): Promise<any[]> {
-    const response = await this.client.get('/auth/roles/', { params });
+    const response = await this.client.get('/users/roles/', { params });
     return response.data.results || response.data;
   }
 
