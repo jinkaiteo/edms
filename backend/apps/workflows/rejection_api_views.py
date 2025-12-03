@@ -95,8 +95,8 @@ def get_assignment_recommendations(request, document_id):
             'warnings': warnings,
             'ui_guidance': {
                 'show_rejection_history_link': recommendations['has_rejections'],
-                'highlight_different_assignees': recommendations['recommendations']['consider_different_reviewer'] or 
-                                                 recommendations['recommendations']['consider_different_approver'],
+                'highlight_different_assignees': not (recommendations['recommendations']['prefer_same_reviewer'] or 
+                                                     recommendations['recommendations']['prefer_same_approver']),
                 'show_address_concerns_reminder': recommendations['recommendations']['address_concerns_first']
             },
             'success': True

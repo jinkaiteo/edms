@@ -196,6 +196,249 @@ class DocumentViewSet(viewsets.ModelViewSet):
         document = self.get_object()
         # Implementation would return workflow status
         return Response({'status': document.status})
+    
+    @action(detail=False, methods=['post'], url_path='validate-template')
+    def validate_template(self, request):
+        """Validate a .docx template file for placeholder usage."""
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.info("validate_template called")
+        
+        if 'file' not in request.FILES:
+            logger.error("No file in request.FILES")
+            return Response(
+                {'error': 'No file provided'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        uploaded_file = request.FILES['file']
+        logger.info(f"File uploaded: {uploaded_file.name}, size: {uploaded_file.size}")
+        
+        # Check file type
+        if not uploaded_file.name.lower().endswith('.docx'):
+            logger.error(f"Invalid file type: {uploaded_file.name}")
+            return Response({
+                'isValid': False,
+                'errors': ['Only .docx files are supported for template validation']
+            }, status=status.HTTP_400_BAD_REQUEST)
+        
+        try:
+            from apps.documents.annotation_processor import annotation_processor
+            from apps.placeholders.models import PlaceholderDefinition
+            import tempfile
+            import os
+            import re
+            from difflib import SequenceMatcher
+            
+            logger.info("Starting template validation process")
+            
+            # Save uploaded file temporarily
+            with tempfile.NamedTemporaryFile(suffix='.docx', delete=False) as temp_file:
+                for chunk in uploaded_file.chunks():
+                    temp_file.write(chunk)
+                temp_file_path = temp_file.name
+            
+            logger.info(f"Temp file created: {temp_file_path}, size: {os.path.getsize(temp_file_path)}")
+            
+            try:
+                # Extract text from ALL parts of docx for analysis
+                from docx import Document as DocxDocument
+                doc = DocxDocument(temp_file_path)
+                
+                # Comprehensive text extraction from all document parts
+                all_text_parts = []
+                
+                # 1. Main document paragraphs
+                for paragraph in doc.paragraphs:
+                    if paragraph.text.strip():
+                        all_text_parts.append(paragraph.text)
+                
+                # 2. Tables
+                for table in doc.tables:
+                    for row in table.rows:
+                        for cell in row.cells:
+                            if cell.text.strip():
+                                all_text_parts.append(cell.text)
+                
+                # 3. Headers and footers
+                for section in doc.sections:
+                    # Headers
+                    if section.header:
+                        for paragraph in section.header.paragraphs:
+                            if paragraph.text.strip():
+                                all_text_parts.append(paragraph.text)
+                    
+                    # Footers
+                    if section.footer:
+                        for paragraph in section.footer.paragraphs:
+                            if paragraph.text.strip():
+                                all_text_parts.append(paragraph.text)
+                
+                text_content = '\n'.join(all_text_parts)
+                
+                logger.info(f"Text extracted: {len(text_content)} chars, {len(all_text_parts)} parts")
+                placeholder_parts = [part for part in all_text_parts if '{{' in part]
+                logger.info(f"Parts with placeholders: {len(placeholder_parts)}")
+                
+                # Get available placeholders
+                available_placeholders = list(annotation_processor.get_available_placeholders().keys())
+                placeholder_definitions = PlaceholderDefinition.objects.all()
+                placeholders_by_category = {}
+                for pd in placeholder_definitions:
+                    category = pd.placeholder_type or 'OTHER'
+                    if category not in placeholders_by_category:
+                        placeholders_by_category[category] = []
+                    placeholders_by_category[category].append(pd.name)
+                
+                logger.info(f"Available placeholders: {len(available_placeholders)}")
+                
+                # Enhanced analysis
+                logger.info("Calling _perform_enhanced_template_analysis")
+                analysis_result = self._perform_enhanced_template_analysis(
+                    text_content, available_placeholders, placeholders_by_category
+                )
+                
+                logger.info(f"Analysis complete: {len(analysis_result.get('identifiedPlaceholders', []))} identified")
+                
+                # Add metadata
+                analysis_result.update({
+                    'fileName': uploaded_file.name,
+                    'file_size': uploaded_file.size,
+                    'total_placeholders_available': len(available_placeholders)
+                })
+                
+                logger.info("Returning analysis result")
+                return Response(analysis_result)
+                
+            finally:
+                # Clean up temporary file
+                if os.path.exists(temp_file_path):
+                    try:
+                        os.unlink(temp_file_path)
+                    except:
+                        pass
+                        
+        except Exception as e:
+            return Response({
+                'isValid': False,
+                'errors': [f'Template validation failed: {str(e)}']
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+    
+    def _perform_enhanced_template_analysis(self, text_content, available_placeholders, placeholders_by_category):
+        """Enhanced template analysis with fuzzy matching and pattern recognition."""
+        import re
+        from difflib import SequenceMatcher
+        
+        # Pattern recognition for various placeholder formats
+        patterns = [
+            {'regex': r'\{\{([A-Z_][A-Z0-9_]*)\}\}', 'name': 'Standard {{PLACEHOLDER}}'},
+            {'regex': r'\{([A-Z_][A-Z0-9_]*)\}', 'name': 'Single braces {PLACEHOLDER}'},
+            {'regex': r'\{\{\s*([A-Z_][A-Z0-9_]*)\s*\}\}', 'name': 'Spaced {{ PLACEHOLDER }}'},
+            {'regex': r'<<([A-Z_][A-Z0-9_]*)>>', 'name': 'Angle brackets <<PLACEHOLDER>>'},
+            {'regex': r'\[([A-Z_][A-Z0-9_]*)\]', 'name': 'Square brackets [PLACEHOLDER]'},
+            {'regex': r'%([A-Z_][A-Z0-9_]*)%', 'name': 'Percent signs %PLACEHOLDER%'},
+            {'regex': r'\$\{([A-Z_][A-Z0-9_]*)\}', 'name': 'Dollar braces ${PLACEHOLDER}'},
+        ]
+        
+        identified_placeholders = []
+        misformatted_placeholders = []
+        unknown_placeholders = []
+        unmatched_patterns = []
+        
+        # Process each pattern
+        for pattern_info in patterns:
+            regex = pattern_info['regex']
+            pattern_name = pattern_info['name']
+            
+            matches = re.findall(regex, text_content)
+            for match in matches:
+                placeholder_name = match
+                full_match = re.search(regex, text_content).group(0) if re.search(regex, text_content) else match
+                
+                if pattern_name == 'Standard {{PLACEHOLDER}}':
+                    # Check if it's a valid placeholder
+                    if placeholder_name in available_placeholders:
+                        if placeholder_name not in identified_placeholders:
+                            identified_placeholders.append(placeholder_name)
+                    else:
+                        # Unknown placeholder - find suggestions using fuzzy matching
+                        suggestions = self._find_closest_matches(placeholder_name, available_placeholders)
+                        unknown_placeholders.append({
+                            'placeholder': f'{{{{{placeholder_name}}}}}',
+                            'suggestions': [f'{{{{{s["match"]}}}}}' for s in suggestions],
+                            'confidence': suggestions[0]['confidence'] if suggestions else 0
+                        })
+                else:
+                    # Non-standard format
+                    if placeholder_name in available_placeholders:
+                        # Valid placeholder but wrong format
+                        misformatted_placeholders.append({
+                            'placeholder': full_match,
+                            'issue': f'Wrong format ({pattern_name})',
+                            'suggestion': f'{{{{{placeholder_name}}}}}',
+                            'confidence': 100
+                        })
+                    else:
+                        # Invalid placeholder with wrong format
+                        suggestions = self._find_closest_matches(placeholder_name, available_placeholders)
+                        if suggestions and suggestions[0]['confidence'] > 50:
+                            unmatched_patterns.append({
+                                'placeholder': full_match,
+                                'issue': 'Wrong format and unknown placeholder',
+                                'suggestion': f'{{{{{suggestions[0]["match"]}}}}}',
+                                'confidence': suggestions[0]['confidence']
+                            })
+                        else:
+                            unmatched_patterns.append({
+                                'placeholder': full_match,
+                                'issue': f'Unrecognized pattern ({pattern_name})',
+                                'suggestion': 'Remove or use valid placeholder format {{NAME}}',
+                                'confidence': 0
+                            })
+        
+        # Find unused placeholders by category
+        used_placeholders = set(identified_placeholders)
+        unused_placeholders = {}
+        
+        for category, placeholders in placeholders_by_category.items():
+            unused = [p for p in placeholders if p not in used_placeholders]
+            if unused:
+                unused_placeholders[category] = unused
+        
+        total_issues = len(misformatted_placeholders) + len(unknown_placeholders) + len(unmatched_patterns)
+        total_patterns_found = len(identified_placeholders) + total_issues
+        
+        return {
+            'isValid': total_issues == 0 and len(identified_placeholders) > 0,
+            'identifiedPlaceholders': sorted(identified_placeholders),
+            'misformattedPlaceholders': misformatted_placeholders,
+            'unknownPlaceholders': unknown_placeholders,
+            'unmatchedPatterns': unmatched_patterns,
+            'unusedPlaceholders': unused_placeholders,
+            'totalPatternsFound': total_patterns_found,
+            'totalIssues': total_issues,
+            'errors': [f'Found {total_issues} issues that need attention'] if total_issues > 0 else []
+        }
+    
+    def _find_closest_matches(self, target, candidates, max_suggestions=3):
+        """Find closest matches using fuzzy string matching."""
+        from difflib import SequenceMatcher
+        
+        def calculate_similarity(str1, str2):
+            return SequenceMatcher(None, str1.upper(), str2.upper()).ratio() * 100
+        
+        results = []
+        for candidate in candidates:
+            similarity = calculate_similarity(target, candidate)
+            if similarity > 30:  # Only show reasonably close matches
+                results.append({
+                    'match': candidate,
+                    'confidence': round(similarity, 1)
+                })
+        
+        # Sort by confidence and return top suggestions
+        results.sort(key=lambda x: x['confidence'], reverse=True)
+        return results[:max_suggestions]
 
 
 class DocumentTypeViewSet(viewsets.ModelViewSet):

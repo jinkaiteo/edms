@@ -30,12 +30,37 @@ class DocumentAnnotationProcessor:
         
         # Core document information
         metadata['DOC_NUMBER'] = document.document_number or 'Not Assigned'
+        
+        # Extract base document number without version (e.g., PROC-2025-0001 from PROC-2025-0001-v01.00)
+        if document.document_number and '-v' in document.document_number:
+            metadata['DOC_BASE_NUMBER'] = document.document_number.split('-v')[0]
+        else:
+            metadata['DOC_BASE_NUMBER'] = document.document_number or 'Not Assigned'
+            
         metadata['DOC_TITLE'] = document.title or 'Untitled Document'
         metadata['DOC_VERSION'] = document.version_string or '1.0'
         metadata['DOC_TYPE'] = document.document_type.name if document.document_type else 'Unknown'
         metadata['DOC_SOURCE'] = document.document_source.name if document.document_source else 'Unknown'
         metadata['DOC_DESCRIPTION'] = document.description or 'No description'
         metadata['DOC_UUID'] = str(document.uuid)
+        
+        # Version-specific placeholders
+        metadata['VERSION'] = document.version_string or '1.0'
+        metadata['VERSION_MAJOR'] = str(document.version_major) if document.version_major is not None else '1'
+        metadata['VERSION_MINOR'] = str(document.version_minor) if document.version_minor is not None else '0'
+        metadata['VERSION_FULL'] = document.version_string or '1.0'
+        
+        # Version history table
+        # Create table data - let DOCX processor handle the table creation
+        table_data = self._create_version_history_docx_table(document)
+        metadata['VERSION_HISTORY_TABLE_DATA'] = table_data
+        # Provide placeholder that DOCX processor can detect and replace
+        metadata['VERSION_HISTORY'] = "VERSION_HISTORY_CREATE_TABLE"
+        
+        # Additional document metadata
+        metadata['DOCUMENT_SOURCE'] = document.document_source.name if document.document_source else 'Unknown Source'
+        metadata['DESCRIPTION'] = document.description or 'No description available'
+        metadata['KEYWORDS'] = document.keywords or 'No keywords'
         
         # People information
         if document.author:
@@ -62,7 +87,10 @@ class DocumentAnnotationProcessor:
         # Date information
         metadata['CREATED_DATE'] = document.created_at.strftime('%Y-%m-%d') if document.created_at else 'Unknown'
         metadata['CREATED_DATE_LONG'] = document.created_at.strftime('%B %d, %Y') if document.created_at else 'Unknown'
+        metadata['CREATION_DATE'] = document.created_at.strftime('%Y-%m-%d') if document.created_at else 'Unknown'
         metadata['UPDATED_DATE'] = document.updated_at.strftime('%Y-%m-%d') if document.updated_at else 'Unknown'
+        metadata['LAST_MODIFIED'] = document.updated_at.strftime('%Y-%m-%d') if document.updated_at else 'Unknown'
+        metadata['MODIFIED_DATE'] = document.updated_at.strftime('%Y-%m-%d') if document.updated_at else 'Unknown'
         
         if document.approval_date:
             metadata['APPROVAL_DATE'] = document.approval_date.strftime('%Y-%m-%d')
@@ -138,6 +166,117 @@ class DocumentAnnotationProcessor:
         })
         
         return metadata
+
+
+
+    def _create_version_history_docx_table(self, document):
+        """Create version history data for DOCX table using python-docx-template syntax."""
+        try:
+            # Get structured data
+            from apps.placeholders.services import placeholder_service
+            data = placeholder_service._get_version_history_data(document)
+            
+            if 'error' in data:
+                return []
+            
+            # Return data in format suitable for python-docx-template table creation
+            # Template should use: {%tr for row in VERSION_HISTORY_DOCX_TABLE %}
+            table_data = []
+            for row_data in data['rows']:
+                table_data.append({
+                    'version': row_data['version'],
+                    'date': row_data['date'], 
+                    'author': row_data['author'],
+                    'status': row_data['status'],
+                    'comments': row_data['comments']
+                })
+            
+            return table_data
+            
+        except Exception as e:
+            return []
+
+    def _convert_table_data_to_text(self, table_data):
+        """Convert table data back to formatted text for templates using {{VERSION_HISTORY}}."""
+        if not table_data:
+            return "No version history available"
+        
+        try:
+            # Create formatted table text for DOCX templates that use {{VERSION_HISTORY}}
+            lines = []
+            lines.append("VERSION HISTORY")
+            lines.append("")
+            
+            # Create table with proper formatting for DOCX
+            lines.append("┌─────────┬────────────┬─────────────────┬─────────┬──────────────────────────┐")
+            lines.append("│ Version │ Date       │ Author          │ Status  │ Comments                 │")
+            lines.append("├─────────┼────────────┼─────────────────┼─────────┼──────────────────────────┤")
+            
+            for row in table_data:
+                version = row['version'][:8].ljust(8)
+                date = row['date'][:10].ljust(10)
+                author = row['author'][:15].ljust(15)
+                status = row['status'][:7].ljust(7)
+                comments = row['comments'][:24].ljust(24)
+                
+                lines.append(f"│ {version} │ {date} │ {author} │ {status} │ {comments} │")
+            
+            lines.append("└─────────┴────────────┴─────────────────┴─────────┴──────────────────────────┘")
+            lines.append("")
+            lines.append(f"Generated: {self._get_current_timestamp()}")
+            
+            return "\n".join(lines)
+            
+        except Exception as e:
+            return f"Error generating version history table: {str(e)}"
+
+    def _get_current_timestamp(self):
+        """Get current timestamp in a readable format."""
+        from datetime import datetime
+        return datetime.now().strftime('%m/%d/%Y %I:%M %p')
+    
+    def _get_version_change_reason(self, document):
+        """Extract the reason for change from workflow comments or document description."""
+        try:
+            from apps.workflows.models import DocumentWorkflow, DocumentTransition
+            
+            # First, check if there's a specific reason in the document description
+            if document.description and any(keyword in document.description.lower() 
+                                          for keyword in ['update', 'revision', 'change', 'modify', 'correct']):
+                return document.description[:18] + '...' if len(document.description) > 20 else document.description
+            
+            # Get the initial workflow submission comment
+            workflows = DocumentWorkflow.objects.filter(document=document).order_by('created_at')
+            
+            if workflows.exists():
+                first_workflow = workflows.first()
+                
+                # Get the first transition (submission comment) - try different field names
+                try:
+                    transitions = DocumentTransition.objects.filter(workflow=first_workflow).order_by('transitioned_at')
+                except:
+                    try:
+                        transitions = DocumentTransition.objects.filter(workflow=first_workflow).order_by('created_at')
+                    except:
+                        transitions = DocumentTransition.objects.filter(workflow=first_workflow)
+                
+                if transitions.exists():
+                    first_transition = transitions.first()
+                    if first_transition.comment and first_transition.comment != 'No comment':
+                        comment = first_transition.comment.strip()
+                        # Clean up and truncate comment
+                        if len(comment) > 18:
+                            return comment[:18] + '...'
+                        return comment
+            
+            # Fallback based on version
+            if document.version_major == 1 and document.version_minor == 0:
+                return "Initial version"
+            else:
+                return "Version update"
+                
+        except Exception:
+            return "Update"
     
     def generate_annotated_document_content(self, document: Document, user: User = None) -> str:
         """

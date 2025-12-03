@@ -61,11 +61,34 @@ class DocxTemplateProcessor:
             # Add some additional formatting options
             context = self._prepare_template_context(metadata, document, user)
             
-            # Render the template
+            # Render the template first to process all placeholders
             doc_template.render(context)
             
-            # FIXED: Create temporary file with proper handling for DOCX output
-            # Use NamedTemporaryFile but close it before saving to avoid file handle conflicts
+            # Create temporary file for the fully processed template
+            with tempfile.NamedTemporaryFile(suffix='_processed.docx', delete=False) as temp_template_file:
+                temp_template_path = temp_template_file.name
+            
+            # Save the fully processed template first
+            doc_template.save(temp_template_path)
+            
+            # Now handle VERSION_HISTORY table creation on the saved, fully-processed document
+            table_created = False
+            try:
+                # Load the processed document and add tables
+                from docx import Document as DocxDocument
+                processed_doc = DocxDocument(temp_template_path)
+                table_created = self._process_version_history_tables_post_render(processed_doc, context)
+                
+                if table_created:
+                    # Save the document with table modifications
+                    processed_doc.save(temp_template_path)
+                    print("✅ Added VERSION_HISTORY table to fully processed document")
+                else:
+                    print("✅ No VERSION_HISTORY tables needed")
+            except Exception as table_error:
+                print(f"⚠️ Table creation failed: {table_error}, continuing with template-only version")
+            
+            # FIXED: Create final output file
             with tempfile.NamedTemporaryFile(
                 suffix='_processed.docx',
                 delete=False
@@ -73,8 +96,12 @@ class DocxTemplateProcessor:
                 temp_file_path = temp_file.name
             
             try:
-                # Save the processed document to the temporary file path
-                doc_template.save(temp_file_path)
+                # Copy the processed file to the final output location
+                import shutil
+                shutil.copy2(temp_template_path, temp_file_path)
+                
+                # Clean up intermediate file
+                os.unlink(temp_template_path)
                 
                 # Verify the file was created and has content
                 if not os.path.exists(temp_file_path):
@@ -108,6 +135,16 @@ class DocxTemplateProcessor:
         # Add document object for complex operations
         context['document'] = document
         context['user'] = user
+        
+        # Handle VERSION_HISTORY for both old and new template formats
+        if 'VERSION_HISTORY_TABLE_DATA' in metadata:
+            # New format: provide table data for {%tr %} syntax
+            context['VERSION_HISTORY_TABLE_ROWS'] = metadata['VERSION_HISTORY_TABLE_DATA']
+            # Old format: pass through the placeholder marker
+            context['VERSION_HISTORY'] = metadata['VERSION_HISTORY']
+        else:
+            context['VERSION_HISTORY_TABLE_ROWS'] = []
+            context['VERSION_HISTORY'] = "No version history available"
         
         # Add formatting helpers
         context['today'] = metadata['CURRENT_DATE']
@@ -163,6 +200,101 @@ class DocxTemplateProcessor:
         })
         
         return context
+
+
+    def _process_version_history_tables_post_render(self, rendered_doc, context):
+        """Process VERSION_HISTORY placeholders by creating actual DOCX tables on the rendered document."""
+        try:
+            from docx.shared import Inches
+            from docx.enum.table import WD_TABLE_ALIGNMENT
+            
+            # Find and replace VERSION_HISTORY placeholders with actual tables
+            table_data = context.get('VERSION_HISTORY_TABLE_ROWS', [])
+            if not table_data:
+                return
+                
+            # Find VERSION_HISTORY placeholders to replace with tables
+            paragraphs_to_process = []
+            for i, paragraph in enumerate(rendered_doc.paragraphs):
+                para_text = paragraph.text
+                
+                # Look for VERSION_HISTORY template (both replaced and unreplaced)
+                if 'VERSION_HISTORY_CREATE_TABLE' in para_text or para_text.strip() == '{{VERSION_HISTORY}}':
+                    paragraphs_to_process.append((i, paragraph))
+            
+            # Process from bottom to top to avoid index issues
+            for para_index, paragraph in reversed(paragraphs_to_process):
+                # Clear the placeholder paragraph and add title
+                paragraph.clear()
+                title_run = paragraph.add_run('VERSION HISTORY')
+                title_run.bold = True
+                
+                # Create the actual DOCX table
+                num_rows = len(table_data) + 1  # +1 for header
+                num_cols = 5  # Version, Date, Author, Status, Comments
+                
+                # Insert table in the rendered document
+                table = rendered_doc.add_table(rows=num_rows, cols=num_cols)
+                
+                # Try to set a table style, fall back to basic if not available
+                try:
+                    table.style = 'Light Grid Accent 1'
+                except KeyError:
+                    try:
+                        table.style = 'Table Grid'
+                    except KeyError:
+                        # Use default table style
+                        pass
+                        
+                table.alignment = WD_TABLE_ALIGNMENT.LEFT
+                
+                # Set column widths
+                table.columns[0].width = Inches(1.0)   # Version
+                table.columns[1].width = Inches(1.2)   # Date  
+                table.columns[2].width = Inches(2.0)   # Author
+                table.columns[3].width = Inches(1.0)   # Status
+                table.columns[4].width = Inches(2.5)   # Comments
+                
+                # Add header row
+                header_cells = table.rows[0].cells
+                headers = ['Version', 'Date', 'Author', 'Status', 'Comments']
+                for i, header in enumerate(headers):
+                    header_cells[i].text = header
+                    # Make header bold
+                    for paragraph in header_cells[i].paragraphs:
+                        for run in paragraph.runs:
+                            run.bold = True
+                
+                # Add data rows
+                for row_idx, row_data in enumerate(table_data):
+                    row_cells = table.rows[row_idx + 1].cells  # +1 to skip header
+                    row_cells[0].text = row_data['version']
+                    row_cells[1].text = row_data['date']
+                    row_cells[2].text = row_data['author']
+                    row_cells[3].text = row_data['status']
+                    row_cells[4].text = row_data['comments']
+                
+                # Add generation info after the table
+                gen_para = rendered_doc.add_paragraph()
+                gen_run = gen_para.add_run(f"Generated: {self._get_current_timestamp()}")
+                gen_run.font.size = Inches(0.15)  # 11pt
+                gen_run.italic = True
+                
+                print(f"✅ VERSION HISTORY table created successfully with {len(table_data)} data rows")
+                return True  # Indicate that tables were created
+                
+        except Exception as e:
+            print(f"Error creating VERSION_HISTORY table: {e}")
+            import traceback
+            traceback.print_exc()
+            return False
+        
+        return len(paragraphs_to_process) > 0  # Return True if any processing was attempted
+
+    def _get_current_timestamp(self):
+        """Get current timestamp."""
+        from datetime import datetime
+        return datetime.now().strftime('%m/%d/%Y %I:%M %p')
     
     def get_template_variables(self, document: Document) -> Dict[str, str]:
         """

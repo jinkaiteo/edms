@@ -36,7 +36,6 @@ class Command(BaseCommand):
         if options['reset']:
             self.stdout.write('🗑️ Resetting existing placeholder definitions...')
             PlaceholderDefinition.objects.all().delete()
-            PlaceholderCategory.objects.all().delete()
             self.stdout.write('✅ Existing placeholders cleared')
 
         # Create system user if not exists
@@ -328,6 +327,35 @@ class Command(BaseCommand):
                 'default_value': 'EDMS',
                 'is_system_generated': True,
                 'example_value': 'EDMS v1.0'
+            },
+            
+            # Version History and Revision Information
+            {
+                'name': 'VERSION_HISTORY',
+                'display_name': 'Version History Table',
+                'description': 'Native DOCX table with proper Word formatting and borders',
+                'placeholder_type': 'DOCUMENT',
+                'data_source': 'COMPUTED',
+                'source_field': 'VERSION_HISTORY',
+                'default_value': 'No version history available'
+            },
+            {
+                'name': 'REVISION_COUNT',
+                'display_name': 'Revision Count',
+                'description': 'Total number of document revisions',
+                'placeholder_type': 'DOCUMENT',
+                'data_source': 'COMPUTED',
+                'source_field': 'REVISION_COUNT',
+                'default_value': '0'
+            },
+            {
+                'name': 'PREVIOUS_VERSION',
+                'display_name': 'Previous Version',
+                'description': 'Previous version number',
+                'placeholder_type': 'DOCUMENT',
+                'data_source': 'COMPUTED',
+                'source_field': 'PREVIOUS_VERSION',
+                'default_value': 'N/A'
             }
         ]
         
@@ -394,14 +422,13 @@ class Command(BaseCommand):
             active_placeholders = PlaceholderDefinition.objects.filter(is_active=True)
             self.stdout.write(f'   ✅ {active_placeholders.count()} active placeholders')
             
-            # Check categories
-            categories = PlaceholderCategory.objects.filter(is_active=True)
-            self.stdout.write(f'   ✅ {categories.count()} active categories')
+            # Check core placeholders exist
+            self.stdout.write(f'   ✅ Core placeholders configured')
             
             # Check placeholder coverage
             required_placeholders = [
                 'DOCUMENT_NUMBER', 'DOCUMENT_TITLE', 'VERSION_FULL', 
-                'AUTHOR', 'EFFECTIVE_DATE', 'ORGANIZATION'
+                'AUTHOR', 'EFFECTIVE_DATE', 'ORGANIZATION', 'VERSION_HISTORY'
             ]
             
             missing_placeholders = []

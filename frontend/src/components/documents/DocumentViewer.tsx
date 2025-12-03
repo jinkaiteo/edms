@@ -881,7 +881,7 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({
         }
         break;
 
-      case 'APPROVED_AND_EFFECTIVE':
+      case 'EFFECTIVE':
         // Document is approved and currently effective
         // Allow all authenticated users to initiate up-versioning (approval required anyway)
         actions.push({
@@ -983,7 +983,13 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({
               <span>•</span>
               <span>Version {document.version_string || document.version || '1.0'}</span>
               <span>•</span>
-              <span>{document.document_type_display || 'Unknown Type'}</span>
+              <span>
+                {document.document_type_display || 
+                 (document.document_type && typeof document.document_type === 'object' 
+                   ? document.document_type.name 
+                   : document.document_type) || 
+                 'Unknown Type'}
+              </span>
             </div>
           </div>
           <div className="flex items-center space-x-2 ml-4">
@@ -1094,7 +1100,13 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({
                     <h4 className="text-sm font-semibold text-gray-700 border-b border-gray-200 pb-2">Basic Details</h4>
                     <div>
                       <dt className="text-sm font-medium text-gray-500">Document Type</dt>
-                      <dd className="text-sm text-gray-900 mt-1">{document.document_type_display || 'Unknown Type'}</dd>
+                      <dd className="text-sm text-gray-900 mt-1">
+                        {document.document_type_display || 
+                         (document.document_type && typeof document.document_type === 'object' 
+                           ? document.document_type.name 
+                           : document.document_type) || 
+                         'Unknown Type'}
+                      </dd>
                     </div>
                     <div>
                       <dt className="text-sm font-medium text-gray-500">Version</dt>
@@ -1421,7 +1433,7 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({
             <div>
               <h3 className="text-lg font-medium text-gray-900 mb-4">Digital Signatures</h3>
               {/* Electronic Signature Section */}
-              {document.status === 'APPROVED_AND_EFFECTIVE' && (
+              {document.status === 'EFFECTIVE' && (
                 <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
                   <p className="text-sm text-gray-600 mb-4">
                     This document is approved and effective. Electronic signatures can be applied.

@@ -74,8 +74,8 @@ export interface Document {
   document_number: string;
   title: string;
   description?: string;
-  document_type?: DocumentType;
-  document_type_display?: string;  // API provides this field
+  document_type?: DocumentType | string; // Can be object or string
+  document_type_display?: string;       // API provides this field
   status: DocumentStatus;
   status_display?: string;         // API provides this field
   version?: string;

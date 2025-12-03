@@ -21,9 +21,19 @@ from django.core.cache import cache
 
 from docx import Document as DocxDocument
 from docxtpl import DocxTemplate
-import pypdf
-from PIL import Image
-import pytesseract
+
+# Optional imports - not required for basic placeholder functionality
+try:
+    import pypdf
+except ImportError:
+    pypdf = None
+
+try:
+    from PIL import Image
+    import pytesseract
+except ImportError:
+    Image = None
+    pytesseract = None
 
 from .models import (
     PlaceholderDefinition, DocumentTemplate, TemplatePlaceholder,
@@ -199,9 +209,11 @@ class PlaceholderService:
         """Resolve computed value using predefined computations."""
         computations = {
             'DEPENDENCY_COUNT': lambda ctx: len(ctx.get('document', {}).dependencies.all()) if ctx.get('document') else 0,
-            'REVISION_COUNT': lambda ctx: ctx.get('document', {}).version_history.count() if ctx.get('document') else 0,
+            'REVISION_COUNT': lambda ctx: self._get_revision_count(ctx.get('document')),
             'IS_CURRENT': lambda ctx: 'CURRENT' if ctx.get('document', {}).status == 'effective' else 'SUPERSEDED',
             'FILE_CHECKSUM': lambda ctx: ctx.get('document', {}).file_checksum if ctx.get('document') else '',
+            'VERSION_HISTORY': lambda ctx: self._get_version_history_docx_table(ctx.get('document')),
+            'PREVIOUS_VERSION': lambda ctx: self._get_previous_version(ctx.get('document')),
         }
         
         if computation in computations:
@@ -280,6 +292,200 @@ class PlaceholderService:
         return workflow_permission_manager._has_permission_level(
             user, [placeholder.requires_permission]
         )
+
+    def _get_revision_count(self, document) -> int:
+        """Get the number of revisions for a document."""
+        if not document:
+            return 0
+        
+        try:
+            # Get the base document number (without version suffix)
+            if hasattr(document, 'document_number') and document.document_number:
+                if '-v' in document.document_number:
+                    base_number = document.document_number.split('-v')[0]
+                else:
+                    base_number = document.document_number
+                
+                # Find all versions of this document
+                from apps.documents.models import Document
+                all_versions = Document.objects.filter(
+                    document_number__startswith=base_number + '-v'
+                )
+                return all_versions.count()
+            return 1
+        except Exception as e:
+            logger.error(f"Error getting revision count: {str(e)}")
+            return 0
+
+    def _get_version_history_docx_table(self, document):
+        """Get version history as structured data for native DOCX tables."""
+        if not document:
+            return []
+        
+        try:
+            # Get structured data
+            data = self._get_version_history_data(document)
+            
+            if 'error' in data:
+                return []
+            
+            # Return data in format suitable for python-docx-template table creation
+            table_data = []
+            for row_data in data['rows']:
+                table_data.append({
+                    'version': row_data['version'],
+                    'date': row_data['date'], 
+                    'author': row_data['author'],
+                    'status': row_data['status'],
+                    'comments': row_data['comments']
+                })
+            
+            return table_data
+            
+        except Exception as e:
+            logger.error(f"Error generating DOCX version history table: {str(e)}")
+            return []
+
+    def _get_version_history_data(self, document):
+        """Get version history as structured data for native DOCX table rendering."""
+        if not document:
+            return {"error": "No document provided"}
+        
+        try:
+            # Import here to avoid circular imports
+            from apps.documents.models import Document
+            
+            # Get the base document number (without version suffix)
+            if '-v' in document.document_number:
+                base_number = document.document_number.split('-v')[0]
+            else:
+                base_number = document.document_number
+            
+            # Find all versions of this document
+            all_versions = Document.objects.filter(
+                document_number__startswith=base_number + '-v'
+            ).order_by('version_major', 'version_minor')
+            
+            if not all_versions.exists():
+                return {"error": "No version history available"}
+            
+            # Return structured data for DOCX table rendering
+            version_data = []
+            for version_doc in all_versions:
+                version = f"v{version_doc.version_major:02d}.{version_doc.version_minor:02d}"
+                date = version_doc.created_at.strftime('%m/%d/%Y') if version_doc.created_at else 'Unknown'
+                
+                # Get author name
+                if version_doc.author:
+                    author_name = version_doc.author.get_full_name().strip()
+                    if not author_name:
+                        author_name = version_doc.author.username
+                else:
+                    author_name = 'Unknown'
+                
+                status = version_doc.status.replace('_', ' ').title() if version_doc.status else 'Draft'
+                
+                # Get reason for change
+                reason = self._get_version_change_reason(version_doc)
+                
+                version_data.append({
+                    'version': version,
+                    'date': date,
+                    'author': author_name,
+                    'status': status,
+                    'comments': reason
+                })
+            
+            return {
+                'title': 'VERSION HISTORY',
+                'headers': ['Version', 'Date', 'Author', 'Status', 'Comments'],
+                'rows': version_data,
+                'generated': timezone.now().strftime('%m/%d/%Y %I:%M %p'),
+                'count': len(version_data)
+            }
+            
+        except Exception as e:
+            logger.error(f"Error generating version history data: {str(e)}")
+            return {"error": f"Error generating version history: {str(e)}"}
+
+
+    def _get_previous_version(self, document) -> str:
+        """Get the previous version number."""
+        if not document:
+            return "N/A"
+        
+        try:
+            # Get the base document number (without version suffix)
+            if hasattr(document, 'document_number') and document.document_number:
+                if '-v' in document.document_number:
+                    base_number = document.document_number.split('-v')[0]
+                else:
+                    base_number = document.document_number
+                
+                # Find all versions of this document ordered by version
+                from apps.documents.models import Document
+                all_versions = Document.objects.filter(
+                    document_number__startswith=base_number + '-v'
+                ).order_by('version_major', 'version_minor')
+                
+                # Find current document position and get previous
+                current_index = None
+                for i, version_doc in enumerate(all_versions):
+                    if version_doc.id == document.id:
+                        current_index = i
+                        break
+                
+                if current_index and current_index > 0:
+                    previous_doc = all_versions[current_index - 1]
+                    return previous_doc.version_string or f"{previous_doc.version_major}.{previous_doc.version_minor}"
+                else:
+                    return "N/A (First version)"
+            
+            return "N/A"
+        except Exception as e:
+            logger.error(f"Error getting previous version: {str(e)}")
+            return "Error"
+
+    def _get_version_change_reason(self, document):
+        """Extract the reason for change from workflow comments or document description."""
+        try:
+            from apps.workflows.models import DocumentWorkflow, DocumentTransition
+            
+            # First, check if there's a specific reason in the document description
+            if document.description and any(keyword in document.description.lower() 
+                                          for keyword in ['update', 'revision', 'change', 'modify', 'correct']):
+                return document.description[:50] + '...' if len(document.description) > 50 else document.description
+            
+            # Get the initial workflow submission comment
+            workflows = DocumentWorkflow.objects.filter(document=document).order_by('created_at')
+            
+            if workflows.exists():
+                first_workflow = workflows.first()
+                
+                # Get the first transition (submission comment) - try different field names
+                try:
+                    transitions = DocumentTransition.objects.filter(workflow=first_workflow).order_by('transitioned_at')
+                except:
+                    try:
+                        transitions = DocumentTransition.objects.filter(workflow=first_workflow).order_by('created_at')
+                    except:
+                        transitions = DocumentTransition.objects.filter(workflow=first_workflow)
+                
+                if transitions.exists():
+                    first_transition = transitions.first()
+                    if first_transition.comment and first_transition.comment != 'No comment':
+                        comment = first_transition.comment.strip()
+                        # Return full comment for DOCX tables (more space available)
+                        return comment
+            
+            # Fallback based on version
+            if document.version_major == 1 and document.version_minor == 0:
+                return "Initial version"
+            else:
+                return "Version update"
+                
+        except Exception:
+            return "Update"
 
 
 class DocumentTemplateService:

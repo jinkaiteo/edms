@@ -218,7 +218,7 @@ const ViewReviewStatus: React.FC<ViewReviewStatusProps> = ({
       'route_for_approval': 'Routed for Approval',
       'start_approval': 'Approval Started',
       'approve_document': 'Document Approved',
-      'reject_document': 'Document Rejected',
+      'approve_document': 'Document Approved',
       'activate_document': 'Document Activated'
     };
 

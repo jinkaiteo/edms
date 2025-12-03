@@ -136,7 +136,8 @@ const ApproverInterface: React.FC<ApproverInterfaceProps> = ({
       try {
         // Prepare workflow request data
         const requestData: any = {
-          action: approvalDecision === 'approve' ? 'approve_document' : 'reject_document',
+          action: 'approve_document',
+          approved: approvalDecision === 'approve',
           comment: approvalComment
         };
 

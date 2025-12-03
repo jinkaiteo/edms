@@ -384,8 +384,11 @@ const DocumentList: React.FC<DocumentListProps> = ({
                               {currentVersion.title}
                             </h4>
                             <p className="text-sm text-gray-500">
-                              {getBaseDocumentNumber(currentVersion.document_number)} • {currentVersion.document_type_display || 'Unknown Type'}
-                              {currentVersion.status === 'APPROVED_AND_EFFECTIVE' && (
+                              {getBaseDocumentNumber(currentVersion.document_number)} • {currentVersion.document_type_display || 
+                               (currentVersion.document_type && typeof currentVersion.document_type === 'object' 
+                                 ? currentVersion.document_type.name 
+                                 : currentVersion.document_type) || 'Unknown Type'}
+                              {currentVersion.status === 'EFFECTIVE' && (
                                 <span className="ml-2 inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
                                   Current Version
                                 </span>
@@ -517,7 +520,12 @@ const DocumentList: React.FC<DocumentListProps> = ({
                       </p>
                     </div>
                     <div className="text-xs text-gray-500 space-y-1">
-                      <div>{document.document_type_display || 'Unknown Type'}</div>
+                      <div>
+                        {document.document_type_display || 
+                         (document.document_type && typeof document.document_type === 'object' 
+                           ? document.document_type.name 
+                           : document.document_type) || 'Unknown Type'}
+                      </div>
                       <div>By {document.author_display || 'Unknown Author'}</div>
                       <div>{formatDate(document.created_at)}</div>
                       {document.file_size && <div>{formatFileSize(document.file_size)}</div>}

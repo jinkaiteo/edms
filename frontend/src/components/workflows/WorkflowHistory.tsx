@@ -124,7 +124,7 @@ const WorkflowHistory: React.FC<WorkflowHistoryProps> = ({ document }) => {
       }
 
       // Add final effective status if approved
-      if (document.status === 'APPROVED_AND_EFFECTIVE') {
+      if (document.status === 'EFFECTIVE') {
         basicHistory.push({
           id: 3,
           transitioned_at: document.updated_at || document.created_at,
@@ -136,7 +136,7 @@ const WorkflowHistory: React.FC<WorkflowHistoryProps> = ({ document }) => {
             full_name: document.approver?.full_name || 'Document Approver'
           },
           from_state: { code: 'PENDING_APPROVAL', name: 'Pending Approval' },
-          to_state: { code: 'APPROVED_AND_EFFECTIVE', name: 'Approved and Effective' },
+          to_state: { code: 'EFFECTIVE', name: 'Effective' },
           comment: 'Document approved and made effective'
         });
       }
@@ -184,7 +184,7 @@ const WorkflowHistory: React.FC<WorkflowHistoryProps> = ({ document }) => {
     if (comment.toLowerCase().includes('reject')) {
       return '❌'; // Rejection
     }
-    if (toState === 'APPROVED_AND_EFFECTIVE') {
+    if (toState === 'EFFECTIVE') {
       return '✅'; // Final approval
     }
     if (toState === 'PENDING_REVIEW' || toState === 'PENDING_APPROVAL') {
@@ -207,7 +207,7 @@ const WorkflowHistory: React.FC<WorkflowHistoryProps> = ({ document }) => {
     if (comment.toLowerCase().includes('reject')) {
       return 'bg-red-500'; // Rejection - red
     }
-    if (toState === 'APPROVED_AND_EFFECTIVE') {
+    if (toState === 'EFFECTIVE') {
       return 'bg-green-500'; // Final approval - green
     }
     if (toState === 'REVIEWED') {

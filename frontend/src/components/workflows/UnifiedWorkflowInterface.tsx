@@ -142,7 +142,7 @@ const UnifiedWorkflowInterface: React.FC<UnifiedWorkflowInterfaceProps> = ({
     if (fromState === 'UNDER_REVIEW' && toState === 'REVIEWED') return 'Document Reviewer';
     if (fromState === 'UNDER_REVIEW' && toState === 'DRAFT') return 'Document Reviewer';
     if (fromState === 'REVIEWED' && toState === 'PENDING_APPROVAL') return 'Document Author';
-    if (fromState === 'PENDING_APPROVAL' && toState === 'APPROVED_AND_EFFECTIVE') return 'Document Approver';
+    if (fromState === 'PENDING_APPROVAL' && toState === 'EFFECTIVE') return 'Document Approver';
     if (toState === 'TERMINATED') return 'Administrator';
     return 'System User';
   };
@@ -273,7 +273,7 @@ const UnifiedWorkflowInterface: React.FC<UnifiedWorkflowInterfaceProps> = ({
           detail: { 
             documentId: document.uuid,
             action: mode,
-            newStatus: decision === 'approve' ? (mode === 'review' ? 'REVIEWED' : 'APPROVED_AND_EFFECTIVE') : 'DRAFT',
+            newStatus: decision === 'approve' ? (mode === 'review' ? 'REVIEWED' : 'EFFECTIVE') : 'DRAFT',
             refreshRequired: true
           } 
         }));
