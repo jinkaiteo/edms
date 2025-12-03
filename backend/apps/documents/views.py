@@ -473,9 +473,10 @@ class DocumentViewSet(viewsets.ModelViewSet):
         return self._serve_annotated_document(document, request)
     
     def _serve_annotated_document(self, document, request):
-        """Generate and serve annotated document with metadata overlay or processed .docx template."""
+        """Generate and serve annotated document with metadata overlay, processed .docx template, or ZIP package."""
         from .annotation_processor import annotation_processor
         from .docx_processor import docx_processor
+        from .zip_processor import zip_processor
         from django.http import HttpResponse
         import tempfile
         import os
@@ -532,10 +533,48 @@ class DocumentViewSet(viewsets.ModelViewSet):
                     return response
                     
                 except Exception as docx_error:
-                    # Fall back to text annotation if .docx processing fails
-                    print(f"DOCX processing failed, falling back to text annotation: {docx_error}")
+                    # Fall back to ZIP package if .docx processing fails
+                    print(f"DOCX processing failed, falling back to ZIP package: {docx_error}")
+            else:
+                # Non-DOCX file: create ZIP package with original + metadata
+                try:
+                    zip_file_path = zip_processor.create_annotated_zip(document, request.user)
+                    
+                    # Read the ZIP file
+                    with open(zip_file_path, 'rb') as f:
+                        zip_content = f.read()
+                    
+                    # Clean up temporary file
+                    os.unlink(zip_file_path)
+                    
+                    # Create response with ZIP file
+                    response = HttpResponse(
+                        zip_content,
+                        content_type='application/zip'
+                    )
+                    
+                    filename = f"{document.document_number}_annotated_package.zip"
+                    response['Content-Disposition'] = f'attachment; filename="{filename}"'
+                    response['Content-Length'] = str(len(zip_content))
+                    
+                    # Log successful download
+                    log_document_access(
+                        document=document,
+                        user=request.user,
+                        access_type='DOWNLOAD',
+                        request=request,
+                        success=True,
+                        file_downloaded=True,
+                        metadata={'download_type': 'annotated_zip_package'}
+                    )
+                    
+                    return response
+                    
+                except Exception as zip_error:
+                    # Final fallback to text annotation
+                    print(f"ZIP package creation failed, falling back to text annotation: {zip_error}")
             
-            # Generate text annotation content (default behavior or fallback)
+            # Final fallback: Generate text annotation content
             annotation_content = annotation_processor.generate_annotated_document_content(document, request.user)
             
             # FIXED: Ensure content is properly encoded to bytes
@@ -562,7 +601,7 @@ class DocumentViewSet(viewsets.ModelViewSet):
                 request=request,
                 success=True,
                 file_downloaded=True,
-                metadata={'download_type': 'annotated_text'}
+                metadata={'download_type': 'annotated_text_fallback'}
             )
             
             return response
@@ -661,37 +700,90 @@ class DocumentViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_403_FORBIDDEN
             )
         
+        return self._serve_official_pdf_document(document, request)
+    
+    def _serve_official_pdf_document(self, document, request):
+        """Generate and serve official PDF document or ZIP package with PDFs."""
+        from .zip_processor import zip_processor
+        from django.http import HttpResponse
+        import os
+        
         try:
-            # Generate official PDF with digital signature (Phase 2 implementation)
-            from apps.documents.services.pdf_generator import OfficialPDFGenerator
-            generator = OfficialPDFGenerator()
-            
-            signed_pdf_content = generator.generate_official_pdf(document, request.user)
-            
-            # Serve PDF with proper headers
-            response = HttpResponse(signed_pdf_content, content_type='application/pdf')
-            filename = f"{document.document_number}_official_v{getattr(document, 'version_string', '1.0')}.pdf"
-            response['Content-Disposition'] = f'attachment; filename="{filename}"'
-            response['Content-Length'] = len(signed_pdf_content)
-            
-            # Log successful download
-            logger.info(f"Official PDF download successful: {filename} by {request.user.username}")
-            
-            return response
+            # Try official PDF generator first (if available)
+            try:
+                from apps.documents.services.pdf_generator import OfficialPDFGenerator
+                generator = OfficialPDFGenerator()
+                
+                signed_pdf_content = generator.generate_official_pdf(document, request.user)
+                
+                # Serve PDF with proper headers
+                response = HttpResponse(signed_pdf_content, content_type='application/pdf')
+                filename = f"{document.document_number}_official_v{getattr(document, 'version_string', '1.0')}.pdf"
+                response['Content-Disposition'] = f'attachment; filename="{filename}"'
+                response['Content-Length'] = len(signed_pdf_content)
+                
+                # Log successful download
+                log_document_access(
+                    document=document,
+                    user=request.user,
+                    access_type='DOWNLOAD',
+                    request=request,
+                    success=True,
+                    file_downloaded=True,
+                    metadata={'download_type': 'official_pdf'}
+                )
+                
+                return response
+                
+            except Exception as pdf_error:
+                print(f"Official PDF generator failed, creating ZIP package: {pdf_error}")
+                
+                # Create ZIP package with PDF conversion + metadata
+                zip_file_path = zip_processor.create_official_pdf_zip(document, request.user)
+                
+                # Read the ZIP file
+                with open(zip_file_path, 'rb') as f:
+                    zip_content = f.read()
+                
+                # Clean up temporary file
+                os.unlink(zip_file_path)
+                
+                # Create response with ZIP file
+                response = HttpResponse(
+                    zip_content,
+                    content_type='application/zip'
+                )
+                
+                filename = f"{document.document_number}_official_pdf_package.zip"
+                response['Content-Disposition'] = f'attachment; filename="{filename}"'
+                response['Content-Length'] = str(len(zip_content))
+                
+                # Log successful download
+                log_document_access(
+                    document=document,
+                    user=request.user,
+                    access_type='DOWNLOAD',
+                    request=request,
+                    success=True,
+                    file_downloaded=True,
+                    metadata={'download_type': 'official_pdf_zip_package'}
+                )
+                
+                return response
             
         except Exception as e:
-            logger.error(f"Official PDF generation failed for document {document.uuid}: {e}")
-            
-            # Fallback to annotated document with clear messaging
-            if settings.OFFICIAL_PDF_CONFIG.get('FALLBACK_TO_ANNOTATED', True):
-                logger.info(f"Falling back to annotated document for {document.uuid}")
-                return self._serve_document_file(document, request, 'annotated')
-            else:
-                return Response({
-                    'error': 'PDF generation temporarily unavailable',
-                    'details': str(e),
-                    'fallback_available': f'/api/v1/documents/documents/{document.uuid}/download/annotated/'
-                }, status=status.HTTP_503_SERVICE_UNAVAILABLE)
+            log_document_access(
+                document=document,
+                user=request.user,
+                access_type='DOWNLOAD',
+                request=request,
+                success=False,
+                failure_reason=f'Official PDF generation failed: {str(e)}'
+            )
+            return Response(
+                {'error': f'Failed to generate official PDF: {str(e)}'},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
     
     @action(detail=True, methods=['get'], url_path='download/processed')
     def download_processed_docx(self, request, uuid=None):
