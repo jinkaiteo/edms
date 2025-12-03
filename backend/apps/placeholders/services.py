@@ -447,20 +447,36 @@ class PlaceholderService:
             return "Error"
 
     def _get_version_change_reason(self, document):
-        """Extract the reason for change from workflow comments or document description."""
+        """Extract the reason for change from appropriate workflow fields."""
         try:
             # For initial version (v1.0), always return "Initial creation"
             if document.version_major == 1 and document.version_minor == 0:
                 return "Initial creation"
             
-            from apps.workflows.models import DocumentWorkflow, DocumentTransition
+            # For subsequent versions, check specific workflow fields first
             
-            # For subsequent versions, check document description first
+            # 1. Check for up-versioning reason (reason_for_change field)
+            if hasattr(document, 'reason_for_change') and document.reason_for_change:
+                reason = document.reason_for_change.strip()
+                if reason:
+                    return reason[:50] + '...' if len(reason) > 50 else reason
+            
+            # 2. Check for obsolescence reason (if document is obsolete)
+            if document.status == 'OBSOLETE':
+                if hasattr(document, 'obsolescence_reason') and document.obsolescence_reason:
+                    reason = document.obsolescence_reason.strip()
+                    if reason:
+                        return reason[:50] + '...' if len(reason) > 50 else reason
+            
+            # 3. Check document description for version changes
             if document.description and any(keyword in document.description.lower() 
                                           for keyword in ['update', 'revision', 'change', 'modify', 'correct']):
-                return document.description[:50] + '...' if len(document.description) > 50 else document.description
+                desc = document.description.strip()
+                return desc[:50] + '...' if len(desc) > 50 else desc
             
-            # Get workflow submission comments for version changes
+            # 4. Fallback to workflow submission comments
+            from apps.workflows.models import DocumentWorkflow, DocumentTransition
+            
             workflows = DocumentWorkflow.objects.filter(document=document).order_by('created_at')
             
             if workflows.exists():
@@ -479,11 +495,10 @@ class PlaceholderService:
                     first_transition = transitions.first()
                     if first_transition.comment and first_transition.comment != 'No comment':
                         comment = first_transition.comment.strip()
-                        # Return meaningful comment for version changes
-                        return comment
+                        return comment[:50] + '...' if len(comment) > 50 else comment
             
-            # Fallback for subsequent versions
-            return "Document revision"
+            # Final fallback for subsequent versions
+            return "Version update"
                 
         except Exception:
             # Ultimate fallback - check version to provide appropriate default
@@ -491,7 +506,7 @@ class PlaceholderService:
                 if document.version_major == 1 and document.version_minor == 0:
                     return "Initial creation"
                 else:
-                    return "Document update"
+                    return "Document change"
             except:
                 return "Version change"
 
