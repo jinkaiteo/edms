@@ -361,9 +361,15 @@ class PlaceholderService:
             else:
                 base_number = document.document_number
             
-            # Find all versions of this document
+            # Find all versions of this document, but only include approved/effective versions
+            # Exclude draft, pending, under review, and rejected versions from version history
             all_versions = Document.objects.filter(
                 document_number__startswith=base_number + '-v'
+            ).exclude(
+                status__in=[
+                    'DRAFT', 'PENDING_REVIEW', 'UNDER_REVIEW', 'REVIEW_COMPLETED',
+                    'PENDING_APPROVAL', 'UNDER_APPROVAL', 'REJECTED', 'TERMINATED'
+                ]
             ).order_by('version_major', 'version_minor')
             
             if not all_versions.exists():
