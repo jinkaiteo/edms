@@ -14,7 +14,7 @@ interface DocumentManagementProps {
 }
 
 const DocumentManagement: React.FC<DocumentManagementProps> = ({ 
-  filterType: propFilterType = 'approved' 
+  filterType: propFilterType = 'all' 
 }) => {
   const [searchParams] = useSearchParams();
   
@@ -124,7 +124,22 @@ const DocumentManagement: React.FC<DocumentManagementProps> = ({
     };
   }, [selectedDocument, handleDocumentRefresh]);
 
-  // EDMS Step 1: Document creation handlers
+  // Clear selected document when filter type changes (Document Library, Active Documents, Obsolete Documents)
+  useEffect(() => {
+    console.log('🔄 DocumentManagement: Filter changed to:', filterType, 'clearing selected document');
+    setSelectedDocument(null);
+  }, [filterType]);
+
+  // Clear selected document when navigating away from this page (to Administration)
+  useEffect(() => {
+    return () => {
+      // Cleanup: Clear selected document when component unmounts (user navigates away)
+      console.log('🔄 DocumentManagement: Clearing selected document on page navigation');
+      setSelectedDocument(null);
+    };
+  }, []);
+
+  // EDMS Document creation handlers
   const handleCreateDocumentSuccess = useCallback((document: any) => {
     const documentTitle = document?.title || document?.document_number || 'New Document';
     console.log('🎉 DocumentManagement: Document created successfully, triggering list refresh');
@@ -211,6 +226,8 @@ const DocumentManagement: React.FC<DocumentManagementProps> = ({
               refreshTrigger={documentListRefresh}
               selectedDocument={selectedDocument}
               filterType={filterType}
+              searchQuery={searchQuery}
+              searchFilters={getSearchFilters()}
             />
           </div>
         );
@@ -241,6 +258,8 @@ const DocumentManagement: React.FC<DocumentManagementProps> = ({
                 refreshTrigger={documentListRefresh}
                 selectedDocument={selectedDocument}
                 filterType={filterType}
+                searchQuery={searchQuery}
+                searchFilters={getSearchFilters()}
               />
             </div>
             <div className="lg:sticky lg:top-6 lg:h-fit">
@@ -279,10 +298,10 @@ const DocumentManagement: React.FC<DocumentManagementProps> = ({
           <div className="flex justify-between items-center">
             <div>
               <h1 className="text-3xl font-bold text-gray-900">
-                {filterType === 'pending' ? 'My Tasks' :
+                {filterType === 'pending' ? 'Active Documents' :
                  filterType === 'obsolete' ? 'Obsolete Documents' :
                  filterType === 'archived' ? 'Archived Documents' :
-                 'Document Management'}
+                 'Document Library'}
               </h1>
               <p className="text-gray-600 mt-2">
                 {filterType === 'pending' ? 'Documents requiring your action and review' :
@@ -337,7 +356,25 @@ const DocumentManagement: React.FC<DocumentManagementProps> = ({
                 </button>
               </div>
 
-              {/* Create Document Button (EDMS Step 1) */}
+              {/* Manual Refresh Button */}
+              <button
+                onClick={() => {
+                  console.log('🔄 Manual refresh triggered by user');
+                  setDocumentListRefresh(prev => prev + 1);
+                  if (selectedDocument) {
+                    handleDocumentRefresh();
+                  }
+                }}
+                className="flex items-center space-x-2 px-3 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+                title="Refresh document list and selected document data"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                </svg>
+                <span>Refresh</span>
+              </button>
+
+              {/* Create Document Button */}
               <button
                 onClick={handleOpenCreateModal}
                 className="flex items-center space-x-2 px-4 py-2 bg-blue-600 border border-transparent rounded-md text-sm font-medium text-white hover:bg-blue-700 focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
@@ -345,7 +382,7 @@ const DocumentManagement: React.FC<DocumentManagementProps> = ({
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
                 </svg>
-                <span>📝 Create Document (Step 1)</span>
+                <span>📝 Create Document</span>
               </button>
             </div>
           </div>
@@ -355,82 +392,6 @@ const DocumentManagement: React.FC<DocumentManagementProps> = ({
         {/* Main Content */}
         {renderContent()}
 
-        {/* Quick Stats */}
-        {!showUpload && (
-          <div className="mt-12 grid grid-cols-1 md:grid-cols-4 gap-6">
-            <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
-              <div className="flex items-center">
-                <div className="flex-shrink-0">
-                  <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
-                    <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                    </svg>
-                  </div>
-                </div>
-                <div className="ml-5 w-0 flex-1">
-                  <dl>
-                    <dt className="text-sm font-medium text-gray-500 truncate">Total Documents</dt>
-                    <dd className="text-lg font-medium text-gray-900">3</dd>
-                  </dl>
-                </div>
-              </div>
-            </div>
-
-            <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
-              <div className="flex items-center">
-                <div className="flex-shrink-0">
-                  <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center">
-                    <svg className="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                  </div>
-                </div>
-                <div className="ml-5 w-0 flex-1">
-                  <dl>
-                    <dt className="text-sm font-medium text-gray-500 truncate">Effective</dt>
-                    <dd className="text-lg font-medium text-gray-900">1</dd>
-                  </dl>
-                </div>
-              </div>
-            </div>
-
-            <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
-              <div className="flex items-center">
-                <div className="flex-shrink-0">
-                  <div className="w-8 h-8 bg-yellow-100 rounded-full flex items-center justify-center">
-                    <svg className="w-5 h-5 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                  </div>
-                </div>
-                <div className="ml-5 w-0 flex-1">
-                  <dl>
-                    <dt className="text-sm font-medium text-gray-500 truncate">Pending Review</dt>
-                    <dd className="text-lg font-medium text-gray-900">1</dd>
-                  </dl>
-                </div>
-              </div>
-            </div>
-
-            <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
-              <div className="flex items-center">
-                <div className="flex-shrink-0">
-                  <div className="w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center">
-                    <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                    </svg>
-                  </div>
-                </div>
-                <div className="ml-5 w-0 flex-1">
-                  <dl>
-                    <dt className="text-sm font-medium text-gray-500 truncate">Drafts</dt>
-                    <dd className="text-lg font-medium text-gray-900">1</dd>
-                  </dl>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
 
         {/* Success/Error Messages */}
         {uploadSuccess && (

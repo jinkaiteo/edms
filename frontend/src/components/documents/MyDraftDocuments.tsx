@@ -167,7 +167,7 @@ const MyDraftDocuments: React.FC = () => {
                   {/* EDMS Step Indicator */}
                   <div className="mt-3 p-3 bg-blue-50 border border-blue-200 rounded-md">
                     <div className="flex items-center text-sm">
-                      <span className="text-blue-600 font-medium mr-2">📋 EDMS Step 2:</span>
+                      <span className="text-blue-600 font-medium mr-2">📋 Ready for Review:</span>
                       <span className="text-blue-800">Ready to select reviewer and submit for review</span>
                     </div>
                   </div>

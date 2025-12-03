@@ -224,7 +224,7 @@ const SubmitForReviewModal: React.FC<SubmitForReviewModalProps> = ({
 
           {/* Workflow Information */}
           <div className="px-6 py-4">
-            <h3 className="text-sm font-medium text-gray-900 mb-2">📋 EDMS Workflow Step 2</h3>
+            <h3 className="text-sm font-medium text-gray-900 mb-2">📋 Submit for Review</h3>
             <div className="bg-yellow-50 border border-yellow-200 rounded-md p-3 text-sm">
               <p className="text-yellow-800">
                 <strong>Current Step:</strong> Author selects reviewer and routes document for review

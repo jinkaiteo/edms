@@ -115,16 +115,19 @@ export interface DocumentType {
 }
 
 export type DocumentStatus = 
-  | 'draft' 
-  | 'pending_review' 
-  | 'under_review' 
-  | 'review_completed'
-  | 'pending_approval' 
-  | 'approved' 
-  | 'effective' 
-  | 'superseded' 
-  | 'obsolete' 
-  | 'terminated';
+  | 'DRAFT' 
+  | 'PENDING_REVIEW'
+  | 'UNDER_REVIEW'
+  | 'REVIEW_COMPLETED'
+  | 'PENDING_APPROVAL'
+  | 'UNDER_APPROVAL'
+  | 'APPROVED'
+  | 'APPROVED_PENDING_EFFECTIVE' 
+  | 'EFFECTIVE' 
+  | 'SCHEDULED_FOR_OBSOLESCENCE'
+  | 'SUPERSEDED' 
+  | 'OBSOLETE' 
+  | 'TERMINATED';
 
 export interface DocumentCreateRequest {
   document_number?: string;
@@ -219,12 +222,19 @@ export interface SearchFilters {
   status?: DocumentStatus[];
   created_after?: string;
   created_before?: string;
-  effective_after?: string;
-  effective_before?: string;
   author?: string[];
-  department?: string[];
-  version?: string;
-  keywords?: string[];
+  // Added relevant backend-supported filters:
+  title?: string;
+  description?: string;
+  document_number?: string;
+  keywords?: string;
+  priority?: string;
+  reviewer?: string[];
+  approver?: string[];
+  // Removed irrelevant filters:
+  // - department (not supported by backend)
+  // - effective_after/before (different usage pattern)
+  // - version (backend uses version_major/version_minor)
 }
 
 export interface SearchResponse {

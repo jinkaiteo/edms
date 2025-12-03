@@ -147,6 +147,7 @@ class DocumentCommentSerializer(serializers.ModelSerializer):
             'resolved_by', 'resolved_by_display', 'parent_comment',
             'is_internal', 'requires_response', 'replies_count', 'metadata'
         ]
+    
         read_only_fields = [
             'id', 'uuid', 'created_at', 'updated_at', 
             'author', 'author_display', 'replies_count'
@@ -217,6 +218,9 @@ class DocumentListSerializer(serializers.ModelSerializer):
     reviewer_username = serializers.CharField(source='reviewer.username', read_only=True)
     approver_username = serializers.CharField(source='approver.username', read_only=True)
     
+    # Add obsolescence user display name
+    obsoleted_by_display = serializers.SerializerMethodField()
+    
     class Meta:
         model = Document
         fields = [
@@ -227,8 +231,16 @@ class DocumentListSerializer(serializers.ModelSerializer):
             'approver', 'approver_display', 'approver_username',
             'created_at', 'effective_date', 'is_controlled', 'requires_training',
             # Add file information for workflow button logic
-            'file_name', 'file_path', 'file_size'
+            'file_name', 'file_path', 'file_size',
+            # Add obsolescence information
+            'obsolescence_date', 'obsolescence_reason', 'obsoleted_by', 'obsoleted_by_display'
         ]
+    
+    def get_obsoleted_by_display(self, obj):
+        """Return the full name of the user who initiated obsolescence."""
+        if obj.obsoleted_by:
+            return obj.obsoleted_by.get_full_name() or obj.obsoleted_by.username
+        return None
 
 
 class DocumentDetailSerializer(serializers.ModelSerializer):
@@ -273,6 +285,8 @@ class DocumentDetailSerializer(serializers.ModelSerializer):
             'is_encrypted', 'created_at', 'updated_at', 'review_date',
             'approval_date', 'effective_date', 'review_due_date', 'obsolete_date',
             'reason_for_change', 'change_summary', 'supersedes',
+            # Add obsolescence information
+            'obsolescence_date', 'obsolescence_reason', 'obsoleted_by',
             'is_active', 'requires_training', 'is_controlled',
             'dependencies', 'dependents', 'comments', 'attachments', 'versions',
             'can_edit', 'can_review', 'can_approve', 'metadata'
@@ -308,6 +322,12 @@ class DocumentDetailSerializer(serializers.ModelSerializer):
         """Get only active dependents."""
         active_dependents = obj.dependents.filter(is_active=True)
         return DocumentDependencySerializer(active_dependents, many=True, context=self.context).data
+    
+    def get_obsoleted_by_display(self, obj):
+        """Return the full name of the user who initiated obsolescence."""
+        if obj.obsoleted_by:
+            return obj.obsoleted_by.get_full_name() or obj.obsoleted_by.username
+        return None
 
 
 class DocumentCreateSerializer(serializers.ModelSerializer):

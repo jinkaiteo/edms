@@ -20,11 +20,13 @@ import {
   XMarkIcon,
   ShieldCheckIcon,
   DocumentArrowUpIcon,
-  ChartBarIcon
+  ChartBarIcon,
+  KeyIcon
 } from '@heroicons/react/24/outline';
 import { useAuth } from '../../contexts/AuthContext.tsx';
 import { ApiStatus } from '../../types/api';
 import { apiService } from '../../services/api.ts';
+import ChangePasswordModal from '../auth/ChangePasswordModal.tsx';
 // NotificationBell removed - counter moved to navigation item
 
 interface LayoutProps {
@@ -47,6 +49,8 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [apiStatus, setApiStatus] = useState<ApiStatus | null>(null);
   const [documentCount, setDocumentCount] = useState<number>(0);
+  const [showChangePassword, setShowChangePassword] = useState(false);
+  const [showProfileDropdown, setShowProfileDropdown] = useState(false);
 
   // Check API status on mount - temporarily disabled
   useEffect(() => {
@@ -71,11 +75,11 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
     }
   }, [authenticated]);
 
-  // Poll for "My Documents" count (documents in my tasks/pending states)
+  // Poll for "Active Documents" count (documents in my tasks/pending states)
   useEffect(() => {
     const fetchMyDocumentsCount = async () => {
       try {
-        // Use same API endpoint as My Documents page for consistency
+        // Use same API endpoint as Active Documents page for consistency
         const response = await fetch('/api/v1/documents/documents/?filter=my_tasks', {
           method: 'GET',
           headers: {
@@ -88,9 +92,9 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
           const data = await response.json();
           const documents = data.results || [];
           
-          // Count matches exactly what My Documents page shows
+          // Count matches exactly what Active Documents page shows
           setDocumentCount(documents.length);
-          console.log(`📊 My Documents badge: ${documents.length} documents in my tasks`);
+          console.log(`📊 Active Documents badge: ${documents.length} documents in my tasks`);
           
           // Debug: Show breakdown
           if (documents.length > 0) {
@@ -102,7 +106,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
           }
         }
       } catch (err) {
-        console.error('Failed to fetch my documents count:', err);
+        console.error('Failed to fetch active documents count:', err);
         setDocumentCount(0);
       }
     };
@@ -117,13 +121,25 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
     }
   }, [authenticated, user]);
 
+  // Handle click outside dropdown to close it
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as Element;
+      if (showProfileDropdown && !target.closest('.profile-dropdown')) {
+        setShowProfileDropdown(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [showProfileDropdown]);
+
   // Navigation items based on user roles
   const getNavigationItems = (): NavigationItem[] => {
     const baseItems: NavigationItem[] = [
-      { name: 'Dashboard', href: '/dashboard', icon: HomeIcon },
-      { name: 'Document Management', href: '/document-management', icon: DocumentArrowUpIcon },
-      { name: 'My Documents', href: '/document-management?filter=pending', icon: ClipboardDocumentListIcon },
-      { name: 'Obsolete Documents', href: '/document-management?filter=obsolete', icon: DocumentTextIcon },
+      { name: 'Document Library', href: '/', icon: DocumentArrowUpIcon },
+      { name: 'Active Documents', href: '/?filter=pending', icon: ClipboardDocumentListIcon },
+      { name: 'Obsolete Documents', href: '/?filter=obsolete', icon: DocumentTextIcon },
     ];
 
     // Add role-based items
@@ -151,17 +167,18 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
       return {
         ...item,
         current: currentUrl === item.href,
-        // Add counter badge to "My Documents"
+        // Add counter badge to "Active Documents"
         badge: item.href.includes('?filter=pending') ? documentCount : undefined
       };
     }
     
-    // For other items, check if pathname matches and no conflicting query params
-    const isPathMatch = location.pathname.startsWith(item.href);
+    // For other items, check if pathname matches and no conflicting query params  
+    const isPathMatch = (item.href === '/' && (location.pathname === '/' || location.pathname === '/document-management')) ||
+                        location.pathname.startsWith(item.href);
     const hasFilterParam = location.search.includes('filter=pending') || location.search.includes('filter=obsolete');
     
-    // "Document Management" should not be active if we're viewing filtered documents
-    if (item.href === '/document-management' && hasFilterParam) {
+    // "Document Library" should not be active if we're viewing filtered documents
+    if (item.href === '/' && hasFilterParam) {
       return {
         ...item,
         current: false
@@ -181,6 +198,23 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
     } catch (error) {
       console.error('Logout failed:', error);
     }
+  };
+
+  const handlePasswordChangeSuccess = () => {
+    // Show success message with better styling
+    const successMessage = document.createElement('div');
+    successMessage.className = 'fixed top-4 right-4 bg-green-500 text-white px-6 py-3 rounded-lg shadow-lg z-50';
+    successMessage.textContent = 'Password changed successfully!';
+    document.body.appendChild(successMessage);
+    
+    // Remove after 3 seconds
+    setTimeout(() => {
+      if (successMessage.parentNode) {
+        successMessage.parentNode.removeChild(successMessage);
+      }
+    }, 3000);
+    
+    setShowChangePassword(false);
   };
 
   if (!authenticated) {
@@ -257,9 +291,9 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                   } group flex items-center px-2 py-2 text-sm font-medium rounded-md`}
                 >
                   <item.icon className="mr-3 flex-shrink-0 h-5 w-5" />
-                  {item.name}
+                  <span className="flex-1">{item.name}</span>
                   {item.badge && item.badge > 0 && (
-                    <span className="ml-auto bg-red-100 text-red-800 text-xs font-medium px-2 py-0.5 rounded-full">
+                    <span className="ml-2 inline-flex items-center justify-center bg-red-100 text-red-800 text-xs font-medium px-2.5 py-0.5 rounded-full min-w-[20px]">
                       {item.badge}
                     </span>
                   )}
@@ -286,11 +320,9 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
             {/* Page title or breadcrumbs could go here in the future */}
             <div className="flex-1 flex items-center">
               <h2 className="text-lg font-medium text-gray-900">
-                {location.pathname === '/dashboard' && 'Dashboard'}
-                {location.pathname === '/document-management' && location.search.includes('filter=pending') && 'My Documents'}
-                {location.pathname === '/document-management' && location.search.includes('filter=obsolete') && 'Obsolete Documents'}
-                {location.pathname === '/document-management' && !location.search.includes('filter=') && 'Document Management'}
-                {location.pathname === '/tasks' && 'My Tasks'}
+                {(location.pathname === '/' || location.pathname === '/document-management') && location.search.includes('filter=pending') && 'Active Documents'}
+                {(location.pathname === '/' || location.pathname === '/document-management') && location.search.includes('filter=obsolete') && 'Obsolete Documents'}
+                {(location.pathname === '/' || location.pathname === '/document-management') && !location.search.includes('filter=') && 'Document Library'}
                 {location.pathname === '/admin' && 'Administration'}
               </h2>
             </div>
@@ -300,10 +332,11 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
               {/* NotificationBell removed - counter moved to "My Documents" navigation item */}
 
               {/* Profile dropdown */}
-              <div className="ml-3 relative">
+              <div className="ml-3 relative profile-dropdown">
                 <div className="flex items-center">
                   <button
                     type="button"
+                    onClick={() => setShowProfileDropdown(!showProfileDropdown)}
                     className="max-w-xs bg-white rounded-full flex items-center text-sm focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
                   >
                     <UserIcon className="h-8 w-8 rounded-full text-gray-400" />
@@ -317,13 +350,44 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                     </div>
                   </div>
                   <button
-                    onClick={handleLogout}
+                    onClick={() => setShowProfileDropdown(!showProfileDropdown)}
                     className="ml-3 p-2 text-gray-400 hover:text-gray-500"
-                    title="Logout"
+                    title="Account Options"
                   >
-                    <ArrowRightOnRectangleIcon className="h-5 w-5" />
+                    <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                    </svg>
                   </button>
                 </div>
+
+                {/* Profile dropdown menu */}
+                {showProfileDropdown && (
+                  <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none z-50">
+                    <div className="py-1">
+                      <button
+                        onClick={() => {
+                          setShowChangePassword(true);
+                          setShowProfileDropdown(false);
+                        }}
+                        className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                      >
+                        <KeyIcon className="h-4 w-4 mr-3" />
+                        Change Password
+                      </button>
+                      <hr className="my-1" />
+                      <button
+                        onClick={() => {
+                          handleLogout();
+                          setShowProfileDropdown(false);
+                        }}
+                        className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                      >
+                        <ArrowRightOnRectangleIcon className="h-4 w-4 mr-3" />
+                        Logout
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
           </div>
@@ -334,6 +398,13 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
           {children || <Outlet />}
         </main>
       </div>
+      
+      {/* Change Password Modal */}
+      <ChangePasswordModal
+        isOpen={showChangePassword}
+        onClose={() => setShowChangePassword(false)}
+        onSuccess={handlePasswordChangeSuccess}
+      />
     </div>
   );
 };

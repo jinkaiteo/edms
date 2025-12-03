@@ -591,7 +591,7 @@ const DocumentCreateModal: React.FC<DocumentCreateModalProps> = ({
           <div className="px-6 py-4 border-b border-gray-200">
             <div className="flex items-center justify-between">
               <h2 className="text-xl font-semibold text-gray-900">
-                {editDocument ? '✏️ Edit Document' : '📝 Create Document (Step 1)'}
+                {editDocument ? '✏️ Edit Document' : '📝 Create Document'}
               </h2>
               <button
                 onClick={handleClose}
@@ -615,7 +615,7 @@ const DocumentCreateModal: React.FC<DocumentCreateModalProps> = ({
           {/* Workflow Information */}
           <div className="px-6 py-4 bg-blue-50 border-l-4 border-blue-400">
             <h3 className="text-sm font-semibold text-blue-900 mb-2">
-              {editDocument ? '✏️ Edit Document Mode' : '📋 EDMS Workflow Step 1'}
+              {editDocument ? '✏️ Edit Document Mode' : '📋 Document Creation'}
             </h3>
             <p className="text-blue-800 text-sm">
               {editDocument 

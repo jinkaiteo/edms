@@ -112,6 +112,12 @@ These insights focus on patterns that prevent common development pitfalls and im
 - **Document-centric architecture benefits**: For document management systems, consolidating around document filtering with query parameters (/document-management?filter=type) provides better UX than separate pages for different document states
 - **Modern navigation patterns**: Following established app patterns (Gmail's inbox badges, Slack's channel counters) improves user adoption and reduces cognitive load
 
+### Search Filter Implementation
+- **Backend-frontend filter alignment**: Always verify backend DocumentFilter capabilities before implementing frontend search options - remove unsupported filters (e.g., department) to prevent user confusion
+- **API parameter format consistency**: Backend expects repeated parameters for arrays (`status=DRAFT&status=APPROVED`) not nested objects - implement proper array handling in frontend API calls
+- **Filter relevance assessment**: Regularly audit search filters - remove 40-60% irrelevant filters and add missing high-value options (title, description, document_number) for better user experience
+- **Status filter maintenance**: Keep frontend DocumentStatus types synchronized with backend STATUS_CHOICES - mismatched status values cause 400 API errors
+
 ### Development Environment Architecture
 - **Container networking over localhost**: Use service names (`backend:8000`) instead of `localhost:8000` for container-to-container communication
 - **Development vs production patterns**: Keep both localhost development configs and containerized configs for different use cases
@@ -153,3 +159,27 @@ These insights focus on patterns that prevent common development pitfalls and im
 - **Container restart vs rebuild**: For complex dependency changes, full container rebuild may be needed rather than just restart
 - **Temporary import disabling**: When removing complex systems, temporarily disable imports with minimal stub implementations to isolate core functionality
 - **Iterative syntax fixing**: When automated cleanup creates multiple syntax errors, fix one at a time systematically rather than attempting to fix all at once - missing parentheses, commas, and orphaned code blocks are common patterns
+
+## Data Consolidation and Business Logic Simplification
+
+### Status Consolidation Patterns
+- **Functional equivalence assessment**: When multiple statuses represent the same business state (e.g., `APPROVED_AND_EFFECTIVE` vs `EFFECTIVE`), analyze actual usage patterns before architectural decisions
+- **Data migration strategy**: Use systematic approach: data migration → code updates → frontend cleanup → verification, with transaction safety at each step
+- **Legacy status handling**: Don't remove DocumentState records immediately - keep for audit trail while updating code to use consolidated status
+- **Backend-frontend alignment**: Update both serializer choices AND frontend TypeScript types simultaneously to prevent API validation errors
+
+### API Response Structure Mismatches
+- **Component-API integration gaps**: Frontend components may expect different response formats than APIs provide - transform data at the API boundary rather than modifying components
+- **Missing endpoint vs broken integration**: When components show fallback data, verify if the expected API endpoint exists before assuming frontend bugs
+- **Response format evolution**: APIs may return different structures over time - always check actual response format when debugging historical integrations
+
+## Navigation State Management
+
+### Page Navigation Cleanup Patterns
+- **Filter-based navigation**: When navigation uses URL parameters instead of separate routes, use `useEffect([filterType])` to clear state on filter changes
+- **Cross-route state persistence**: Component state may persist across navigation - implement cleanup in both component unmount AND route change listeners
+- **Event-driven cleanup**: Use custom events (`clearDocumentSelection`) for cross-component state clearing when direct prop passing isn't feasible
+
+### UI Polish and Professional Appearance
+- **Step-based UI patterns**: Technical step indicators ("Step 1", "Step 2") in user-facing elements reduce professional appearance - replace with descriptive action labels
+- **Contextual refresh strategies**: Manual refresh buttons should be contextual to specific pages rather than global header elements - leverages existing auto-refresh infrastructure while providing user control

@@ -1,14 +1,24 @@
 import React, { useState, useEffect } from 'react';
 import Layout from '../components/common/Layout.tsx';
 
+interface Activity {
+  id: string | number;
+  timestamp: string;
+  type: string;
+  title?: string;
+  description: string;
+  user: string;
+  document?: string;
+  from_state?: string;
+  to_state?: string;
+  icon?: string;
+  iconColor?: string;
+}
+
 const Dashboard: React.FC = () => {
   const [user, setUser] = useState<any>(null);
-  const [stats, setStats] = useState({
-    totalDocuments: 12,
-    pendingTasks: 3,
-    myDocuments: 5,
-    systemStatus: 'Operational'
-  });
+  const [activities, setActivities] = useState<Activity[]>([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     // Get user info from localStorage
@@ -20,7 +30,141 @@ const Dashboard: React.FC = () => {
         console.log('User data in localStorage');
       }
     }
+    
+    // Fetch recent activity
+    fetchRecentActivity();
   }, []);
+
+  const fetchRecentActivity = async () => {
+    try {
+      const token = localStorage.getItem('accessToken');
+      if (!token) {
+        console.log('No access token available, skipping recent activity fetch');
+        setLoading(false);
+        return;
+      }
+
+      const response = await fetch('/api/v1/dashboard/stats/?activity=true&limit=5&days=7', {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        console.log('📈 Recent activity data:', data);
+        // Extract activities from the correct field
+        const activities = data.recent_activity || [];
+        console.log('📋 Activities found:', activities.length);
+        if (activities.length > 0) {
+          console.log('📋 Sample activity:', activities[0]);
+        }
+        
+        setActivities(activities);
+      } else {
+        console.error('Failed to fetch recent activity:', response.status);
+        if (response.status === 401) {
+          console.log('Authentication failed - user may need to log in again');
+        }
+        // Keep empty array for other errors
+        setActivities([]);
+      }
+    } catch (error) {
+      console.error('Error fetching recent activity:', error);
+      // Keep empty array for activities on error
+      setActivities([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const formatTimestamp = (timestamp: string) => {
+    const date = new Date(timestamp);
+    const now = new Date();
+    const diffInHours = (now.getTime() - date.getTime()) / (1000 * 60 * 60);
+
+    if (diffInHours < 1) {
+      const diffInMinutes = Math.floor(diffInHours * 60);
+      return `${diffInMinutes} minute${diffInMinutes !== 1 ? 's' : ''} ago`;
+    } else if (diffInHours < 24) {
+      const hours = Math.floor(diffInHours);
+      return `${hours} hour${hours !== 1 ? 's' : ''} ago`;
+    } else if (diffInHours < 168) { // 7 days
+      const days = Math.floor(diffInHours / 24);
+      return `${days} day${days !== 1 ? 's' : ''} ago`;
+    } else {
+      return date.toLocaleDateString();
+    }
+  };
+
+  const getActivityColor = (type: string) => {
+    switch (type) {
+      case 'submission':
+        return 'bg-blue-500';
+      case 'review_start':
+        return 'bg-yellow-500';
+      case 'review_complete':
+        return 'bg-purple-500';
+      case 'approval_routing':
+        return 'bg-indigo-500';
+      case 'approval':
+        return 'bg-green-500';
+      case 'rejection':
+        return 'bg-red-500';
+      default:
+        return 'bg-gray-500';
+    }
+  };
+
+  const getActivityIcon = (type: string) => {
+    switch (type) {
+      case 'submission':
+        return (
+          <svg className="h-4 w-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+          </svg>
+        );
+      case 'review_start':
+        return (
+          <svg className="h-4 w-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+          </svg>
+        );
+      case 'review_complete':
+        return (
+          <svg className="h-4 w-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
+          </svg>
+        );
+      case 'approval_routing':
+        return (
+          <svg className="h-4 w-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 9l4-4 4 4m0 6l-4 4-4-4" />
+          </svg>
+        );
+      case 'approval':
+        return (
+          <svg className="h-4 w-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+          </svg>
+        );
+      case 'rejection':
+        return (
+          <svg className="h-4 w-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        );
+      default:
+        return (
+          <svg className="h-4 w-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+        );
+    }
+  };
+
 
   return (
     <Layout>
@@ -35,119 +179,7 @@ const Dashboard: React.FC = () => {
               Welcome back, {user?.username || 'User'}! Here's what's happening with your documents.
             </p>
           </div>
-          {/* Removed redundant "View My Tasks" button - use notification bell instead */}
-        </div>
-
-        {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-          <div className="bg-white overflow-hidden shadow rounded-lg">
-            <div className="p-5">
-              <div className="flex items-center">
-                <div className="flex-shrink-0">
-                  <svg className="h-6 w-6 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                  </svg>
-                </div>
-                <div className="ml-5 w-0 flex-1">
-                  <dl>
-                    <dt className="text-sm font-medium text-gray-500 truncate">Total Documents</dt>
-                    <dd className="text-lg font-medium text-gray-900">{stats.totalDocuments}</dd>
-                  </dl>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div className="bg-white overflow-hidden shadow rounded-lg">
-            <div className="p-5">
-              <div className="flex items-center">
-                <div className="flex-shrink-0">
-                  <svg className="h-6 w-6 text-yellow-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                </div>
-                <div className="ml-5 w-0 flex-1">
-                  <dl>
-                    <dt className="text-sm font-medium text-gray-500 truncate">Pending Tasks</dt>
-                    <dd className="text-lg font-medium text-gray-900">{stats.pendingTasks}</dd>
-                  </dl>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div className="bg-white overflow-hidden shadow rounded-lg">
-            <div className="p-5">
-              <div className="flex items-center">
-                <div className="flex-shrink-0">
-                  <svg className="h-6 w-6 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                  </svg>
-                </div>
-                <div className="ml-5 w-0 flex-1">
-                  <dl>
-                    <dt className="text-sm font-medium text-gray-500 truncate">My Documents</dt>
-                    <dd className="text-lg font-medium text-gray-900">{stats.myDocuments}</dd>
-                  </dl>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div className="bg-white overflow-hidden shadow rounded-lg">
-            <div className="p-5">
-              <div className="flex items-center">
-                <div className="flex-shrink-0">
-                  <svg className="h-6 w-6 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                </div>
-                <div className="ml-5 w-0 flex-1">
-                  <dl>
-                    <dt className="text-sm font-medium text-gray-500 truncate">System Status</dt>
-                    <dd className="text-lg font-medium text-gray-900">{stats.systemStatus}</dd>
-                  </dl>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Quick Actions */}
-        <div className="bg-white shadow rounded-lg mb-8">
-          <div className="px-4 py-5 sm:p-6">
-            <h3 className="text-lg leading-6 font-medium text-gray-900">Quick Actions</h3>
-            <div className="mt-5 grid grid-cols-1 md:grid-cols-3 gap-4">
-              <button
-                onClick={() => window.location.href = '/documents'}
-                className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700"
-              >
-                <svg className="mr-2 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                </svg>
-                View Documents
-              </button>
-              <button
-                onClick={() => window.location.href = '/settings'}
-                className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-purple-600 hover:bg-purple-700"
-              >
-                <svg className="mr-2 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                </svg>
-                System Settings
-              </button>
-              <button
-                onClick={() => window.location.href = '/notifications'}
-                className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-yellow-600 hover:bg-yellow-700"
-              >
-                <svg className="mr-2 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
-                </svg>
-                Notifications
-              </button>
-            </div>
-          </div>
+          {/* Removed redundant "View Active Documents" button - use navigation instead */}
         </div>
 
         {/* Recent Activity and System Status */}
@@ -157,61 +189,47 @@ const Dashboard: React.FC = () => {
             <div className="px-4 py-5 sm:p-6">
               <h3 className="text-lg leading-6 font-medium text-gray-900">Recent Activity</h3>
               <div className="mt-5">
-                <div className="flow-root">
-                  <ul className="-mb-8">
-                    <li className="relative pb-8">
-                      <div className="relative flex space-x-3">
-                        <div className="flex h-8 w-8 items-center justify-center rounded-full bg-blue-500 ring-8 ring-white">
-                          <svg className="h-4 w-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-                          </svg>
-                        </div>
-                        <div className="min-w-0 flex-1">
-                          <div>
-                            <div className="text-sm">
-                              <span className="font-medium text-gray-900">Document SOP-2025-0004</span> submitted for review
+                {loading ? (
+                  <div className="flex items-center justify-center py-8">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+                    <span className="ml-3 text-gray-500">Loading recent activity...</span>
+                  </div>
+                ) : activities.length === 0 ? (
+                  <div className="text-center py-8">
+                    <svg className="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                    </svg>
+                    <h3 className="mt-2 text-sm font-medium text-gray-900">No recent activity</h3>
+                    <p className="mt-1 text-sm text-gray-500">Document workflow activity will appear here.</p>
+                  </div>
+                ) : (
+                  <div className="flow-root">
+                    <ul className="-mb-8">
+                      {activities.map((activity, index) => (
+                        <li key={activity.id} className={index !== activities.length - 1 ? "relative pb-8" : "relative"}>
+                          {index !== activities.length - 1 && (
+                            <span className="absolute top-4 left-4 -ml-px h-full w-0.5 bg-gray-200" aria-hidden="true" />
+                          )}
+                          <div className="relative flex space-x-3">
+                            <div className={`flex h-8 w-8 items-center justify-center rounded-full ring-8 ring-white ${getActivityColor(activity.type)}`}>
+                              {getActivityIcon(activity.type)}
                             </div>
-                            <p className="mt-0.5 text-sm text-gray-500">2 hours ago</p>
-                          </div>
-                        </div>
-                      </div>
-                    </li>
-                    <li className="relative pb-8">
-                      <div className="relative flex space-x-3">
-                        <div className="flex h-8 w-8 items-center justify-center rounded-full bg-green-500 ring-8 ring-white">
-                          <svg className="h-4 w-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                          </svg>
-                        </div>
-                        <div className="min-w-0 flex-1">
-                          <div>
-                            <div className="text-sm">
-                              <span className="font-medium text-gray-900">Document SOP-2025-0003</span> approved and effective
+                            <div className="min-w-0 flex-1">
+                              <div>
+                                <div className="text-sm">
+                                  <span className="font-medium text-gray-900">{activity.description}</span>
+                                </div>
+                                <p className="mt-0.5 text-sm text-gray-500">
+                                  by {activity.user} • {formatTimestamp(activity.timestamp)}
+                                </p>
+                              </div>
                             </div>
-                            <p className="mt-0.5 text-sm text-gray-500">5 hours ago</p>
                           </div>
-                        </div>
-                      </div>
-                    </li>
-                    <li className="relative">
-                      <div className="relative flex space-x-3">
-                        <div className="flex h-8 w-8 items-center justify-center rounded-full bg-yellow-500 ring-8 ring-white">
-                          <svg className="h-4 w-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                          </svg>
-                        </div>
-                        <div className="min-w-0 flex-1">
-                          <div>
-                            <div className="text-sm">
-                              <span className="font-medium text-gray-900">Review reminder</span> for SOP-2025-0002
-                            </div>
-                            <p className="mt-0.5 text-sm text-gray-500">1 day ago</p>
-                          </div>
-                        </div>
-                      </div>
-                    </li>
-                  </ul>
-                </div>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
               </div>
             </div>
           </div>
@@ -238,7 +256,7 @@ const Dashboard: React.FC = () => {
                     </div>
                     <div className="ml-3">
                       <p className="text-sm text-gray-900">
-                        🔔 Task notifications available via My Tasks
+                        🔔 Task notifications available via Active Documents
                       </p>
                     </div>
                   </div>

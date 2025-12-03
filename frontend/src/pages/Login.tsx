@@ -20,7 +20,7 @@ const Login: React.FC = () => {
       
       // Small delay to ensure state is updated
       setTimeout(() => {
-        navigate('/dashboard', { replace: true });
+        navigate('/', { replace: true });
       }, 100);
       
     } catch (err) {

@@ -343,7 +343,7 @@ const DocumentUploadModal: React.FC<DocumentUploadModalProps> = ({
                   <h3 className="text-sm font-medium text-gray-900 mb-2">Initial Workflow Assignment</h3>
                   <div className="p-3 bg-blue-50 border border-blue-200 rounded-md">
                     <p className="text-xs text-blue-700 mb-2">
-                      📋 <strong>Workflow Step 1:</strong> Document will be routed for review after creation
+                      📋 <strong>Workflow:</strong> Document will be routed for review after creation
                     </p>
                     <p className="text-xs text-blue-600">
                       Approver will be assigned later by author after review is completed (per EDMS workflow specification)

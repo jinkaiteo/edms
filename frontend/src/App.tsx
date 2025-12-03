@@ -1,7 +1,7 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import './App.css';
-import Dashboard from './pages/Dashboard.tsx';
+// Dashboard removed - Document Library is now the default landing page
 import Login from './pages/Login.tsx';
 import DocumentManagement from './pages/DocumentManagement.tsx';
 import AdminDashboard from './pages/AdminDashboard.tsx';
@@ -23,6 +23,10 @@ function AppContent() {
     const handleRouteChange = () => {
       const pageTitle = document.title || 'Page loaded';
       announce(`Navigated to ${pageTitle}`, 'polite');
+      
+      // Clear any selected documents when navigating between pages
+      console.log('🔄 App: Clearing document selection on route change');
+      window.dispatchEvent(new CustomEvent('clearDocumentSelection'));
     };
 
     // Listen for route changes
@@ -37,13 +41,12 @@ function AppContent() {
     <div className="App min-h-screen bg-gray-50">
       <Routes>
         <Route path="/login" element={<Login />} />
-        <Route path="/dashboard" element={<Dashboard />} />
-        <Route path="/" element={<Navigate to="/dashboard" replace />} />
-        <Route path="/document-management" element={<DocumentManagement />} />
-        <Route path="/my-tasks" element={<Navigate to="/document-management?filter=pending" replace />} />
-        <Route path="/tasks" element={<Navigate to="/document-management?filter=pending" replace />} />
-        <Route path="/archived-documents" element={<DocumentManagement filterType="archived" />} />
-        <Route path="/obsolete-documents" element={<Navigate to="/document-management?filter=obsolete" replace />} />
+        <Route path="/" element={<DocumentManagement />} />
+        <Route path="/document-management" element={<Navigate to="/" replace />} />
+        <Route path="/my-tasks" element={<Navigate to="/?filter=pending" replace />} />
+        <Route path="/tasks" element={<Navigate to="/?filter=pending" replace />} />
+        <Route path="/archived-documents" element={<Navigate to="/?filter=archived" replace />} />
+        <Route path="/obsolete-documents" element={<Navigate to="/?filter=obsolete" replace />} />
         <Route path="/notifications" element={<Notifications />} />
         {/* Audit trail moved to admin interface - route kept for direct access only */}
         <Route path="/audit-trail" element={<AuditTrail />} />

@@ -11,6 +11,12 @@ import { DashboardStats } from '../types/api.ts';
 const AdminDashboard: React.FC = () => {
   const [activeSection, setActiveSection] = useState<'overview' | 'users' | 'placeholders' | 'settings' | 'audit' | 'tasks' | 'reports'>('overview');
   
+  // Clear any document selection when entering Administration page
+  React.useEffect(() => {
+    console.log('🔄 AdminDashboard: Clearing document selection on administration page entry');
+    window.dispatchEvent(new CustomEvent('clearDocumentSelection'));
+  }, []);
+  
   // Stable callback functions to prevent dependency changes
   const handleDashboardError = useCallback((error: Error) => {
     console.error('Admin dashboard update error:', error);

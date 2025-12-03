@@ -22,7 +22,14 @@ const DocumentSearch: React.FC<DocumentSearchProps> = ({
     created_after: '',
     created_before: '',
     author: [],
-    department: []
+    // Added relevant backend-supported filters:
+    title: '',
+    description: '',
+    document_number: '',
+    keywords: '',
+    priority: '',
+    reviewer: [],
+    approver: []
   });
   const [recentSearches, setRecentSearches] = useState<string[]>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
@@ -40,28 +47,22 @@ const DocumentSearch: React.FC<DocumentSearchProps> = ({
   const availableDocumentTypes = documentTypes.length > 0 ? documentTypes : defaultDocumentTypes;
 
   const statusOptions: { value: DocumentStatus; label: string }[] = [
-    { value: 'draft', label: 'Draft' },
-    { value: 'pending_review', label: 'Pending Review' },
-    { value: 'under_review', label: 'Under Review' },
-    { value: 'review_completed', label: 'Review Completed' },
-    { value: 'pending_approval', label: 'Pending Approval' },
-    { value: 'approved', label: 'Approved' },
-    { value: 'effective', label: 'Effective' },
-    { value: 'superseded', label: 'Superseded' },
-    { value: 'obsolete', label: 'Obsolete' },
-    { value: 'terminated', label: 'Terminated' }
+    { value: 'DRAFT', label: 'Draft' },
+    { value: 'PENDING_REVIEW', label: 'Pending Review' },
+    { value: 'UNDER_REVIEW', label: 'Under Review' },
+    { value: 'REVIEW_COMPLETED', label: 'Review Completed' },
+    { value: 'PENDING_APPROVAL', label: 'Pending Approval' },
+    { value: 'UNDER_APPROVAL', label: 'Under Approval' },
+    { value: 'APPROVED', label: 'Approved' },
+    { value: 'APPROVED_PENDING_EFFECTIVE', label: 'Approved (Pending Effective)' },
+    { value: 'EFFECTIVE', label: 'Effective' },
+    { value: 'SCHEDULED_FOR_OBSOLESCENCE', label: 'Scheduled for Obsolescence' },
+    { value: 'SUPERSEDED', label: 'Superseded' },
+    { value: 'OBSOLETE', label: 'Obsolete' },
+    { value: 'TERMINATED', label: 'Terminated' }
   ];
 
-  const departmentOptions = [
-    'Quality Assurance',
-    'Training',
-    'Operations',
-    'Engineering',
-    'Human Resources',
-    'Finance',
-    'IT',
-    'Legal'
-  ];
+  // Removed departmentOptions - not supported by backend
 
   useEffect(() => {
     // Load recent searches from localStorage
@@ -99,7 +100,7 @@ const DocumentSearch: React.FC<DocumentSearchProps> = ({
     setFilters(prev => ({ ...prev, [key]: value }));
   };
 
-  const toggleArrayFilter = (key: 'document_type' | 'status' | 'author' | 'department', value: string) => {
+  const toggleArrayFilter = (key: 'document_type' | 'status' | 'author' | 'reviewer' | 'approver', value: string) => {
     setFilters(prev => {
       const current = prev[key] as string[] || [];
       const updated = current.includes(value)
@@ -116,7 +117,13 @@ const DocumentSearch: React.FC<DocumentSearchProps> = ({
       created_after: '',
       created_before: '',
       author: [],
-      department: []
+      title: '',
+      description: '',
+      document_number: '',
+      keywords: '',
+      priority: '',
+      reviewer: [],
+      approver: []
     });
   };
 
@@ -224,11 +231,76 @@ const DocumentSearch: React.FC<DocumentSearchProps> = ({
 
         {/* Advanced Filters */}
         {showFilters && (
-          <div className="mt-6 p-4 bg-gray-50 rounded-lg space-y-6">
+          <div className="mt-6 p-4 bg-gray-50 rounded-lg space-y-4">
             <h3 className="text-sm font-medium text-gray-900">Advanced Filters</h3>
             
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-              {/* Document Type Filter */}
+            {/* Text-based Filters Row - More space for search inputs */}
+            <div className="space-y-3">
+              <h4 className="text-xs font-medium text-gray-600 uppercase tracking-wider">Text Search Filters</h4>
+              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-3">
+                {/* Title Filter */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Title Contains
+                  </label>
+                  <input
+                    type="text"
+                    value={filters.title || ''}
+                    onChange={(e) => updateFilter('title', e.target.value)}
+                    placeholder="Search in document title..."
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-blue-500 focus:border-blue-500"
+                  />
+                </div>
+
+                {/* Description Filter */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Description Contains
+                  </label>
+                  <input
+                    type="text"
+                    value={filters.description || ''}
+                    onChange={(e) => updateFilter('description', e.target.value)}
+                    placeholder="Search in description..."
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-blue-500 focus:border-blue-500"
+                  />
+                </div>
+
+                {/* Document Number Filter */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Document Number Contains
+                  </label>
+                  <input
+                    type="text"
+                    value={filters.document_number || ''}
+                    onChange={(e) => updateFilter('document_number', e.target.value)}
+                    placeholder="e.g., SOP, PROC, FORM..."
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-blue-500 focus:border-blue-500"
+                  />
+                </div>
+
+                {/* Keywords Filter */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Keywords
+                  </label>
+                  <input
+                    type="text"
+                    value={filters.keywords || ''}
+                    onChange={(e) => updateFilter('keywords', e.target.value)}
+                    placeholder="Search keywords..."
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-blue-500 focus:border-blue-500"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Selection-based Filters Row */}
+            <div className="space-y-3">
+              <h4 className="text-xs font-medium text-gray-600 uppercase tracking-wider">Category & Status Filters</h4>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                {/* Document Type Filter */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Document Type
@@ -268,49 +340,37 @@ const DocumentSearch: React.FC<DocumentSearchProps> = ({
                 </div>
               </div>
 
-              {/* Department Filter */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Department
-                </label>
-                <div className="space-y-2 max-h-32 overflow-y-auto">
-                  {departmentOptions.map(dept => (
-                    <label key={dept} className="flex items-center">
-                      <input
-                        type="checkbox"
-                        checked={(filters.department || []).includes(dept)}
-                        onChange={() => toggleArrayFilter('department', dept)}
-                        className="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
-                      />
-                      <span className="ml-2 text-sm text-gray-700">{dept}</span>
-                    </label>
-                  ))}
-                </div>
+              {/* Text-based filters moved to top row for better spacing */}
               </div>
+            </div>
 
-              {/* Date Range Filter */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Date Range
-                </label>
-                <div className="space-y-2">
-                  <div>
-                    <label className="block text-xs text-gray-500 mb-1">From</label>
-                    <input
-                      type="date"
-                      value={filters.created_after || ''}
-                      onChange={(e) => updateFilter('created_after', e.target.value)}
-                      className="w-full px-3 py-1 border border-gray-300 rounded-md text-sm focus:ring-blue-500 focus:border-blue-500"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs text-gray-500 mb-1">To</label>
-                    <input
-                      type="date"
-                      value={filters.created_before || ''}
-                      onChange={(e) => updateFilter('created_before', e.target.value)}
-                      className="w-full px-3 py-1 border border-gray-300 rounded-md text-sm focus:ring-blue-500 focus:border-blue-500"
-                    />
+            {/* Date Range Filter Row */}
+            <div className="space-y-3">
+              <h4 className="text-xs font-medium text-gray-600 uppercase tracking-wider">Date Filters</h4>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Date Range
+                  </label>
+                  <div className="space-y-2">
+                    <div>
+                      <label className="block text-xs text-gray-500 mb-1">From</label>
+                      <input
+                        type="date"
+                        value={filters.created_after || ''}
+                        onChange={(e) => updateFilter('created_after', e.target.value)}
+                        className="w-full px-3 py-1 border border-gray-300 rounded-md text-sm focus:ring-blue-500 focus:border-blue-500"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs text-gray-500 mb-1">To</label>
+                      <input
+                        type="date"
+                        value={filters.created_before || ''}
+                        onChange={(e) => updateFilter('created_before', e.target.value)}
+                        className="w-full px-3 py-1 border border-gray-300 rounded-md text-sm focus:ring-blue-500 focus:border-blue-500"
+                      />
+                    </div>
                   </div>
                 </div>
               </div>
@@ -318,36 +378,42 @@ const DocumentSearch: React.FC<DocumentSearchProps> = ({
           </div>
         )}
 
-        {/* Quick Filters */}
+        {/* Quick Filters - Updated with current status values */}
         <div className="mt-4">
           <div className="flex flex-wrap gap-2">
             <button
-              onClick={() => updateFilter('status', ['effective'])}
+              onClick={() => updateFilter('status', ['EFFECTIVE'])}
               className="px-3 py-1 text-xs font-medium bg-green-100 text-green-800 rounded-full hover:bg-green-200"
             >
               Effective Documents
             </button>
             <button
-              onClick={() => updateFilter('status', ['pending_review', 'under_review'])}
-              className="px-3 py-1 text-xs font-medium bg-yellow-100 text-yellow-800 rounded-full hover:bg-yellow-200"
-            >
-              Under Review
-            </button>
-            <button
-              onClick={() => updateFilter('status', ['draft'])}
+              onClick={() => updateFilter('status', ['DRAFT'])}
               className="px-3 py-1 text-xs font-medium bg-gray-100 text-gray-800 rounded-full hover:bg-gray-200"
             >
               Drafts
             </button>
             <button
-              onClick={() => updateFilter('document_type', ['Policy'])}
+              onClick={() => updateFilter('status', ['PENDING_REVIEW', 'PENDING_APPROVAL'])}
+              className="px-3 py-1 text-xs font-medium bg-yellow-100 text-yellow-800 rounded-full hover:bg-yellow-200"
+            >
+              Pending Actions
+            </button>
+            <button
+              onClick={() => updateFilter('status', ['APPROVED_PENDING_EFFECTIVE'])}
               className="px-3 py-1 text-xs font-medium bg-blue-100 text-blue-800 rounded-full hover:bg-blue-200"
+            >
+              Pending Effective
+            </button>
+            <button
+              onClick={() => updateFilter('document_type', ['Policy'])}
+              className="px-3 py-1 text-xs font-medium bg-purple-100 text-purple-800 rounded-full hover:bg-purple-200"
             >
               Policies Only
             </button>
             <button
               onClick={() => updateFilter('document_type', ['SOP'])}
-              className="px-3 py-1 text-xs font-medium bg-purple-100 text-purple-800 rounded-full hover:bg-purple-200"
+              className="px-3 py-1 text-xs font-medium bg-indigo-100 text-indigo-800 rounded-full hover:bg-indigo-200"
             >
               SOPs Only
             </button>

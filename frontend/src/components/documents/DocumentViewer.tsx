@@ -39,6 +39,7 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({
   const [signatures, setSignatures] = useState<ElectronicSignature[]>([]);
   const [loading, setLoading] = useState(false);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [completeDocument, setCompleteDocument] = useState<Document | null>(null);
   const [showUnifiedWorkflowInterface, setShowUnifiedWorkflowInterface] = useState(false);
   const [workflowMode, setWorkflowMode] = useState<'review' | 'approval'>('review');
   
@@ -59,6 +60,8 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({
 
   useEffect(() => {
     if (document) {
+      // Reset complete document when document prop changes
+      setCompleteDocument(null);
       loadDocumentData();
     }
   }, [document]);
@@ -66,9 +69,39 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({
   const loadDocumentData = async () => {
     if (!document) return;
 
-
     setLoading(true);
     try {
+      // CRITICAL FIX: Fetch complete document data first to ensure we have description and all fields
+      // List endpoint doesn't include description, but detail endpoint does
+      const completeDocumentResponse = await fetch(`/api/v1/documents/documents/${document.uuid}/`, {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('accessToken')}`,
+          'Content-Type': 'application/json',
+        },
+      });
+      
+      if (completeDocumentResponse.ok) {
+        const fetchedCompleteDocument = await completeDocumentResponse.json();
+        console.log('✅ DocumentViewer: Fetched complete document with description:', {
+          uuid: fetchedCompleteDocument.uuid,
+          title: fetchedCompleteDocument.title,
+          description: fetchedCompleteDocument.description,
+          hasDescription: !!fetchedCompleteDocument.description
+        });
+        
+        // CRITICAL FIX: Store complete document data in state for display
+        setCompleteDocument(fetchedCompleteDocument);
+        
+        // Update parent component with complete document data
+        window.dispatchEvent(new CustomEvent('documentUpdated', { 
+          detail: { 
+            document: fetchedCompleteDocument,
+            uuid: document.uuid,
+            action: 'complete_data_loaded'
+          } 
+        }));
+      }
+      
       // Fetch real workflow status from backend - but only if we have valid IDs
       const apiCalls = [];
       
@@ -696,7 +729,7 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({
             // Step 2: File uploaded, can now submit for review
             actions.push({ 
               key: 'submit_for_review', 
-              label: '📤 Submit for Review (Step 2)', 
+              label: '📤 Submit for Review', 
               color: 'blue',
               description: 'Select reviewer and route document for review'
             });
@@ -946,7 +979,7 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({
               </span>
             </div>
             <div className="flex items-center space-x-4 text-sm text-gray-500">
-              <span>{document.document_number}</span>
+              <span>{document.base_document_number || document.document_number?.split('-v')[0] || document.document_number}</span>
               <span>•</span>
               <span>Version {document.version_string || document.version || '1.0'}</span>
               <span>•</span>
@@ -1048,87 +1081,133 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({
       {/* Tab Content */}
       <div className="p-6">
         {activeTab === 'details' && (
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {/* Document Information */}
-            <div className="space-y-6">
+          <div className="space-y-8">
+            {/* Document Information - Optimized Single Column Layout */}
+            <div className="max-w-4xl">
               <div>
-                <h3 className="text-lg font-medium text-gray-900 mb-4">Document Information</h3>
-                <dl className="space-y-3">
-                  <div>
-                    <dt className="text-sm font-medium text-gray-500">Description</dt>
-                    <dd className="text-sm text-gray-900 mt-1">{document.description}</dd>
-                  </div>
-                  <div>
-                    <dt className="text-sm font-medium text-gray-500">Document Type</dt>
-                    <dd className="text-sm text-gray-900 mt-1">{document.document_type_display || 'Unknown Type'}</dd>
-                  </div>
-                  <div>
-                    <dt className="text-sm font-medium text-gray-500">Author</dt>
-                    <dd className="text-sm text-gray-900 mt-1">{document.author_display || 'Unknown Author'}</dd>
-                  </div>
-                  <div>
-                    <dt className="text-sm font-medium text-gray-500">Version</dt>
-                    <dd className="text-sm text-gray-900 mt-1">{document.version_string || document.version || '1.0'}</dd>
-                  </div>
-                  <div>
-                    <dt className="text-sm font-medium text-gray-500">Status</dt>
-                    <dd className="text-sm text-gray-900 mt-1">
-                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(document.status)}`}>
-                        {document.status_display || document.status.replace('_', ' ')}
-                      </span>
-                    </dd>
-                  </div>
-                  <div>
-                    <dt className="text-sm font-medium text-gray-500">Created Date</dt>
-                    <dd className="text-sm text-gray-900 mt-1">{formatDate(document.created_at)}</dd>
-                  </div>
-                  <div>
-                    <dt className="text-sm font-medium text-gray-500">Last Modified</dt>
-                    <dd className="text-sm text-gray-900 mt-1">{formatDate(document.updated_at || document.created_at)}</dd>
-                  </div>
-                  {document.effective_date && (
+                <h3 className="text-lg font-medium text-gray-900 mb-6">Document Information</h3>
+                
+                {/* Optimized Grid Layout */}
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-4">
+                  {/* Column 1: Basic Information */}
+                  <div className="space-y-3">
+                    <h4 className="text-sm font-semibold text-gray-700 border-b border-gray-200 pb-2">Basic Details</h4>
                     <div>
-                      <dt className="text-sm font-medium text-gray-500">Effective Date</dt>
-                      <dd className="text-sm text-gray-900 mt-1">{formatDate(document.effective_date)}</dd>
+                      <dt className="text-sm font-medium text-gray-500">Document Type</dt>
+                      <dd className="text-sm text-gray-900 mt-1">{document.document_type_display || 'Unknown Type'}</dd>
                     </div>
-                  )}
-                  {document.review_date && (
                     <div>
-                      <dt className="text-sm font-medium text-gray-500">Next Review Date</dt>
-                      <dd className="text-sm text-gray-900 mt-1">{formatDate(document.review_date)}</dd>
+                      <dt className="text-sm font-medium text-gray-500">Version</dt>
+                      <dd className="text-sm text-gray-900 mt-1">{document.version_string || document.version || '1.0'}</dd>
                     </div>
-                  )}
-                  {document.file_size && (
                     <div>
-                      <dt className="text-sm font-medium text-gray-500">File Size</dt>
-                      <dd className="text-sm text-gray-900 mt-1">{formatFileSize(document.file_size)}</dd>
+                      <dt className="text-sm font-medium text-gray-500">Status</dt>
+                      <dd className="text-sm text-gray-900 mt-1">
+                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(document.status)}`}>
+                          {document.status_display || document.status.replace('_', ' ')}
+                        </span>
+                      </dd>
                     </div>
-                  )}
+                    <div>
+                      <dt className="text-sm font-medium text-gray-500">Author</dt>
+                      <dd className="text-sm text-gray-900 mt-1">{document.author_display || 'Unknown Author'}</dd>
+                    </div>
+                  </div>
                   
-                  {/* Workflow Assignment Information */}
-                  {(document.reviewer_display || document.approver_display) && (
-                    <div className="pt-4 border-t border-gray-200">
-                      <h4 className="text-sm font-medium text-gray-900 mb-3">Workflow Assignments</h4>
-                      {document.reviewer_display && (
-                        <div className="mb-2">
-                          <dt className="text-sm font-medium text-gray-500">Assigned Reviewer</dt>
-                          <dd className="text-sm text-gray-900 mt-1">{document.reviewer_display}</dd>
+                  {/* Column 2: Dates and Lifecycle */}
+                  <div className="space-y-3">
+                    <h4 className="text-sm font-semibold text-gray-700 border-b border-gray-200 pb-2">Timeline</h4>
+                    <div>
+                      <dt className="text-sm font-medium text-gray-500">Created Date</dt>
+                      <dd className="text-sm text-gray-900 mt-1">{formatDate(document.created_at)}</dd>
+                    </div>
+                    <div>
+                      <dt className="text-sm font-medium text-gray-500">Last Modified</dt>
+                      <dd className="text-sm text-gray-900 mt-1">{formatDate(document.updated_at || document.created_at)}</dd>
+                    </div>
+                    {document.effective_date && (
+                      <div>
+                        <dt className="text-sm font-medium text-gray-500">Effective Date</dt>
+                        <dd className="text-sm text-gray-900 mt-1">{formatDate(document.effective_date)}</dd>
+                      </div>
+                    )}
+                  </div>
+                  
+                  {/* Column 3: Description and Additional Info */}
+                  <div className="space-y-3 md:col-span-2 lg:col-span-1">
+                    <h4 className="text-sm font-semibold text-gray-700 border-b border-gray-200 pb-2">Description</h4>
+                    <div>
+                      <dd className="text-sm text-gray-900">{(completeDocument?.description || document.description) || 'No description provided'}</dd>
+                    </div>
+                  </div>
+
+                </div>
+                
+                {/* Obsolescence Information - Full Width Alert */}
+                {(document.status === 'SCHEDULED_FOR_OBSOLESCENCE' || document.obsolescence_date) && (
+                  <div className="mt-6 border-l-4 border-orange-400 bg-orange-50 p-4 rounded">
+                    <div className="flex">
+                      <div className="flex-shrink-0">
+                        <svg className="h-5 w-5 text-orange-400" fill="currentColor" viewBox="0 0 20 20">
+                          <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                        </svg>
+                      </div>
+                      <div className="ml-3 flex-1">
+                        <h4 className="text-sm font-medium text-orange-800 mb-2">
+                          📅 Scheduled for Obsolescence
+                        </h4>
+                        <div className="space-y-1">
+                          {document.obsolescence_date && (
+                            <div>
+                              <dt className="inline text-xs font-medium text-orange-700">Obsolescence Date: </dt>
+                              <dd className="inline text-sm text-orange-800 font-medium">
+                                {formatDate(document.obsolescence_date)}
+                              </dd>
+                            </div>
+                          )}
+                          {document.obsolescence_reason && (
+                            <div>
+                              <dt className="inline text-xs font-medium text-orange-700">Reason: </dt>
+                              <dd className="inline text-sm text-orange-800">{document.obsolescence_reason}</dd>
+                            </div>
+                          )}
+                          {(document.obsoleted_by_display || document.obsoleted_by) && (
+                            <div>
+                              <dt className="inline text-xs font-medium text-orange-700">Initiated By: </dt>
+                              <dd className="inline text-sm text-orange-800">{document.obsoleted_by_display || document.obsoleted_by}</dd>
+                            </div>
+                          )}
                         </div>
-                      )}
-                      {document.approver_display && (
-                        <div>
-                          <dt className="text-sm font-medium text-gray-500">Assigned Approver</dt>
-                          <dd className="text-sm text-gray-900 mt-1">{document.approver_display}</dd>
-                        </div>
-                      )}
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Workflow Assignment Information */}
+            <div>
+              {(document.reviewer_display || document.approver_display) && (
+                <div className="pt-4 border-t border-gray-200">
+                  <h4 className="text-sm font-medium text-gray-900 mb-3">Workflow Assignments</h4>
+                  {document.reviewer_display && (
+                    <div className="mb-2">
+                      <dt className="text-sm font-medium text-gray-500">Assigned Reviewer</dt>
+                      <dd className="text-sm text-gray-900 mt-1">{document.reviewer_display}</dd>
                     </div>
                   )}
-                </dl>
-              </div>
+                  {document.approver_display && (
+                    <div>
+                      <dt className="text-sm font-medium text-gray-500">Assigned Approver</dt>
+                      <dd className="text-sm text-gray-900 mt-1">{document.approver_display}</dd>
+                    </div>
+                  )}
+                </div>
+              )}
 
               {/* Metadata */}
               {document.metadata && Object.keys(document.metadata).length > 0 && (
-                <div>
+                <div className="pt-4 border-t border-gray-200">
                   <h3 className="text-lg font-medium text-gray-900 mb-4">Metadata</h3>
                   <dl className="space-y-3">
                     {document.metadata && Object.entries(document.metadata).map(([key, value]) => (
@@ -1140,38 +1219,6 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({
                   </dl>
                 </div>
               )}
-            </div>
-
-            {/* Document Preview */}
-            <div>
-              <h3 className="text-lg font-medium text-gray-900 mb-4">Document Preview</h3>
-              <div className="border border-gray-200 rounded-lg p-4">
-                {document.file_path ? (
-                  <div className="text-center py-8">
-                    <div className="text-gray-400 mb-4">
-                      <svg className="w-16 h-16 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                      </svg>
-                    </div>
-                    <p className="text-sm text-gray-500 mb-4">Document preview not available</p>
-                    <button
-                      onClick={() => window.open(`/api/v1/documents/${document.id}/download/`, '_blank')}
-                      className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
-                    >
-                      View Document
-                    </button>
-                  </div>
-                ) : (
-                  <div className="text-center py-8">
-                    <div className="text-gray-400 mb-4">
-                      <svg className="w-16 h-16 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.728-.833-2.498 0L4.268 16.5c-.77.833.192 2.5 1.732 2.5z" />
-                      </svg>
-                    </div>
-                    <p className="text-sm text-gray-500">No file attached to this document</p>
-                  </div>
-                )}
-              </div>
             </div>
           </div>
         )}
@@ -1199,17 +1246,17 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({
                 <div className="flex items-center text-xs text-blue-700">
                   <div className={`flex items-center ${['draft'].includes(document.status.toLowerCase()) ? 'text-blue-600 font-medium' : 'text-gray-500'}`}>
                     <span className="w-2 h-2 rounded-full bg-current mr-2"></span>
-                    Step 1: Create
+                    Created
                   </div>
                   <div className="flex-1 h-px bg-blue-200 mx-3"></div>
                   <div className={`flex items-center ${['pending_review', 'under_review'].includes(document.status.toLowerCase()) ? 'text-blue-600 font-medium' : 'text-gray-500'}`}>
                     <span className="w-2 h-2 rounded-full bg-current mr-2"></span>
-                    Step 2: Review
+                    Under Review
                   </div>
                   <div className="flex-1 h-px bg-blue-200 mx-3"></div>
                   <div className={`flex items-center ${['pending_approval', 'under_approval', 'approved'].includes(document.status.toLowerCase()) ? 'text-blue-600 font-medium' : 'text-gray-500'}`}>
                     <span className="w-2 h-2 rounded-full bg-current mr-2"></span>
-                    Step 3: Approve
+                    Approved
                   </div>
                   <div className="flex-1 h-px bg-blue-200 mx-3"></div>
                   <div className={`flex items-center ${['effective'].includes(document.status.toLowerCase()) ? 'text-green-600 font-medium' : 'text-gray-500'}`}>
@@ -1369,6 +1416,28 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({
           </div>
         )}
 
+        {activeTab === 'signatures' && (
+          <div className="space-y-6">
+            <div>
+              <h3 className="text-lg font-medium text-gray-900 mb-4">Digital Signatures</h3>
+              {/* Electronic Signature Section */}
+              {document.status === 'APPROVED_AND_EFFECTIVE' && (
+                <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
+                  <p className="text-sm text-gray-600 mb-4">
+                    This document is approved and effective. Electronic signatures can be applied.
+                  </p>
+                  <button
+                    onClick={() => setShowSignModal(true)}
+                    className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                  >
+                    Sign Document
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
         {activeTab === 'history' && (
           <div className="space-y-6">
             <div>
@@ -1378,7 +1447,7 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({
           </div>
         )}
       </div>
-      
+
       {/* EDMS Workflow Modals */}
       
       {/* Unified Workflow Interface (EDMS Review & Approval Process) */}

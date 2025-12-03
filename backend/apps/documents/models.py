@@ -165,7 +165,6 @@ class Document(models.Model):
         ('PENDING_APPROVAL', 'Pending Approval'),
         ('UNDER_APPROVAL', 'Under Approval'),
         ('APPROVED', 'Approved'),
-        ('APPROVED_AND_EFFECTIVE', 'Approved and Effective'),
         ('APPROVED_PENDING_EFFECTIVE', 'Approved Pending Effective'),
         ('EFFECTIVE', 'Effective'),
         ('SCHEDULED_FOR_OBSOLESCENCE', 'Scheduled for Obsolescence'),

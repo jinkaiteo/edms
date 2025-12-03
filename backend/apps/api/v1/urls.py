@@ -12,6 +12,8 @@ from drf_spectacular.views import (
     SpectacularAPIView, SpectacularRedocView, SpectacularSwaggerView
 )
 from apps.api.news_feed_views import my_documents, recent_notifications, system_status
+from apps.api import dashboard_api_views
+from apps.api.v1 import change_password_views
 # my_tasks import removed - using document filters instead
 # task_views removed - using document filters instead
 
@@ -36,16 +38,16 @@ from .views import (
     AuditTrailViewSet, ComplianceReportView,
     
     # Electronic signatures
-    ElectronicSignatureViewSet, CertificateViewSet,
+    # ElectronicSignatureViewSet, CertificateViewSet,  # Temporarily disabled
     
     # Templates and placeholders
     DocumentTemplateViewSet, PlaceholderViewSet, DocumentGenerationViewSet,
     
     # Backup and system
-    BackupJobViewSet, HealthCheckViewSet, SystemMetricViewSet,
+    # BackupJobViewSet, HealthCheckViewSet, SystemMetricViewSet,  # Temporarily disabled
     
     # Settings and configuration
-    SystemConfigurationViewSet, UICustomizationViewSet, FeatureToggleViewSet,
+    # SystemConfigurationViewSet, UICustomizationViewSet, FeatureToggleViewSet,  # Temporarily disabled
 )
 
 # Import authentication views
@@ -53,7 +55,7 @@ from .auth_views import LoginView, LogoutView, CurrentUserView, CSRFTokenView, a
 from rest_framework_simplejwt.views import TokenObtainPairView
 
 # Import notification views
-from .notification_views import NotificationViewSet
+# from .notification_views import NotificationViewSet  # Temporarily disabled
 
 # Create router for ViewSets
 router = DefaultRouter()
@@ -73,8 +75,8 @@ router.register(r'workflows', WorkflowViewSet, basename='workflow')
 router.register(r'workflow-instances', WorkflowInstanceViewSet, basename='workflowinstance')
 # WorkflowTaskViewSet removed - using document filters instead
 
-# Notification endpoints
-router.register(r'notifications', NotificationViewSet, basename='notification')
+# Notification endpoints (temporarily disabled)
+# router.register(r'notifications', NotificationViewSet, basename='notification')
 
 # Search endpoints
 router.register(r'search', SearchViewSet, basename='search')
@@ -92,15 +94,15 @@ router.register(r'document-templates', DocumentTemplateViewSet, basename='docume
 router.register(r'placeholders', PlaceholderViewSet, basename='placeholder')
 router.register(r'document-generations', DocumentGenerationViewSet, basename='documentgeneration')
 
-# Backup and system endpoints
-router.register(r'backup-jobs', BackupJobViewSet, basename='backupjob')
-router.register(r'health-checks', HealthCheckViewSet, basename='healthcheck')
-router.register(r'system-metrics', SystemMetricViewSet, basename='systemmetric')
+# Backup and system endpoints (temporarily disabled)
+# router.register(r'backup-jobs', BackupJobViewSet, basename='backupjob')
+# router.register(r'health-checks', HealthCheckViewSet, basename='healthcheck')
+# router.register(r'system-metrics', SystemMetricViewSet, basename='systemmetric')
 
-# Settings and configuration endpoints
-router.register(r'system-configurations', SystemConfigurationViewSet, basename='systemconfiguration')
-router.register(r'ui-customizations', UICustomizationViewSet, basename='uicustomization')
-router.register(r'feature-toggles', FeatureToggleViewSet, basename='featuretoggle')
+# Settings and configuration endpoints (temporarily disabled)
+# router.register(r'system-configurations', SystemConfigurationViewSet, basename='systemconfiguration')
+# router.register(r'ui-customizations', UICustomizationViewSet, basename='uicustomization')
+# router.register(r'feature-toggles', FeatureToggleViewSet, basename='featuretoggle')
 
 # URL patterns
 urlpatterns = [
@@ -114,7 +116,9 @@ urlpatterns = [
     path('status/', APIStatusView.as_view(), name='api-status'),
     path('info/', APIInfoView.as_view(), name='api-info'),
     path('health/', APIHealthView.as_view(), name='api-health'),
-    path('dashboard/stats/', DashboardStatsView.as_view(), name='dashboard-stats'),
+    path('dashboard/stats/', dashboard_api_views.get_dashboard_stats, name='dashboard-stats'),
+    path('dashboard/activity/', dashboard_api_views.get_recent_activity, name='dashboard-activity'),
+    path('dashboard/overview/', dashboard_api_views.get_dashboard_overview, name='dashboard-overview'),
     
     # Search analytics
     path('search/analytics/', SearchAnalyticsView.as_view(), name='search-analytics'),
@@ -138,6 +142,8 @@ urlpatterns = [
     path('auth/profile/', CurrentUserView.as_view(), name='auth-profile'),
     path('auth/status/', auth_status, name='auth-status'),
     path('auth/csrf/', CSRFTokenView.as_view(), name='auth-csrf'),
+    path('auth/api-change-password/', change_password_views.change_password, name='api-change-password'),
+    path('auth/password-requirements/', change_password_views.password_requirements, name='api-password-requirements'),
     
     # Include router URLs
     path('', include(router.urls)),

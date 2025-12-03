@@ -131,7 +131,7 @@ class DocumentViewSet(viewsets.ModelViewSet):
         
         return super().create(request, *args, **kwargs)
     filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
-    filterset_class = None  # TEMPORARY: Disable DocumentFilter to fix API refresh issue
+    filterset_class = DocumentFilter
     search_fields = ['document_number', 'title', 'description', 'keywords']
     ordering_fields = ['document_number', 'title', 'created_at', 'effective_date']
     ordering = ['-created_at']
@@ -179,6 +179,17 @@ class DocumentViewSet(viewsets.ModelViewSet):
             # Show all documents with obsolete-related statuses
             queryset = queryset.filter(
                 status__in=['OBSOLETE', 'SCHEDULED_FOR_OBSOLESCENCE', 'SUPERSEDED']
+            ).order_by('-updated_at')
+            
+        elif filter_type == 'library':
+            # Show documents for Document Library: approved, effective, and pending obsolescence
+            queryset = queryset.filter(
+                status__in=[
+                    'APPROVED_PENDING_EFFECTIVE',
+                    'APPROVED_AND_EFFECTIVE', 
+                    'EFFECTIVE',
+                    'SCHEDULED_FOR_OBSOLESCENCE'
+                ]
             ).order_by('-updated_at')
             
         else:

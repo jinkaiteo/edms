@@ -28,14 +28,14 @@ const Notifications: React.FC = () => {
               Simplified Notification System Active
             </h3>
             <p className="text-gray-600 mb-6">
-              Your workflow tasks and notifications are available through the My Tasks page.
+              Your workflow tasks and notifications are available through the Active Documents page.
               This simplified system provides reliable task visibility.
             </p>
             <button
               onClick={handleViewTasks}
               className="px-6 py-3 bg-blue-600 text-white rounded-md hover:bg-blue-700 font-medium"
             >
-              View My Tasks
+              View Active Documents
             </button>
           </div>
         </div>

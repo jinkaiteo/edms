@@ -390,7 +390,7 @@ class DocumentLifecycleService:
         today = timezone.now().date()
         if effective_date <= today:
             # Effective today or in the past = immediately effective
-            target_state = 'APPROVED_AND_EFFECTIVE'
+            target_state = 'EFFECTIVE'
             comment_suffix = f' - Effective immediately ({effective_date})'
         else:
             # Effective in the future = pending effective
@@ -541,10 +541,10 @@ class DocumentLifecycleService:
                 with transaction.atomic():
                     workflow = self._get_active_workflow(document)
                     if workflow and workflow.current_state.code == 'APPROVED_PENDING_EFFECTIVE':
-                        # Transition to APPROVED_AND_EFFECTIVE
+                        # Transition to EFFECTIVE
                         success = self._transition_workflow(
                             workflow=workflow,
-                            to_state_code='APPROVED_AND_EFFECTIVE',
+                            to_state_code='EFFECTIVE',
                             user=user,
                             comment=f'Document automatically activated on scheduled effective date: {document.effective_date}',
                             assignee=None
@@ -582,7 +582,7 @@ class DocumentLifecycleService:
         """
         with transaction.atomic():
             # Validate existing document
-            if existing_document.status not in ['EFFECTIVE', 'APPROVED_AND_EFFECTIVE']:
+            if existing_document.status != 'EFFECTIVE':
                 raise ValidationError("Can only version EFFECTIVE documents")
             
             # Create new version
@@ -685,7 +685,7 @@ class DocumentLifecycleService:
         if not new_document.supersedes:
             return True  # Nothing to supersede
         
-        if new_document.status not in ['EFFECTIVE', 'APPROVED_AND_EFFECTIVE']:
+        if new_document.status != 'EFFECTIVE':
             raise ValidationError("New document must be EFFECTIVE to supersede old version")
         
         with transaction.atomic():
@@ -727,7 +727,7 @@ class DocumentLifecycleService:
         """
         with transaction.atomic():
             # Validate document can be obsoleted
-            if document.status not in ['EFFECTIVE', 'APPROVED_AND_EFFECTIVE']:
+            if document.status != 'EFFECTIVE':
                 raise ValidationError("Can only obsolete EFFECTIVE documents")
             
             if not reason:
@@ -803,7 +803,7 @@ class DocumentLifecycleService:
         """
         with transaction.atomic():
             # Validate document can be obsoleted
-            if document.status not in ['EFFECTIVE', 'APPROVED_AND_EFFECTIVE']:
+            if document.status != 'EFFECTIVE':
                 raise ValidationError("Can only obsolete EFFECTIVE documents")
             
             if not reason:

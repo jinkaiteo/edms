@@ -54,8 +54,33 @@ const WorkflowHistory: React.FC<WorkflowHistoryProps> = ({ document }) => {
 
       if (historyResponse.ok) {
         const historyData = await historyResponse.json();
-        if (historyData.success && historyData.transitions) {
-          setTransitions(historyData.transitions);
+        console.log('✅ WorkflowHistory: Received API response:', historyData);
+        
+        if (historyData.workflow_history && Array.isArray(historyData.workflow_history)) {
+          // Transform API response to match component interface
+          const transformedTransitions = historyData.workflow_history.map((transition: any, index: number) => ({
+            id: index + 1,
+            transitioned_at: transition.transitioned_at,
+            transitioned_by: {
+              id: 0,
+              username: transition.transitioned_by || 'System',
+              first_name: '',
+              last_name: '',
+              full_name: transition.transitioned_by || 'System'
+            },
+            from_state: {
+              code: transition.from_state?.toUpperCase().replace(/ /g, '_') || 'UNKNOWN',
+              name: transition.from_state || 'Unknown'
+            },
+            to_state: {
+              code: transition.to_state?.toUpperCase().replace(/ /g, '_') || 'UNKNOWN', 
+              name: transition.to_state || 'Unknown'
+            },
+            comment: transition.comment || 'No comment'
+          }));
+          
+          console.log('✅ WorkflowHistory: Transformed transitions:', transformedTransitions);
+          setTransitions(transformedTransitions);
           return;
         }
       }

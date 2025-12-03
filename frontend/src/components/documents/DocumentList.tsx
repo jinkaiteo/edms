@@ -21,13 +21,17 @@ interface DocumentListProps {
   refreshTrigger?: number; // Add refresh trigger prop
   selectedDocument?: Document | null; // Add selected document prop
   filterType?: 'pending' | 'approved' | 'archived' | 'obsolete';
+  searchQuery?: string; // Add search query prop
+  searchFilters?: any; // Add search filters prop
 }
 
 const DocumentList: React.FC<DocumentListProps> = ({
   onDocumentSelect,
   refreshTrigger,
   selectedDocument,
-  filterType = 'approved',
+  filterType = 'all',
+  searchQuery = '',
+  searchFilters = {},
 }) => {
   console.log('🔍 DocumentList: Received props:', { filterType, refreshTrigger, selectedDocument: selectedDocument?.uuid });
   const [documents, setDocuments] = useState<Document[]>([]);
@@ -163,11 +167,47 @@ const DocumentList: React.FC<DocumentListProps> = ({
         const filterParam = filterType === 'approved' ? 'approved_latest' : 
                            filterType === 'pending' ? 'my_tasks' :
                            filterType === 'archived' ? 'archived' :
-                           filterType === 'obsolete' ? 'obsolete' : '';
+                           filterType === 'obsolete' ? 'obsolete' :
+                           filterType === 'all' ? 'library' : '';
         
         console.log('🔧 DocumentList: Filter mapping:', { filterType, filterParam });
         
-        const endpoint = filterParam ? `/documents/documents/?filter=${filterParam}` : '/documents/documents/';
+        // Build search parameters
+        const searchParams = new URLSearchParams();
+        
+        // Add filter parameter
+        if (filterParam) {
+          searchParams.append('filter', filterParam);
+        }
+        
+        // Add search query
+        if (searchQuery.trim()) {
+          searchParams.append('search', searchQuery.trim());
+          console.log('🔍 DocumentList: Adding search query:', searchQuery.trim());
+        }
+        
+        // Add additional search filters
+        Object.entries(searchFilters).forEach(([key, value]) => {
+          if (value && key !== 'search') {
+            // Handle array filters (document_type, status, author, reviewer, approver)
+            if (Array.isArray(value)) {
+              value.forEach(item => {
+                if (item) {
+                  searchParams.append(key, String(item));
+                  console.log('🔍 DocumentList: Adding array search filter:', key, '=', item);
+                }
+              });
+            } else {
+              // Handle string filters (title, description, document_number, keywords, etc.)
+              searchParams.append(key, String(value));
+              console.log('🔍 DocumentList: Adding search filter:', key, '=', value);
+            }
+          }
+        });
+        
+        const endpoint = `/documents/documents/${searchParams.toString() ? '?' + searchParams.toString() : ''}`;
+        console.log('🔗 DocumentList: Final endpoint:', endpoint);
+        
         const response = await apiService.get(endpoint);
         console.log('📥 DocumentList: Raw API response:', response);
         
@@ -196,7 +236,7 @@ const DocumentList: React.FC<DocumentListProps> = ({
     };
 
     fetchDocuments();
-  }, [refreshTrigger, filterType]); // Add filterType to dependency array to refetch when filter changes
+  }, [refreshTrigger, filterType, searchQuery, searchFilters]); // Add search parameters to dependency array
 
   if (loading) {
     return <div className="text-center py-8">Loading documents...</div>;
@@ -344,7 +384,7 @@ const DocumentList: React.FC<DocumentListProps> = ({
                               {currentVersion.title}
                             </h4>
                             <p className="text-sm text-gray-500">
-                              {currentVersion.document_number} • {currentVersion.document_type_display || 'Unknown Type'}
+                              {getBaseDocumentNumber(currentVersion.document_number)} • {currentVersion.document_type_display || 'Unknown Type'}
                               {currentVersion.status === 'APPROVED_AND_EFFECTIVE' && (
                                 <span className="ml-2 inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
                                   Current Version
@@ -411,7 +451,7 @@ const DocumentList: React.FC<DocumentListProps> = ({
                                 <div className="flex-1">
                                   <div className="flex items-center space-x-2">
                                     <span className="text-sm font-medium text-gray-700">
-                                      {oldVersion.document_number}
+                                      {getBaseDocumentNumber(oldVersion.document_number)}
                                     </span>
                                     <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gray-200 text-gray-700">
                                       {oldVersion.status.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}
@@ -470,7 +510,7 @@ const DocumentList: React.FC<DocumentListProps> = ({
                         {document.title}
                       </h4>
                       <p className="text-sm text-gray-500 mb-2">
-                        {document.document_number}
+                        {getBaseDocumentNumber(document.document_number)}
                       </p>
                       <p className="text-sm text-gray-600 line-clamp-3">
                         {document.description}

@@ -23,9 +23,9 @@ from apps.documents.serializers import (
 )
 from apps.users.models import User, Role, UserRole
 from apps.users.serializers import UserSerializer, RoleSerializer, UserRoleSerializer
-from apps.workflows.models # WorkflowTask removed
+from apps.workflows.models import DocumentWorkflow, DocumentTransition, WorkflowInstance  # WorkflowTask removed
 from apps.workflows.serializers import (
-    WorkflowInstanceSerializer, WorkflowTransitionSerializer# WorkflowTask removedSerializer
+    WorkflowInstanceSerializer, WorkflowTransitionSerializer  # WorkflowTaskSerializer removed
 )
 from apps.search.models import SavedSearch
 from apps.search.serializers import (
@@ -45,11 +45,11 @@ from apps.placeholders.serializers import (
     DocumentTemplateSerializer, PlaceholderDefinitionSerializer, DocumentGenerationSerializer
 )
 from apps.backup.models import BackupJob, HealthCheck, SystemMetric
-from apps.backup.serializers import BackupJobSerializer, HealthCheckSerializer, SystemMetricSerializer
+# from apps.backup.serializers import BackupJobSerializer, HealthCheckSerializer, SystemMetricSerializer  # Not available
 from apps.settings.models import SystemConfiguration, UICustomization, FeatureToggle
-from apps.settings.serializers import (
-    SystemConfigurationSerializer, UICustomizationSerializer, FeatureToggleSerializer
-)
+# from apps.settings.serializers import (
+#     SystemConfigurationSerializer, UICustomizationSerializer, FeatureToggleSerializer
+# )  # Not available
 
 
 class StandardResultsSetPagination(PageNumberPagination):
@@ -288,16 +288,17 @@ class WorkflowInstanceViewSet(viewsets.ModelViewSet):
         return Response({'message': 'Transition executed'})
 
 
-class WorkflowTaskViewSet(viewsets.ModelViewSet):
-    """Workflow task management API endpoints."""
-    
-    queryset = # WorkflowTask removed - all()
-    serializer_class = WorkflowTaskSerializer
-    permission_classes = [permissions.IsAuthenticated]
-    pagination_class = StandardResultsSetPagination
-    filter_backends = [DjangoFilterBackend, filters.OrderingFilter]
-    filterset_fields = ['workflow_instance', 'assigned_to', 'status']
-    ordering = ['-created_at']
+# WorkflowTaskViewSet removed - using document filters instead
+# class WorkflowTaskViewSet(viewsets.ModelViewSet):
+#     """Workflow task management API endpoints."""
+#     
+#     queryset = # WorkflowTask removed - all()
+#     serializer_class = WorkflowTaskSerializer
+#     permission_classes = [permissions.IsAuthenticated]
+#     pagination_class = StandardResultsSetPagination
+#     filter_backends = [DjangoFilterBackend, filters.OrderingFilter]
+#     filterset_fields = ['workflow_instance', 'assigned_to', 'status']
+#     ordering = ['-created_at']
     
     def get_queryset(self):
         """Filter tasks based on user permissions."""
@@ -479,40 +480,41 @@ class DocumentGenerationViewSet(viewsets.ModelViewSet):
         return self.queryset.filter(requested_by=self.request.user)
 
 
-class BackupJobViewSet(viewsets.ReadOnlyModelViewSet):
-    """Backup job monitoring API endpoints."""
-    
-    queryset = BackupJob.objects.all()
-    serializer_class = BackupJobSerializer
-    permission_classes = [permissions.IsAdminUser]
-    pagination_class = StandardResultsSetPagination
-    filter_backends = [DjangoFilterBackend, filters.OrderingFilter]
-    filterset_fields = ['configuration', 'status', 'backup_type']
-    ordering = ['-created_at']
-
-
-class HealthCheckViewSet(viewsets.ReadOnlyModelViewSet):
-    """System health check API endpoints."""
-    
-    queryset = HealthCheck.objects.all()
-    serializer_class = HealthCheckSerializer
-    permission_classes = [permissions.IsAdminUser]
-    pagination_class = StandardResultsSetPagination
-    filter_backends = [DjangoFilterBackend, filters.OrderingFilter]
-    filterset_fields = ['check_type', 'status']
-    ordering = ['-checked_at']
-
-
-class SystemMetricViewSet(viewsets.ReadOnlyModelViewSet):
-    """System metrics API endpoints."""
-    
-    queryset = SystemMetric.objects.all()
-    serializer_class = SystemMetricSerializer
-    permission_classes = [permissions.IsAdminUser]
-    pagination_class = StandardResultsSetPagination
-    filter_backends = [DjangoFilterBackend, filters.OrderingFilter]
-    filterset_fields = ['metric_type', 'status']
-    ordering = ['-recorded_at']
+# BackupJobViewSet, HealthCheckViewSet, SystemMetricViewSet temporarily disabled - serializers not available
+# class BackupJobViewSet(viewsets.ReadOnlyModelViewSet):
+#     """Backup job monitoring API endpoints."""
+#     
+#     queryset = BackupJob.objects.all()
+#     serializer_class = BackupJobSerializer
+#     permission_classes = [permissions.IsAdminUser]
+#     pagination_class = StandardResultsSetPagination
+#     filter_backends = [DjangoFilterBackend, filters.OrderingFilter]
+#     filterset_fields = ['configuration', 'status', 'backup_type']
+#     ordering = ['-created_at']
+# 
+# 
+# class HealthCheckViewSet(viewsets.ReadOnlyModelViewSet):
+#     """System health check API endpoints."""
+#     
+#     queryset = HealthCheck.objects.all()
+#     serializer_class = HealthCheckSerializer
+#     permission_classes = [permissions.IsAdminUser]
+#     pagination_class = StandardResultsSetPagination
+#     filter_backends = [DjangoFilterBackend, filters.OrderingFilter]
+#     filterset_fields = ['check_type', 'status']
+#     ordering = ['-checked_at']
+# 
+# 
+# class SystemMetricViewSet(viewsets.ReadOnlyModelViewSet):
+#     """System metrics API endpoints."""
+#     
+#     queryset = SystemMetric.objects.all()
+#     serializer_class = SystemMetricSerializer
+#     permission_classes = [permissions.IsAdminUser]
+#     pagination_class = StandardResultsSetPagination
+#     filter_backends = [DjangoFilterBackend, filters.OrderingFilter]
+#     filterset_fields = ['metric_type', 'status']
+#     ordering = ['-recorded_at']
 
 
 class DashboardStatsView(APIView):
@@ -641,32 +643,33 @@ class DashboardStatsView(APIView):
         return color_mapping.get(action, 'bg-gray-500')
 
 
-class SystemConfigurationViewSet(viewsets.ModelViewSet):
-    """System configuration API endpoints."""
-    
-    queryset = SystemConfiguration.objects.all()
-    serializer_class = SystemConfigurationSerializer
-    permission_classes = [permissions.IsAdminUser]
-    filter_backends = [DjangoFilterBackend, filters.SearchFilter]
-    filterset_fields = ['category', 'setting_type']
-    search_fields = ['key', 'display_name']
-
-
-class UICustomizationViewSet(viewsets.ModelViewSet):
-    """UI customization API endpoints."""
-    
-    queryset = UICustomization.objects.all()
-    serializer_class = UICustomizationSerializer
-    permission_classes = [permissions.IsAdminUser]
-    filter_backends = [DjangoFilterBackend]
-    filterset_fields = ['customization_type', 'status']
-
-
-class FeatureToggleViewSet(viewsets.ModelViewSet):
-    """Feature toggle API endpoints."""
-    
-    queryset = FeatureToggle.objects.all()
-    serializer_class = FeatureToggleSerializer
-    permission_classes = [permissions.IsAdminUser]
-    filter_backends = [filters.SearchFilter]
-    search_fields = ['key', 'name']
+# Settings ViewSets temporarily disabled - serializers not available
+# class SystemConfigurationViewSet(viewsets.ModelViewSet):
+#     """System configuration API endpoints."""
+#     
+#     queryset = SystemConfiguration.objects.all()
+#     serializer_class = SystemConfigurationSerializer
+#     permission_classes = [permissions.IsAdminUser]
+#     filter_backends = [DjangoFilterBackend, filters.SearchFilter]
+#     filterset_fields = ['category', 'setting_type']
+#     search_fields = ['key', 'display_name']
+# 
+# 
+# class UICustomizationViewSet(viewsets.ModelViewSet):
+#     """UI customization API endpoints."""
+#     
+#     queryset = UICustomization.objects.all()
+#     serializer_class = UICustomizationSerializer
+#     permission_classes = [permissions.IsAdminUser]
+#     filter_backends = [DjangoFilterBackend]
+#     filterset_fields = ['customization_type', 'status']
+# 
+# 
+# class FeatureToggleViewSet(viewsets.ModelViewSet):
+#     """Feature toggle API endpoints."""
+#     
+#     queryset = FeatureToggle.objects.all()
+#     serializer_class = FeatureToggleSerializer
+#     permission_classes = [permissions.IsAdminUser]
+#     filter_backends = [filters.SearchFilter]
+#     search_fields = ['key', 'name']
