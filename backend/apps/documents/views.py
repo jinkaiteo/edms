@@ -553,7 +553,7 @@ class DocumentViewSet(viewsets.ModelViewSet):
                         content_type='application/zip'
                     )
                     
-                    filename = f"{document.document_number}_annotated_package.zip"
+                    filename = f"{document.document_number}_annotated.zip"
                     response['Content-Disposition'] = f'attachment; filename="{filename}"'
                     response['Content-Length'] = str(len(zip_content))
                     
@@ -754,7 +754,7 @@ class DocumentViewSet(viewsets.ModelViewSet):
                     content_type='application/zip'
                 )
                 
-                filename = f"{document.document_number}_official_pdf_package.zip"
+                filename = f"{document.document_number}_official.zip"
                 response['Content-Disposition'] = f'attachment; filename="{filename}"'
                 response['Content-Length'] = str(len(zip_content))
                 
