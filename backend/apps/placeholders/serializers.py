@@ -293,3 +293,71 @@ class SystemStatsSerializer(serializers.Serializer):
     cache_hit_rate = serializers.FloatField()
     most_used_placeholders = PlaceholderUsageStatsSerializer(many=True)
     most_used_templates = TemplateUsageStatsSerializer(many=True)
+
+class PlaceholderContentValidationSerializer(serializers.Serializer):
+    """Serializer for validating placeholder usage in template content."""
+    
+    content = serializers.CharField()
+    
+    def validate(self, attrs):
+        """Validate all placeholders found in the content."""
+        import re
+        
+        content = attrs.get("content", "")
+        
+        # Find all placeholder patterns in the content
+        placeholder_pattern = r"\{\{([A-Z_]+)\}\}"
+        matches = re.findall(placeholder_pattern, content)
+        
+        # Get all active placeholders
+        active_placeholders = {
+            placeholder.name: placeholder 
+            for placeholder in PlaceholderDefinition.objects.filter(is_active=True)
+        }
+        
+        placeholders = []
+        valid_placeholders = []
+        invalid_placeholders = []
+        
+        # Process each found placeholder
+        for match in matches:
+            placeholder_name = match.strip()
+            placeholder_info = {
+                "name": placeholder_name,
+                "full_placeholder": f"{{{{{placeholder_name}}}}}",
+                "position": content.find(f"{{{{{placeholder_name}}}}}")
+            }
+            
+            placeholders.append(placeholder_info)
+            
+            if placeholder_name in active_placeholders:
+                # Valid placeholder - add definition details
+                definition = active_placeholders[placeholder_name]
+                placeholder_info.update({
+                    "display_name": definition.display_name,
+                    "description": definition.description,
+                    "placeholder_type": definition.placeholder_type,
+                    "data_source": definition.data_source,
+                    "source_field": definition.source_field
+                })
+                valid_placeholders.append(placeholder_info)
+            else:
+                # Invalid placeholder
+                placeholder_info["error"] = f"Placeholder \"{placeholder_name}\" not found"
+                invalid_placeholders.append(placeholder_info)
+        
+        # Return comprehensive validation result
+        attrs["placeholders"] = placeholders
+        attrs["valid_placeholders"] = valid_placeholders  
+        attrs["invalid_placeholders"] = invalid_placeholders
+        attrs["is_valid"] = len(invalid_placeholders) == 0
+        
+        return attrs
+
+
+class PlaceholderSuggestionSerializer(serializers.Serializer):
+    """Serializer for getting placeholder suggestions based on context."""
+    
+    document_type = serializers.CharField(required=False, allow_blank=True)
+    context = serializers.CharField(required=False, allow_blank=True)
+
