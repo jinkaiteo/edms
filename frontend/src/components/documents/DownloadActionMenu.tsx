@@ -156,18 +156,33 @@ const DownloadActionMenu: React.FC<DownloadActionMenuProps> = ({
       const blob = await response.blob();
       console.log('🔍 Blob received:', { size: blob.size, type: blob.type });
 
-      // Create download filename
+      // Extract filename from Content-Disposition header (server knows the correct extension)
       let filename = '';
-      switch (downloadType) {
-        case 'original':
-          filename = `${document.document_number}_original.${getFileExtension(document.file_name)}`;
-          break;
-        case 'annotated':
-          filename = `${document.document_number}_annotated.${getFileExtension(document.file_name)}`;
-          break;
-        case 'official_pdf':
-          filename = `${document.document_number}_official.pdf`;
-          break;
+      const contentDisposition = response.headers.get('Content-Disposition');
+      
+      if (contentDisposition && contentDisposition.includes('filename=')) {
+        // Extract filename from Content-Disposition header
+        const matches = contentDisposition.match(/filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/);
+        if (matches && matches[1]) {
+          filename = matches[1].replace(/['"]/g, '');
+          console.log('🔍 Using server-provided filename:', filename);
+        }
+      }
+      
+      // Fallback to constructed filename if header extraction fails
+      if (!filename) {
+        console.log('⚠️ No Content-Disposition filename found, using fallback');
+        switch (downloadType) {
+          case 'original':
+            filename = `${document.document_number}_original.${getFileExtension(document.file_name)}`;
+            break;
+          case 'annotated':
+            filename = `${document.document_number}_annotated.${getFileExtension(document.file_name)}`;
+            break;
+          case 'official_pdf':
+            filename = `${document.document_number}_official.pdf`;
+            break;
+        }
       }
 
       // Create and trigger download
