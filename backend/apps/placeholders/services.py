@@ -449,20 +449,24 @@ class PlaceholderService:
     def _get_version_change_reason(self, document):
         """Extract the reason for change from workflow comments or document description."""
         try:
+            # For initial version (v1.0), always return "Initial creation"
+            if document.version_major == 1 and document.version_minor == 0:
+                return "Initial creation"
+            
             from apps.workflows.models import DocumentWorkflow, DocumentTransition
             
-            # First, check if there's a specific reason in the document description
+            # For subsequent versions, check document description first
             if document.description and any(keyword in document.description.lower() 
                                           for keyword in ['update', 'revision', 'change', 'modify', 'correct']):
                 return document.description[:50] + '...' if len(document.description) > 50 else document.description
             
-            # Get the initial workflow submission comment
+            # Get workflow submission comments for version changes
             workflows = DocumentWorkflow.objects.filter(document=document).order_by('created_at')
             
             if workflows.exists():
                 first_workflow = workflows.first()
                 
-                # Get the first transition (submission comment) - try different field names
+                # Get the first transition (submission comment)
                 try:
                     transitions = DocumentTransition.objects.filter(workflow=first_workflow).order_by('transitioned_at')
                 except:
@@ -475,17 +479,21 @@ class PlaceholderService:
                     first_transition = transitions.first()
                     if first_transition.comment and first_transition.comment != 'No comment':
                         comment = first_transition.comment.strip()
-                        # Return full comment for DOCX tables (more space available)
+                        # Return meaningful comment for version changes
                         return comment
             
-            # Fallback based on version
-            if document.version_major == 1 and document.version_minor == 0:
-                return "Initial version"
-            else:
-                return "Version update"
+            # Fallback for subsequent versions
+            return "Document revision"
                 
         except Exception:
-            return "Update"
+            # Ultimate fallback - check version to provide appropriate default
+            try:
+                if document.version_major == 1 and document.version_minor == 0:
+                    return "Initial creation"
+                else:
+                    return "Document update"
+            except:
+                return "Version change"
 
 
 class DocumentTemplateService:
