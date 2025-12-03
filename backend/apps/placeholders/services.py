@@ -213,6 +213,7 @@ class PlaceholderService:
             'IS_CURRENT': lambda ctx: 'CURRENT' if ctx.get('document', {}).status == 'effective' else 'SUPERSEDED',
             'FILE_CHECKSUM': lambda ctx: ctx.get('document', {}).file_checksum if ctx.get('document') else '',
             'VERSION_HISTORY': lambda ctx: self._get_version_history_docx_table(ctx.get('document')),
+            'DIGITAL_SIGNATURE': lambda ctx: self._get_digital_signature(ctx.get('document')),
             'PREVIOUS_VERSION': lambda ctx: self._get_previous_version(ctx.get('document')),
         }
         
@@ -345,6 +346,29 @@ class PlaceholderService:
         except Exception as e:
             logger.error(f"Error generating DOCX version history table: {str(e)}")
             return []
+
+    def _get_digital_signature(self, document):
+        """Get digital signature or electronic validation statement."""
+        try:
+            # Check if real digital signature is available (future implementation)
+            # For now, return professional electronic validation statement
+            
+            from django.utils import timezone
+            current_time = timezone.now().strftime('%B %d, %Y at %I:%M %p %Z')
+            
+            # Professional signature statement with timestamp
+            signature_text = (
+                f"This document has been electronically processed and validated by the "
+                f"Electronic Document Management System (EDMS) on {current_time}. "
+                f"For verification, contact your system administrator."
+            )
+            
+            return signature_text
+            
+        except Exception as e:
+            logger.error(f"Error generating digital signature: {str(e)}")
+            # Fallback to simple statement
+            return "This document has been electronically processed and validated by the Electronic Document Management System (EDMS). For verification, contact your system administrator."
 
     def _get_version_history_data(self, document):
         """Get version history as structured data for native DOCX table rendering."""

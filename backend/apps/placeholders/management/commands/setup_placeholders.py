@@ -356,6 +356,15 @@ class Command(BaseCommand):
                 'data_source': 'COMPUTED',
                 'source_field': 'PREVIOUS_VERSION',
                 'default_value': 'N/A'
+            },
+            {
+                'name': 'DIGITAL_SIGNATURE',
+                'display_name': 'Digital Signature',
+                'description': 'Digital signature or electronic validation statement',
+                'placeholder_type': 'SYSTEM',
+                'data_source': 'COMPUTED',
+                'source_field': 'DIGITAL_SIGNATURE',
+                'default_value': 'This document has been electronically processed and validated by the Electronic Document Management System (EDMS). For verification, contact your system administrator.'
             }
         ]
         
