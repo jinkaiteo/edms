@@ -63,7 +63,7 @@ const BackupManagement: React.FC = () => {
     setSystemResetState(prev => ({ ...prev, isExecuting: true }));
 
     try {
-      const response = await fetch('/admin/system-reinit/execute/', {
+      const response = await fetch('http://localhost:8000/admin/api/system-reinit/', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
