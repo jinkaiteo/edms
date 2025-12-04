@@ -47,6 +47,81 @@ const BackupManagement: React.FC = () => {
   const [isRestoring, setIsRestoring] = useState(false);
   const [systemData, setSystemData] = useState<any>(null);
   
+  // System reset functionality
+  const handleSystemReset = async () => {
+    const finalConfirm = window.confirm(
+      "FINAL WARNING!\n\n" +
+      "This will PERMANENTLY DELETE ALL DATA.\n" +
+      "Are you absolutely certain?\n\n" +
+      "Click OK to proceed with IRREVERSIBLE system reset."
+    );
+    
+    if (!finalConfirm) {
+      return;
+    }
+
+    setSystemResetState(prev => ({ ...prev, isExecuting: true }));
+
+    try {
+      const response = await fetch('/admin/system-reinit/execute/', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRFToken': getCsrfToken(),
+        },
+        credentials: 'include',
+        body: JSON.stringify({
+          confirmations: systemResetState.confirmations,
+          confirmation_text: systemResetState.confirmationText,
+          admin_password: systemResetState.adminPassword,
+          preserve_templates: systemResetState.preserveTemplates,
+          preserve_backups: systemResetState.preserveBackups
+        })
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        // Show success message with new admin credentials
+        alert(
+          '🎉 System Reset Completed Successfully!\n\n' +
+          `New Admin Account Created:\n` +
+          `Username: ${data.new_admin.username}\n` +
+          `Password: ${data.new_admin.password}\n` +
+          `Email: ${data.new_admin.email}\n\n` +
+          'Please save these credentials and refresh the page to login.'
+        );
+        
+        // Redirect to login page after successful reset
+        window.location.href = '/login';
+      } else {
+        throw new Error(data.error || 'System reset failed');
+      }
+    } catch (error) {
+      console.error('System reset error:', error);
+      alert(
+        '❌ System Reset Failed\n\n' +
+        `Error: ${error.message}\n\n` +
+        'Please check the server logs and try again.'
+      );
+    } finally {
+      setSystemResetState(prev => ({ ...prev, isExecuting: false }));
+    }
+  };
+
+  // Helper function to get CSRF token
+  const getCsrfToken = () => {
+    const name = 'csrftoken';
+    const cookies = document.cookie.split(';');
+    for (let cookie of cookies) {
+      const [cookieName, cookieValue] = cookie.trim().split('=');
+      if (cookieName === name) {
+        return cookieValue;
+      }
+    }
+    return '';
+  };
+
   // System Reset states
   const [systemResetState, setSystemResetState] = useState({
     showWarnings: true,
@@ -1279,10 +1354,7 @@ const BackupManagement: React.FC = () => {
                       );
 
                       if (finalConfirm) {
-                        alert('🚧 System Reset functionality will execute the backend system_reinit command.\n\n' +
-                              'This is integrated with the Django management command for complete system reset.\n\n' +
-                              'For now, use the CLI command:\n' +
-                              'docker exec edms_backend python manage.py system_reinit --confirm');
+                        handleSystemReset();
                       }
                     }}
                     disabled={
