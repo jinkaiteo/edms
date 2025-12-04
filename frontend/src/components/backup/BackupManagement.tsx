@@ -126,11 +126,11 @@ const BackupManagement: React.FC = () => {
   const [systemResetState, setSystemResetState] = useState({
     showWarnings: true,
     confirmations: {
-      understand_destructive: false,
-      data_loss_acknowledged: false,
-      no_rollback_understood: false,
-      testing_environment_confirmed: false,
-      backup_not_needed: false
+      understanding: false,
+      dataLoss: false,
+      irreversible: false,
+      backupCreated: false,
+      adminAccess: false
     },
     confirmationText: '',
     adminPassword: '',
@@ -1272,11 +1272,11 @@ const BackupManagement: React.FC = () => {
                   <p className="text-red-700 text-sm">You must acknowledge ALL of the following before proceeding:</p>
                   
                   {[
-                    { key: 'understand_destructive', text: 'I understand this is a DESTRUCTIVE operation that will delete all data' },
-                    { key: 'data_loss_acknowledged', text: 'I acknowledge that ALL current data will be PERMANENTLY LOST' },
-                    { key: 'no_rollback_understood', text: 'I understand there is NO WAY to rollback or undo this operation' },
-                    { key: 'testing_environment_confirmed', text: 'I confirm this is a TESTING/DEVELOPMENT environment (NOT production)' },
-                    { key: 'backup_not_needed', text: 'I confirm no backup is needed before this reset' }
+                    { key: 'understanding', text: 'I understand this is a DESTRUCTIVE operation that will delete all data' },
+                    { key: 'dataLoss', text: 'I acknowledge that ALL current data will be PERMANENTLY LOST' },
+                    { key: 'irreversible', text: 'I understand there is NO WAY to rollback or undo this operation' },
+                    { key: 'backupCreated', text: 'I confirm this is a TESTING/DEVELOPMENT environment (NOT production)' },
+                    { key: 'adminAccess', text: 'I confirm no backup is needed before this reset' }
                   ].map((confirmation) => (
                     <div key={confirmation.key} className="bg-orange-50 border border-orange-200 rounded p-3">
                       <label className="flex items-start">
