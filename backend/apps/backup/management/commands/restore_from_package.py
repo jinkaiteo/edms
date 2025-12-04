@@ -126,14 +126,33 @@ class Command(BaseCommand):
         self.stdout.write(f"🔄 Executing {restore_type} restore...")
         
         try:
+            # Create or get a default configuration for CLI backups
+            from apps.backup.models import BackupConfiguration
+            cli_config, created = BackupConfiguration.objects.get_or_create(
+                name='cli_restore_config',
+                defaults={
+                    'backup_type': 'FULL',
+                    'frequency': 'ON_DEMAND',
+                    'schedule_time': '12:00:00',
+                    'storage_path': os.path.dirname(package_path),
+                    'created_by': admin_user
+                }
+            )
+            
             # Create temporary backup job for restore tracking
             temp_backup_job = BackupJob(
                 job_name=f"cli_source_{timezone.now().strftime('%Y%m%d_%H%M%S')}",
                 backup_type='FULL',  # Assume full restore for CLI
                 backup_file_path=package_path,
                 status='COMPLETED',
-                backup_size=os.path.getsize(package_path)
+                backup_size=os.path.getsize(package_path),
+                triggered_by=admin_user,
+                started_at=timezone.now(),
+                completed_at=timezone.now(),
+                configuration=cli_config  # Add required configuration
             )
+            # Save the backup job first
+            temp_backup_job.save()
             
             # Create restore job
             restore_job = RestoreJob.objects.create(
@@ -170,10 +189,12 @@ class Command(BaseCommand):
                     action='CLI_RESTORE_COMPLETED',
                     object_type='RestoreJob',
                     object_id=restore_job.id,
-                    details={
+                    description=f'CLI restore completed from package {os.path.basename(package_path)}',
+                    additional_data={
                         'package_path': package_path,
                         'restore_type': restore_type,
-                        'success': True
+                        'success': True,
+                        'package_size': os.path.getsize(package_path)
                     }
                 )
             else:
