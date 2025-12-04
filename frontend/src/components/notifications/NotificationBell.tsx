@@ -22,7 +22,7 @@ export const NotificationBell: React.FC<NotificationBellProps> = ({ className = 
         setError(null);
         
         // Get documents requiring user action using document filter
-        const response = await fetch('/api/v1/documents/documents/?filter=pending_my_action', {
+        const response = await fetch('/api/v1/documents/documents/?pending_my_action=true', {
           method: 'GET',
           headers: {
             'Content-Type': 'application/json',

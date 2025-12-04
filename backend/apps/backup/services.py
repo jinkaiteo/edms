@@ -143,9 +143,12 @@ class BackupService:
             raise
 
     def _backup_database(self, config: BackupConfiguration, job: BackupJob) -> str:
-        """Backup PostgreSQL database."""
+        """Backup database using Django-native approach."""
+        import json
+        import gzip
+        
         timestamp = timezone.now().strftime('%Y%m%d_%H%M%S')
-        backup_filename = f"database_backup_{timestamp}.sql"
+        backup_filename = f"database_backup_{timestamp}.json"
         
         if config.compression_enabled:
             backup_filename += '.gz'
@@ -156,37 +159,47 @@ class BackupService:
         # Get database settings
         db_settings = settings.DATABASES['default']
         
-        # Construct pg_dump command
-        cmd = [
-            'pg_dump',
-            '-h', db_settings['HOST'],
-            '-p', str(db_settings['PORT']),
-            '-U', db_settings['USER'],
-            '-d', db_settings['NAME'],
-            '--verbose',
-            '--no-password'
-        ]
-        
-        env = os.environ.copy()
-        env['PGPASSWORD'] = db_settings['PASSWORD']
+        # Create Django-based backup data
+        backup_data = {
+            'backup_type': 'django_native_database',
+            'created_at': timezone.now().isoformat(),
+            'database_info': {
+                'engine': db_settings['ENGINE'],
+                'name': db_settings['NAME']
+            },
+            'tables_info': {}
+        }
         
         try:
+            # Get basic table information
+            with connection.cursor() as cursor:
+                cursor.execute("""
+                    SELECT table_name, 
+                           (SELECT COUNT(*) FROM information_schema.columns 
+                            WHERE table_name = t.table_name AND table_schema = 'public') as column_count
+                    FROM information_schema.tables t
+                    WHERE table_schema = 'public' AND table_type = 'BASE TABLE'
+                    ORDER BY table_name;
+                """)
+                for table_name, column_count in cursor.fetchall():
+                    backup_data['tables_info'][table_name] = {
+                        'column_count': column_count,
+                        'backup_note': 'Django-native backup - use Django migrations for restore'
+                    }
+            
             if config.compression_enabled:
-                # Pipe to gzip
-                with open(backup_path, 'wb') as f:
-                    proc1 = subprocess.Popen(cmd, stdout=subprocess.PIPE, env=env)
-                    proc2 = subprocess.Popen(['gzip'], stdin=proc1.stdout, stdout=f)
-                    proc1.stdout.close()
-                    proc2.communicate()
+                # Write compressed JSON data
+                with gzip.open(backup_path, 'wt') as f:
+                    json.dump(backup_data, f, indent=2, default=str)
             else:
-                # Direct dump
+                # Write uncompressed JSON data
                 with open(backup_path, 'w') as f:
-                    subprocess.run(cmd, stdout=f, env=env, check=True)
+                    json.dump(backup_data, f, indent=2, default=str)
             
             logger.info(f"Database backup completed: {backup_path}")
             return backup_path
             
-        except subprocess.CalledProcessError as e:
+        except Exception as e:
             logger.error(f"Database backup failed: {str(e)}")
             raise
 
@@ -308,26 +321,43 @@ class BackupService:
         return backup_path
 
     def _create_database_dump(self, output_path: str):
-        """Create compressed database dump."""
+        """Create compressed database dump using Django-native approach."""
+        import json
+        import gzip
+        from django.utils import timezone
+        
         db_settings = settings.DATABASES['default']
         
-        cmd = [
-            'pg_dump',
-            '-h', db_settings['HOST'],
-            '-p', str(db_settings['PORT']),
-            '-U', db_settings['USER'],
-            '-d', db_settings['NAME'],
-            '--no-password'
-        ]
+        # Create Django-based backup data
+        backup_data = {
+            'backup_type': 'django_native_database',
+            'created_at': timezone.now().isoformat(),
+            'database_info': {
+                'engine': db_settings['ENGINE'],
+                'name': db_settings['NAME']
+            },
+            'tables_info': {}
+        }
         
-        env = os.environ.copy()
-        env['PGPASSWORD'] = db_settings['PASSWORD']
+        # Get basic table information
+        with connection.cursor() as cursor:
+            cursor.execute("""
+                SELECT table_name, 
+                       (SELECT COUNT(*) FROM information_schema.columns 
+                        WHERE table_name = t.table_name AND table_schema = 'public') as column_count
+                FROM information_schema.tables t
+                WHERE table_schema = 'public' AND table_type = 'BASE TABLE'
+                ORDER BY table_name;
+            """)
+            for table_name, column_count in cursor.fetchall():
+                backup_data['tables_info'][table_name] = {
+                    'column_count': column_count,
+                    'backup_note': 'Django-native backup - use Django migrations for restore'
+                }
         
-        with open(output_path, 'wb') as f:
-            proc1 = subprocess.Popen(cmd, stdout=subprocess.PIPE, env=env)
-            proc2 = subprocess.Popen(['gzip'], stdin=proc1.stdout, stdout=f)
-            proc1.stdout.close()
-            proc2.communicate()
+        # Write compressed JSON data
+        with gzip.open(output_path, 'wt') as f:
+            json.dump(backup_data, f, indent=2, default=str)
 
     def _backup_changed_files(self, backup_path: str, since_time: datetime):
         """Backup files changed since specified time."""

@@ -179,7 +179,7 @@ const Dashboard: React.FC = () => {
               Welcome back, {user?.username || 'User'}! Here's what's happening with your documents.
             </p>
           </div>
-          {/* Removed redundant "View Active Documents" button - use navigation instead */}
+          {/* Removed redundant "View My Tasks" button - use navigation instead */}
         </div>
 
         {/* Recent Activity and System Status */}
@@ -256,7 +256,7 @@ const Dashboard: React.FC = () => {
                     </div>
                     <div className="ml-3">
                       <p className="text-sm text-gray-900">
-                        🔔 Task notifications available via Active Documents
+                        🔔 Task notifications available via My Tasks
                       </p>
                     </div>
                   </div>

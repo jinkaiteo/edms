@@ -77,7 +77,11 @@ class DocumentAutomationService:
             }
             
             # Find documents pending effective date
-                # WorkflowTask removed - using document filtering approach
+            pending_effective = Document.objects.filter(
+                status='APPROVED_PENDING_EFFECTIVE',
+                effective_date__lte=timezone.now().date(),
+                is_active=True
+            )
 
             results['processed_count'] = pending_effective.count()
             
@@ -116,7 +120,7 @@ class DocumentAutomationService:
                         # Create audit trail
                         AuditTrail.objects.create(
                             user=self.system_user,
-                            action='DOCUMENT_EFFECTIVE_DATE_PROCESSED',
+                            action='DOC_EFFECTIVE_PROCESSED',
                             content_object=document,
                             field_changes={
                                 'old_status': old_status,
@@ -170,7 +174,11 @@ class DocumentAutomationService:
             }
             
             # Find documents pending obsoletion
-                # WorkflowTask removed - using document filtering approach
+            pending_obsolete = Document.objects.filter(
+                status='SCHEDULED_FOR_OBSOLESCENCE',
+                obsolescence_date__lte=timezone.now().date(),
+                is_active=True
+            )
 
             results['processed_count'] = pending_obsolete.count()
             
@@ -210,7 +218,7 @@ class DocumentAutomationService:
                         # Create audit trail
                         AuditTrail.objects.create(
                             user=self.system_user,
-                            action='DOCUMENT_OBSOLETED',
+                            action='DOC_OBSOLETED',
                             content_object=document,
                             field_changes={
                                 'old_status': old_status,
@@ -444,6 +452,9 @@ class DocumentAutomationService:
                     for row in cursor.fetchall():
                         doc_number, assigned_to_id, task_type, count = row
                         
+                        # WorkflowTask removed - no actual duplicate tasks to process
+                        duplicate_tasks = []
+                        
                         for task in duplicate_tasks:
                             if not dry_run:
                                 task.status = 'CANCELLED'
@@ -486,6 +497,7 @@ class DocumentAutomationService:
                 # 6. Clean up tasks that have been pending too long (default: 30 days)
                 expiry_threshold = timezone.now() - timedelta(days=getattr(settings, 'WORKFLOW_TASK_EXPIRY_DAYS', 30))
                 # WorkflowTask removed - using document filtering approach
+                expired_tasks = []
                 
                 for task in expired_tasks:
                     if not dry_run:
@@ -538,7 +550,7 @@ class DocumentAutomationService:
                     'dry_run': dry_run,
                     'results': results,
                     'execution_time': f"{execution_time:.2f}s",
-                    'next_run': timezone.now() + timedelta(hours=6)  # Run every 6 hours
+                    'next_run': (timezone.now() + timedelta(hours=6)).isoformat()  # JSON serializable
                 }
                 
         except Exception as e:
@@ -650,8 +662,8 @@ class SystemHealthService:
     def _check_workflow_system(self) -> Dict[str, Any]:
         """Check workflow system health."""
         try:
-                # WorkflowTask removed - using document filtering approach
-                # WorkflowTask removed - using document filtering approach
+            active_workflows = DocumentWorkflow.objects.filter(is_terminated=False).count()
+            completed_workflows = DocumentWorkflow.objects.filter(is_terminated=True).count()
             
             return {
                 'healthy': True,

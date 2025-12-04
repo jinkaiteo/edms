@@ -474,18 +474,25 @@ class Command(BaseCommand):
             storage_path = str(Path(settings.BASE_DIR).parent / 'storage' / 'backups')
         
         # Create temporary configuration
+        from apps.users.models import User
+        admin_user = User.objects.filter(is_staff=True).first()
+        
         config = BackupConfiguration(
             name=f"adhoc_{backup_type.lower()}_{timestamp}",
             description=f"Ad-hoc {backup_type.lower()} backup created via management command",
             backup_type=backup_type,
+            frequency='ON_DEMAND',
+            schedule_time='12:00:00',
             storage_path=storage_path,
             compression_enabled=options.get('compress', True),
             encryption_enabled=options.get('encrypt', False),
             retention_days=7,  # Short retention for ad-hoc backups
-            max_backups=5
+            max_backups=5,
+            created_by=admin_user if admin_user else User.objects.first()
         )
         
-        # Don't save to database for ad-hoc backups
+        # Save configuration for backup execution
+        config.save()
         self.stdout.write(f"Creating {backup_type.lower()} backup...")
         
         # Execute backup

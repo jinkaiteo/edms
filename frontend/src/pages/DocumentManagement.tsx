@@ -124,7 +124,7 @@ const DocumentManagement: React.FC<DocumentManagementProps> = ({
     };
   }, [selectedDocument, handleDocumentRefresh]);
 
-  // Clear selected document when filter type changes (Document Library, Active Documents, Obsolete Documents)
+  // Clear selected document when filter type changes (Document Library, My Tasks, Obsolete Documents)
   useEffect(() => {
     console.log('🔄 DocumentManagement: Filter changed to:', filterType, 'clearing selected document');
     setSelectedDocument(null);
@@ -298,7 +298,7 @@ const DocumentManagement: React.FC<DocumentManagementProps> = ({
           <div className="flex justify-between items-center">
             <div>
               <h1 className="text-3xl font-bold text-gray-900">
-                {filterType === 'pending' ? 'Active Documents' :
+                {filterType === 'pending' ? 'My Tasks' :
                  filterType === 'obsolete' ? 'Obsolete Documents' :
                  filterType === 'archived' ? 'Archived Documents' :
                  'Document Library'}

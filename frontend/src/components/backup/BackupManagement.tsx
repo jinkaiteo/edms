@@ -7,6 +7,8 @@ interface BackupJob {
   backup_type: string;
   status: string;
   created_at: string;
+  started_at?: string;
+  completed_at?: string;
   file_size_human: string;
   duration_human: string;
   configuration_name: string;
@@ -425,7 +427,7 @@ const BackupManagement: React.FC = () => {
                           Size
                         </th>
                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                          Created
+                          Created & Duration
                         </th>
                       </tr>
                     </thead>
@@ -448,7 +450,19 @@ const BackupManagement: React.FC = () => {
                             {backup.file_size_human}
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                            {new Date(backup.created_at).toLocaleDateString()}
+                            <div>
+                              <div className="font-medium text-gray-900">
+                                {new Date(backup.created_at).toLocaleDateString()}
+                              </div>
+                              <div className="text-xs text-gray-500">
+                                {new Date(backup.created_at).toLocaleTimeString()}
+                              </div>
+                              {backup.duration_human && (
+                                <div className="text-xs text-blue-600">
+                                  Duration: {backup.duration_human}
+                                </div>
+                              )}
+                            </div>
                           </td>
                         </tr>
                       ))}

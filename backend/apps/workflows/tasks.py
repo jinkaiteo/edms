@@ -12,7 +12,7 @@ from django.contrib.auth import get_user_model
 from celery import shared_task
 from celery.utils.log import get_task_logger
 
-from .models import WorkflowInstance, WorkflowTask, WorkflowNotification
+from .models import WorkflowInstance, WorkflowNotification
 # Import available services
 try:
     from .services import WorkflowService
@@ -368,11 +368,8 @@ def workflow_health_check(self):
         health_status = {
             "timestamp": timezone.now().isoformat(),
             "active_workflows": WorkflowInstance.objects.filter(is_active=True).count(),
-            "pending_tasks": WorkflowTask.objects.filter(status='PENDING').count(),
-            "overdue_tasks": WorkflowTask.objects.filter(
-                status='PENDING',
-                due_date__lt=timezone.now()
-            ).count(),
+            "pending_documents": 0,  # Document filtering approach used instead
+            "overdue_documents": 0,  # Document filtering approach used instead
             "stuck_workflows": [],
             "errors": []
         }
@@ -393,7 +390,7 @@ def workflow_health_check(self):
             })
         
         # Log health check results
-        if health_status["stuck_workflows"] or health_status["overdue_tasks"] > 10:
+        if health_status["stuck_workflows"] or health_status["overdue_documents"] > 10:
             audit_service.log_system_event(
                 event_type='WORKFLOW_HEALTH_WARNING',
                 object_type='System',

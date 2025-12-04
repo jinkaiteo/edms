@@ -13,7 +13,7 @@ from drf_spectacular.views import (
 )
 from apps.api.news_feed_views import my_documents, recent_notifications, system_status
 from apps.api import dashboard_api_views
-from apps.api.v1 import change_password_views
+from apps.api.v1 import change_password_views, session_auth_views
 # my_tasks import removed - using document filters instead
 # task_views removed - using document filters instead
 
@@ -144,6 +144,12 @@ urlpatterns = [
     path('auth/csrf/', CSRFTokenView.as_view(), name='auth-csrf'),
     path('auth/api-change-password/', change_password_views.change_password, name='api-change-password'),
     path('auth/password-requirements/', change_password_views.password_requirements, name='api-password-requirements'),
+    
+    # Session-based authentication for frontend cookie sharing
+    path('session/csrf/', session_auth_views.get_csrf_token, name='session-csrf'),
+    path('session/login/', session_auth_views.session_login, name='session-login'),  
+    path('session/user/', session_auth_views.current_user, name='session-user'),
+    path('session/logout/', session_auth_views.session_logout, name='session-logout'),
     
     # Include router URLs
     path('', include(router.urls)),

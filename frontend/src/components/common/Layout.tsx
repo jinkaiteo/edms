@@ -21,7 +21,10 @@ import {
   ShieldCheckIcon,
   DocumentArrowUpIcon,
   ChartBarIcon,
-  KeyIcon
+  KeyIcon,
+  ChevronDownIcon,
+  ChevronRightIcon,
+  ComputerDesktopIcon
 } from '@heroicons/react/24/outline';
 import { useAuth } from '../../contexts/AuthContext.tsx';
 import { ApiStatus } from '../../types/api';
@@ -40,6 +43,7 @@ interface NavigationItem {
   current?: boolean;
   roles?: string[];
   badge?: number;
+  children?: NavigationItem[];
 }
 
 const Layout: React.FC<LayoutProps> = ({ children }) => {
@@ -51,6 +55,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
   const [documentCount, setDocumentCount] = useState<number>(0);
   const [showChangePassword, setShowChangePassword] = useState(false);
   const [showProfileDropdown, setShowProfileDropdown] = useState(false);
+  const [expandedMenus, setExpandedMenus] = useState<Record<string, boolean>>({});
 
   // Check API status on mount - temporarily disabled
   useEffect(() => {
@@ -75,35 +80,26 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
     }
   }, [authenticated]);
 
-  // Poll for "Active Documents" count (documents in my tasks/pending states)
+  // Poll for "My Tasks" count (documents in my tasks/pending states)
   useEffect(() => {
     const fetchMyDocumentsCount = async () => {
       try {
-        // Use same API endpoint as Active Documents page for consistency
-        const response = await fetch('/api/v1/documents/documents/?filter=my_tasks', {
-          method: 'GET',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${localStorage.getItem('accessToken') || ''}`
-          }
-        });
+        // Use apiService instead of direct fetch to ensure proper routing
+        const data = await apiService.get('/documents/documents/?pending_my_action=true');
+        const documents = data.results || [];
         
-        if (response.ok) {
-          const data = await response.json();
-          const documents = data.results || [];
-          
-          // Count matches exactly what Active Documents page shows
-          setDocumentCount(documents.length);
-          console.log(`📊 Active Documents badge: ${documents.length} documents in my tasks`);
-          
-          // Debug: Show breakdown
-          if (documents.length > 0) {
-            const statusBreakdown = documents.reduce((acc: any, doc: any) => {
-              acc[doc.status] = (acc[doc.status] || 0) + 1;
-              return acc;
-            }, {});
-            console.log('📋 Status breakdown:', statusBreakdown);
-          }
+        // Count matches exactly what My Tasks page shows
+        setDocumentCount(documents.length);
+        console.log(`📊 My Tasks badge: ${documents.length} documents in my tasks`);
+        console.log(`🎯 Badge will ${documents.length > 0 ? 'SHOW' : 'HIDE'} (count: ${documents.length})`);
+        
+        // Debug: Show breakdown
+        if (documents.length > 0) {
+          const statusBreakdown = documents.reduce((acc: any, doc: any) => {
+            acc[doc.status] = (acc[doc.status] || 0) + 1;
+            return acc;
+          }, {});
+          console.log('📋 Status breakdown:', statusBreakdown);
         }
       } catch (err) {
         console.error('Failed to fetch active documents count:', err);
@@ -138,13 +134,31 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
   const getNavigationItems = (): NavigationItem[] => {
     const baseItems: NavigationItem[] = [
       { name: 'Document Library', href: '/', icon: DocumentArrowUpIcon },
-      { name: 'Active Documents', href: '/?filter=pending', icon: ClipboardDocumentListIcon },
+      { name: 'My Tasks', href: '/?filter=pending', icon: ClipboardDocumentListIcon, badge: documentCount },
       { name: 'Obsolete Documents', href: '/?filter=obsolete', icon: DocumentTextIcon },
     ];
+    
+    // Debug: Check navigation item construction
+    console.log('🔍 Navigation debug:', {
+      documentCount,
+      documentCountType: typeof documentCount,
+      activeDocItem: baseItems[1]
+    });
 
-    // Add role-based items
+    // Add role-based items with submenus
     const adminItems: NavigationItem[] = [
-      { name: 'Administration', href: '/admin', icon: Cog6ToothIcon, roles: ['admin'] },
+      { 
+        name: 'Administration', 
+        href: '/admin', 
+        icon: Cog6ToothIcon, 
+        roles: ['admin'],
+        children: [
+          { name: 'User Management', href: '/admin?tab=users', icon: UserGroupIcon },
+          { name: 'System Settings', href: '/admin?tab=settings', icon: Cog6ToothIcon },
+          { name: 'Scheduler Dashboard', href: '/admin?tab=scheduler', icon: ComputerDesktopIcon },
+          { name: 'Audit Trail', href: '/admin?tab=audit', icon: ShieldCheckIcon },
+        ]
+      },
     ];
 
     // Filter items based on user roles
@@ -167,8 +181,8 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
       return {
         ...item,
         current: currentUrl === item.href,
-        // Add counter badge to "Active Documents"
-        badge: item.href.includes('?filter=pending') ? documentCount : undefined
+        // Add counter badge to "My Tasks"
+        badge: item.href.includes('?filter=pending') && documentCount > 0 ? documentCount : undefined
       };
     }
     
@@ -177,8 +191,24 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                         location.pathname.startsWith(item.href);
     const hasFilterParam = location.search.includes('filter=pending') || location.search.includes('filter=obsolete');
     
-    // "Document Library" should not be active if we're viewing filtered documents
-    if (item.href === '/' && hasFilterParam) {
+    // "Document Library" should not be active if we're viewing filtered documents OR admin pages
+    if (item.href === '/' && (hasFilterParam || location.pathname.startsWith('/admin'))) {
+      return {
+        ...item,
+        current: false
+      };
+    }
+    
+    // "Administration" should be active for all /admin paths
+    if (item.name === 'Administration' && location.pathname.startsWith('/admin')) {
+      return {
+        ...item,
+        current: true
+      };
+    }
+    
+    // Other items should not be active when on admin pages
+    if (location.pathname.startsWith('/admin') && item.href !== '/admin') {
       return {
         ...item,
         current: false
@@ -217,6 +247,23 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
     setShowChangePassword(false);
   };
 
+  const toggleSubmenu = (itemName: string) => {
+    setExpandedMenus(prev => ({
+      ...prev,
+      [itemName]: !prev[itemName]
+    }));
+    
+    // Clear current selection when expanding Administration submenu
+    if (itemName === 'Administration') {
+      // Force navigation to admin route to clear other selections
+      navigate('/admin');
+    }
+  };
+
+  const isSubmenuExpanded = (itemName: string) => {
+    return expandedMenus[itemName] || false;
+  };
+
   if (!authenticated) {
     return <Outlet />;
   }
@@ -242,24 +289,89 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
           <div className="mt-5 flex-1 h-0 overflow-y-auto">
             <nav className="px-2 space-y-1">
               {navigation.map((item) => (
-                <Link
-                  key={item.name}
-                  to={item.href}
-                  className={`${
-                    item.current
-                      ? 'bg-gray-100 text-gray-900'
-                      : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
-                  } group flex items-center px-2 py-2 text-sm font-medium rounded-md`}
-                  onClick={() => setSidebarOpen(false)}
-                >
-                  <item.icon className="mr-3 flex-shrink-0 h-5 w-5" />
-                  {item.name}
-                  {item.badge && item.badge > 0 && (
-                    <span className="ml-auto bg-red-100 text-red-800 text-xs font-medium px-2 py-0.5 rounded-full">
-                      {item.badge}
-                    </span>
+                <div key={item.name}>
+                  {item.children ? (
+                    // Parent item with children
+                    <div>
+                      <button
+                        onClick={() => toggleSubmenu(item.name)}
+                        className={`${
+                          item.current
+                            ? 'bg-gray-100 text-gray-900'
+                            : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+                        } group w-full flex items-center px-2 py-2 text-sm font-medium rounded-md`}
+                      >
+                        <item.icon className="mr-3 flex-shrink-0 h-5 w-5" />
+                        <span className="flex-1 text-left">{item.name}</span>
+                        {item.badge && item.badge > 0 && (
+                          <span className="mr-2 bg-red-100 text-red-800 text-xs font-medium px-2 py-0.5 rounded-full">
+                            {item.badge}
+                          </span>
+                        )}
+                        {isSubmenuExpanded(item.name) ? (
+                          <ChevronDownIcon className="ml-auto h-4 w-4" />
+                        ) : (
+                          <ChevronRightIcon className="ml-auto h-4 w-4" />
+                        )}
+                      </button>
+                      
+                      {isSubmenuExpanded(item.name) && (
+                        <div className="mt-1 space-y-1">
+                          {item.children?.map((child) => {
+                            // Handle Scheduler Dashboard differently (external link)
+                            if (child.href.startsWith('/admin/scheduler')) {
+                              return (
+                                <a
+                                  key={child.name}
+                                  href={child.href}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="group flex items-center pl-10 pr-2 py-2 text-sm font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-50 rounded-md"
+                                  onClick={() => setSidebarOpen(false)}
+                                >
+                                  <child.icon className="mr-3 flex-shrink-0 h-4 w-4" />
+                                  {child.name}
+                                </a>
+                              );
+                            }
+                            
+                            // Use React Router Link for internal navigation
+                            return (
+                              <Link
+                                key={child.name}
+                                to={child.href}
+                                className="group flex items-center pl-10 pr-2 py-2 text-sm font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-50 rounded-md"
+                                onClick={() => setSidebarOpen(false)}
+                              >
+                                <child.icon className="mr-3 flex-shrink-0 h-4 w-4" />
+                                {child.name}
+                              </Link>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    // Regular item without children
+                    <Link
+                      to={item.href}
+                      className={`${
+                        item.current
+                          ? 'bg-gray-100 text-gray-900'
+                          : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+                      } group flex items-center px-2 py-2 text-sm font-medium rounded-md`}
+                      onClick={() => setSidebarOpen(false)}
+                    >
+                      <item.icon className="mr-3 flex-shrink-0 h-5 w-5" />
+                      {item.name}
+                      {item.badge && item.badge > 0 && (
+                        <span className="ml-auto bg-red-100 text-red-800 text-xs font-medium px-2 py-0.5 rounded-full">
+                          {item.badge}
+                        </span>
+                      )}
+                    </Link>
                   )}
-                </Link>
+                </div>
               ))}
             </nav>
           </div>
@@ -281,23 +393,86 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
           <div className="mt-5 flex-grow flex flex-col">
             <nav className="flex-1 px-2 pb-4 space-y-1">
               {navigation.map((item) => (
-                <Link
-                  key={item.name}
-                  to={item.href}
-                  className={`${
-                    item.current
-                      ? 'bg-gray-100 text-gray-900'
-                      : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
-                  } group flex items-center px-2 py-2 text-sm font-medium rounded-md`}
-                >
-                  <item.icon className="mr-3 flex-shrink-0 h-5 w-5" />
-                  <span className="flex-1">{item.name}</span>
-                  {item.badge && item.badge > 0 && (
-                    <span className="ml-2 inline-flex items-center justify-center bg-red-100 text-red-800 text-xs font-medium px-2.5 py-0.5 rounded-full min-w-[20px]">
-                      {item.badge}
-                    </span>
+                <div key={item.name}>
+                  {item.children ? (
+                    // Parent item with children
+                    <div>
+                      <button
+                        onClick={() => toggleSubmenu(item.name)}
+                        className={`${
+                          item.current
+                            ? 'bg-gray-100 text-gray-900'
+                            : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+                        } group w-full flex items-center px-2 py-2 text-sm font-medium rounded-md`}
+                      >
+                        <item.icon className="mr-3 flex-shrink-0 h-5 w-5" />
+                        <span className="flex-1 text-left">{item.name}</span>
+                        {item.badge && item.badge > 0 && (
+                          <span className="mr-2 inline-flex items-center justify-center bg-red-100 text-red-800 text-xs font-medium px-2.5 py-0.5 rounded-full min-w-[20px]">
+                            {item.badge}
+                          </span>
+                        )}
+                        {isSubmenuExpanded(item.name) ? (
+                          <ChevronDownIcon className="ml-auto h-4 w-4" />
+                        ) : (
+                          <ChevronRightIcon className="ml-auto h-4 w-4" />
+                        )}
+                      </button>
+                      
+                      {isSubmenuExpanded(item.name) && (
+                        <div className="mt-1 space-y-1">
+                          {item.children?.map((child) => {
+                            // Handle Scheduler Dashboard differently (external link)
+                            if (child.href.startsWith('/admin/scheduler')) {
+                              return (
+                                <a
+                                  key={child.name}
+                                  href={child.href}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="group flex items-center pl-10 pr-2 py-2 text-sm font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-50 rounded-md"
+                                >
+                                  <child.icon className="mr-3 flex-shrink-0 h-4 w-4" />
+                                  {child.name}
+                                </a>
+                              );
+                            }
+                            
+                            // Use React Router Link for internal navigation
+                            return (
+                              <Link
+                                key={child.name}
+                                to={child.href}
+                                className="group flex items-center pl-10 pr-2 py-2 text-sm font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-50 rounded-md"
+                              >
+                                <child.icon className="mr-3 flex-shrink-0 h-4 w-4" />
+                                {child.name}
+                              </Link>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    // Regular item without children
+                    <Link
+                      to={item.href}
+                      className={`${
+                        item.current
+                          ? 'bg-gray-100 text-gray-900'
+                          : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+                      } group flex items-center px-2 py-2 text-sm font-medium rounded-md`}
+                    >
+                      <item.icon className="mr-3 flex-shrink-0 h-5 w-5" />
+                      <span className="flex-1">{item.name}</span>
+                      {item.badge && item.badge > 0 && (
+                        <span className="ml-2 inline-flex items-center justify-center bg-red-100 text-red-800 text-xs font-medium px-2.5 py-0.5 rounded-full min-w-[20px]">
+                          {item.badge}
+                        </span>
+                      )}
+                    </Link>
                   )}
-                </Link>
+                </div>
               ))}
             </nav>
           </div>
@@ -320,7 +495,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
             {/* Page title or breadcrumbs could go here in the future */}
             <div className="flex-1 flex items-center">
               <h2 className="text-lg font-medium text-gray-900">
-                {(location.pathname === '/' || location.pathname === '/document-management') && location.search.includes('filter=pending') && 'Active Documents'}
+                {(location.pathname === '/' || location.pathname === '/document-management') && location.search.includes('filter=pending') && 'My Tasks'}
                 {(location.pathname === '/' || location.pathname === '/document-management') && location.search.includes('filter=obsolete') && 'Obsolete Documents'}
                 {(location.pathname === '/' || location.pathname === '/document-management') && !location.search.includes('filter=') && 'Document Library'}
                 {location.pathname === '/admin' && 'Administration'}

@@ -245,12 +245,16 @@ class DocumentFilter(django_filters.FilterSet):
             user = self.request.user
             return queryset.filter(
                 models.Q(
+                    author=user,
+                    status__in=['DRAFT']
+                ) |
+                models.Q(
                     reviewer=user,
                     status__in=['PENDING_REVIEW', 'UNDER_REVIEW']
                 ) |
                 models.Q(
                     approver=user,
-                    status__in=['PENDING_APPROVAL', 'UNDER_APPROVAL']
+                    status__in=['REVIEWED', 'PENDING_APPROVAL', 'UNDER_APPROVAL']
                 )
             )
         return queryset

@@ -1,0 +1,6 @@
+⚠️ Failed to send task assignment notification (non-critical): name 'workflow_task' is not defined
+⚠️  Generated temporary master key: MsBub0KVhBjPeYvgzdTDV4INgHxGLJlrzF4jYB_bH2c=
+⚠️  Set EDMS_MASTER_KEY in production settings!
+⚠️  Generating temporary RSA keys for development
+⚠️  Use proper key management in production!
+[
