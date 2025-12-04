@@ -200,28 +200,85 @@ class Command(BaseCommand):
         if not backup_path.exists():
             raise CommandError(f"Backup file not found: {backup_path}")
         
+        self.stdout.write(f"Restoring from backup file: {backup_path}")
+        
+        # Show restoration plan
+        if not options['dry_run']:
+            self._show_file_restoration_plan(backup_path, options)
+            
+            # Confirm restoration unless forced
+            if not options['force'] and not self._confirm_restoration():
+                self.stdout.write("Restoration cancelled")
+                return
+        
+        # Create or get temporary backup configuration for file restores
+        from apps.backup.models import BackupConfiguration
+        
+        temp_config, created = BackupConfiguration.objects.get_or_create(
+            name="temp_restore_config",
+            defaults={
+                'description': 'Temporary configuration for file-based restores',
+                'backup_type': 'FULL',
+                'frequency': 'ON_DEMAND',
+                'schedule_time': timezone.now().time(),
+                'storage_path': '/tmp',
+                'created_by': User.objects.filter(is_superuser=True).first() or User.objects.first()
+            }
+        )
+        
         # Create temporary backup job record for restoration
-        backup_job = BackupJob(
+        backup_job = BackupJob.objects.create(
+            configuration=temp_config,
             job_name=f"temp_restore_{timezone.now().strftime('%Y%m%d_%H%M%S')}",
             backup_type=options['type'].upper(),
             backup_file_path=str(backup_path),
             status='COMPLETED'
         )
         
-        self.stdout.write(f"Restoring from backup file: {backup_path}")
+        # Update additional fields after creation
+        backup_job.started_at = timezone.now()
+        backup_job.completed_at = timezone.now()
+        backup_job.save()
         
-        # Execute restore
-        completed_job = restore_service.restore_from_backup(
-            backup_job=backup_job,
-            restore_type=options['type'].upper(),
-            target_location=options['target'],
-            requested_by=None,
-            options=options
-        )
-        
-        self.stdout.write(
-            self.style.SUCCESS(f'File restoration completed: {completed_job.uuid}')
-        )
+        try:
+            if options['dry_run']:
+                self.stdout.write(
+                    self.style.WARNING("Dry run completed - no changes made")
+                )
+                # Clean up temporary backup job
+                backup_job.delete()
+                return
+            
+            # Execute restore
+            completed_job = restore_service.restore_from_backup(
+                backup_job=backup_job,
+                restore_type=options['type'].upper(),
+                target_location=options['target'],
+                requested_by=None,
+                options=options
+            )
+            
+            self.stdout.write(
+                self.style.SUCCESS(f'File restoration completed: {completed_job.uuid}')
+            )
+            
+            # Log successful restoration
+            audit_service.log_system_event(
+                event_type='FILE_RESTORE_COMPLETED',
+                object_type='BackupJob',
+                object_id=str(backup_job.uuid),
+                description=f"File restoration completed from {backup_path}",
+                additional_data={
+                    'backup_path': str(backup_path),
+                    'restore_type': options['type'],
+                    'target_location': options['target']
+                }
+            )
+            
+        except Exception as e:
+            # Clean up temporary backup job on failure
+            backup_job.delete()
+            raise CommandError(f"File restoration failed: {str(e)}")
 
     def _extract_package(self, package_path: Path, extract_path: Path):
         """Extract migration package to temporary directory."""
@@ -588,3 +645,44 @@ class Command(BaseCommand):
                 self.stdout.write(f"⚠️  Storage directory missing: {storage_dir}")
         
         self.stdout.write("✓ Restoration verification completed")
+
+    def _show_file_restoration_plan(self, backup_path: Path, options: Dict[str, Any]):
+        """Show what will be restored from file."""
+        self.stdout.write("")
+        self.stdout.write(self.style.HTTP_INFO("File Restoration Plan:"))
+        self.stdout.write("=" * 50)
+        
+        # File information
+        file_size = backup_path.stat().st_size
+        self.stdout.write(f"Backup File: {backup_path}")
+        self.stdout.write(f"File Size: {file_size:,} bytes")
+        self.stdout.write(f"Restore Type: {options['type'].upper()}")
+        self.stdout.write(f"Target Location: {options['target']}")
+        
+        # Restoration options
+        self.stdout.write("")
+        self.stdout.write("Restoration options:")
+        
+        if options['type'] == 'full':
+            self.stdout.write("  ✓ Complete system restore (database + files)")
+        elif options['type'] == 'database':
+            self.stdout.write("  ✓ Database-only restore")
+        elif options['type'] == 'files':
+            self.stdout.write("  ✓ Files-only restore")
+        
+        if options['skip_users']:
+            self.stdout.write("  ✗ User accounts (skipped)")
+        else:
+            self.stdout.write("  ✓ User accounts")
+            
+        if options['skip_database']:
+            self.stdout.write("  ✗ Database (skipped)")
+        else:
+            self.stdout.write("  ✓ Database")
+            
+        if options['skip_files']:
+            self.stdout.write("  ✗ Files (skipped)")
+        else:
+            self.stdout.write("  ✓ Files")
+        
+        self.stdout.write("")
