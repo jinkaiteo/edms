@@ -63,10 +63,17 @@ const BackupManagement: React.FC = () => {
     setSystemResetState(prev => ({ ...prev, isExecuting: true }));
 
     try {
+      // Get JWT token for authentication
+      const accessToken = localStorage.getItem('accessToken');
+      if (!accessToken) {
+        throw new Error('Please log in first to perform system reset');
+      }
+
       const response = await fetch('http://localhost:8000/admin/api/system-reinit/', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Authorization': `Bearer ${accessToken}`,
           'X-CSRFToken': getCsrfToken(),
         },
         credentials: 'include',
