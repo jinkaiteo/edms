@@ -25,11 +25,11 @@ from django.utils import timezone
 from apps.users.models import User, Role, UserRole, MFADevice
 from apps.documents.models import (
     Document, DocumentVersion, DocumentDependency, DocumentAccessLog, 
-    DocumentComment, DocumentAttachment
+    DocumentComment, DocumentAttachment, DocumentType
 )
 from apps.workflows.models import (
     WorkflowInstance, WorkflowTransition, WorkflowRule, WorkflowNotification,
-    DocumentWorkflow, DocumentTransition
+    DocumentWorkflow, DocumentTransition, WorkflowType
 )
 from apps.audit.models import (
     AuditTrail, SystemEvent, LoginAudit, UserSession, DatabaseChangeLog,
@@ -38,7 +38,7 @@ from apps.audit.models import (
 from apps.backup.models import BackupJob, RestoreJob, BackupConfiguration
 from apps.scheduler.models import ScheduledTask  # Handle carefully due to table issues
 from apps.security.models import PDFGenerationLog, DigitalSignature, SecurityEvent
-from apps.placeholders.models import DocumentTemplate, TemplatePlaceholder, DocumentGeneration, PlaceholderCache
+from apps.placeholders.models import DocumentTemplate, TemplatePlaceholder, DocumentGeneration, PlaceholderCache, PlaceholderDefinition
 
 logger = logging.getLogger(__name__)
 
@@ -199,11 +199,19 @@ class Command(BaseCommand):
         """Clear all user data from database tables."""
         # Order matters - delete dependent objects first
         
-        # Workflow related
+        # STEP 1: Clear workflow dependencies first (proper cascade order)
+        try:
+            # Try to clear workflow tasks if the model exists
+            # Note: WorkflowTask may not exist in current schema
+            WorkflowNotification.objects.all().delete()
+            self.stdout.write('  ✅ Workflow notifications cleared first')
+        except Exception as e:
+            self.stdout.write(f'  ⚠️  Workflow dependencies cleanup warning: {str(e)}')
+            
+        # STEP 2: Clear workflow-related objects in proper order
         try:
             DocumentTransition.objects.all().delete()
             DocumentWorkflow.objects.all().delete()
-            WorkflowNotification.objects.all().delete()
             WorkflowInstance.objects.all().delete()
             self.stdout.write('  ✅ Workflows cleared')
         except Exception as e:
@@ -279,14 +287,53 @@ class Command(BaseCommand):
         except Exception as e:
             self.stdout.write(f'  ⚠️  Scheduler cleanup warning: {str(e)}')
 
-        # Users (keep roles, clear user assignments)
+        # STEP 9: Clear user-related objects first
         try:
             UserRole.objects.all().delete()
             MFADevice.objects.all().delete()
-            User.objects.all().delete()
-            self.stdout.write('  ✅ Users cleared')
+            self.stdout.write('  ✅ User roles and MFA devices cleared')
         except Exception as e:
-            self.stdout.write(f'  ⚠️  User cleanup warning: {str(e)}')
+            self.stdout.write(f'  ⚠️  User roles cleanup warning: {str(e)}')
+
+        # STEP 10: Handle core infrastructure FK references before deleting users
+        try:
+            from django.contrib.auth import get_user_model
+            User = get_user_model()
+            
+            # Create system admin to preserve FK references
+            system_admin, created = User.objects.get_or_create(
+                username='system_admin_temp',
+                defaults={
+                    'email': 'system@edms.local',
+                    'is_staff': True,
+                    'is_superuser': True,
+                    'first_name': 'System',
+                    'last_name': 'Administrator'
+                }
+            )
+            
+            # Update all core infrastructure to reference system admin
+            DocumentType.objects.all().update(created_by=system_admin)
+            WorkflowType.objects.all().update(created_by=system_admin) 
+            PlaceholderDefinition.objects.all().update(created_by=system_admin)
+            
+            try:
+                BackupConfiguration.objects.filter(created_by__isnull=False).update(created_by=system_admin)
+            except:
+                pass  # BackupConfiguration might not have created_by field
+                
+            self.stdout.write('  ✅ Core infrastructure references updated to system admin')
+        except Exception as e:
+            self.stdout.write(f'  ⚠️  Infrastructure reference update warning: {str(e)}')
+
+        # STEP 11: Delete all users except system admin
+        try:
+            User = get_user_model()
+            deleted_count = User.objects.exclude(username='system_admin_temp').count()
+            User.objects.exclude(username='system_admin_temp').delete()
+            self.stdout.write(f'  ✅ Users cleared ({deleted_count} users deleted, core infrastructure preserved)')
+        except Exception as e:
+            self.stdout.write(f'  ⚠️  User deletion warning: {str(e)}')
 
     def clear_file_storage(self, preserve_backups):
         """Clear file storage directories."""
@@ -320,23 +367,56 @@ class Command(BaseCommand):
                 self.stdout.write(f'  ⚠️  Error clearing {storage_dir}: {str(e)}')
 
     def create_superuser(self):
-        """Create the admin superuser account."""
+        """Create or update the admin superuser account."""
         try:
-            # Create superuser
-            admin_user = User.objects.create_superuser(
+            User = get_user_model()
+            
+            # Remove temporary system admin if it exists
+            User.objects.filter(username='system_admin_temp').delete()
+            
+            # Get or create admin user
+            admin_user, created = User.objects.get_or_create(
                 username='admin',
-                email='admin@edms.local',
-                password='test123',
-                first_name='System',
-                last_name='Administrator'
+                defaults={
+                    'email': 'admin@edms.local',
+                    'is_staff': True,
+                    'is_superuser': True,
+                    'first_name': 'System',
+                    'last_name': 'Administrator'
+                }
             )
             
-            self.stdout.write(f'  ✅ Superuser created: {admin_user.username}')
+            if not created:
+                # Update existing admin user
+                admin_user.email = 'admin@edms.local'
+                admin_user.is_staff = True
+                admin_user.is_superuser = True
+                admin_user.first_name = 'System'
+                admin_user.last_name = 'Administrator'
+                admin_user.save()
+                
+            # Set password
+            admin_user.set_password('test123')
+            admin_user.save()
+            
+            # Update core infrastructure to reference the admin user
+            DocumentType.objects.all().update(created_by=admin_user)
+            WorkflowType.objects.all().update(created_by=admin_user) 
+            PlaceholderDefinition.objects.all().update(created_by=admin_user)
+            
+            try:
+                BackupConfiguration.objects.filter(created_by__isnull=False).update(created_by=admin_user)
+            except:
+                pass  # BackupConfiguration might not have created_by field
+            
+            action = 'created' if created else 'updated'
+            self.stdout.write(f'  ✅ Superuser {action}: {admin_user.username}')
             self.stdout.write(f'  📧 Email: {admin_user.email}')
             self.stdout.write(f'  🔑 Password: test123')
+            self.stdout.write(f'  🛡️ Core infrastructure references updated')
             
         except Exception as e:
-            self.stdout.write(f'  ❌ Error creating superuser: {str(e)}')
+            self.stdout.write(f'  ❌ Error with superuser: {str(e)}')
             raise
 
     def initialize_core_data(self):

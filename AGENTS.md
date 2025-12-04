@@ -97,6 +97,7 @@ These insights focus on patterns that prevent common development pitfalls and im
 - **CharField max_length constraints**: Always check model field max_length limits when writing audit trails or other dynamic content - Django's CharField fields have strict length limits (e.g., 30 chars for action fields)
 - **Audit trail field optimization**: Use shortened, meaningful action names instead of descriptive sentences to avoid length constraint errors (e.g., `DOC_EFFECTIVE_PROCESSED` vs `DOCUMENT_EFFECTIVE_DATE_PROCESSED`)
 - **JSON serialization safety**: Convert datetime objects to ISO format with `.isoformat()` before returning in API responses to prevent JSON serialization errors
+- **Model field verification**: Before writing ORM queries, verify actual model field names exist - database schema may differ from assumptions (e.g., `status` field might not exist, use `is_active` and `is_completed` instead)
 
 ### API Endpoint and User Context Issues
 
@@ -113,7 +114,8 @@ These insights focus on patterns that prevent common development pitfalls and im
 ### Mock Data vs Real Data Problems
 - **History Tab Issue Pattern**: Components may show mock/placeholder data instead of real database content due to missing or incorrect API integration
 - **API Endpoint Verification**: Always confirm API endpoints exist and return expected data structure before assuming frontend component issues
-- **Progressive Fallback Strategy**: Implement graceful fallback from detailed API data → basic document data → mock data with clear user messaging
+- **Progressive Fallback Strategy**: Implement graceful fallback from detailed API data → basic document data → clear error messages with actionable guidance
+- **No Misleading Mock Data**: Never use mock data as fallback - show clear errors when real data can't be retrieved to prevent user misrepresentation and maintain system integrity
 
 ## Frontend-Backend Integration Debugging
 - **API endpoint verification first**: Always verify API endpoints exist and return expected data structure before debugging frontend logic
@@ -210,6 +212,11 @@ These insights focus on patterns that prevent common development pitfalls and im
 - **Initial assessment vs reality**: Always verify actual integration points before concluding functionality status - modules may be more deeply integrated than initial API testing suggests
 - **Feature discovery methodology**: Test both individual components AND their integration workflows - a module's true value often lies in its integration with other systems rather than standalone functionality
 - **Production usage verification**: Check if seemingly "underutilized" features are actually core to business processes (e.g., placeholder processing in document generation pipelines)
+
+### Core Infrastructure Identification
+- **Business-critical vs user data distinction**: Distinguish between core system infrastructure (templates, placeholders, configurations) and user-generated content (documents, workflows, user accounts)
+- **Architecture protection patterns**: Core infrastructure like document templates and placeholders (32 in this system) should be protected from deletion during system operations - they represent significant configuration work and business logic
+- **Infrastructure preservation strategy**: Remove user options to delete core infrastructure - make preservation automatic rather than optional to prevent accidental system damage
 
 ### API Endpoint Integration Debugging
 - **Endpoint mismatch patterns**: Frontend components using different endpoint paths than backend provides (`/auth/users/` vs `/users/users/`) is a common integration failure point
