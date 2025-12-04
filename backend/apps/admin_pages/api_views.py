@@ -21,7 +21,7 @@ from apps.audit.services import audit_service
 logger = logging.getLogger(__name__)
 
 
-@method_decorator([csrf_exempt, login_required, staff_member_required], name='dispatch')
+@method_decorator([csrf_exempt], name='dispatch')
 class SystemReinitAPIView(View):
     """
     API endpoint for system reinit functionality
@@ -31,6 +31,50 @@ class SystemReinitAPIView(View):
     def post(self, request):
         """Execute system reinit via API"""
         try:
+            # Handle both JWT and session authentication
+            user = None
+            
+            # Try JWT authentication first
+            auth_header = request.headers.get('Authorization', '')
+            if auth_header.startswith('Bearer '):
+                try:
+                    import jwt
+                    from django.conf import settings
+                    from django.contrib.auth import get_user_model
+                    
+                    token = auth_header.split(' ')[1]
+                    payload = jwt.decode(token, settings.SECRET_KEY, algorithms=['HS256'])
+                    User = get_user_model()
+                    user = User.objects.get(id=payload['user_id'])
+                    
+                    if not user.is_staff:
+                        return JsonResponse({
+                            'success': False,
+                            'error': 'Staff privileges required'
+                        }, status=403)
+                        
+                except Exception as e:
+                    return JsonResponse({
+                        'success': False,
+                        'error': f'Invalid authentication token: {str(e)}'
+                    }, status=401)
+            
+            # Fall back to session authentication
+            elif hasattr(request, 'user') and request.user.is_authenticated:
+                user = request.user
+                if not user.is_staff:
+                    return JsonResponse({
+                        'success': False,
+                        'error': 'Staff privileges required'
+                    }, status=403)
+            
+            else:
+                return JsonResponse({
+                    'success': False,
+                    'error': 'Authentication required'
+                }, status=401)
+            
+            # Now user is authenticated, continue with validation
             # Parse request data
             data = json.loads(request.body)
             
@@ -67,7 +111,7 @@ class SystemReinitAPIView(View):
             
             # Validate admin password
             admin_password = data.get('admin_password', '')
-            if not authenticate(username=request.user.username, password=admin_password):
+            if not authenticate(username=user.username, password=admin_password):
                 return JsonResponse({
                     'success': False,
                     'error': 'Invalid admin password'
@@ -75,7 +119,7 @@ class SystemReinitAPIView(View):
             
             # Log the reinit attempt
             audit_service.log_user_action(
-                user=request.user,
+                user=user,
                 action='SYSTEM_REINIT_INITIATED',
                 object_type='System',
                 description='System reinit initiated via API',
@@ -87,7 +131,7 @@ class SystemReinitAPIView(View):
             )
             
             # Execute system reinit
-            logger.info(f"Executing system reinit initiated by user {request.user.username}")
+            logger.info(f"Executing system reinit initiated by user {user.username}")
             
             # Call the management command programmatically
             call_command('system_reinit', '--confirm', verbosity=0)
@@ -98,7 +142,7 @@ class SystemReinitAPIView(View):
                 object_type='System',
                 description='System reinit completed successfully via API',
                 additional_data={
-                    'executed_by': request.user.username,
+                    'executed_by': user.username,
                     'completion_time': timezone.now().isoformat()
                 }
             )
@@ -131,7 +175,7 @@ class SystemReinitAPIView(View):
                 description=f'System reinit failed via API: {str(e)}',
                 additional_data={
                     'error_message': str(e),
-                    'attempted_by': request.user.username if hasattr(request, 'user') else 'unknown'
+                    'attempted_by': user.username if user else 'unknown'
                 }
             )
             
