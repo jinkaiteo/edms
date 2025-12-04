@@ -42,6 +42,9 @@ const BackupManagement: React.FC = () => {
   const [configurations, setConfigurations] = useState<BackupConfiguration[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isCreatingExport, setIsCreatingExport] = useState(false);
+  const [selectedBackupJob, setSelectedBackupJob] = useState<string>('');
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [isRestoring, setIsRestoring] = useState(false);
   
   // Use direct API service calls instead of useApi hook to avoid dependency issues
 
@@ -301,6 +304,148 @@ const BackupManagement: React.FC = () => {
     } catch (error) {
       console.error('Failed to download backup:', error);
       alert('Failed to download backup');
+    }
+  };
+
+  const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      setSelectedFile(file);
+      console.log('📁 Selected file for restore:', file.name);
+    }
+  };
+
+  const uploadAndRestore = async () => {
+    if (!selectedFile) {
+      alert('❌ Please select a migration package file first.');
+      return;
+    }
+
+    const confirmRestore = window.confirm(
+      `🚨 CRITICAL WARNING: RESTORE OPERATION\n\n` +
+      `This will OVERWRITE ALL CURRENT DATA with the contents of:\n` +
+      `"${selectedFile.name}"\n\n` +
+      `⚠️  Current data will be PERMANENTLY LOST\n` +
+      `⚠️  This action CANNOT BE UNDONE\n\n` +
+      `Are you ABSOLUTELY SURE you want to proceed?\n\n` +
+      `Click OK only if you have a current backup and understand the risks.`
+    );
+
+    if (!confirmRestore) {
+      console.log('🛡️  Restore operation cancelled by user');
+      return;
+    }
+
+    setIsRestoring(true);
+    console.log('🔄 Starting restore operation...');
+
+    try {
+      const formData = new FormData();
+      formData.append('backup_file', selectedFile);
+      formData.append('restore_type', 'full');
+      formData.append('overwrite_existing', 'true');
+
+      const response = await fetch('/api/v1/backup/system/restore/', {
+        method: 'POST',
+        credentials: 'include',
+        body: formData
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        alert(`✅ RESTORE SUCCESSFUL!\n\n` +
+              `Restored from: ${selectedFile.name}\n` +
+              `Operation ID: ${result.operation_id || 'N/A'}\n\n` +
+              `Please refresh the page to see the restored data.`);
+        
+        console.log('✅ Restore operation completed successfully');
+        setSelectedFile(null);
+        // Reset file input
+        const fileInput = document.querySelector('input[type="file"]') as HTMLInputElement;
+        if (fileInput) fileInput.value = '';
+        
+        // Refresh backup data
+        fetchSystemStatus();
+        fetchBackupJobs();
+        
+      } else {
+        const errorData = await response.json().catch(() => ({ message: 'Unknown error' }));
+        throw new Error(errorData.message || `Server returned ${response.status}`);
+      }
+
+    } catch (error) {
+      console.error('❌ Restore operation failed:', error);
+      alert(`❌ RESTORE FAILED\n\n` +
+            `Error: ${error instanceof Error ? error.message : 'Unknown error'}\n\n` +
+            `Please check the file format and try again.`);
+    } finally {
+      setIsRestoring(false);
+    }
+  };
+
+  const restoreFromBackupJob = async () => {
+    if (!selectedBackupJob) {
+      alert('❌ Please select a backup job first.');
+      return;
+    }
+
+    const selectedJob = backupJobs.find(job => job.uuid === selectedBackupJob);
+    const confirmRestore = window.confirm(
+      `🚨 CRITICAL WARNING: RESTORE OPERATION\n\n` +
+      `This will OVERWRITE ALL CURRENT DATA with:\n` +
+      `"${selectedJob?.job_name || selectedBackupJob}"\n\n` +
+      `⚠️  Current data will be PERMANENTLY LOST\n` +
+      `⚠️  This action CANNOT BE UNDONE\n\n` +
+      `Are you ABSOLUTELY SURE you want to proceed?`
+    );
+
+    if (!confirmRestore) {
+      console.log('🛡️  Restore operation cancelled by user');
+      return;
+    }
+
+    setIsRestoring(true);
+    console.log('🔄 Starting backup job restore...');
+
+    try {
+      const response = await fetch(`/api/v1/backup/jobs/${selectedBackupJob}/restore/`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+        body: JSON.stringify({
+          restore_type: 'full',
+          overwrite_existing: true
+        })
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        alert(`✅ RESTORE SUCCESSFUL!\n\n` +
+              `Restored from: ${selectedJob?.job_name}\n` +
+              `Operation ID: ${result.operation_id || 'N/A'}\n\n` +
+              `Please refresh the page to see the restored data.`);
+        
+        console.log('✅ Backup job restore completed successfully');
+        setSelectedBackupJob('');
+        
+        // Refresh backup data
+        fetchSystemStatus();
+        fetchBackupJobs();
+        
+      } else {
+        const errorData = await response.json().catch(() => ({ message: 'Unknown error' }));
+        throw new Error(errorData.message || `Server returned ${response.status}`);
+      }
+
+    } catch (error) {
+      console.error('❌ Backup job restore failed:', error);
+      alert(`❌ RESTORE FAILED\n\n` +
+            `Error: ${error instanceof Error ? error.message : 'Unknown error'}\n\n` +
+            `Please try again or contact support.`);
+    } finally {
+      setIsRestoring(false);
     }
   };
 
@@ -617,10 +762,24 @@ const BackupManagement: React.FC = () => {
                   <input
                     type="file"
                     accept=".tar.gz,.tgz"
+                    onChange={handleFileUpload}
                     className="mb-4 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
                   />
-                  <button className="w-full bg-red-600 text-white px-4 py-2 rounded-md hover:bg-red-700">
-                    Upload and Restore
+                  {selectedFile && (
+                    <p className="text-sm text-green-600 mb-2">
+                      📁 Selected: {selectedFile.name} ({(selectedFile.size / 1024 / 1024).toFixed(1)} MB)
+                    </p>
+                  )}
+                  <button 
+                    onClick={uploadAndRestore}
+                    disabled={!selectedFile || isRestoring}
+                    className={`w-full px-4 py-2 rounded-md font-medium ${
+                      !selectedFile || isRestoring
+                        ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                        : 'bg-red-600 text-white hover:bg-red-700'
+                    }`}
+                  >
+                    {isRestoring ? '🔄 Restoring...' : 'Upload and Restore'}
                   </button>
                 </div>
 
@@ -629,8 +788,12 @@ const BackupManagement: React.FC = () => {
                   <p className="text-sm text-gray-600 mb-4">
                     Select a completed backup job to restore from.
                   </p>
-                  <select className="mb-4 block w-full px-3 py-2 border border-gray-300 rounded-md">
-                    <option>Select a backup job...</option>
+                  <select 
+                    value={selectedBackupJob}
+                    onChange={(e) => setSelectedBackupJob(e.target.value)}
+                    className="mb-4 block w-full px-3 py-2 border border-gray-300 rounded-md"
+                  >
+                    <option value="">Select a backup job...</option>
                     {backupJobs
                       .filter(job => job.status === 'COMPLETED')
                       .map(job => (
@@ -640,8 +803,16 @@ const BackupManagement: React.FC = () => {
                       ))
                     }
                   </select>
-                  <button className="w-full bg-red-600 text-white px-4 py-2 rounded-md hover:bg-red-700">
-                    Restore Selected
+                  <button 
+                    onClick={restoreFromBackupJob}
+                    disabled={!selectedBackupJob || isRestoring}
+                    className={`w-full px-4 py-2 rounded-md font-medium ${
+                      !selectedBackupJob || isRestoring
+                        ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                        : 'bg-red-600 text-white hover:bg-red-700'
+                    }`}
+                  >
+                    {isRestoring ? '🔄 Restoring...' : 'Restore Selected'}
                   </button>
                 </div>
               </div>
