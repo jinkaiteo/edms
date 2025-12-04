@@ -345,9 +345,16 @@ const BackupManagement: React.FC = () => {
       formData.append('restore_type', 'full');
       formData.append('overwrite_existing', 'true');
 
+      // Get CSRF token for the request
+      const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || 
+                        document.cookie.split('; ').find(row => row.startsWith('csrftoken='))?.split('=')[1];
+
       const response = await fetch('/api/v1/backup/system/restore/', {
         method: 'POST',
         credentials: 'include',
+        headers: {
+          'X-CSRFToken': csrfToken || '',
+        },
         body: formData
       });
 
@@ -408,10 +415,15 @@ const BackupManagement: React.FC = () => {
     console.log('🔄 Starting backup job restore...');
 
     try {
+      // Get CSRF token for the request
+      const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || 
+                        document.cookie.split('; ').find(row => row.startsWith('csrftoken='))?.split('=')[1];
+
       const response = await fetch(`/api/v1/backup/jobs/${selectedBackupJob}/restore/`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'X-CSRFToken': csrfToken || '',
         },
         credentials: 'include',
         body: JSON.stringify({

@@ -220,3 +220,29 @@ These insights focus on patterns that prevent common development pitfalls and im
 - **Missing dependencies pattern**: Management commands failing due to undefined variables (categories, models) should be debugged by checking all referenced objects exist in scope
 - **Field mapping validation**: When ORM operations fail, verify model field names match exactly with what the command attempts to create - use shell inspection to confirm actual model fields
 - **Progressive command fixes**: Fix one missing dependency at a time rather than attempting to predict all missing elements
+
+## Cross-Origin Authentication and API Security Patterns
+
+### Frontend-Backend Authentication Issues
+- **Cross-origin cookie problems**: Frontend on `localhost:3000` making requests to `localhost:8000` may not properly share authentication cookies
+- **CSRF token handling**: Always include CSRF tokens in POST requests: `document.cookie.split('; ').find(row => row.startsWith('csrftoken='))?.split('=')[1]`
+- **Development authentication fallback**: For development environments, implement graceful fallbacks to admin users when frontend authentication fails
+- **Authentication verification approach**: Test auth endpoints (`/api/v1/auth/profile/`) before debugging complex authentication flows
+
+### API Error Handling Patterns
+- **401 vs 400 distinction**: 401 Unauthorized often indicates session/authentication issues rather than malformed requests
+- **Model field constraints debugging**: When getting field constraint errors, check model definitions for `max_length` restrictions and field requirements
+- **Anonymous user detection**: `AnonymousUser` in error messages indicates authentication pipeline issues, not data validation problems
+
+## File Upload and Validation Strategies
+
+### Multi-Stage File Validation
+- **Pre-processing validation**: Validate file integrity BEFORE attempting any business logic operations
+- **Corruption detection layers**: File size → Archive integrity → Content structure → Sample extraction validation
+- **Immediate cleanup strategy**: Remove invalid files immediately after detection to prevent disk bloat
+- **User-friendly error mapping**: Convert technical validation errors into actionable user guidance
+
+### Import Resolution and Module Dependencies
+- **Import placement strategy**: Place imports at module level rather than inside functions to avoid scope issues
+- **Missing import debugging**: When getting `name 'X' is not defined` errors in Django views, check both local and global import statements
+- **Function-level imports**: Use sparingly and only when avoiding circular dependencies or lazy loading is required

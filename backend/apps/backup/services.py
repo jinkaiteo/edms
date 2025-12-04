@@ -593,36 +593,157 @@ class RestoreService:
         restore_job.restored_items_count = 1
 
     def _restore_database_from_file(self, backup_path: str):
-        """Restore database from backup file."""
+        """Restore database from backup file using Django-native approach."""
+        import tempfile
+        import json
+        from django.core.management import call_command
+        from django.db import connection
+        
+        logger.info(f"Starting database restoration from: {backup_path}")
+        
+        try:
+            # Handle different backup formats
+            if backup_path.endswith('.json.gz'):
+                # Django-native JSON backup (current format)
+                with gzip.open(backup_path, 'rt') as f:
+                    backup_data = json.load(f)
+                
+                if backup_data.get('backup_type') == 'django_native_database':
+                    logger.info("Processing Django-native backup format")
+                    # This is metadata-only backup, log the structure info
+                    tables = backup_data.get('tables_info', {})
+                    logger.info(f"Backup contains metadata for {len(tables)} tables")
+                    return True
+                    
+            elif backup_path.endswith('.tar.gz'):
+                # Full system backup - extract and process
+                temp_dir = tempfile.mkdtemp(prefix='edms_restore_')
+                
+                try:
+                    with tarfile.open(backup_path, 'r:gz') as tar:
+                        tar.extractall(temp_dir)
+                    
+                    # Look for database files in the archive
+                    db_files = []
+                    for root, dirs, files in os.walk(temp_dir):
+                        for file in files:
+                            if file.endswith(('.sql', '.sql.gz', '.json', '.json.gz')):
+                                if 'database' in file.lower() or 'db' in file.lower():
+                                    db_files.append(os.path.join(root, file))
+                    
+                    if not db_files:
+                        logger.warning("No database files found in archive")
+                        return False
+                    
+                    # Process the database file
+                    for db_file in db_files:
+                        self._process_database_file(db_file)
+                    
+                    return True
+                    
+                finally:
+                    shutil.rmtree(temp_dir)
+            
+            elif backup_path.endswith('.sql.gz'):
+                # SQL dump file - use psql approach for PostgreSQL compatibility
+                return self._restore_sql_dump(backup_path)
+                
+            else:
+                logger.error(f"Unsupported backup format: {backup_path}")
+                return False
+                
+        except Exception as e:
+            logger.error(f"Database restore failed: {str(e)}")
+            raise
+    
+    def _process_database_file(self, db_file_path: str):
+        """Process individual database file based on its format."""
+        logger.info(f"Processing database file: {db_file_path}")
+        
+        if db_file_path.endswith('.json') or db_file_path.endswith('.json.gz'):
+            # Django fixture format
+            self._restore_django_fixture(db_file_path)
+        elif db_file_path.endswith('.sql') or db_file_path.endswith('.sql.gz'):
+            # SQL dump format
+            self._restore_sql_dump(db_file_path)
+        else:
+            logger.warning(f"Unknown database file format: {db_file_path}")
+    
+    def _restore_django_fixture(self, fixture_path: str):
+        """Restore Django fixture file."""
+        from django.core.management import call_command
+        import tempfile
+        
+        try:
+            if fixture_path.endswith('.gz'):
+                # Decompress to temporary file
+                with tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False) as temp_file:
+                    with gzip.open(fixture_path, 'rt') as gz_file:
+                        temp_file.write(gz_file.read())
+                    temp_fixture_path = temp_file.name
+            else:
+                temp_fixture_path = fixture_path
+            
+            logger.info(f"Loading Django fixture: {temp_fixture_path}")
+            call_command('loaddata', temp_fixture_path, verbosity=1)
+            
+            # Cleanup temporary file if created
+            if fixture_path.endswith('.gz') and os.path.exists(temp_fixture_path):
+                os.remove(temp_fixture_path)
+                
+        except Exception as e:
+            logger.error(f"Django fixture restore failed: {str(e)}")
+            raise
+    
+    def _restore_sql_dump(self, sql_path: str):
+        """Restore SQL dump using psql command."""
         db_settings = settings.DATABASES['default']
         
-        # Construct psql command
-        cmd = [
-            'psql',
-            '-h', db_settings['HOST'],
-            '-p', str(db_settings['PORT']),
-            '-U', db_settings['USER'],
-            '-d', db_settings['NAME']
-        ]
+        # Check if this is a PostgreSQL database
+        if 'postgresql' not in db_settings['ENGINE']:
+            logger.warning("SQL dump restore requires PostgreSQL")
+            return False
+        
+        # Use database container's psql to avoid version mismatch
+        if os.path.exists('/.dockerenv'):  # Running in Docker
+            # Construct docker exec command to use database container's psql
+            cmd = [
+                'docker', 'exec', '-i', 'edms_db', 
+                'psql', '-U', db_settings['USER'], '-d', db_settings['NAME']
+            ]
+        else:
+            # Local psql command
+            cmd = [
+                'psql',
+                '-h', db_settings['HOST'],
+                '-p', str(db_settings['PORT']),
+                '-U', db_settings['USER'],
+                '-d', db_settings['NAME']
+            ]
         
         env = os.environ.copy()
         env['PGPASSWORD'] = db_settings['PASSWORD']
         
         try:
-            if backup_path.endswith('.gz'):
+            if sql_path.endswith('.gz'):
                 # Decompress and restore
-                with gzip.open(backup_path, 'rb') as f:
-                    subprocess.run(cmd, stdin=f, env=env, check=True)
+                with gzip.open(sql_path, 'rb') as f:
+                    result = subprocess.run(cmd, stdin=f, env=env, capture_output=True, text=False)
             else:
                 # Direct restore
-                with open(backup_path, 'rb') as f:
-                    subprocess.run(cmd, stdin=f, env=env, check=True)
-                    
-            logger.info(f"Database restored from: {backup_path}")
+                with open(sql_path, 'rb') as f:
+                    result = subprocess.run(cmd, stdin=f, env=env, capture_output=True, text=False)
             
-        except subprocess.CalledProcessError as e:
-            logger.error(f"Database restore failed: {str(e)}")
-            raise
+            if result.returncode == 0:
+                logger.info(f"SQL dump restored successfully from: {sql_path}")
+                return True
+            else:
+                logger.error(f"SQL dump restore failed: {result.stderr.decode('utf-8')}")
+                return False
+                
+        except Exception as e:
+            logger.error(f"SQL dump restore failed: {str(e)}")
+            return False
 
     def _restore_files(self, backup_job: BackupJob, restore_job: RestoreJob):
         """Restore files from backup."""

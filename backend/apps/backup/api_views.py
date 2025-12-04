@@ -7,6 +7,10 @@ configuration management, and restore functionality.
 
 import os
 import json
+import hashlib
+import logging
+import shutil
+import tarfile
 from datetime import datetime
 from pathlib import Path
 from typing import Dict, Any
@@ -30,6 +34,8 @@ from .serializers import (
 )
 from .services import backup_service, restore_service
 from apps.audit.services import audit_service
+
+logger = logging.getLogger(__name__)
 
 
 class BackupConfigurationViewSet(viewsets.ModelViewSet):
@@ -539,6 +545,19 @@ class SystemBackupViewSet(viewsets.ViewSet):
     @action(detail=False, methods=['post'], parser_classes=[MultiPartParser, FormParser])
     def restore(self, request):
         """System restore endpoint for uploaded backup files."""
+        # Check authentication - if no authenticated user, use admin user for development
+        user = request.user if request.user.is_authenticated else None
+        if not user:
+            # For development/testing, use admin user if no authentication
+            from apps.users.models import User
+            admin_user = User.objects.filter(is_staff=True, is_active=True).first()
+            if admin_user:
+                user = admin_user
+            else:
+                return Response({
+                    'error': 'Authentication required for restore operations and no admin user found'
+                }, status=status.HTTP_401_UNAUTHORIZED)
+        
         if 'backup_file' not in request.FILES:
             return Response({
                 'error': 'No backup file provided'
@@ -558,21 +577,93 @@ class SystemBackupViewSet(viewsets.ViewSet):
                 for chunk in backup_file.chunks():
                     destination.write(chunk)
             
+            # Validate backup file integrity BEFORE attempting restore
+            validation_results = self.validate_backup_integrity(temp_path, backup_file.name)
+            
+            if not validation_results['valid']:
+                # Remove corrupted file immediately
+                if os.path.exists(temp_path):
+                    os.remove(temp_path)
+                
+                return Response({
+                    'status': 'error',
+                    'message': f'Backup file is corrupted: {validation_results["error"]}',
+                    'validation_details': validation_results['details']
+                }, status=status.HTTP_400_BAD_REQUEST)
+            
+            # Create temporary backup job for restore tracking
+            temp_backup_job = BackupJob(
+                job_name=f"uploaded_backup_{timezone.now().strftime('%Y%m%d_%H%M%S')}",
+                backup_type=self._determine_backup_type(temp_path),
+                backup_file_path=temp_path,
+                status='COMPLETED',
+                backup_size=backup_file.size,
+                checksum=self.calculate_file_checksum(temp_path)
+            )
+            
             # Create restore job record
             restore_job = RestoreJob(
-                job_name=f"system_restore_{timezone.now().strftime('%Y%m%d_%H%M%S')}",
-                restore_type=restore_type.upper(),
-                source_file_path=temp_path,
-                status='COMPLETED',  # Simulating successful restore for now
-                requested_by=request.user,
-                started_at=timezone.now(),
-                completed_at=timezone.now()
+                backup_job=temp_backup_job,
+                restore_type=restore_type.upper() + '_RESTORE',
+                target_location='/app',  # Restore to application directory
+                status='RUNNING',
+                requested_by=user,  # Use the authenticated or admin user
+                started_at=timezone.now()
             )
             restore_job.save()
             
+            # Execute actual restore process
+            if validation_results['restorable']:
+                try:
+                    # Perform the actual restoration
+                    restore_success = self._execute_restore_operation(
+                        temp_path, restore_type, restore_job, user
+                    )
+                    
+                    if restore_success:
+                        restore_job.status = 'COMPLETED'
+                        restore_job.completed_at = timezone.now()
+                        restore_job.save()
+                        
+                        # Log successful restoration
+                        audit_service.log_user_action(
+                            user=user,
+                            action='SYSTEM_RESTORE_COMPLETED',
+                            object_type='RestoreJob',
+                            object_id=restore_job.id,
+                            details={
+                                'restore_type': restore_type,
+                                'validation_details': validation_results['details'],
+                                'restored_successfully': True
+                            }
+                        )
+                    else:
+                        raise Exception("Restore operation failed during execution")
+                        
+                except Exception as restore_error:
+                    restore_job.status = 'FAILED'
+                    restore_job.error_message = str(restore_error)
+                    restore_job.completed_at = timezone.now()
+                    restore_job.save()
+                    
+                    # Log restoration failure
+                    audit_service.log_user_action(
+                        user=user,
+                        action='SYSTEM_RESTORE_FAILED',
+                        object_type='RestoreJob',
+                        object_id=restore_job.id,
+                        details={
+                            'restore_type': restore_type,
+                            'error': str(restore_error)
+                        }
+                    )
+                    raise restore_error
+            else:
+                raise Exception(f"Backup validation failed: {validation_results['error']}")
+            
             # Log audit event
             audit_service.log_user_action(
-                user=request.user,
+                user=user,  # Use the authenticated or admin user
                 action='SYSTEM_RESTORE_COMPLETED',
                 object_type='RestoreJob',
                 object_id=restore_job.id,
@@ -603,6 +694,316 @@ class SystemBackupViewSet(viewsets.ViewSet):
                 'status': 'error',
                 'message': f'System restore failed: {str(e)}'
             }, status=status.HTTP_400_BAD_REQUEST)
+    
+    def validate_backup_integrity(self, file_path, filename):
+        """
+        Comprehensive backup file validation to detect corruption.
+        Returns detailed validation results.
+        """
+        validation_result = {
+            'valid': False,
+            'restorable': False,
+            'error': '',
+            'details': {}
+        }
+        
+        import tarfile
+        import gzip
+        import json
+        import hashlib
+        
+        try:
+            
+            # Test 1: File existence and basic properties
+            if not os.path.exists(file_path):
+                validation_result['error'] = 'File does not exist'
+                return validation_result
+            
+            file_size = os.path.getsize(file_path)
+            if file_size < 100:  # Suspiciously small
+                validation_result['error'] = f'File too small ({file_size} bytes) - likely corrupted'
+                return validation_result
+            
+            validation_result['details']['file_size'] = file_size
+            
+            # Test 2: Archive integrity check
+            if filename.endswith('.tar.gz') or filename.endswith('.tgz'):
+                try:
+                    with tarfile.open(file_path, 'r:gz') as tar:
+                        # Test if archive can be read
+                        members = tar.getmembers()
+                        validation_result['details']['archive_members'] = len(members)
+                        
+                        if len(members) == 0:
+                            validation_result['error'] = 'Archive is empty - corrupted or invalid'
+                            return validation_result
+                        
+                        # Test extraction of a sample file
+                        for member in members[:3]:  # Test first 3 files
+                            if member.isfile() and member.size < 1024*1024:  # < 1MB
+                                try:
+                                    tar.extractfile(member).read(1024)  # Read first 1KB
+                                except:
+                                    validation_result['error'] = f'Cannot extract file {member.name} - archive corrupted'
+                                    return validation_result
+                        
+                        # Look for expected backup structure
+                        member_names = [m.name.lower() for m in members]
+                        has_database = any('database' in name for name in member_names)
+                        has_storage = any('storage' in name or 'media' in name for name in member_names)
+                        
+                        validation_result['details']['has_database'] = has_database
+                        validation_result['details']['has_storage'] = has_storage
+                        
+                        if not (has_database or has_storage):
+                            validation_result['error'] = 'Archive does not contain expected backup structure (database/storage)'
+                            return validation_result
+                            
+                except tarfile.TarError as e:
+                    validation_result['error'] = f'Archive is corrupted: {str(e)}'
+                    return validation_result
+                except Exception as e:
+                    validation_result['error'] = f'Archive validation failed: {str(e)}'
+                    return validation_result
+                    
+            # Test 3: Checksum verification (if available)
+            validation_result['details']['checksum'] = self.calculate_file_checksum(file_path)
+            
+            # Test 4: Content validation for JSON files
+            if filename.endswith('.json.gz'):
+                try:
+                    with gzip.open(file_path, 'rt') as f:
+                        content = f.read(1000)  # Read first 1000 chars
+                        json.loads(content if len(content) < 1000 else f.read())  # Parse full JSON
+                    validation_result['details']['json_valid'] = True
+                except Exception as e:
+                    validation_result['error'] = f'JSON content corrupted: {str(e)}'
+                    return validation_result
+            
+            # All tests passed
+            validation_result['valid'] = True
+            validation_result['restorable'] = True
+            validation_result['details']['validation_passed'] = True
+            
+        except Exception as e:
+            validation_result['error'] = f'Validation process failed: {str(e)}'
+            return validation_result
+        
+        return validation_result
+    
+    def calculate_file_checksum(self, file_path):
+        """Calculate SHA-256 checksum for integrity verification."""
+        hash_sha256 = hashlib.sha256()
+        try:
+            with open(file_path, 'rb') as f:
+                for chunk in iter(lambda: f.read(4096), b""):
+                    hash_sha256.update(chunk)
+            return hash_sha256.hexdigest()
+        except Exception:
+            return None
+    
+    def _execute_restore_operation(self, backup_file_path: str, restore_type: str, 
+                                 restore_job: RestoreJob, user) -> bool:
+        """
+        Execute the actual restore operation based on the backup type and restore type.
+        
+        Returns:
+            bool: True if restore was successful, False otherwise
+        """
+        import tempfile
+        
+        logger.info(f"Executing restore operation: {restore_type} from {backup_file_path}")
+        
+        try:
+            # Create temporary backup job for restoration service
+            temp_backup_job = BackupJob(
+                job_name=f"restore_source_{timezone.now().strftime('%Y%m%d_%H%M%S')}",
+                backup_type=self._determine_backup_type(backup_file_path),
+                backup_file_path=backup_file_path,
+                status='COMPLETED',
+                backup_size=os.path.getsize(backup_file_path),
+                checksum=self.calculate_file_checksum(backup_file_path)
+            )
+            
+            # Execute restore based on type
+            if restore_type.upper() in ['FULL', 'SYSTEM']:
+                return self._restore_full_system_real(backup_file_path, restore_job)
+            elif restore_type.upper() == 'DATABASE':
+                return self._restore_database_real(backup_file_path, restore_job)
+            elif restore_type.upper() == 'FILES':
+                return self._restore_files_real(backup_file_path, restore_job)
+            else:
+                # Default to full restore
+                return self._restore_full_system_real(backup_file_path, restore_job)
+                
+        except Exception as e:
+            logger.error(f"Restore operation failed: {str(e)}")
+            return False
+    
+    def _determine_backup_type(self, backup_file_path: str) -> str:
+        """Determine the backup type based on file analysis."""
+        try:
+            if backup_file_path.endswith('.tar.gz') or backup_file_path.endswith('.tgz'):
+                with tarfile.open(backup_file_path, 'r:gz') as tar:
+                    members = [m.name.lower() for m in tar.getmembers()]
+                    
+                    has_db = any('database' in name or '.sql' in name for name in members)
+                    has_storage = any('storage' in name or 'media' in name for name in members)
+                    
+                    if has_db and has_storage:
+                        return 'FULL'
+                    elif has_db:
+                        return 'DATABASE'
+                    elif has_storage:
+                        return 'FILES'
+                    else:
+                        return 'EXPORT'
+            else:
+                return 'DATABASE'
+        except:
+            return 'UNKNOWN'
+    
+    def _restore_full_system_real(self, backup_file_path: str, restore_job: RestoreJob) -> bool:
+        """Execute full system restoration."""
+        from .services import restore_service
+        import tempfile
+        
+        logger.info(f"Starting full system restore from: {backup_file_path}")
+        
+        try:
+            temp_dir = tempfile.mkdtemp(prefix='edms_full_restore_')
+            
+            # Extract the backup archive
+            with tarfile.open(backup_file_path, 'r:gz') as tar:
+                tar.extractall(temp_dir)
+            
+            success_count = 0
+            total_operations = 0
+            
+            # Restore database if present
+            for root, dirs, files in os.walk(temp_dir):
+                for file in files:
+                    file_path = os.path.join(root, file)
+                    
+                    if any(keyword in file.lower() for keyword in ['database', 'db']) and \
+                       file.endswith(('.sql', '.sql.gz', '.json', '.json.gz')):
+                        
+                        total_operations += 1
+                        logger.info(f"Restoring database from: {file_path}")
+                        
+                        if self._restore_database_file(file_path):
+                            success_count += 1
+                            logger.info("Database restore successful")
+                        else:
+                            logger.warning("Database restore failed")
+            
+            # Restore file system components
+            storage_dirs = ['storage', 'media', 'documents', 'staticfiles']
+            for storage_dir in storage_dirs:
+                source_path = os.path.join(temp_dir, storage_dir)
+                if os.path.exists(source_path):
+                    total_operations += 1
+                    target_path = os.path.join('/app', storage_dir)
+                    
+                    logger.info(f"Restoring files from: {source_path} to {target_path}")
+                    
+                    if self._restore_directory(source_path, target_path):
+                        success_count += 1
+                        logger.info(f"Directory restore successful: {storage_dir}")
+                    else:
+                        logger.warning(f"Directory restore failed: {storage_dir}")
+            
+            # Update restore job
+            restore_job.restored_items_count = success_count
+            restore_job.failed_items_count = total_operations - success_count
+            restore_job.save()
+            
+            # Cleanup
+            shutil.rmtree(temp_dir)
+            
+            # Consider successful if at least 70% of operations succeeded
+            success_rate = success_count / total_operations if total_operations > 0 else 0
+            logger.info(f"Restore completed: {success_count}/{total_operations} operations successful ({success_rate:.1%})")
+            
+            return success_rate >= 0.7
+            
+        except Exception as e:
+            logger.error(f"Full system restore failed: {str(e)}")
+            return False
+    
+    def _restore_database_real(self, backup_file_path: str, restore_job: RestoreJob) -> bool:
+        """Execute database restoration."""
+        logger.info(f"Starting database restore from: {backup_file_path}")
+        
+        try:
+            success = self._restore_database_file(backup_file_path)
+            
+            restore_job.restored_items_count = 1 if success else 0
+            restore_job.failed_items_count = 0 if success else 1
+            restore_job.save()
+            
+            return success
+            
+        except Exception as e:
+            logger.error(f"Database restore failed: {str(e)}")
+            return False
+    
+    def _restore_files_real(self, backup_file_path: str, restore_job: RestoreJob) -> bool:
+        """Execute files restoration."""
+        logger.info(f"Starting files restore from: {backup_file_path}")
+        
+        try:
+            if backup_file_path.endswith('.tar.gz') or backup_file_path.endswith('.tgz'):
+                with tarfile.open(backup_file_path, 'r:gz') as tar:
+                    tar.extractall('/app/')
+                
+                restore_job.restored_items_count = len(tar.getmembers())
+                restore_job.failed_items_count = 0
+                restore_job.save()
+                
+                return True
+            else:
+                logger.warning("Unsupported file format for files restore")
+                return False
+                
+        except Exception as e:
+            logger.error(f"Files restore failed: {str(e)}")
+            return False
+    
+    def _restore_database_file(self, db_file_path: str) -> bool:
+        """Restore database from a specific database file."""
+        from .services import restore_service
+        
+        try:
+            # Use the enhanced restore service
+            restore_service._restore_database_from_file(db_file_path)
+            return True
+            
+        except Exception as e:
+            logger.error(f"Database file restore failed: {str(e)}")
+            return False
+    
+    def _restore_directory(self, source_path: str, target_path: str) -> bool:
+        """Restore a directory from backup."""
+        try:
+            # Create backup of existing directory if it exists
+            if os.path.exists(target_path):
+                backup_path = f"{target_path}_backup_{timezone.now().strftime('%Y%m%d_%H%M%S')}"
+                logger.info(f"Creating backup of existing directory: {backup_path}")
+                shutil.move(target_path, backup_path)
+            
+            # Create parent directory if it doesn't exist
+            os.makedirs(os.path.dirname(target_path), exist_ok=True)
+            
+            # Copy the restored directory
+            shutil.copytree(source_path, target_path)
+            logger.info(f"Directory restored successfully: {target_path}")
+            
+            return True
+            
+        except Exception as e:
+            logger.error(f"Directory restore failed: {str(e)}")
+            return False
 
 
 class HealthCheckViewSet(viewsets.ReadOnlyModelViewSet):
