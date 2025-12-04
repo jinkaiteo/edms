@@ -63,7 +63,12 @@ class BackupJobSerializer(serializers.ModelSerializer):
             'is_valid', 'validation_errors', 'created_at',
             'configuration_name', 'triggered_by_username'
         ]
-        read_only_fields = '__all__'
+        read_only_fields = [
+            'uuid', 'job_name', 'backup_type', 'started_at', 'completed_at',
+            'duration', 'status', 'backup_file_path', 'backup_size',
+            'compression_ratio', 'error_message', 'retry_count', 'max_retries',
+            'checksum', 'is_valid', 'validation_errors', 'created_at'
+        ]
     
     def get_file_size_human(self, obj):
         """Get human-readable file size."""

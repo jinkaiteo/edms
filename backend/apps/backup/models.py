@@ -30,6 +30,7 @@ class BackupConfiguration(models.Model):
         ('DIFFERENTIAL', 'Differential Backup'),
         ('DATABASE', 'Database Only'),
         ('FILES', 'Files Only'),
+        ('EXPORT', 'Export Package'),
     ]
     
     BACKUP_FREQUENCIES = [

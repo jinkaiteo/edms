@@ -62,6 +62,7 @@ MIDDLEWARE = [
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
+    'apps.backup.middleware.BackupAPIAuthMiddleware',  # Enable admin session auth for backup APIs
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
     'apps.audit.middleware_api_fix.EnhancedAuditMiddleware',
@@ -161,14 +162,14 @@ STATICFILES_DIRS = [
 
 # Media files
 MEDIA_URL = '/media/'
-MEDIA_ROOT = BASE_DIR.parent / 'storage' / 'media'
+MEDIA_ROOT = BASE_DIR / 'storage' / 'media'
 
 # Official PDF Configuration
 OFFICIAL_PDF_CONFIG = {
     'ENABLE_PDF_GENERATION': True,
     'PDF_ENGINE': 'reportlab',  # 'reportlab' or 'weasyprint'
     'SIGNATURE_ALGORITHM': 'RSA-SHA256',
-    'CERTIFICATE_STORAGE_PATH': os.path.join(str(BASE_DIR.parent / 'storage' / 'media'), 'certificates'),
+    'CERTIFICATE_STORAGE_PATH': os.path.join(str(BASE_DIR / 'storage' / 'media'), 'certificates'),
     'PDF_WATERMARK': True,
     'INCLUDE_QR_VERIFICATION': True,
     'FALLBACK_TO_ANNOTATED': True,
@@ -179,7 +180,7 @@ OFFICIAL_PDF_CONFIG = {
 }
 
 # Document storage
-DOCUMENT_STORAGE_ROOT = BASE_DIR.parent / 'storage' / 'documents'
+DOCUMENT_STORAGE_ROOT = BASE_DIR / 'storage' / 'documents'
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/4.2/ref/settings/#default-auto-field
