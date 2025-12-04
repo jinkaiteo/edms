@@ -126,6 +126,7 @@
                 <a href="/admin/settings/" {% if request.resolver_match.url_name == 'system_settings' %}class="current"{% endif %}>⚙️ Settings</a>
                 <a href="/admin/scheduler/monitoring/dashboard/" target="_blank">🖥️ Scheduler</a>
                 <a href="/admin/audit/" {% if request.resolver_match.url_name == 'audit_trail' %}class="current"{% endif %}>🛡️ Audit Trail</a>
+                <a href="/admin/system-reinit/" {% if request.resolver_match.url_name == 'system_reinit' %}class="current"{% endif %} style="background: linear-gradient(135deg, #dc2626, #b91c1c); color: white; border: 2px solid #dc2626;">⚠️ System Reinit</a>
                 <a href="/" style="margin-left: auto;">← Back to EDMS</a>
             </div>
         </div>

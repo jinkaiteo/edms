@@ -1042,3 +1042,110 @@ class HealthCheckViewSet(viewsets.ReadOnlyModelViewSet):
             'last_updated': timezone.now().isoformat()
         })
     
+    @action(detail=False, methods=['get'])
+    def system_data_overview(self, request):
+        """Get comprehensive system data overview for system reset preview."""
+        try:
+            from apps.users.models import User
+            from apps.documents.models import Document, DocumentVersion
+            from apps.workflows.models import WorkflowInstance
+            from apps.audit.models import AuditTrail
+            
+            # Get comprehensive system statistics
+            system_overview = {
+                'users': {
+                    'total': User.objects.count(),
+                    'active': User.objects.filter(is_active=True).count(),
+                    'staff': User.objects.filter(is_staff=True).count(),
+                },
+                'documents': {
+                    'total': Document.objects.count(),
+                    'versions': DocumentVersion.objects.count(),
+                    'published': Document.objects.filter(status='PUBLISHED').count(),
+                },
+                'workflows': {
+                    'total': WorkflowInstance.objects.count(),
+                    'active': WorkflowInstance.objects.filter(is_active=True, is_completed=False).count(),
+                    'completed': WorkflowInstance.objects.filter(is_completed=True).count(),
+                },
+                'audit': {
+                    'total_trails': AuditTrail.objects.count(),
+                    'recent_trails': AuditTrail.objects.filter(
+                        timestamp__gte=timezone.now() - timezone.timedelta(days=7)
+                    ).count(),
+                },
+                'backup': {
+                    'total_jobs': BackupJob.objects.count(),
+                    'completed_jobs': BackupJob.objects.filter(status='COMPLETED').count(),
+                    'configurations': BackupConfiguration.objects.count(),
+                },
+                'files': self._get_file_storage_stats(),
+                'last_updated': timezone.now().isoformat()
+            }
+            
+            return Response(system_overview)
+            
+        except Exception as e:
+            logger.error(f"System data overview failed: {str(e)}")
+            return Response({
+                'error': 'Failed to retrieve system data'
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+    
+    def _get_file_storage_stats(self):
+        """Get file storage statistics."""
+        storage_stats = {
+            'documents': {'count': 0, 'size_bytes': 0},
+            'media': {'count': 0, 'size_bytes': 0},
+            'backups': {'count': 0, 'size_bytes': 0},
+            'total_files': 0,
+            'total_size_bytes': 0
+        }
+        
+        storage_paths = {
+            'documents': '/app/storage/documents',
+            'media': '/app/storage/media',
+            'backups': '/storage/backups'
+        }
+        
+        try:
+            for category, path in storage_paths.items():
+                if os.path.exists(path) and os.path.isdir(path):
+                    files = [f for f in os.listdir(path) if os.path.isfile(os.path.join(path, f))]
+                    storage_stats[category]['count'] = len(files)
+                    
+                    # Calculate total size
+                    total_size = 0
+                    for f in files:
+                        try:
+                            total_size += os.path.getsize(os.path.join(path, f))
+                        except OSError:
+                            continue  # Skip if file access fails
+                    
+                    storage_stats[category]['size_bytes'] = total_size
+                    storage_stats['total_files'] += len(files)
+                    storage_stats['total_size_bytes'] += total_size
+            
+            # Add human-readable sizes
+            for category in ['documents', 'media', 'backups']:
+                size_bytes = storage_stats[category]['size_bytes']
+                if size_bytes < 1024:
+                    storage_stats[category]['size_human'] = f"{size_bytes} B"
+                elif size_bytes < 1024 * 1024:
+                    storage_stats[category]['size_human'] = f"{size_bytes / 1024:.1f} KB"
+                else:
+                    storage_stats[category]['size_human'] = f"{size_bytes / (1024 * 1024):.1f} MB"
+            
+            # Total human-readable size
+            total_bytes = storage_stats['total_size_bytes']
+            if total_bytes < 1024:
+                storage_stats['total_size_human'] = f"{total_bytes} B"
+            elif total_bytes < 1024 * 1024:
+                storage_stats['total_size_human'] = f"{total_bytes / 1024:.1f} KB"
+            else:
+                storage_stats['total_size_human'] = f"{total_bytes / (1024 * 1024):.1f} MB"
+                
+        except Exception as e:
+            logger.warning(f"File storage stats calculation failed: {str(e)}")
+        
+        return storage_stats
+    

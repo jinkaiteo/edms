@@ -24,8 +24,10 @@ api_urlpatterns = [
     path('docs/', SpectacularSwaggerView.as_view(url_name='schema'), name='swagger-ui'),
     path('redoc/', SpectacularRedocView.as_view(url_name='schema'), name='redoc'),
     
-    # Authentication
+    # Authentication - include both JWT and session auth
     path('auth/', include('apps.users.urls')),
+    path('auth/', include('apps.api.v1.urls')),  # Include direct API v1 auth endpoints
+    path('session/', include('apps.api.v1.session_urls')),  # Add session auth endpoints
     
     # User management (direct access to users viewset only)
     path('users/', include(('apps.users.urls', 'users-api'), namespace='users-api')),

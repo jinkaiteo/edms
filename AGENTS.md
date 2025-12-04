@@ -246,3 +246,21 @@ These insights focus on patterns that prevent common development pitfalls and im
 - **Import placement strategy**: Place imports at module level rather than inside functions to avoid scope issues
 - **Missing import debugging**: When getting `name 'X' is not defined` errors in Django views, check both local and global import statements
 - **Function-level imports**: Use sparingly and only when avoiding circular dependencies or lazy loading is required
+
+## Scope Creep Prevention and System Analysis Patterns
+
+### Over-Engineering Detection and Prevention
+- **Progressive complexity trap**: When implementing complex features (like database restoration), start with validation of existing working components before adding new logic
+- **Systematic analysis approach**: When debugging loops or repeated failures, step back to analyze what's actually working vs. what's failing - often 80% of system works and 20% has scope creep
+- **Working foundation identification**: Always identify and preserve working components (backup creation, validation, tracking) before attempting complex enhancements
+- **Scope boundary enforcement**: When asked to "complete" functionality, clarify if the working validation/tracking system meets the core requirement before adding restoration complexity
+
+### Database Constraint and Foreign Key Patterns
+- **Related object save sequence**: When creating objects with foreign key relationships, always save the parent object before creating dependent objects to avoid "unsaved related object" errors
+- **Required field discovery**: When getting constraint violations, check model definitions for required fields that may not be obvious (configuration_id, triggered_by, etc.)
+- **Auto-configuration strategy**: For complex models requiring configurations, implement get_or_create patterns to auto-generate required configurations rather than requiring manual setup
+
+### API Method Signature Verification
+- **Parameter name validation**: Always check actual method signatures before implementing calls - parameter names like `details` vs `additional_data` can cause runtime failures
+- **Service inspection pattern**: Use `inspect.signature()` and `dir()` to verify available methods and parameters before implementation
+- **Consistent parameter mapping**: When methods expect specific parameter formats, create helper functions to ensure consistent parameter transformation

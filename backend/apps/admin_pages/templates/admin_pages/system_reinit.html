@@ -1,0 +1,523 @@
+{% extends 'admin_pages/base.html' %}
+
+{% block title %}⚠️ System Reinit - EDMS Administration{% endblock %}
+
+{% block heading %}⚠️ System Reset & Reinit{% endblock %}
+
+{% block description %}DESTRUCTIVE OPERATION: Complete system reset with comprehensive safety controls{% endblock %}
+
+{% block content %}
+<style>
+.warning-banner {
+    background: linear-gradient(135deg, #ff6b6b, #ee5a52);
+    color: white;
+    padding: 20px;
+    border-radius: 8px;
+    margin-bottom: 30px;
+    border: 3px solid #d63031;
+    animation: warning-pulse 2s ease-in-out infinite alternate;
+}
+
+@keyframes warning-pulse {
+    0% { box-shadow: 0 0 0 0 rgba(214, 48, 49, 0.3); }
+    100% { box-shadow: 0 0 20px 10px rgba(214, 48, 49, 0.1); }
+}
+
+.danger-section {
+    background: #fff5f5;
+    border: 2px solid #fed7d7;
+    border-radius: 8px;
+    padding: 20px;
+    margin: 20px 0;
+}
+
+.safety-checkbox {
+    background: #fffaf0;
+    border: 1px solid #fed7aa;
+    padding: 15px;
+    border-radius: 6px;
+    margin: 10px 0;
+}
+
+.safety-checkbox input[type="checkbox"] {
+    margin-right: 10px;
+    transform: scale(1.2);
+}
+
+.safety-checkbox label {
+    font-weight: 500;
+    color: #9a3412;
+    cursor: pointer;
+}
+
+.current-state {
+    background: #f0f9ff;
+    border: 1px solid #bae6fd;
+    border-radius: 6px;
+    padding: 20px;
+    margin: 20px 0;
+}
+
+.state-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 15px;
+    margin-top: 15px;
+}
+
+.state-item {
+    background: white;
+    padding: 15px;
+    border-radius: 4px;
+    text-align: center;
+    border-left: 4px solid #3b82f6;
+}
+
+.state-number {
+    font-size: 24px;
+    font-weight: bold;
+    color: #1e40af;
+}
+
+.state-label {
+    font-size: 14px;
+    color: #64748b;
+}
+
+.reinit-controls {
+    background: #fefefe;
+    border: 2px solid #e5e7eb;
+    border-radius: 8px;
+    padding: 25px;
+    margin: 30px 0;
+}
+
+.form-group {
+    margin: 15px 0;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 5px;
+    font-weight: 500;
+}
+
+.form-group input[type="text"], .form-group input[type="password"] {
+    width: 100%;
+    padding: 10px;
+    border: 2px solid #d1d5db;
+    border-radius: 4px;
+    font-size: 16px;
+}
+
+.form-group input[type="text"]:focus, .form-group input[type="password"]:focus {
+    outline: none;
+    border-color: #3b82f6;
+}
+
+.execute-button {
+    background: linear-gradient(135deg, #dc2626, #b91c1c);
+    color: white;
+    border: none;
+    padding: 15px 30px;
+    font-size: 16px;
+    font-weight: bold;
+    border-radius: 6px;
+    cursor: pointer;
+    width: 100%;
+    margin-top: 20px;
+    transition: all 0.3s ease;
+}
+
+.execute-button:disabled {
+    background: #d1d5db;
+    cursor: not-allowed;
+    color: #9ca3af;
+}
+
+.execute-button:not(:disabled):hover {
+    background: linear-gradient(135deg, #b91c1c, #991b1b);
+    transform: translateY(-2px);
+    box-shadow: 0 10px 20px rgba(220, 38, 38, 0.3);
+}
+
+.loading-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.8);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 10000;
+}
+
+.loading-content {
+    background: white;
+    padding: 30px;
+    border-radius: 8px;
+    text-align: center;
+    max-width: 400px;
+}
+
+.spinner {
+    border: 4px solid #f3f4f6;
+    border-top: 4px solid #dc2626;
+    border-radius: 50%;
+    width: 40px;
+    height: 40px;
+    animation: spin 1s linear infinite;
+    margin: 0 auto 20px;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+.success-message, .error-message {
+    padding: 15px;
+    border-radius: 6px;
+    margin: 20px 0;
+    display: none;
+}
+
+.success-message {
+    background: #dcfce7;
+    border: 1px solid #bbf7d0;
+    color: #166534;
+}
+
+.error-message {
+    background: #fef2f2;
+    border: 1px solid #fecaca;
+    color: #dc2626;
+}
+
+.preservation-options {
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 6px;
+    padding: 20px;
+    margin: 20px 0;
+}
+
+.preservation-checkbox {
+    margin: 10px 0;
+    display: flex;
+    align-items: center;
+}
+
+.preservation-checkbox input[type="checkbox"] {
+    margin-right: 10px;
+    transform: scale(1.1);
+}
+</style>
+
+<!-- Critical Warning Banner -->
+<div class="warning-banner">
+    <h2 style="margin: 0 0 10px 0;">🚨 CRITICAL WARNING: DESTRUCTIVE OPERATION</h2>
+    <p style="margin: 0; font-size: 16px;">
+        This function will <strong>PERMANENTLY DELETE ALL DATA</strong> and cannot be undone!
+        This is intended for development, testing, or complete system reset scenarios only.
+    </p>
+</div>
+
+<!-- Current System State -->
+<div class="current-state">
+    <h3>📊 Current System State</h3>
+    <p>This data will be <strong>permanently destroyed</strong> if you proceed:</p>
+    
+    <div class="state-grid">
+        <div class="state-item">
+            <div class="state-number">{{ current_state.users }}</div>
+            <div class="state-label">User Accounts</div>
+        </div>
+        <div class="state-item">
+            <div class="state-number">{{ current_state.documents }}</div>
+            <div class="state-label">Documents</div>
+        </div>
+        <div class="state-item">
+            <div class="state-number">{{ current_state.workflows }}</div>
+            <div class="state-label">Workflows</div>
+        </div>
+        <div class="state-item">
+            <div class="state-number">{{ current_state.audit_trails }}</div>
+            <div class="state-label">Audit Records</div>
+        </div>
+        <div class="state-item">
+            <div class="state-number">{{ current_state.backup_jobs }}</div>
+            <div class="state-label">Backup Jobs</div>
+        </div>
+        <div class="state-item">
+            <div class="state-number">{{ storage_info.total_files }}</div>
+            <div class="state-label">Stored Files</div>
+        </div>
+    </div>
+    
+    <h4>📁 File Storage Breakdown:</h4>
+    <ul>
+        <li><strong>Documents:</strong> {{ storage_info.Documents }} files</li>
+        <li><strong>Media Files:</strong> {{ storage_info.Media_Files }} files</li>
+        <li><strong>Backups:</strong> {{ storage_info.Backups }} files</li>
+        <li><strong>Archive Backups:</strong> {{ storage_info.Archive_Backups }} files</li>
+    </ul>
+</div>
+
+<!-- Safety Requirements -->
+<div class="danger-section">
+    <h3>⚠️ BEFORE YOU PROCEED - READ CAREFULLY</h3>
+    
+    <div style="color: #dc2626; font-weight: bold; margin: 15px 0;">
+        THIS OPERATION WILL:
+    </div>
+    <ul style="color: #7f1d1d;">
+        <li>Delete ALL {{ current_state.users }} user accounts (new admin will be created)</li>
+        <li>Delete ALL {{ current_state.documents }} documents and {{ storage_info.total_files }} files</li>
+        <li>Delete ALL {{ current_state.workflows }} workflows and processes</li>
+        <li>Delete ALL {{ current_state.audit_trails }} audit trail records</li>
+        <li>Delete ALL system activity history</li>
+        <li>Reset the system to factory defaults</li>
+    </ul>
+    
+    <div style="color: #dc2626; font-weight: bold; margin: 15px 0;">
+        THIS CANNOT BE UNDONE!
+    </div>
+</div>
+
+<!-- Preservation Options -->
+<div class="preservation-options">
+    <h3>🛡️ Preservation Options</h3>
+    <p>Choose what to preserve during the reset:</p>
+    
+    <div class="preservation-checkbox">
+        <input type="checkbox" id="preserve_templates" checked>
+        <label for="preserve_templates">
+            <strong>Preserve Document Templates</strong> - Keep system templates and configurations
+        </label>
+    </div>
+    
+    <div class="preservation-checkbox">
+        <input type="checkbox" id="preserve_backups" checked>
+        <label for="preserve_backups">
+            <strong>Preserve Backup Files</strong> - Keep existing backup archives
+        </label>
+    </div>
+</div>
+
+<!-- Safety Confirmations -->
+<div class="reinit-controls">
+    <h3>🔒 Safety Confirmations Required</h3>
+    <p>You must acknowledge ALL of the following before proceeding:</p>
+    
+    <div class="safety-checkbox">
+        <input type="checkbox" id="understand_destructive">
+        <label for="understand_destructive">
+            I understand this is a DESTRUCTIVE operation that will delete all data
+        </label>
+    </div>
+    
+    <div class="safety-checkbox">
+        <input type="checkbox" id="data_loss_acknowledged">
+        <label for="data_loss_acknowledged">
+            I acknowledge that ALL current data will be PERMANENTLY LOST
+        </label>
+    </div>
+    
+    <div class="safety-checkbox">
+        <input type="checkbox" id="no_rollback_understood">
+        <label for="no_rollback_understood">
+            I understand there is NO WAY to rollback or undo this operation
+        </label>
+    </div>
+    
+    <div class="safety-checkbox">
+        <input type="checkbox" id="testing_environment_confirmed">
+        <label for="testing_environment_confirmed">
+            I confirm this is a TESTING/DEVELOPMENT environment (NOT production)
+        </label>
+    </div>
+    
+    <div class="safety-checkbox">
+        <input type="checkbox" id="backup_not_needed">
+        <label for="backup_not_needed">
+            I confirm no backup is needed before this reset
+        </label>
+    </div>
+    
+    <div class="form-group" style="margin-top: 25px;">
+        <label for="confirmation_text">Type exactly: <code>RESET SYSTEM NOW</code></label>
+        <input type="text" id="confirmation_text" placeholder="Type the confirmation text exactly...">
+    </div>
+    
+    <div class="form-group">
+        <label for="admin_password">Enter your current admin password:</label>
+        <input type="password" id="admin_password" placeholder="Enter your password to authorize this operation...">
+    </div>
+    
+    <button class="execute-button" id="execute_reinit" disabled>
+        🚨 EXECUTE SYSTEM RESET & REINIT
+    </button>
+</div>
+
+<!-- Result Messages -->
+<div class="success-message" id="success_message"></div>
+<div class="error-message" id="error_message"></div>
+
+<!-- Loading Overlay -->
+<div class="loading-overlay" id="loading_overlay">
+    <div class="loading-content">
+        <div class="spinner"></div>
+        <h3>System Reset in Progress</h3>
+        <p>Deleting all data and resetting system...<br>
+        <strong>Do not close this window!</strong></p>
+    </div>
+</div>
+
+<script>
+// Enable/disable execute button based on confirmations
+function updateExecuteButton() {
+    const checkboxes = [
+        'understand_destructive',
+        'data_loss_acknowledged', 
+        'no_rollback_understood',
+        'testing_environment_confirmed',
+        'backup_not_needed'
+    ];
+    
+    const allChecked = checkboxes.every(id => document.getElementById(id).checked);
+    const confirmationText = document.getElementById('confirmation_text').value.trim();
+    const adminPassword = document.getElementById('admin_password').value.trim();
+    
+    const executeButton = document.getElementById('execute_reinit');
+    const canExecute = allChecked && 
+                      confirmationText === 'RESET SYSTEM NOW' && 
+                      adminPassword.length > 0;
+    
+    executeButton.disabled = !canExecute;
+    
+    if (canExecute) {
+        executeButton.style.animation = 'warning-pulse 1.5s ease-in-out infinite alternate';
+    } else {
+        executeButton.style.animation = 'none';
+    }
+}
+
+// Add event listeners
+document.addEventListener('DOMContentLoaded', function() {
+    // Add listeners to all form elements
+    const checkboxes = document.querySelectorAll('input[type="checkbox"]');
+    const textInputs = document.querySelectorAll('input[type="text"], input[type="password"]');
+    
+    checkboxes.forEach(checkbox => {
+        checkbox.addEventListener('change', updateExecuteButton);
+    });
+    
+    textInputs.forEach(input => {
+        input.addEventListener('input', updateExecuteButton);
+    });
+    
+    // Execute button handler
+    document.getElementById('execute_reinit').addEventListener('click', function() {
+        if (this.disabled) return;
+        
+        // Final confirmation
+        const finalConfirm = confirm(
+            "FINAL WARNING!\n\n" +
+            "This will PERMANENTLY DELETE ALL DATA.\n" +
+            "Are you absolutely certain?\n\n" +
+            "Click OK to proceed with IRREVERSIBLE system reset."
+        );
+        
+        if (!finalConfirm) return;
+        
+        // Show loading overlay
+        document.getElementById('loading_overlay').style.display = 'flex';
+        document.getElementById('success_message').style.display = 'none';
+        document.getElementById('error_message').style.display = 'none';
+        
+        // Prepare request data
+        const confirmations = {};
+        ['understand_destructive', 'data_loss_acknowledged', 'no_rollback_understood',
+         'testing_environment_confirmed', 'backup_not_needed'].forEach(id => {
+            confirmations[id] = document.getElementById(id).checked;
+        });
+        
+        const data = {
+            confirmations: confirmations,
+            confirmation_text: document.getElementById('confirmation_text').value.trim(),
+            admin_password: document.getElementById('admin_password').value,
+            preserve_templates: document.getElementById('preserve_templates').checked,
+            preserve_backups: document.getElementById('preserve_backups').checked
+        };
+        
+        // Execute the reset
+        fetch('/admin/system-reinit/execute/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(data)
+        })
+        .then(response => response.json())
+        .then(result => {
+            document.getElementById('loading_overlay').style.display = 'none';
+            
+            if (result.success) {
+                const successMsg = document.getElementById('success_message');
+                successMsg.innerHTML = `
+                    <h3>✅ System Reset Completed Successfully!</h3>
+                    <p>All data has been cleared and the system has been reset.</p>
+                    <h4>New Admin Account:</h4>
+                    <ul>
+                        <li><strong>Username:</strong> ${result.new_admin.username}</li>
+                        <li><strong>Password:</strong> ${result.new_admin.password}</li>
+                        <li><strong>Email:</strong> ${result.new_admin.email}</li>
+                    </ul>
+                    <p><strong>Please save these credentials!</strong></p>
+                    <button onclick="window.location.reload();" style="margin-top: 10px; padding: 10px 20px; background: #059669; color: white; border: none; border-radius: 4px; cursor: pointer;">
+                        Reload Page
+                    </button>
+                `;
+                successMsg.style.display = 'block';
+                
+                // Clear the form
+                document.querySelectorAll('input').forEach(input => {
+                    if (input.type === 'checkbox') {
+                        input.checked = false;
+                    } else {
+                        input.value = '';
+                    }
+                });
+                updateExecuteButton();
+                
+            } else {
+                const errorMsg = document.getElementById('error_message');
+                errorMsg.innerHTML = `
+                    <h3>❌ System Reset Failed</h3>
+                    <p><strong>Error:</strong> ${result.error}</p>
+                    <p>Please check the error and try again.</p>
+                `;
+                errorMsg.style.display = 'block';
+            }
+        })
+        .catch(error => {
+            document.getElementById('loading_overlay').style.display = 'none';
+            const errorMsg = document.getElementById('error_message');
+            errorMsg.innerHTML = `
+                <h3>❌ Network Error</h3>
+                <p><strong>Error:</strong> ${error.message}</p>
+                <p>Please check your connection and try again.</p>
+            `;
+            errorMsg.style.display = 'block';
+        });
+    });
+    
+    // Initial button state
+    updateExecuteButton();
+});
+</script>
+
+{% endblock %}

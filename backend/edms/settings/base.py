@@ -244,7 +244,7 @@ EMAIL_HOST_USER = config('EMAIL_HOST_USER', default='')
 EMAIL_HOST_PASSWORD = config('EMAIL_HOST_PASSWORD', default='')
 DEFAULT_FROM_EMAIL = config('DEFAULT_FROM_EMAIL', default='noreply@edms-project.com')
 
-# CORS Configuration
+# CORS Configuration - Enhanced for frontend-backend communication
 CORS_ALLOW_CREDENTIALS = True
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:3000",  # React development server
@@ -263,11 +263,20 @@ CORS_ALLOWED_HEADERS = [
     'user-agent',
     'x-csrftoken',
     'x-requested-with',
+    'x-requested-id',  # Custom request tracking
 ]
 
+# Session Configuration for cross-origin
+SESSION_COOKIE_NAME = 'sessionid'
+SESSION_COOKIE_PATH = '/'
+SESSION_COOKIE_DOMAIN = None  # Allow cross-subdomain sharing
+SESSION_SAVE_EVERY_REQUEST = True
+
 # CSRF Configuration for cross-origin
+CSRF_COOKIE_NAME = 'csrftoken'
 CSRF_COOKIE_SAMESITE = 'Lax'  # Development-friendly for localhost
 CSRF_COOKIE_SECURE = False  # Set to True in production with HTTPS
+CSRF_COOKIE_DOMAIN = None  # Allow cross-subdomain sharing
 CSRF_TRUSTED_ORIGINS = [
     "http://localhost:3000",
     "http://127.0.0.1:3000",

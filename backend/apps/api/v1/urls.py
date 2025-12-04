@@ -7,7 +7,7 @@ and comprehensive documentation.
 
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
-from rest_framework.documentation import include_docs_urls
+# from rest_framework.documentation import include_docs_urls  # Temporarily disabled - missing coreapi dependency
 from drf_spectacular.views import (
     SpectacularAPIView, SpectacularRedocView, SpectacularSwaggerView
 )
@@ -110,7 +110,7 @@ urlpatterns = [
     path('schema/', SpectacularAPIView.as_view(), name='schema'),
     path('docs/', SpectacularSwaggerView.as_view(url_name='schema'), name='swagger-ui'),
     path('redoc/', SpectacularRedocView.as_view(url_name='schema'), name='redoc'),
-    path('docs-legacy/', include_docs_urls(title='EDMS API')),
+    # path('docs-legacy/', include_docs_urls(title='EDMS API')),  # Temporarily disabled - missing coreapi dependency
     
     # API status and health
     path('status/', APIStatusView.as_view(), name='api-status'),
