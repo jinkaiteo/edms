@@ -13,7 +13,10 @@ import tarfile
 import hashlib
 import json
 import logging
-import psutil
+try:
+    import psutil
+except ImportError:
+    psutil = None
 from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Dict, Any, List, Optional, Tuple
@@ -29,8 +32,16 @@ from .models import (
     BackupConfiguration, BackupJob, RestoreJob, 
     HealthCheck, SystemMetric, DisasterRecoveryPlan
 )
-from apps.audit.services import audit_service
-from apps.security.encryption import encryption_service
+# Conditional imports to handle missing services
+try:
+    from apps.audit.services import audit_service
+except ImportError:
+    audit_service = None
+
+try:
+    from apps.security.encryption import encryption_service
+except ImportError:
+    encryption_service = None
 
 User = get_user_model()
 logger = logging.getLogger(__name__)

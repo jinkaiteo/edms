@@ -7,6 +7,7 @@ The `urlpatterns` list routes URLs to views. For more information please see:
 
 from django.contrib import admin
 from django.urls import path, include
+from django.http import HttpResponse
 from django.conf import settings
 from django.conf.urls.static import static
 from drf_spectacular.views import (
@@ -52,13 +53,18 @@ api_urlpatterns = [
 # Main URL patterns
 urlpatterns = [
     # Admin interface
-    path('admin/', admin.site.urls),
+    path('admin/', include('apps.admin_pages.urls')),  # Custom admin pages
+    path('admin/scheduler/', include('apps.scheduler.urls')),  # Scheduler monitoring
+    path('admin/django/', admin.site.urls),  # Django admin (moved to /admin/django/)
     
     # API v1
     path('api/v1/', include(api_urlpatterns)),
     
     # Health check endpoint (unauthenticated)
     path('health/', include('edms.health_urls')),
+    
+    # Handle favicon.ico requests to prevent 404 errors
+    path('favicon.ico', lambda request: HttpResponse(status=204)),  # No Content
 ]
 
 # Serve media files in development

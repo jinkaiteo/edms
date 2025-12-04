@@ -48,6 +48,7 @@ LOCAL_APPS = [
     'apps.scheduler',
     'apps.backup',
     'apps.settings',
+    'apps.admin_pages',
 ]
 
 INSTALLED_APPS = DJANGO_APPS + THIRD_PARTY_APPS + LOCAL_APPS
@@ -119,6 +120,8 @@ SESSION_CACHE_ALIAS = 'default'
 SESSION_COOKIE_AGE = 28800  # 8 hours
 SESSION_COOKIE_HTTPONLY = True
 SESSION_COOKIE_SECURE = config('SESSION_COOKIE_SECURE', default=False, cast=bool)
+SESSION_COOKIE_SAMESITE = 'Lax'  # Development-friendly for localhost
+SESSION_COOKIE_DOMAIN = None  # Allow localhost subdomains
 
 # Password validation
 # https://docs.djangoproject.com/en/4.2/ref/settings/#auth-password-validators
@@ -245,6 +248,8 @@ CORS_ALLOW_CREDENTIALS = True
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:3000",  # React development server
     "http://127.0.0.1:3000",
+    "http://localhost:8000",  # Django backend
+    "http://127.0.0.1:8000",
 ]
 CORS_ALLOW_ALL_ORIGINS = False
 CORS_ALLOWED_HEADERS = [
@@ -257,6 +262,14 @@ CORS_ALLOWED_HEADERS = [
     'user-agent',
     'x-csrftoken',
     'x-requested-with',
+]
+
+# CSRF Configuration for cross-origin
+CSRF_COOKIE_SAMESITE = 'Lax'  # Development-friendly for localhost
+CSRF_COOKIE_SECURE = False  # Set to True in production with HTTPS
+CSRF_TRUSTED_ORIGINS = [
+    "http://localhost:3000",
+    "http://127.0.0.1:3000",
 ]
 
 # File Upload Configuration

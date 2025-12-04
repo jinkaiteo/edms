@@ -1,18 +1,37 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
+import { useLocation } from 'react-router-dom';
 import Layout from '../components/common/Layout.tsx';
 import UserManagement from '../components/users/UserManagement.tsx';
 import PlaceholderManagement from '../components/placeholders/PlaceholderManagement.tsx';
 import SystemSettings from '../components/settings/SystemSettings.tsx';
 import AuditTrailViewer from '../components/audit/AuditTrailViewer.tsx';
 import LoadingSpinner from '../components/common/LoadingSpinner.tsx';
+import SchedulerStatusWidget from '../components/scheduler/SchedulerStatusWidget.tsx';
+import BackupManagement from '../components/backup/BackupManagement.tsx';
 import { useDashboardUpdates } from '../hooks/useDashboardUpdates.ts';
 import { DashboardStats } from '../types/api.ts';
 
 const AdminDashboard: React.FC = () => {
-  const [activeSection, setActiveSection] = useState<'overview' | 'users' | 'placeholders' | 'settings' | 'audit' | 'tasks' | 'reports'>('overview');
+  const location = useLocation();
+  const [activeSection, setActiveSection] = useState<'overview' | 'users' | 'placeholders' | 'settings' | 'audit' | 'tasks' | 'reports' | 'scheduler' | 'backup'>('overview');
+  
+  // Handle URL parameters to set the active tab
+  useEffect(() => {
+    const searchParams = new URLSearchParams(location.search);
+    const tab = searchParams.get('tab');
+    
+    // Map tab parameter to valid sections
+    const validSections = ['overview', 'users', 'placeholders', 'settings', 'audit', 'tasks', 'reports', 'scheduler', 'backup'];
+    if (tab && validSections.includes(tab)) {
+      setActiveSection(tab as typeof activeSection);
+      console.log(`📂 AdminDashboard: Setting active tab to '${tab}' from URL parameter`);
+    } else {
+      setActiveSection('overview');
+    }
+  }, [location.search]);
   
   // Clear any document selection when entering Administration page
-  React.useEffect(() => {
+  useEffect(() => {
     console.log('🔄 AdminDashboard: Clearing document selection on administration page entry');
     window.dispatchEvent(new CustomEvent('clearDocumentSelection'));
   }, []);
@@ -85,6 +104,20 @@ const AdminDashboard: React.FC = () => {
       description: 'Generate compliance reports',
       icon: '📊',
       color: 'bg-pink-500'
+    },
+    {
+      key: 'scheduler' as const,
+      title: 'Scheduler Dashboard',
+      description: 'Monitor automated tasks and system health',
+      icon: '🖥️',
+      color: 'bg-indigo-500'
+    },
+    {
+      key: 'backup' as const,
+      title: 'Backup & Recovery',
+      description: 'Manage system backups and disaster recovery',
+      icon: '💾',
+      color: 'bg-teal-500'
     }
   ];
 
@@ -398,6 +431,10 @@ const AdminDashboard: React.FC = () => {
         return <AuditTrailViewer />;
       case 'reports':
         return renderReportsInline();
+      case 'scheduler':
+        return <SchedulerStatusWidget showDetails={true} />;
+      case 'backup':
+        return <BackupManagement />;
       default:
         return renderOverview();
     }
