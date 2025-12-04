@@ -98,6 +98,7 @@ These insights focus on patterns that prevent common development pitfalls and im
 - **Audit trail field optimization**: Use shortened, meaningful action names instead of descriptive sentences to avoid length constraint errors (e.g., `DOC_EFFECTIVE_PROCESSED` vs `DOCUMENT_EFFECTIVE_DATE_PROCESSED`)
 - **JSON serialization safety**: Convert datetime objects to ISO format with `.isoformat()` before returning in API responses to prevent JSON serialization errors
 - **Model field verification**: Before writing ORM queries, verify actual model field names exist - database schema may differ from assumptions (e.g., `status` field might not exist, use `is_active` and `is_completed` instead)
+- **Protected foreign key recognition**: Django's ProtectedError on FK deletions is correct architecture, not a bug - respect these constraints rather than forcing deletion, as they preserve audit trails and data integrity
 
 ### API Endpoint and User Context Issues
 
@@ -253,6 +254,7 @@ These insights focus on patterns that prevent common development pitfalls and im
 - **Import placement strategy**: Place imports at module level rather than inside functions to avoid scope issues
 - **Missing import debugging**: When getting `name 'X' is not defined` errors in Django views, check both local and global import statements
 - **Function-level imports**: Use sparingly and only when avoiding circular dependencies or lazy loading is required
+- **Comprehensive model imports**: When implementing system reset/cleanup operations, import ALL required models at the module level to avoid runtime import errors - missing imports like DocumentType, WorkflowType cause NameError exceptions during cleanup operations
 
 ## Scope Creep Prevention and System Analysis Patterns
 
@@ -261,6 +263,11 @@ These insights focus on patterns that prevent common development pitfalls and im
 - **Systematic analysis approach**: When debugging loops or repeated failures, step back to analyze what's actually working vs. what's failing - often 80% of system works and 20% has scope creep
 - **Working foundation identification**: Always identify and preserve working components (backup creation, validation, tracking) before attempting complex enhancements
 - **Scope boundary enforcement**: When asked to "complete" functionality, clarify if the working validation/tracking system meets the core requirement before adding restoration complexity
+
+### Database Integrity vs Business Requirements
+- **Constraint interpretation**: When database operations "fail" due to FK constraints, first assess if the constraint is protecting critical data integrity rather than assuming it needs to be bypassed
+- **Architectural success redefinition**: System operations that preserve critical infrastructure while achieving core business goals (data cleanup) should be considered successful, even if not achieving 100% deletion targets
+- **Protected relationship respect**: Django's protected foreign keys often represent intentional business logic (audit trails, ownership tracking) - work with these constraints rather than against them
 
 ### Database Constraint and Foreign Key Patterns
 - **Related object save sequence**: When creating objects with foreign key relationships, always save the parent object before creating dependent objects to avoid "unsaved related object" errors

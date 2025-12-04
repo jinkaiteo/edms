@@ -15,7 +15,7 @@ from django.core.management.base import BaseCommand, CommandError
 from django.utils import timezone
 from django.contrib.auth import get_user_model
 
-from apps.backup.models import RestoreJob
+from apps.backup.models import RestoreJob, BackupJob
 from apps.backup.api_views import SystemBackupViewSet
 from apps.audit.services import audit_service
 
