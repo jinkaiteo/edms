@@ -1,0 +1,11 @@
+Database Schema Information
+===========================
+
+This backup uses Django's dumpdata format (JSON).
+To restore:
+1. Create a fresh Django database
+2. Run: python manage.py migrate
+3. Run: python manage.py loaddata database_backup.json
+
+Backup created: /tmp/edms_export_20251208_082241/database/database_backup.json
+Django version: (4, 2, 16, 'final', 0)

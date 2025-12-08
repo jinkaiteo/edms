@@ -1,0 +1,90 @@
+[
+  {
+    "username": "admin",
+    "email": "admin@edms.local",
+    "first_name": "System",
+    "last_name": "Administrator",
+    "is_active": true,
+    "is_staff": true,
+    "is_superuser": true,
+    "groups": [
+      "Document Reviewers",
+      "Document Approvers",
+      "Senior Document Approvers"
+    ],
+    "user_permissions": [],
+    "date_joined": "2025-11-22T08:56:00.322000+00:00"
+  },
+  {
+    "username": "admin01",
+    "email": "admin01@edms.local",
+    "first_name": "admin01",
+    "last_name": "edms",
+    "is_active": true,
+    "is_staff": false,
+    "is_superuser": false,
+    "groups": [],
+    "user_permissions": [],
+    "date_joined": "2025-12-08T07:14:06.894735+00:00"
+  },
+  {
+    "username": "approver01",
+    "email": "approver01@edms.local",
+    "first_name": "approver01",
+    "last_name": "edms",
+    "is_active": true,
+    "is_staff": false,
+    "is_superuser": false,
+    "groups": [],
+    "user_permissions": [],
+    "date_joined": "2025-12-08T07:14:05.631557+00:00"
+  },
+  {
+    "username": "author01",
+    "email": "author01@edms.local",
+    "first_name": "author01",
+    "last_name": "edms",
+    "is_active": true,
+    "is_staff": false,
+    "is_superuser": false,
+    "groups": [],
+    "user_permissions": [],
+    "date_joined": "2025-12-08T07:14:03.692363+00:00"
+  },
+  {
+    "username": "edms_system",
+    "email": "system@edms.local",
+    "first_name": "EDMS",
+    "last_name": "System Service",
+    "is_active": true,
+    "is_staff": false,
+    "is_superuser": false,
+    "groups": [],
+    "user_permissions": [],
+    "date_joined": "2025-12-08T07:03:37.596714+00:00"
+  },
+  {
+    "username": "reviewer01",
+    "email": "reviewer01@edms.local",
+    "first_name": "reviewer01",
+    "last_name": "edms",
+    "is_active": true,
+    "is_staff": false,
+    "is_superuser": false,
+    "groups": [],
+    "user_permissions": [],
+    "date_joined": "2025-12-08T07:14:04.196208+00:00"
+  },
+  {
+    "username": "viewer01",
+    "email": "viewer01@edms.local",
+    "first_name": "viewer01",
+    "last_name": "edms",
+    "is_active": true,
+    "is_staff": false,
+    "is_superuser": false,
+    "groups": [],
+    "user_permissions": [],
+    "date_joined": "2025-12-08T07:14:04.035049+00:00"
+  }
+]

@@ -7,6 +7,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { apiService } from '../../services/api.ts';
+import { triggerBadgeRefresh } from '../../utils/badgeRefresh';
 import { 
   XMarkIcon,
   CheckCircleIcon,
@@ -151,6 +152,10 @@ const RouteForApprovalModal: React.FC<RouteForApprovalModalProps> = ({
       });
 
       // Success - workflow action completed
+      // 🔄 IMMEDIATE BADGE REFRESH: Update badge count immediately after routing for approval
+      triggerBadgeRefresh();
+      console.log('✅ Badge refreshed immediately after routing for approval');
+      
       onApprovalRouted();
       onClose();
 

@@ -49,9 +49,9 @@ const DocumentSelector: React.FC<DocumentSelectorProps> = ({
 
     const filtered = (documents || []).filter(doc => 
       !excludeIds.includes(doc.id) &&
-      (doc.document_number.toLowerCase().includes(searchTerm.toLowerCase()) ||
-       doc.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-       doc.document_type.toLowerCase().includes(searchTerm.toLowerCase()))
+      (doc.document_number?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+       doc.title?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+       doc.document_type?.toLowerCase().includes(searchTerm.toLowerCase()))
     );
 
     setFilteredDocuments(filtered.slice(0, 10)); // Limit to 10 results

@@ -89,6 +89,18 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({
           hasDescription: !!fetchedCompleteDocument.description
         });
         
+        // DEBUG: Check dependencies data
+        console.log('🔍 DEPENDENCIES DEBUG:', {
+          hasDependenciesKey: 'dependencies' in fetchedCompleteDocument,
+          dependenciesValue: fetchedCompleteDocument.dependencies,
+          dependenciesType: typeof fetchedCompleteDocument.dependencies,
+          dependenciesLength: fetchedCompleteDocument.dependencies?.length,
+          hasDependentsKey: 'dependents' in fetchedCompleteDocument,
+          dependentsValue: fetchedCompleteDocument.dependents,
+          dependentsLength: fetchedCompleteDocument.dependents?.length,
+          allKeys: Object.keys(fetchedCompleteDocument)
+        });
+        
         // CRITICAL FIX: Store complete document data in state for display
         setCompleteDocument(fetchedCompleteDocument);
         
@@ -389,20 +401,44 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({
     
     setIsTerminating(true);
     try {
-      // Call the termination API using document ID (backend expects integer ID, not UUID)
+      // Call the termination API using document ID (backend terminate endpoint expects integer ID)
       console.log('🛑 Terminating document:', {
         uuid: document.uuid,
         id: document.id,
         pk: document.pk,
-        allProps: Object.keys(document),
-        using: document.id || document.pk
+        document_number: document.document_number,
+        completeDocument: completeDocument
       });
       
-      const documentId = document.id || document.pk;
+      // Try to get document ID from complete document data first, then fallback to document prop
+      let documentId = completeDocument?.id || document.id;
+      
+      // If we still don't have an ID, fetch the complete document to get the ID
+      if (!documentId && document.uuid) {
+        console.log('📡 Fetching document ID from UUID for termination...');
+        const response = await fetch(`/api/v1/documents/documents/${document.uuid}/`, {
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('accessToken')}`,
+            'Content-Type': 'application/json',
+          },
+        });
+        
+        if (response.ok) {
+          const fetchedDocument = await response.json();
+          documentId = fetchedDocument.id;
+          console.log('✅ Retrieved document ID for termination:', documentId);
+        } else {
+          throw new Error('Failed to fetch document ID for termination');
+        }
+      }
+      
       if (!documentId) {
         console.error('Document object:', document);
-        throw new Error('Document ID or PK is required for termination. Available fields: ' + Object.keys(document).join(', '));
+        console.error('Complete document object:', completeDocument);
+        throw new Error('Document ID is required for termination but could not be retrieved');
       }
+      
+      console.log('🛑 Using document ID for termination:', documentId);
       
       await apiService.post(`/documents/documents/${documentId}/terminate/`, {
         reason: reason
@@ -1195,6 +1231,140 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({
                   </div>
                 )}
               </div>
+            </div>
+
+            {/* Document Dependencies Section */}
+            <div>
+              <h3 className="text-lg font-medium text-gray-900 mb-4">🔗 Document Dependencies</h3>
+              
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                {/* Dependencies - What this document depends on */}
+                <div className="border border-gray-200 rounded-lg p-4">
+                  <div className="flex items-center justify-between mb-3">
+                    <h4 className="text-sm font-semibold text-gray-700">📥 Dependencies</h4>
+                    <span className="text-xs text-gray-500">What this document depends on</span>
+                  </div>
+                  
+                  {(completeDocument?.dependencies || document.dependencies) && (completeDocument?.dependencies || document.dependencies).length > 0 ? (
+                    <div className="space-y-3">
+                      {(completeDocument?.dependencies || document.dependencies).map((dep: any) => (
+                        <div key={dep.id} className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                          <div className="flex items-start justify-between">
+                            <div className="flex-1">
+                              <div className="flex items-center space-x-2 mb-1">
+                                <span className="text-sm font-medium text-blue-900">
+                                  {dep.depends_on_display || `Document ${dep.depends_on}`}
+                                </span>
+                                {dep.is_critical && (
+                                  <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-red-100 text-red-800">
+                                    Critical
+                                  </span>
+                                )}
+                              </div>
+                              <div className="flex items-center space-x-2 text-xs text-blue-700">
+                                <span className="capitalize">{(dep.dependency_type_display || dep.dependency_type || 'references').toLowerCase()}</span>
+                                {dep.created_at && (
+                                  <>
+                                    <span>•</span>
+                                    <span>Added {formatDate(dep.created_at)}</span>
+                                  </>
+                                )}
+                              </div>
+                              {dep.description && (
+                                <p className="text-xs text-blue-600 mt-1">{dep.description}</p>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="text-center py-6">
+                      <div className="text-gray-400 mb-2">
+                        <svg className="w-8 h-8 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+                        </svg>
+                      </div>
+                      <p className="text-sm text-gray-500">No dependencies</p>
+                      <p className="text-xs text-gray-400 mt-1">This document does not depend on other documents</p>
+                    </div>
+                  )}
+                </div>
+
+                {/* Dependents - What depends on this document */}
+                <div className="border border-gray-200 rounded-lg p-4">
+                  <div className="flex items-center justify-between mb-3">
+                    <h4 className="text-sm font-semibold text-gray-700">📤 Dependents</h4>
+                    <span className="text-xs text-gray-500">What depends on this document</span>
+                  </div>
+                  
+                  {(completeDocument?.dependents || document.dependents) && (completeDocument?.dependents || document.dependents).length > 0 ? (
+                    <div className="space-y-3">
+                      {(completeDocument?.dependents || document.dependents).map((dep: any) => (
+                        <div key={dep.id} className="bg-green-50 border border-green-200 rounded-lg p-3">
+                          <div className="flex items-start justify-between">
+                            <div className="flex-1">
+                              <div className="flex items-center space-x-2 mb-1">
+                                <span className="text-sm font-medium text-green-900">
+                                  {dep.document_display || `Document ${dep.document}`}
+                                </span>
+                                {dep.is_critical && (
+                                  <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-red-100 text-red-800">
+                                    Critical
+                                  </span>
+                                )}
+                              </div>
+                              <div className="flex items-center space-x-2 text-xs text-green-700">
+                                <span className="capitalize">{(dep.dependency_type_display || dep.dependency_type || 'references').toLowerCase()}</span>
+                                {dep.created_at && (
+                                  <>
+                                    <span>•</span>
+                                    <span>Added {formatDate(dep.created_at)}</span>
+                                  </>
+                                )}
+                              </div>
+                              {dep.description && (
+                                <p className="text-xs text-green-600 mt-1">{dep.description}</p>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="text-center py-6">
+                      <div className="text-gray-400 mb-2">
+                        <svg className="w-8 h-8 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+                        </svg>
+                      </div>
+                      <p className="text-sm text-gray-500">No dependents</p>
+                      <p className="text-xs text-gray-400 mt-1">No other documents depend on this one</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+              
+              {/* Circular Dependency Warning */}
+              {((document.dependencies && document.dependencies.length > 0) || 
+                (document.dependents && document.dependents.length > 0)) && (
+                <div className="mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+                  <div className="flex">
+                    <div className="flex-shrink-0">
+                      <svg className="h-5 w-5 text-yellow-400" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 00-1-1z" clipRule="evenodd" />
+                        </svg>
+                    </div>
+                    <div className="ml-3">
+                      <h4 className="text-sm font-medium text-yellow-800">⚠️ Dependency Notice</h4>
+                      <p className="text-sm text-yellow-700 mt-1">
+                        This document has dependency relationships. Changes to dependencies may affect related documents.
+                        The system prevents circular dependencies to maintain document integrity.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Workflow Assignment Information */}

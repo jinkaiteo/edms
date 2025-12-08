@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import PasswordInput from '../common/PasswordInput.tsx';
 import { apiService } from '../../services/api.ts';
 
 interface BackupJob {
@@ -591,10 +592,17 @@ const BackupManagement: React.FC = () => {
       const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || 
                         document.cookie.split('; ').find(row => row.startsWith('csrftoken='))?.split('=')[1];
 
+      // Get JWT token for authentication
+      const accessToken = localStorage.getItem('accessToken');
+      if (!accessToken) {
+        throw new Error('Please log in first to perform restore operations');
+      }
+
       const response = await fetch('/api/v1/backup/system/restore/', {
         method: 'POST',
         credentials: 'include',
         headers: {
+          'Authorization': `Bearer ${accessToken}`,
           'X-CSRFToken': csrfToken || '',
         },
         body: formData
@@ -1327,8 +1335,7 @@ const BackupManagement: React.FC = () => {
                     <label className="block text-sm font-medium text-red-800 mb-2">
                       Enter your current admin password:
                     </label>
-                    <input
-                      type="password"
+                    <PasswordInput
                       value={systemResetState.adminPassword}
                       onChange={(e) => setSystemResetState(prev => ({
                         ...prev,

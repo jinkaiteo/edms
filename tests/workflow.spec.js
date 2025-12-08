@@ -11,6 +11,8 @@
 
 const { test, expect } = require('@playwright/test');
 const path = require('path');
+const { LoginPage, DocumentPage } = require('./helpers/page-objects.js');
+const { TestUtils } = require('./helpers/test-utils.js');
 
 test.describe('EDMS Submit for Review Workflow', () => {
   test('Complete workflow: Create document → Submit for review → Verify state', async ({ page }) => {

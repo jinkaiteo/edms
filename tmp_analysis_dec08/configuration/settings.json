@@ -1,0 +1,43 @@
+{
+  "timezone": "UTC",
+  "language": "en-us",
+  "installed_apps": [
+    "apps.users",
+    "apps.documents",
+    "apps.workflows",
+    "apps.audit",
+    "apps.security",
+    "apps.placeholders",
+    "apps.scheduler",
+    "apps.backup",
+    "apps.settings",
+    "apps.admin_pages"
+  ],
+  "document_processing": {
+    "ALLOWED_EXTENSIONS": [
+      ".docx",
+      ".pdf",
+      ".txt"
+    ],
+    "MAX_FILE_SIZE": 52428800,
+    "ENABLE_OCR": true,
+    "TESSERACT_CMD": "/usr/bin/tesseract"
+  },
+  "audit_settings": {
+    "ENABLE_AUDIT": true,
+    "TRACK_FIELD_CHANGES": true,
+    "AUDIT_RETENTION_DAYS": 2555
+  },
+  "official_pdf_config": {
+    "ENABLE_PDF_GENERATION": true,
+    "PDF_ENGINE": "reportlab",
+    "SIGNATURE_ALGORITHM": "RSA-SHA256",
+    "PDF_WATERMARK": true,
+    "INCLUDE_QR_VERIFICATION": true,
+    "FALLBACK_TO_ANNOTATED": true,
+    "MAX_GENERATION_TIME_SECONDS": 60,
+    "MAX_CONCURRENT_GENERATIONS": 5,
+    "PDF_METADATA_OVERLAY": true,
+    "SIGNATURE_VISIBLE": true
+  }
+}

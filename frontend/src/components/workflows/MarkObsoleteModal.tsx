@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { XMarkIcon, ExclamationTriangleIcon, InformationCircleIcon } from '@heroicons/react/24/outline';
 import { apiService } from '../../services/api.ts';
+import { triggerBadgeRefresh } from '../../utils/badgeRefresh.ts';
 
 interface Document {
   uuid: string;
@@ -158,6 +159,11 @@ const MarkObsoleteModal: React.FC<MarkObsoleteModalProps> = ({
 
       if (workflowResponse?.success) {
         console.log('✅ Obsolescence workflow started successfully');
+        
+        // 🔄 IMMEDIATE BADGE REFRESH: Update badge count immediately after marking obsolete
+        triggerBadgeRefresh();
+        console.log('✅ Badge refreshed immediately after marking document obsolete');
+        
         onSuccess();
         handleClose();
       } else {

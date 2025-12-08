@@ -52,7 +52,6 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
   const navigate = useNavigate();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [apiStatus, setApiStatus] = useState<ApiStatus | null>(null);
-  const [documentCount, setDocumentCount] = useState<number>(0);
   const [showChangePassword, setShowChangePassword] = useState(false);
   const [showProfileDropdown, setShowProfileDropdown] = useState(false);
   const [expandedMenus, setExpandedMenus] = useState<Record<string, boolean>>({});
@@ -80,42 +79,84 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
     }
   }, [authenticated]);
 
-  // Poll for "My Tasks" count (documents in my tasks/pending states)
+  // Document count state and refresh functionality
+  const [documentCount, setDocumentCount] = useState<number>(0);
+  const [lastRefreshTime, setLastRefreshTime] = useState<number>(0);
+
+  // Smart badge refresh function  
+  const refreshBadge = async () => {
+    if (!authenticated || !user) {
+      console.log('Badge refresh skipped - user not authenticated');
+      return;
+    }
+    
+    try {
+      console.log('🔄 Badge refresh starting...');
+      const data = await apiService.get('/documents/documents/?filter=my_tasks');
+      const documents = data.results || [];
+      const count = documents.length;
+      
+      setDocumentCount(count);
+      setLastRefreshTime(Date.now());
+      console.log(`✅ Badge refreshed successfully: ${count} documents`);
+      
+      return count;
+    } catch (err) {
+      console.error('❌ Failed to refresh badge:', err);
+      console.error('Badge refresh error details:', err.response?.data || err.message);
+      
+      // Don't reset to 0 on error - keep current count
+      console.log('Keeping current badge count due to error');
+    }
+  };
+
+  // Enhanced polling with immediate refresh capability
   useEffect(() => {
-    const fetchMyDocumentsCount = async () => {
-      try {
-        // Use apiService instead of direct fetch to ensure proper routing
-        const data = await apiService.get('/documents/documents/?pending_my_action=true');
-        const documents = data.results || [];
-        
-        // Count matches exactly what My Tasks page shows
-        setDocumentCount(documents.length);
-        console.log(`📊 My Tasks badge: ${documents.length} documents in my tasks`);
-        console.log(`🎯 Badge will ${documents.length > 0 ? 'SHOW' : 'HIDE'} (count: ${documents.length})`);
-        
-        // Debug: Show breakdown
-        if (documents.length > 0) {
-          const statusBreakdown = documents.reduce((acc: any, doc: any) => {
-            acc[doc.status] = (acc[doc.status] || 0) + 1;
-            return acc;
-          }, {});
-          console.log('📋 Status breakdown:', statusBreakdown);
-        }
-      } catch (err) {
-        console.error('Failed to fetch active documents count:', err);
-        setDocumentCount(0);
+    if (!authenticated || !user) return;
+
+    // Initial fetch
+    refreshBadge();
+    
+    // Listen for global badge refresh events from workflow components
+    const handleBadgeRefreshEvent = () => {
+      refreshBadge();
+    };
+    
+    window.addEventListener('badgeRefresh', handleBadgeRefreshEvent);
+    
+    // Adaptive polling based on user activity
+    const getPollingInterval = () => {
+      const now = Date.now();
+      const timeSinceLastRefresh = now - lastRefreshTime;
+      
+      // More frequent polling if recently refreshed (user is active)
+      if (timeSinceLastRefresh < 2 * 60 * 1000) { // 2 minutes
+        return 15000; // 15 seconds when recently active
+      } else if (timeSinceLastRefresh < 10 * 60 * 1000) { // 10 minutes
+        return 30000; // 30 seconds when moderately active
+      } else {
+        return 60000; // 60 seconds when idle
       }
     };
 
-    if (authenticated && user) {
-      // Initial fetch
-      fetchMyDocumentsCount();
+    const startPolling = () => {
+      const poll = () => {
+        refreshBadge();
+        const nextInterval = getPollingInterval();
+        setTimeout(poll, nextInterval);
+      };
       
-      // Poll every 60 seconds
-      const interval = setInterval(fetchMyDocumentsCount, 60000);
-      return () => clearInterval(interval);
-    }
-  }, [authenticated, user]);
+      // Start first poll after initial interval
+      const initialInterval = getPollingInterval();
+      setTimeout(poll, initialInterval);
+    };
+
+    startPolling();
+    
+    return () => {
+      window.removeEventListener('badgeRefresh', handleBadgeRefreshEvent);
+    };
+  }, [authenticated, user, lastRefreshTime]);
 
   // Handle click outside dropdown to close it
   useEffect(() => {

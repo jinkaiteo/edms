@@ -461,10 +461,86 @@ class Command(BaseCommand):
         """Restore database from package."""
         self.stdout.write("📊 Restoring database...")
         
-        db_file = package_path / 'database' / 'complete.sql'
-        if not db_file.exists():
-            raise CommandError("Database backup file not found in package")
+        # Check for Django JSON fixture first (preferred)
+        json_file = package_path / 'database' / 'database_backup.json'
+        sql_file = package_path / 'database' / 'complete.sql'
         
+        if json_file.exists():
+            self._restore_from_django_fixture(json_file)
+        elif sql_file.exists():
+            self._restore_from_sql_dump(sql_file)
+        else:
+            raise CommandError("No database backup file found in package")
+
+    def _restore_from_django_fixture(self, json_file: Path):
+        """Restore from Django JSON fixture with foreign key fixes."""
+        from django.core.management import call_command
+        from django.contrib.auth import get_user_model
+        import json
+        
+        User = get_user_model()
+        
+        self.stdout.write("Loading Django fixture with foreign key fixes...")
+        
+        # Load and fix the backup data
+        with open(json_file, 'r') as f:
+            backup_data = json.load(f)
+        
+        # Create user mapping for current system
+        current_users = User.objects.all()
+        user_map = {user.username: user.id for user in current_users}
+        
+        # Fix foreign key references
+        user_fields = [
+            'author', 'reviewer', 'approver', 'user', 'triggered_by', 
+            'requested_by', 'created_by', 'updated_by', 'initiated_by',
+            'current_assignee', 'selected_reviewer', 'selected_approver'
+        ]
+        
+        fixed_count = 0
+        for record in backup_data:
+            if 'fields' not in record:
+                continue
+                
+            fields = record['fields']
+            
+            for field_name in user_fields:
+                if field_name not in fields:
+                    continue
+                    
+                field_value = fields[field_name]
+                
+                # Handle array format like ["username"]
+                if isinstance(field_value, list):
+                    if len(field_value) == 1 and field_value[0] in user_map:
+                        fields[field_name] = user_map[field_value[0]]
+                        fixed_count += 1
+                    elif len(field_value) == 0:
+                        fields[field_name] = None
+                    else:
+                        fields[field_name] = None
+                
+                # Handle string format
+                elif isinstance(field_value, str) and field_value in user_map:
+                    fields[field_name] = user_map[field_value]
+                    fixed_count += 1
+        
+        # Save fixed data to temporary file
+        import tempfile
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False) as temp_file:
+            json.dump(backup_data, temp_file)
+            temp_file_path = temp_file.name
+        
+        try:
+            # Load the fixed data
+            call_command('loaddata', temp_file_path)
+            self.stdout.write(f"✓ Database restored successfully ({fixed_count} foreign key fixes applied)")
+        finally:
+            # Clean up temporary file
+            os.unlink(temp_file_path)
+
+    def _restore_from_sql_dump(self, sql_file: Path):
+        """Restore from SQL dump (legacy method)."""
         db_settings = settings.DATABASES['default']
         
         # Restore database
@@ -474,7 +550,7 @@ class Command(BaseCommand):
             '-p', str(db_settings['PORT']),
             '-U', db_settings['USER'],
             '-d', db_settings['NAME'],
-            '-f', str(db_file)
+            '-f', str(sql_file)
         ]
         
         env = os.environ.copy()

@@ -438,12 +438,14 @@ document.addEventListener('DOMContentLoaded', function() {
         document.getElementById('success_message').style.display = 'none';
         document.getElementById('error_message').style.display = 'none';
         
-        // Prepare request data
-        const confirmations = {};
-        ['understand_destructive', 'data_loss_acknowledged', 'no_rollback_understood',
-         'testing_environment_confirmed', 'backup_not_needed'].forEach(id => {
-            confirmations[id] = document.getElementById(id).checked;
-        });
+        // Prepare request data - map HTML field names to API expected names
+        const confirmations = {
+            understanding: document.getElementById('understand_destructive').checked,
+            dataLoss: document.getElementById('data_loss_acknowledged').checked,
+            irreversible: document.getElementById('no_rollback_understood').checked,
+            backupCreated: document.getElementById('testing_environment_confirmed').checked,
+            adminAccess: document.getElementById('backup_not_needed').checked
+        };
         
         const data = {
             confirmations: confirmations,
@@ -454,7 +456,7 @@ document.addEventListener('DOMContentLoaded', function() {
         };
         
         // Execute the reset
-        fetch('/admin/system-reinit/execute/', {
+        fetch('/admin/api/system-reinit/', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',

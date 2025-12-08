@@ -1,0 +1,96 @@
+{
+  "backup_type": "configuration_files",
+  "created_at": "2025-12-08T08:22:41.918505+00:00",
+  "critical_warning": "These files contain sensitive information including SECRET_KEY - handle securely",
+  "files_backed_up": 3,
+  "config_files": [
+    {
+      "original_path": "/app/.env",
+      "backup_name": "environment_variables.env",
+      "size": 836,
+      "contains_secrets": true,
+      "restore_location": "/app/.env",
+      "checksum": "ac1f1e8d04b290a6157bc12052cf058a974e884dd1bd9530b4b6ca5dac410b5d"
+    },
+    {
+      "original_path": "/app/.env.workflow",
+      "backup_name": "workflow_environment.env",
+      "size": 561,
+      "contains_secrets": true,
+      "restore_location": "/app/.env.workflow",
+      "checksum": "96eb089e078ece61ba3278586da810e261f49474b733e1607af1415d81b85d78"
+    },
+    {
+      "original_path": "/app/edms/settings/simple.py",
+      "backup_name": "django_settings/simple.py",
+      "size": 3434,
+      "contains_secrets": true,
+      "restore_location": "/app/edms/settings/simple.py",
+      "checksum": "bf128f549d544d2dcfe5ef9426a46ab43d8cd6c2fee0ebb304a33fb5bacfa3bd"
+    },
+    {
+      "original_path": "/app/edms/settings/minimal.py",
+      "backup_name": "django_settings/minimal.py",
+      "size": 2973,
+      "contains_secrets": true,
+      "restore_location": "/app/edms/settings/minimal.py",
+      "checksum": "bb0d8fec818d01a106ed4dc76cad982113fcc0939659922aa0294e9d01444983"
+    },
+    {
+      "original_path": "/app/edms/settings/workflow_dev.py",
+      "backup_name": "django_settings/workflow_dev.py",
+      "size": 5949,
+      "contains_secrets": true,
+      "restore_location": "/app/edms/settings/workflow_dev.py",
+      "checksum": "66fd7117911d489c9b94631db6203dc914080ef29a3f22aafc538aebbfa3cf21"
+    },
+    {
+      "original_path": "/app/edms/settings/development_full.py",
+      "backup_name": "django_settings/development_full.py",
+      "size": 2530,
+      "contains_secrets": false,
+      "restore_location": "/app/edms/settings/development_full.py",
+      "checksum": "f3ba441170dc084abc551a522aae17f4de2588e6256858959a5388572be80517"
+    },
+    {
+      "original_path": "/app/edms/settings/test.py",
+      "backup_name": "django_settings/test.py",
+      "size": 4313,
+      "contains_secrets": true,
+      "restore_location": "/app/edms/settings/test.py",
+      "checksum": "16758c85d6288a254b7d3ac91bf74d1992f015d8db0df0bffd7b66d0687b83b4"
+    },
+    {
+      "original_path": "/app/edms/settings/production.py",
+      "backup_name": "django_settings/production.py",
+      "size": 2218,
+      "contains_secrets": false,
+      "restore_location": "/app/edms/settings/production.py",
+      "checksum": "7762ab15903653c29873c885598b2ff0a1c9eef73e323d5a4052c92a50661116"
+    },
+    {
+      "original_path": "/app/edms/settings/base.py",
+      "backup_name": "django_settings/base.py",
+      "size": 10803,
+      "contains_secrets": true,
+      "restore_location": "/app/edms/settings/base.py",
+      "checksum": "42427be946dafd83347217d425e53f2dff5d99ba3b0b0e1fd903e2ce465d5e12"
+    },
+    {
+      "original_path": "/app/edms/settings/development.py",
+      "backup_name": "django_settings/development.py",
+      "size": 2539,
+      "contains_secrets": false,
+      "restore_location": "/app/edms/settings/development.py",
+      "checksum": "71d8b2dd69a4c80884c5734a83c10e9d1446a107fbf64a5ed2f42ade9e7ed1ce"
+    },
+    {
+      "original_path": "/app/edms/settings/__init__.py",
+      "backup_name": "django_settings/__init__.py",
+      "size": 17,
+      "contains_secrets": false,
+      "restore_location": "/app/edms/settings/__init__.py",
+      "checksum": "c8ffc0c8267bc937a957049a0ae7e00485128bb5d246ebb8c501a922e8fce058"
+    }
+  ]
+}

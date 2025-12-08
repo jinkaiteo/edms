@@ -143,9 +143,12 @@ class BackupService:
             raise
 
     def _backup_database(self, config: BackupConfiguration, job: BackupJob) -> str:
-        """Backup database using Django-native approach."""
+        """Backup database using Django's dumpdata for complete data export."""
         import json
         import gzip
+        import tempfile
+        from django.core.management import call_command
+        from io import StringIO
         
         timestamp = timezone.now().strftime('%Y%m%d_%H%M%S')
         backup_filename = f"database_backup_{timestamp}.json"
@@ -159,49 +162,133 @@ class BackupService:
         # Get database settings
         db_settings = settings.DATABASES['default']
         
-        # Create Django-based backup data
-        backup_data = {
-            'backup_type': 'django_native_database',
-            'created_at': timezone.now().isoformat(),
-            'database_info': {
-                'engine': db_settings['ENGINE'],
-                'name': db_settings['NAME']
-            },
-            'tables_info': {}
-        }
+        # Define apps and models to backup (including Django system tables)
+        apps_to_backup = [
+            'contenttypes',     # Django content types - CRITICAL for model references
+            'auth',             # Django auth (groups, permissions) - CRITICAL for authorization
+            'admin',            # Django admin logs (optional)
+            'sessions',         # User sessions - for session persistence across restore
+            'django_celery_beat', # Scheduled tasks - CRITICAL for automation
+            # EDMS Core Apps
+            'users',            # User accounts and roles
+            'documents',        # Document management
+            'workflows',        # Workflow definitions and instances
+            'audit',            # Audit trails and compliance
+            'security',         # Security certificates and signatures
+            'placeholders',     # Document placeholders and templates
+            'backup',           # Backup configurations
+            'settings',         # System settings and configurations
+        ]
         
         try:
-            # Get basic table information
-            with connection.cursor() as cursor:
-                cursor.execute("""
-                    SELECT table_name, 
-                           (SELECT COUNT(*) FROM information_schema.columns 
-                            WHERE table_name = t.table_name AND table_schema = 'public') as column_count
-                    FROM information_schema.tables t
-                    WHERE table_schema = 'public' AND table_type = 'BASE TABLE'
-                    ORDER BY table_name;
-                """)
-                for table_name, column_count in cursor.fetchall():
-                    backup_data['tables_info'][table_name] = {
-                        'column_count': column_count,
-                        'backup_note': 'Django-native backup - use Django migrations for restore'
-                    }
+            # Create complete data backup using Django's dumpdata
+            backup_buffer = StringIO()
             
+            logger.info(f"Starting database backup with apps: {', '.join(apps_to_backup)}")
+            
+            # Export data using Django's dumpdata with natural keys
+            call_command(
+                'dumpdata',
+                *apps_to_backup,      # Include all critical apps
+                '--natural-foreign',  # Use natural keys for foreign key references
+                '--natural-primary',  # Use natural keys for primary keys where available
+                '--indent=2',         # Pretty formatting
+                '--exclude=sessions.session',  # Exclude session data
+                stdout=backup_buffer,
+                verbosity=0          # Quiet output
+            )
+            
+            # Get the backup data
+            backup_content = backup_buffer.getvalue()
+            
+            # Parse to get statistics
+            backup_data = json.loads(backup_content)
+            
+            # Create metadata
+            metadata = {
+                'backup_type': 'django_complete_data',
+                'created_at': timezone.now().isoformat(),
+                'database_info': {
+                    'engine': db_settings['ENGINE'],
+                    'name': db_settings['NAME']
+                },
+                'apps_included': apps_to_backup,
+                'total_records': len(backup_data),
+                'model_counts': {}
+            }
+            
+            # Count records by model
+            for record in backup_data:
+                model = record.get('model', 'unknown')
+                metadata['model_counts'][model] = metadata['model_counts'].get(model, 0) + 1
+            
+            logger.info(f"Database backup contains {len(backup_data)} records from {len(metadata['model_counts'])} models")
+            
+            # Write backup file
             if config.compression_enabled:
                 # Write compressed JSON data
                 with gzip.open(backup_path, 'wt') as f:
-                    json.dump(backup_data, f, indent=2, default=str)
+                    f.write(backup_content)
             else:
                 # Write uncompressed JSON data
                 with open(backup_path, 'w') as f:
-                    json.dump(backup_data, f, indent=2, default=str)
+                    f.write(backup_content)
+            
+            # Write metadata file alongside
+            metadata_path = backup_path.replace('.json', '_metadata.json').replace('.gz', '')
+            with open(metadata_path, 'w') as f:
+                json.dump(metadata, f, indent=2, default=str)
             
             logger.info(f"Database backup completed: {backup_path}")
+            logger.info(f"Backup metadata saved: {metadata_path}")
             return backup_path
             
         except Exception as e:
-            logger.error(f"Database backup failed: {str(e)}")
-            raise
+            logger.error(f"Complete database backup failed: {str(e)}")
+            # Fallback to metadata-only backup
+            logger.info("Creating fallback metadata-only backup...")
+            
+            backup_data = {
+                'backup_type': 'django_metadata_fallback',
+                'created_at': timezone.now().isoformat(),
+                'database_info': {
+                    'engine': db_settings['ENGINE'],
+                    'name': db_settings['NAME']
+                },
+                'error': str(e),
+                'note': 'Full data export failed, metadata only',
+                'tables_info': {}
+            }
+            
+            # Get basic table information as fallback
+            try:
+                with connection.cursor() as cursor:
+                    cursor.execute("""
+                        SELECT table_name, 
+                               (SELECT COUNT(*) FROM information_schema.columns 
+                                WHERE table_name = t.table_name AND table_schema = 'public') as column_count
+                        FROM information_schema.tables t
+                        WHERE table_schema = 'public' AND table_type = 'BASE TABLE'
+                        ORDER BY table_name;
+                    """)
+                    for table_name, column_count in cursor.fetchall():
+                        backup_data['tables_info'][table_name] = {
+                            'column_count': column_count,
+                            'backup_note': 'Fallback metadata only - full backup failed'
+                        }
+            except Exception as db_error:
+                backup_data['db_error'] = str(db_error)
+            
+            # Write fallback backup
+            if config.compression_enabled:
+                with gzip.open(backup_path, 'wt') as f:
+                    json.dump(backup_data, f, indent=2, default=str)
+            else:
+                with open(backup_path, 'w') as f:
+                    json.dump(backup_data, f, indent=2, default=str)
+            
+            logger.warning(f"Fallback database backup completed: {backup_path}")
+            return backup_path
 
     def _backup_files(self, config: BackupConfiguration, job: BackupJob) -> str:
         """Backup file system data."""
@@ -532,28 +619,240 @@ class RestoreService:
         return True
 
     def _validate_database_backup(self, backup_path: str) -> bool:
-        """Validate database backup file."""
+        """Validate database backup file (supports both SQL dumps and Django fixtures)."""
         try:
-            # Basic validation - check if file can be read
             if backup_path.endswith('.gz'):
+                # Compressed file validation
                 with gzip.open(backup_path, 'rt') as f:
-                    # Read first few lines to verify format
-                    for i, line in enumerate(f):
-                        if i > 10:  # Check first 10 lines
-                            break
-                        if i == 0 and not line.startswith('--'):
-                            return False  # Should start with SQL comment
+                    content = f.read(1000)  # Read first 1000 characters
             else:
+                # Uncompressed file validation
                 with open(backup_path, 'r') as f:
-                    first_line = f.readline()
-                    if not first_line.startswith('--'):
-                        return False
+                    content = f.read(1000)  # Read first 1000 characters
             
-            return True
+            # Check for Django fixture format (JSON array)
+            if content.strip().startswith('['):
+                try:
+                    import json
+                    # Try to parse as JSON to verify it's valid Django fixture
+                    if backup_path.endswith('.gz'):
+                        with gzip.open(backup_path, 'rt') as f:
+                            data = json.load(f)
+                    else:
+                        with open(backup_path, 'r') as f:
+                            data = json.load(f)
+                    
+                    # Validate it's a proper Django fixture
+                    if isinstance(data, list) and len(data) > 0:
+                        first_record = data[0]
+                        if isinstance(first_record, dict) and 'model' in first_record and 'fields' in first_record:
+                            logger.info(f"Valid Django fixture with {len(data)} records")
+                            return True
+                        else:
+                            logger.error("Invalid Django fixture format - missing model/fields structure")
+                            return False
+                    else:
+                        logger.error("Django fixture is empty or not a list")
+                        return False
+                        
+                except json.JSONDecodeError as e:
+                    logger.error(f"Invalid JSON in Django fixture: {str(e)}")
+                    return False
+                    
+            # Check for SQL dump format
+            elif content.strip().startswith('--') or 'CREATE TABLE' in content or 'INSERT INTO' in content:
+                logger.info("Valid SQL dump format detected")
+                return True
+                
+            # Check for metadata-only backup (fallback format)
+            elif content.strip().startswith('{'):
+                try:
+                    import json
+                    if backup_path.endswith('.gz'):
+                        with gzip.open(backup_path, 'rt') as f:
+                            data = json.load(f)
+                    else:
+                        with open(backup_path, 'r') as f:
+                            data = json.load(f)
+                    
+                    if isinstance(data, dict) and 'backup_type' in data:
+                        logger.warning("Metadata-only backup detected - limited restoration capability")
+                        return True
+                    else:
+                        logger.error("Unknown JSON backup format")
+                        return False
+                        
+                except json.JSONDecodeError as e:
+                    logger.error(f"Invalid JSON in backup: {str(e)}")
+                    return False
+            else:
+                logger.error(f"Unknown backup format - content starts with: {content[:50]}")
+                return False
             
         except Exception as e:
             logger.error(f"Database backup validation failed: {str(e)}")
             return False
+    
+    def _reset_postgresql_sequences(self):
+        """Reset all PostgreSQL sequences to prevent primary key conflicts after restore."""
+        from django.db import connection
+        
+        try:
+            with connection.cursor() as cursor:
+                # Get all sequences in the public schema
+                cursor.execute("""
+                    SELECT sequence_name, sequence_schema 
+                    FROM information_schema.sequences 
+                    WHERE sequence_schema = 'public'
+                    ORDER BY sequence_name;
+                """)
+                
+                sequences = cursor.fetchall()
+                logger.info(f"Found {len(sequences)} sequences to reset")
+                
+                # Reset each sequence to the maximum ID value + 1
+                sequences_reset = 0
+                for sequence_name, schema in sequences:
+                    try:
+                        # Extract table name from sequence name (remove _id_seq suffix)
+                        table_name = sequence_name.replace('_id_seq', '')
+                        
+                        # Get the maximum ID value from the table
+                        cursor.execute(f"""
+                            SELECT COALESCE(MAX(id), 1) FROM {schema}.{table_name};
+                        """)
+                        max_id = cursor.fetchone()[0]
+                        
+                        # Reset the sequence to max_id + 1
+                        cursor.execute(f"""
+                            SELECT setval('{schema}.{sequence_name}', {max_id + 1}, false);
+                        """)
+                        
+                        sequences_reset += 1
+                        logger.debug(f"Reset sequence {sequence_name} to {max_id + 1}")
+                        
+                    except Exception as seq_error:
+                        # Log warning but continue with other sequences
+                        logger.warning(f"Could not reset sequence {sequence_name}: {seq_error}")
+                        continue
+                
+                logger.info(f"Successfully reset {sequences_reset}/{len(sequences)} sequences")
+                
+                # Verify sequences are working by testing a few critical ones
+                critical_sequences = [
+                    'users_id_seq', 'documents_id_seq', 'audit_trail_id_seq',
+                    'auth_permission_id_seq', 'django_content_type_id_seq'
+                ]
+                
+                verification_passed = 0
+                for seq_name in critical_sequences:
+                    try:
+                        cursor.execute(f"SELECT last_value FROM {seq_name};")
+                        last_value = cursor.fetchone()[0]
+                        logger.debug(f"Verified {seq_name}: last_value = {last_value}")
+                        verification_passed += 1
+                    except Exception as verify_error:
+                        logger.warning(f"Could not verify sequence {seq_name}: {verify_error}")
+                
+                logger.info(f"Verified {verification_passed}/{len(critical_sequences)} critical sequences")
+                
+        except Exception as e:
+            logger.error(f"Failed to reset PostgreSQL sequences: {str(e)}")
+            # Don't raise exception - sequence reset is important but not critical enough to fail restore
+            logger.warning("Sequence reset failed - manual sequence reset may be required")
+            logger.warning("Run: SELECT setval('table_id_seq', (SELECT COALESCE(MAX(id), 1) FROM table)); for each table")
+
+    def _restore_configuration_from_path(self, config_path: str):
+        """Restore critical configuration files including environment variables."""
+        import shutil
+        import json
+        from pathlib import Path
+        
+        logger.info(f"Restoring configuration files from: {config_path}")
+        
+        config_dir = Path(config_path)
+        
+        # Check for configuration manifest
+        manifest_file = config_dir / 'config_manifest.json'
+        if manifest_file.exists():
+            with open(manifest_file, 'r') as f:
+                manifest = json.load(f)
+            
+            logger.info(f"Configuration manifest found: {manifest['files_backed_up']} files to restore")
+            
+            # Restore each configuration file
+            restored_files = 0
+            for file_info in manifest.get('config_files', []):
+                backup_path = config_dir / file_info['backup_name']
+                restore_location = file_info['restore_location']
+                
+                if backup_path.exists():
+                    try:
+                        # Create target directory if it doesn't exist
+                        target_path = Path(restore_location)
+                        target_path.parent.mkdir(parents=True, exist_ok=True)
+                        
+                        # Copy file to target location
+                        shutil.copy2(backup_path, target_path)
+                        
+                        # Set appropriate permissions
+                        if 'env' in file_info['backup_name'].lower():
+                            # Environment files should be readable only by owner
+                            target_path.chmod(0o600)
+                        else:
+                            # Other config files
+                            target_path.chmod(0o644)
+                        
+                        logger.info(f"✓ Restored {file_info['backup_name']} to {restore_location}")
+                        restored_files += 1
+                        
+                        # Special handling for critical environment files
+                        if file_info['backup_name'] == 'environment_variables.env':
+                            logger.info("✓ CRITICAL: Django environment variables restored")
+                            logger.warning("Application restart required to apply environment changes")
+                        
+                    except Exception as e:
+                        logger.error(f"Failed to restore {file_info['backup_name']}: {str(e)}")
+                else:
+                    logger.warning(f"Backup file not found: {backup_path}")
+            
+            logger.info(f"Configuration restore completed: {restored_files}/{len(manifest['config_files'])} files restored")
+            
+            # Verify critical files are in place
+            critical_files = ['/app/.env']
+            missing_critical = []
+            for file_path in critical_files:
+                if not Path(file_path).exists():
+                    missing_critical.append(file_path)
+            
+            if missing_critical:
+                logger.error(f"CRITICAL FILES MISSING after restore: {missing_critical}")
+                logger.error("Django may fail to start without these files!")
+            else:
+                logger.info("✓ All critical configuration files verified")
+                
+        else:
+            # Fallback: Look for individual config files
+            logger.warning("No configuration manifest found, attempting manual restore...")
+            
+            # Try to restore .env file directly
+            env_backup = config_dir / 'environment_variables.env'
+            if env_backup.exists():
+                shutil.copy2(env_backup, '/app/.env')
+                Path('/app/.env').chmod(0o600)
+                logger.info("✓ Restored .env file manually")
+            
+            # Try to restore Django settings
+            django_settings_backup = config_dir / 'django_settings'
+            if django_settings_backup.exists():
+                target_settings = Path('/app/edms/settings')
+                if target_settings.exists():
+                    # Backup existing settings
+                    backup_timestamp = timezone.now().strftime('%Y%m%d_%H%M%S')
+                    shutil.move(str(target_settings), f'/app/edms/settings.backup.{backup_timestamp}')
+                
+                shutil.copytree(django_settings_backup, target_settings)
+                logger.info("✓ Restored Django settings manually")
 
     def _restore_full_system(self, backup_job: BackupJob, restore_job: RestoreJob):
         """Restore full system from backup."""
@@ -593,7 +892,7 @@ class RestoreService:
         restore_job.restored_items_count = 1
 
     def _restore_database_from_file(self, backup_path: str):
-        """Restore database from backup file using Django-native approach."""
+        """Restore database from backup file using Django's loaddata for complete restoration."""
         import tempfile
         import json
         from django.core.management import call_command
@@ -604,15 +903,95 @@ class RestoreService:
         try:
             # Handle different backup formats
             if backup_path.endswith('.json.gz'):
-                # Django-native JSON backup (current format)
+                # Compressed Django fixture backup
                 with gzip.open(backup_path, 'rt') as f:
-                    backup_data = json.load(f)
+                    backup_content = f.read()
                 
-                if backup_data.get('backup_type') == 'django_native_database':
-                    logger.info("Processing Django-native backup format")
-                    # This is metadata-only backup, log the structure info
+                # Check if this is actual data or just metadata
+                backup_data = json.loads(backup_content)
+                
+                if isinstance(backup_data, list) and len(backup_data) > 0:
+                    # This is actual Django fixture data
+                    logger.info(f"Processing Django fixture with {len(backup_data)} records")
+                    
+                    # Create temporary uncompressed file for loaddata
+                    with tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False) as temp_file:
+                        temp_file.write(backup_content)
+                        temp_fixture_path = temp_file.name
+                    
+                    try:
+                        # Load data using Django's loaddata
+                        logger.info("Loading fixture data into database...")
+                        call_command('loaddata', temp_fixture_path, verbosity=1)
+                        logger.info("✓ Django fixture loaded successfully")
+                        
+                        # Count what was loaded
+                        model_counts = {}
+                        for record in backup_data:
+                            model = record.get('model', 'unknown')
+                            model_counts[model] = model_counts.get(model, 0) + 1
+                        
+                        logger.info("Restored data by model:")
+                        for model, count in sorted(model_counts.items()):
+                            logger.info(f"  - {model}: {count} records")
+                        
+                        # CRITICAL FIX: Reset all PostgreSQL sequences to prevent primary key conflicts
+                        logger.info("Resetting PostgreSQL sequences to prevent primary key conflicts...")
+                        self._reset_postgresql_sequences()
+                        logger.info("✓ PostgreSQL sequences reset successfully")
+                        
+                        return True
+                        
+                    finally:
+                        # Cleanup temporary file
+                        if os.path.exists(temp_fixture_path):
+                            os.remove(temp_fixture_path)
+                
+                elif isinstance(backup_data, dict) and backup_data.get('backup_type') in ['django_native_database', 'django_metadata_fallback']:
+                    # This is metadata-only backup (old format or fallback)
+                    logger.warning("Processing metadata-only backup format - limited restoration")
                     tables = backup_data.get('tables_info', {})
                     logger.info(f"Backup contains metadata for {len(tables)} tables")
+                    logger.warning("This backup contains only metadata, not actual data!")
+                    logger.warning("You may need to manually restore data or use a complete backup")
+                    return True
+                
+            elif backup_path.endswith('.json'):
+                # Uncompressed Django fixture backup
+                with open(backup_path, 'r') as f:
+                    backup_content = f.read()
+                
+                backup_data = json.loads(backup_content)
+                
+                if isinstance(backup_data, list) and len(backup_data) > 0:
+                    # This is actual Django fixture data
+                    logger.info(f"Processing Django fixture with {len(backup_data)} records")
+                    
+                    # Load data directly using Django's loaddata
+                    logger.info("Loading fixture data into database...")
+                    call_command('loaddata', backup_path, verbosity=1)
+                    logger.info("✓ Django fixture loaded successfully")
+                    
+                    # Count what was loaded
+                    model_counts = {}
+                    for record in backup_data:
+                        model = record.get('model', 'unknown')
+                        model_counts[model] = model_counts.get(model, 0) + 1
+                    
+                    logger.info("Restored data by model:")
+                    for model, count in sorted(model_counts.items()):
+                        logger.info(f"  - {model}: {count} records")
+                    
+                    # CRITICAL FIX: Reset all PostgreSQL sequences to prevent primary key conflicts
+                    logger.info("Resetting PostgreSQL sequences to prevent primary key conflicts...")
+                    self._reset_postgresql_sequences()
+                    logger.info("✓ PostgreSQL sequences reset successfully")
+                    
+                    return True
+                
+                elif isinstance(backup_data, dict):
+                    # This is metadata-only backup
+                    logger.warning("Processing metadata-only backup format - limited restoration")
                     return True
                     
             elif backup_path.endswith('.tar.gz'):

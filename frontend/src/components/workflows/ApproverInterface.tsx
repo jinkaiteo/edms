@@ -8,6 +8,7 @@
 import React, { useState, useEffect } from 'react';
 import { apiService } from '../../services/api.ts';
 import { useAuth } from '../../contexts/AuthContext.tsx';
+import { triggerBadgeRefresh } from '../../utils/badgeRefresh';
 import { 
   XMarkIcon,
   CheckCircleIcon,
@@ -155,6 +156,10 @@ const ApproverInterface: React.FC<ApproverInterfaceProps> = ({
       } catch (workflowError: any) {
       }
 
+      // 🔄 IMMEDIATE BADGE REFRESH: Update badge count immediately after approval/rejection
+      triggerBadgeRefresh();
+      console.log('✅ Badge refreshed immediately after approval action');
+      
       onApprovalComplete();
       onClose();
 

@@ -1,0 +1,48 @@
+{
+  "name": "edms-playwright-tests",
+  "version": "1.0.0",
+  "description": "Comprehensive Playwright test suite for EDMS system population and workflow testing",
+  "scripts": {
+    "test": "playwright test",
+    "test:headed": "playwright test --headed",
+    "test:debug": "playwright test --debug",
+    "test:ui": "playwright test --ui",
+    
+    "test:legacy": "playwright test tests/01_seed_users.spec.js tests/02_create_documents.spec.js tests/03_workflow_testing.spec.js tests/04_validation_and_reporting.spec.js --headed",
+    "test:enhanced": "playwright test tests/enhanced/ --headed",
+    "test:enhanced-users": "playwright test tests/enhanced/01_enhanced_user_seeding.spec.js --headed",
+    "test:enhanced-workflows": "playwright test tests/enhanced/02_enhanced_workflow_testing.spec.js --headed",
+    "test:enhanced-validation": "playwright test tests/enhanced/03_enhanced_validation_testing.spec.js --headed",
+    
+    "test:seed-users": "playwright test tests/01_seed_users.spec.js --headed",
+    "test:create-docs": "playwright test tests/02_create_documents.spec.js --headed",
+    "test:workflows": "playwright test tests/03_workflow_testing.spec.js --headed",
+    "test:validate": "playwright test tests/04_validation_and_reporting.spec.js --headed",
+    "test:complete": "./run_edms_tests.sh",
+    "test:enhanced-complete": "./run_enhanced_tests.sh",
+    
+    "test:cross-browser": "playwright test tests/enhanced/ --project=chromium --project=firefox --project=webkit",
+    "test:api-validation": "playwright test tests/enhanced/03_enhanced_validation_testing.spec.js --grep=\"API Validation\"",
+    "test:security": "playwright test tests/enhanced/03_enhanced_validation_testing.spec.js --grep=\"Security\"",
+    "test:performance": "playwright test tests/enhanced/ --grep=\"Performance\"",
+    
+    "report": "playwright show-report",
+    "install-browsers": "playwright install"
+  },
+  "keywords": [
+    "edms",
+    "playwright",
+    "testing",
+    "workflow",
+    "automation",
+    "document-management"
+  ],
+  "author": "EDMS Development Team",
+  "license": "MIT",
+  "devDependencies": {
+    "@playwright/test": "^1.40.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

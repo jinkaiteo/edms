@@ -120,7 +120,7 @@ class SystemReinitAPIView(View):
             # Log the reinit attempt
             audit_service.log_user_action(
                 user=user,
-                action='SYSTEM_REINIT_INITIATED',
+                action='SYSTEM_REINIT_START',
                 object_type='System',
                 description='System reinit initiated via API',
                 additional_data={
@@ -133,12 +133,12 @@ class SystemReinitAPIView(View):
             # Execute system reinit
             logger.info(f"Executing system reinit initiated by user {user.username}")
             
-            # Call the management command programmatically
-            call_command('system_reinit', '--confirm', verbosity=0)
+            # Call the management command programmatically with skip-interactive flag
+            call_command('system_reinit', '--confirm', '--skip-interactive', verbosity=0)
             
             # Log successful completion
             audit_service.log_system_event(
-                event_type='SYSTEM_REINIT_COMPLETED',
+                event_type='SYSTEM_REINIT_OK',
                 object_type='System',
                 description='System reinit completed successfully via API',
                 additional_data={
@@ -170,7 +170,7 @@ class SystemReinitAPIView(View):
             
             # Log the error
             audit_service.log_system_event(
-                event_type='SYSTEM_REINIT_FAILED',
+                event_type='SYSTEM_REINIT_FAIL',
                 object_type='System',
                 description=f'System reinit failed via API: {str(e)}',
                 additional_data={

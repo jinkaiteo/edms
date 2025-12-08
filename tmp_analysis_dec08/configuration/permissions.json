@@ -1,0 +1,25 @@
+[
+  {
+    "name": "Document Reviewers",
+    "permissions": [
+      "can_review_document"
+    ]
+  },
+  {
+    "name": "Document Approvers",
+    "permissions": [
+      "can_approve_document"
+    ]
+  },
+  {
+    "name": "Senior Document Approvers",
+    "permissions": [
+      "can_approve_document",
+      "can_senior_approve_document"
+    ]
+  },
+  {
+    "name": "Document Authors",
+    "permissions": []
+  }
+]

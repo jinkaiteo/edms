@@ -24,6 +24,13 @@ class User(AbstractUser):
     uuid = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
     employee_id = models.CharField(max_length=20, unique=True, null=True, blank=True)
     
+    def save(self, *args, **kwargs):
+        """Override save to handle empty employee_id consistently."""
+        # Convert empty string to None to avoid unique constraint violations
+        if self.employee_id == '':
+            self.employee_id = None
+        super().save(*args, **kwargs)
+    
     # Contact information
     phone_number = models.CharField(
         max_length=20, 

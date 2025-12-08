@@ -82,6 +82,97 @@ const DocumentCreateModal: React.FC<DocumentCreateModalProps> = ({
     { value: 'implements', label: 'Implements' }
   ];
 
+  // Enhanced error parsing for user-friendly messages
+  const parseErrorResponse = (error: any): string => {
+    try {
+      // Extract error data from different response formats
+      let errorData = null;
+      let statusCode = null;
+
+      if (error?.message && error.message.includes('HTTP')) {
+        // Parse "HTTP 400: {...}" format errors
+        const match = error.message.match(/HTTP (\d+): (.+)/);
+        if (match) {
+          statusCode = parseInt(match[1]);
+          try {
+            errorData = JSON.parse(match[2]);
+          } catch {
+            errorData = { error: match[2] };
+          }
+        }
+      } else if (error?.response?.data) {
+        // Standard axios error format
+        errorData = error.response.data;
+        statusCode = error.response.status;
+      } else if (error?.data) {
+        // Direct data format
+        errorData = error.data;
+      }
+
+      console.log('🔍 Parsed error data:', errorData);
+
+      // Check for circular dependency errors
+      if (errorData?.error && typeof errorData.error === 'string') {
+        const errorMsg = errorData.error.toLowerCase();
+        
+        if (errorMsg.includes('circular dependency') || errorMsg.includes('dependency loop')) {
+          return '🔄 Circular Dependency Detected\n\nThe document dependencies you\'ve selected would create a circular relationship, where documents depend on each other in a loop. This could cause system issues.\n\nTo fix this:\n• Remove one of the conflicting dependencies\n• Review if all dependencies are actually necessary\n• Consider using a different dependency type\n• Contact your system administrator if you need help';
+        }
+        
+        if (errorMsg.includes('updating dependencies')) {
+          return '⚠️ Dependency Error\n\nThere was an issue with the document dependencies you selected. Please review your dependency selections and try again.\n\nIf the problem persists, contact your system administrator.';
+        }
+      }
+
+      // Check for validation errors array
+      if (errorData?.error && Array.isArray(errorData.error)) {
+        const errors = errorData.error;
+        if (errors.some((e: string) => e.toLowerCase().includes('circular dependency'))) {
+          return '🔄 Circular Dependency Detected\n\nOne or more of your selected dependencies would create a circular relationship. Please review your dependency selections and remove any that would create loops.';
+        }
+      }
+
+      // Check for field-specific errors
+      if (errorData?.non_field_errors && Array.isArray(errorData.non_field_errors)) {
+        const fieldErrors = errorData.non_field_errors;
+        if (fieldErrors.some((e: string) => e.toLowerCase().includes('circular dependency'))) {
+          return '🔄 Circular Dependency Detected\n\nThe dependencies you\'ve selected would create a circular relationship. Please review and modify your dependency selections.';
+        }
+      }
+
+      // Handle other validation errors
+      if (errorData?.detail) {
+        return `Validation Error: ${errorData.detail}`;
+      }
+
+      if (errorData?.message) {
+        return errorData.message;
+      }
+
+      if (errorData?.error) {
+        return Array.isArray(errorData.error) ? errorData.error.join(', ') : errorData.error;
+      }
+
+      // Handle network or other errors
+      if (statusCode === 400) {
+        return 'Invalid request. Please check your input and try again.';
+      } else if (statusCode === 403) {
+        return 'You don\'t have permission to perform this action.';
+      } else if (statusCode === 404) {
+        return 'The requested resource was not found.';
+      } else if (statusCode === 500) {
+        return 'Server error. Please try again later or contact support.';
+      }
+
+      // Fallback for unknown errors
+      return error?.message || 'An unexpected error occurred. Please try again.';
+
+    } catch (parseError) {
+      console.error('Error parsing error response:', parseError);
+      return 'An unexpected error occurred. Please try again.';
+    }
+  };
+
   // Load reference data and populate form for edit mode
   useEffect(() => {
     if (isOpen && authenticated) {
@@ -547,11 +638,11 @@ const DocumentCreateModal: React.FC<DocumentCreateModalProps> = ({
       handleClose();
 
     } catch (error: any) {
-      console.log('🔍 Debug - Full error object:', error);
-      console.log('🔍 Debug - Error response:', error.response);
-      console.log('🔍 Debug - Error response data:', error.response?.data);
       console.error('❌ Error creating document:', error);
-      setError(`Failed to create document: ${JSON.stringify(error.response?.data || error.message || 'Unknown error')}`);
+      
+      // Parse and display user-friendly error messages
+      const userFriendlyError = parseErrorResponse(error);
+      setError(userFriendlyError);
     } finally {
       setLoading(false);
     }
@@ -605,10 +696,63 @@ const DocumentCreateModal: React.FC<DocumentCreateModalProps> = ({
             </div>
           </div>
 
-          {/* Error Display */}
+          {/* Enhanced Error Display */}
           {error && (
-            <div className="px-6 py-3 bg-red-50 border-l-4 border-red-400">
-              <p className="text-red-700 text-sm">{error}</p>
+            <div className="px-6 py-4 bg-red-50 border border-red-200 rounded-lg mx-6">
+              <div className="flex">
+                <div className="flex-shrink-0">
+                  <svg className="w-5 h-5 text-red-400" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                  </svg>
+                </div>
+                <div className="ml-3 flex-1">
+                  {/* Parse error message for better display */}
+                  {(() => {
+                    const lines = error.split('\n');
+                    const title = lines[0];
+                    const body = lines.slice(1).join('\n').trim();
+                    
+                    return (
+                      <>
+                        <h3 className="text-sm font-medium text-red-800">
+                          {title}
+                        </h3>
+                        {body && (
+                          <div className="mt-2 text-sm text-red-700">
+                            {body.split('\n').map((line, index) => (
+                              <div key={index} className={index > 0 ? 'mt-1' : ''}>
+                                {line.startsWith('•') ? (
+                                  <div className="flex items-start">
+                                    <span className="mr-2">•</span>
+                                    <span>{line.substring(1).trim()}</span>
+                                  </div>
+                                ) : line.startsWith('To fix this:') ? (
+                                  <div className="mt-3 pt-2 border-t border-red-200">
+                                    <strong className="font-medium">{line}</strong>
+                                  </div>
+                                ) : (
+                                  <p className={line.trim() === '' ? 'mb-2' : ''}>{line}</p>
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </>
+                    );
+                  })()}
+                  
+                  {/* Dismiss button */}
+                  <div className="mt-4">
+                    <button
+                      type="button"
+                      onClick={() => setError(null)}
+                      className="text-sm bg-red-100 hover:bg-red-200 text-red-800 font-medium py-2 px-3 rounded-md transition-colors"
+                    >
+                      Dismiss
+                    </button>
+                  </div>
+                </div>
+              </div>
             </div>
           )}
 

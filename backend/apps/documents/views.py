@@ -12,10 +12,12 @@ from django.utils import timezone
 from django.http import HttpResponse, Http404
 from django.contrib.postgres.search import SearchVector, SearchQuery
 from django.contrib.contenttypes.models import ContentType
+from django.core.exceptions import ValidationError
 from rest_framework import viewsets, status, permissions
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.views import APIView
+from rest_framework.permissions import IsAuthenticated
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework.filters import SearchFilter, OrderingFilter
 
@@ -153,6 +155,14 @@ class DocumentViewSet(viewsets.ModelViewSet):
             'author', 'reviewer', 'approver', 'document_type', 'document_source'
         )
         
+        # ADMIN OVERRIDE: Superusers and system admins can see ALL documents
+        user = self.request.user
+        is_admin = (
+            user.is_superuser or 
+            user.groups.filter(name__in=['Document Admins', 'Senior Document Approvers']).exists() or
+            user.user_roles.filter(role__name='Document Admin', is_active=True).exists()
+        )
+        
         # Handle filter parameter for different view types
         filter_type = self.request.query_params.get('filter', None)
         
@@ -194,6 +204,22 @@ class DocumentViewSet(viewsets.ModelViewSet):
             
         else:
             # Default: show all documents ordered by creation date
+            if not is_admin:
+                # Regular users: Filter based on role and document visibility rules
+                queryset = queryset.filter(
+                    # Show if user is involved in the document
+                    Q(author=user) |
+                    Q(reviewer=user) |
+                    Q(approver=user) |
+                    # Show approved/effective documents to all authenticated users
+                    Q(status__in=[
+                        'APPROVED_AND_EFFECTIVE',
+                        'EFFECTIVE',
+                        'APPROVED_PENDING_EFFECTIVE',
+                        'SCHEDULED_FOR_OBSOLESCENCE'
+                    ])
+                ).distinct()
+            
             queryset = queryset.order_by('-created_at')
         
         return queryset
@@ -302,21 +328,34 @@ class DocumentViewSet(viewsets.ModelViewSet):
                 
                 # Don't allow self-dependency
                 if depends_on_doc.id != document.id:
-                    dependency, created = DocumentDependency.objects.get_or_create(
+                    # Check if dependency already exists
+                    existing_dependency = DocumentDependency.objects.filter(
                         document=document,
                         depends_on=depends_on_doc,
-                        dependency_type='REFERENCE',  # Default type
-                        defaults={
-                            'created_by': self.request.user,
-                            'is_active': True,
-                            'description': 'Dependency created during document creation'
-                        }
-                    )
+                        dependency_type='REFERENCE'
+                    ).first()
                     
-                    if created:
-                        print(f"✅ Created dependency: {document.id} → {depends_on_doc.id}")
-                    else:
+                    if existing_dependency:
                         print(f"ℹ️ Dependency already exists: {document.id} → {depends_on_doc.id}")
+                    else:
+                        # Create new dependency with proper validation
+                        dependency = DocumentDependency(
+                            document=document,
+                            depends_on=depends_on_doc,
+                            dependency_type='REFERENCE',
+                            created_by=self.request.user,
+                            is_active=True,
+                            description='Dependency created during document creation'
+                        )
+                        
+                        # CRITICAL: Validate for circular dependencies before saving
+                        try:
+                            dependency.clean()  # This calls our circular dependency check
+                            dependency.save()
+                            print(f"✅ Created dependency: {document.id} → {depends_on_doc.id}")
+                        except ValidationError as e:
+                            print(f"❌ Blocked circular dependency: {document.id} → {depends_on_doc.id} - {e}")
+                            raise ValidationError(f"Cannot create dependency to {depends_on_doc.document_number}: {e.message_dict if hasattr(e, 'message_dict') else str(e)}")
                 else:
                     print(f"⚠️ Skipped self-dependency: {dep_doc_id}")
                     
@@ -1209,27 +1248,54 @@ class DocumentViewSet(viewsets.ModelViewSet):
                 # Clear existing dependencies
                 DocumentDependency.objects.filter(document=instance, is_active=True).update(is_active=False)
                 
-                # Create new dependencies (use get_or_create to avoid duplicates)
+                # Create new dependencies with proper validation
                 for depends_on_doc in valid_dependencies:
-                    dependency, created = DocumentDependency.objects.get_or_create(
+                    # Check if dependency already exists
+                    existing_dependency = DocumentDependency.objects.filter(
                         document=instance,
                         depends_on=depends_on_doc,
-                        dependency_type='required',
-                        defaults={
-                            'created_by': request.user,
-                            'is_active': True
-                        }
-                    )
+                        dependency_type='required'
+                    ).first()
                     
-                    # If dependency already exists but was inactive, reactivate it
-                    if not created and not dependency.is_active:
-                        dependency.is_active = True
-                        dependency.save()
-                        print(f"Reactivated existing dependency: {instance.id} → {depends_on_doc.id}")
-                    elif created:
-                        print(f"Created new dependency: {instance.id} → {depends_on_doc.id}")
+                    if existing_dependency:
+                        # If dependency already exists but was inactive, reactivate it
+                        if not existing_dependency.is_active:
+                            existing_dependency.is_active = True
+                            existing_dependency.save()
+                            print(f"Reactivated existing dependency: {instance.id} → {depends_on_doc.id}")
+                        else:
+                            print(f"Dependency already active: {instance.id} → {depends_on_doc.id}")
                     else:
-                        print(f"Dependency already active: {instance.id} → {depends_on_doc.id}")
+                        # Create new dependency with proper validation
+                        dependency = DocumentDependency(
+                            document=instance,
+                            depends_on=depends_on_doc,
+                            dependency_type='required',
+                            created_by=request.user,
+                            is_active=True
+                        )
+                        
+                        # CRITICAL: Validate for circular dependencies before saving
+                        try:
+                            dependency.clean()  # This calls our circular dependency check
+                            dependency.save()
+                            print(f"Created new dependency: {instance.id} → {depends_on_doc.id}")
+                        except ValidationError as e:
+                            print(f"❌ Blocked circular dependency: {instance.id} → {depends_on_doc.id} - {e}")
+                            # For document updates, return detailed error to user
+                            return Response(
+                                {
+                                    'error': f'Circular dependency detected',
+                                    'detail': f'Cannot create dependency to {depends_on_doc.document_number}: {str(e)}',
+                                    'type': 'circular_dependency',
+                                    'blocked_dependency': {
+                                        'from': instance.document_number,
+                                        'to': depends_on_doc.document_number,
+                                        'reason': str(e)
+                                    }
+                                },
+                                status=status.HTTP_400_BAD_REQUEST
+                            )
                 
                 print(f"Updated dependencies to: {[doc.id for doc in valid_dependencies]}")
                 
@@ -1405,6 +1471,176 @@ class DocumentViewSet(viewsets.ModelViewSet):
             'dependencies': dependencies,
             'dependents': dependents
         })
+
+    @action(detail=False, methods=['get'], permission_classes=[IsAuthenticated])
+    def check_circular_dependencies(self, request):
+        """
+        Check for circular dependencies in the entire system.
+        Admin-only endpoint for system health monitoring.
+        """
+        # Check if user has admin permissions
+        if not (request.user.is_superuser or 
+                request.user.user_roles.filter(
+                    role__module='O1',
+                    role__permission_level='admin',
+                    is_active=True
+                ).exists()):
+            return Response(
+                {'error': 'Admin permissions required for system dependency analysis'},
+                status=403
+            )
+        
+        try:
+            cycles = DocumentDependency.detect_circular_dependencies()
+            
+            if not cycles:
+                return Response({
+                    'status': 'healthy',
+                    'circular_dependencies_found': 0,
+                    'message': 'No circular dependencies detected in the system'
+                })
+            
+            # Build detailed response
+            cycle_details = []
+            affected_documents = set()
+            
+            for i, cycle in enumerate(cycles):
+                cycle_info = {
+                    'chain_id': i + 1,
+                    'document_ids': cycle,
+                    'documents': [],
+                    'dependencies': []
+                }
+                
+                # Get document details
+                for doc_id in cycle:
+                    try:
+                        doc = Document.objects.get(id=doc_id)
+                        cycle_info['documents'].append({
+                            'id': doc.id,
+                            'document_number': doc.document_number,
+                            'title': doc.title,
+                            'status': doc.status
+                        })
+                        affected_documents.add(doc_id)
+                    except Document.DoesNotExist:
+                        cycle_info['documents'].append({
+                            'id': doc_id,
+                            'document_number': f'Unknown-{doc_id}',
+                            'title': 'Document not found',
+                            'status': 'UNKNOWN'
+                        })
+                
+                # Get dependency details
+                for j in range(len(cycle) - 1):
+                    try:
+                        dep = DocumentDependency.objects.get(
+                            document_id=cycle[j],
+                            depends_on_id=cycle[j + 1],
+                            is_active=True
+                        )
+                        cycle_info['dependencies'].append({
+                            'id': dep.id,
+                            'from_document': dep.document.document_number,
+                            'to_document': dep.depends_on.document_number,
+                            'dependency_type': dep.dependency_type,
+                            'is_critical': dep.is_critical,
+                            'created_at': dep.created_at.isoformat()
+                        })
+                    except DocumentDependency.DoesNotExist:
+                        pass
+                
+                cycle_details.append(cycle_info)
+            
+            return Response({
+                'status': 'warning',
+                'circular_dependencies_found': len(cycles),
+                'affected_documents_count': len(affected_documents),
+                'cycles': cycle_details,
+                'recommendations': [
+                    'Review each circular dependency chain carefully',
+                    'Consider deactivating non-critical dependencies to break cycles',
+                    'Use the management command for automated fixes: python manage.py check_circular_dependencies --fix',
+                    'Contact system administrator for assistance with critical dependencies'
+                ],
+                'system_stats': {
+                    'total_active_dependencies': DocumentDependency.objects.filter(is_active=True).count(),
+                    'total_documents': Document.objects.filter(is_active=True).count(),
+                    'critical_dependencies_in_cycles': sum(
+                        len([d for d in cycle['dependencies'] if d.get('is_critical', False)])
+                        for cycle in cycle_details
+                    )
+                }
+            })
+            
+        except Exception as e:
+            return Response(
+                {'error': f'Failed to analyze dependencies: {str(e)}'},
+                status=500
+            )
+
+    @action(detail=True, methods=['get'], permission_classes=[IsAuthenticated])
+    def dependency_chain(self, request, uuid=None):
+        """
+        Get complete dependency chain analysis for a specific document.
+        Useful for impact analysis before making changes.
+        """
+        document = self.get_object()
+        
+        try:
+            max_depth = int(request.query_params.get('max_depth', 5))
+            chain = DocumentDependency.get_dependency_chain(document.id, max_depth)
+            
+            return Response({
+                'document': {
+                    'id': document.id,
+                    'document_number': document.document_number,
+                    'title': document.title,
+                    'status': document.status
+                },
+                'dependency_chain': chain,
+                'analysis': {
+                    'total_dependencies': len(chain.get('dependencies', [])),
+                    'total_dependents': len(chain.get('dependents', [])),
+                    'max_depth_reached': max_depth,
+                    'impact_assessment': self._assess_change_impact(document, chain)
+                }
+            })
+            
+        except Exception as e:
+            return Response(
+                {'error': f'Failed to analyze dependency chain: {str(e)}'},
+                status=500
+            )
+
+    def _assess_change_impact(self, document, chain):
+        """Assess the potential impact of changes to this document."""
+        dependencies = chain.get('dependencies', [])
+        dependents = chain.get('dependents', [])
+        
+        # Count critical dependencies
+        critical_deps = sum(1 for dep in dependencies if dep.get('is_critical', False))
+        critical_dependents = sum(1 for dep in dependents if dep.get('is_critical', False))
+        
+        # Assess impact level
+        if critical_dependents > 5 or critical_deps > 3:
+            impact_level = 'HIGH'
+        elif critical_dependents > 2 or critical_deps > 1:
+            impact_level = 'MEDIUM'
+        else:
+            impact_level = 'LOW'
+        
+        return {
+            'impact_level': impact_level,
+            'critical_dependencies': critical_deps,
+            'critical_dependents': critical_dependents,
+            'recommendations': [
+                f'This document has {len(dependencies)} dependencies and {len(dependents)} dependents',
+                f'Impact level: {impact_level}',
+                'Review all critical dependencies before making changes' if critical_deps > 0 else None,
+                'Notify stakeholders of dependent documents before changes' if critical_dependents > 0 else None,
+            ]
+        }
     
     @action(detail=True, methods=['get'])
     def history(self, request, uuid=None):
@@ -2402,3 +2638,52 @@ class DocumentExportView(APIView):
             )
             response['Content-Disposition'] = f'attachment; filename="document_{document.document_number}_export.{export_format}"'
             return response
+from django.http import FileResponse, Http404
+from django.shortcuts import get_object_or_404
+from django.contrib.auth.decorators import login_required
+from django.views.decorators.http import require_http_methods
+import os
+
+@login_required
+@require_http_methods(["GET"])
+def document_download_view(request, pk):
+    """Download document file"""
+    try:
+        document = get_object_or_404(Document, pk=pk)
+        
+        # Check if user has permission to access document
+        # Add your permission logic here if needed
+        
+        # Build file path
+        if not document.file_path:
+            raise Http404("No file attached to this document")
+            
+        file_path = os.path.join('/app/storage', document.file_path)
+        
+        if not os.path.exists(file_path):
+            raise Http404("File not found on disk")
+        
+        # Determine content type
+        content_type = 'application/octet-stream'
+        if document.file_path.endswith('.docx'):
+            content_type = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+        elif document.file_path.endswith('.pdf'):
+            content_type = 'application/pdf'
+        elif document.file_path.endswith('.txt'):
+            content_type = 'text/plain'
+        
+        # Create filename for download
+        filename = f"{document.title}.{document.file_path.split('.')[-1]}"
+        
+        # Return file response
+        response = FileResponse(
+            open(file_path, 'rb'),
+            content_type=content_type,
+            as_attachment=True,
+            filename=filename
+        )
+        
+        return response
+        
+    except Exception as e:
+        raise Http404(f"Download error: {str(e)}")

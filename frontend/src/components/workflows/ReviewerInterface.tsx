@@ -9,6 +9,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContext.tsx';
 import apiService from '../../services/api.ts';
+import { triggerBadgeRefresh } from '../../utils/badgeRefresh';
 
 interface ReviewerInterfaceProps {
   documentId: string;
@@ -183,6 +184,10 @@ const ReviewerInterface: React.FC<ReviewerInterfaceProps> = ({
           refreshRequired: true
         } 
       }));
+      
+      // 🔄 IMMEDIATE BADGE REFRESH: Update badge count immediately after review action
+      triggerBadgeRefresh();
+      console.log('✅ Badge refreshed immediately after review action');
       
       onReviewComplete();
       onClose();

@@ -52,6 +52,11 @@ class Command(BaseCommand):
             action='store_true',
             help='Create backup of current system before restore'
         )
+        parser.add_argument(
+            '--skip-interactive',
+            action='store_true',
+            help='Skip interactive confirmation (for API/automated calls)'
+        )
 
     def handle(self, *args, **options):
         package_path = options['package_path']
@@ -59,6 +64,7 @@ class Command(BaseCommand):
         dry_run = options['dry_run']
         confirm = options['confirm']
         backup_current = options['backup_current']
+        skip_interactive = options['skip_interactive']
 
         self.stdout.write(self.style.SUCCESS('🔄 EDMS System Restore'))
         self.stdout.write('=' * 50)
@@ -109,18 +115,28 @@ class Command(BaseCommand):
             self.create_current_backup()
 
         # Step 4: Confirmation prompt
-        self.stdout.write(self.style.WARNING("⚠️  CRITICAL WARNING"))
-        self.stdout.write("This operation will:")
-        if restore_type in ['full', 'database']:
-            self.stdout.write("  - OVERWRITE current database")
-        if restore_type in ['full', 'files']:
-            self.stdout.write("  - OVERWRITE current files")
-        self.stdout.write("  - This action CANNOT be undone!")
-        
-        confirm_input = input("Type 'RESTORE' to proceed: ")
-        if confirm_input != 'RESTORE':
-            self.stdout.write("Operation cancelled by user")
-            return
+        import sys
+        if skip_interactive or not sys.stdin.isatty():
+            # Running in non-interactive mode (API call) - confirmations already handled
+            self.stdout.write(self.style.NOTICE('✅ Running in non-interactive mode - confirmations verified'))
+        else:
+            # Interactive mode - require manual confirmation
+            self.stdout.write(self.style.WARNING("⚠️  CRITICAL WARNING"))
+            self.stdout.write("This operation will:")
+            if restore_type in ['full', 'database']:
+                self.stdout.write("  - OVERWRITE current database")
+            if restore_type in ['full', 'files']:
+                self.stdout.write("  - OVERWRITE current files")
+            self.stdout.write("  - This action CANNOT be undone!")
+            
+            try:
+                confirm_input = input("Type 'RESTORE' to proceed: ")
+                if confirm_input != 'RESTORE':
+                    self.stdout.write("Operation cancelled by user")
+                    return
+            except (EOFError, KeyboardInterrupt):
+                self.stdout.write('\nOperation cancelled.')
+                return
 
         # Step 5: Execute restore
         self.stdout.write(f"🔄 Executing {restore_type} restore...")
@@ -139,9 +155,15 @@ class Command(BaseCommand):
                 }
             )
             
+            # Force save and refresh the configuration to ensure it has an ID
+            cli_config.save()
+            cli_config.refresh_from_db()
+            
+            self.stdout.write(f"  Using configuration: {cli_config.name} (ID: {cli_config.id})")
+            
             # Create temporary backup job for restore tracking
-            temp_backup_job = BackupJob(
-                job_name=f"cli_source_{timezone.now().strftime('%Y%m%d_%H%M%S')}",
+            temp_backup_job = BackupJob.objects.create(
+                job_name=f"restore_source_{timezone.now().strftime('%Y%m%d_%H%M%S')}",
                 backup_type='FULL',  # Assume full restore for CLI
                 backup_file_path=package_path,
                 status='COMPLETED',
@@ -149,10 +171,8 @@ class Command(BaseCommand):
                 triggered_by=admin_user,
                 started_at=timezone.now(),
                 completed_at=timezone.now(),
-                configuration=cli_config  # Add required configuration
+                configuration_id=cli_config.id  # Explicitly set the configuration_id
             )
-            # Save the backup job first
-            temp_backup_job.save()
             
             # Create restore job
             restore_job = RestoreJob.objects.create(

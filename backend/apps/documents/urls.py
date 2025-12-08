@@ -20,6 +20,7 @@ from .views import (
     DocumentWorkflowView,
     DocumentSearchView,
     DocumentExportView,
+    document_download_view,
 )
 from .workflow_integration import document_workflow_endpoint, document_workflow_history
 from .termination_views import terminate_document, can_terminate_document
@@ -65,6 +66,11 @@ urlpatterns = [
     path('documents/<uuid:document_uuid>/export/', 
          DocumentExportView.as_view(), 
          name='document_export'),
+    
+    # Document download
+    path('documents/<int:pk>/download/', 
+         document_download_view, 
+         name='document_download'),
     
     # ViewSet URLs
     path('', include(router.urls)),

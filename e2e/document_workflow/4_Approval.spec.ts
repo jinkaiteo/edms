@@ -1,0 +1,32 @@
+import { test, expect } from '@playwright/test';
+
+test('approve document', async ({ page }) => {
+  await page.goto('http://localhost:3000/login');
+  await page.getByRole('textbox', { name: 'Username' }).click();
+  await page.getByRole('textbox', { name: 'Username' }).fill('approver01');
+  await page.getByRole('textbox', { name: 'Username' }).press('Tab');
+  await page.getByRole('textbox', { name: 'Password' }).fill('P@ssword1234');
+  await page.getByRole('button', { name: 'Sign in' }).click();
+  await page.getByRole('link', { name: 'My Tasks' }).click();
+  await page.getByRole('textbox', { name: 'Search documents by title,' }).click();
+  await page.getByRole('textbox', { name: 'Search documents by title,' }).fill('Policy_01');
+  await page.getByRole('button').filter({ hasText: /^$/ }).nth(5).click();
+  await expect(page.getByRole('main')).toContainText('PENDING APPROVAL');
+  await page.getByRole('button', { name: 'workflow' }).click();
+  await page.getByRole('button', { name: '✅ Start Approval Process' }).click();
+  await page.getByRole('button', { name: 'Approve Document Document' }).click();
+  await page.getByRole('textbox', { name: 'Provide your approval' }).click();
+  await page.getByRole('textbox', { name: 'Provide your approval' }).fill('Good approved.');
+  await page.getByRole('button', { name: 'Submit Approval Decision' }).click();
+  await page.getByRole('button', { name: 'Confirm Approval' }).click();
+  await page.getByRole('link', { name: 'Document Library' }).click();
+  await page.getByRole('textbox', { name: 'Search documents by title,' }).click();
+  await page.getByRole('textbox', { name: 'Search documents by title,' }).fill('Policy_01');
+  await page.getByRole('button').filter({ hasText: /^$/ }).nth(5).click();
+  await expect(page.getByRole('main')).toContainText('EFFECTIVE');
+  await page.getByRole('button', { name: 'history' }).click();
+  await page.getByRole('button', { name: '✖️ Clear' }).click();
+  await expect(page.locator('.bg-white.rounded-lg.shadow-sm.border.border-gray-200.p-8')).toBeVisible();
+  await page.getByRole('button', { name: 'Account Options' }).click();
+  await page.getByRole('button', { name: 'Logout' }).click();
+});

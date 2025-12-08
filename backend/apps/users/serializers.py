@@ -58,10 +58,11 @@ class UserCreateSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
         fields = [
-            'username', 'email', 'password', 'password_confirm',
+            'id', 'username', 'email', 'password', 'password_confirm',
             'first_name', 'last_name', 'employee_id', 'phone_number',
             'department', 'position'
         ]
+        read_only_fields = ['id']
     
     def validate(self, data):
         """Validate password confirmation."""

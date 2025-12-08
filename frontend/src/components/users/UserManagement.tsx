@@ -1,4 +1,5 @@
 import React, { useState, useCallback, useEffect } from 'react';
+import PasswordInput from '../common/PasswordInput.tsx';
 import { User, Role } from '../../types/api';
 import apiService from '../../services/api.ts';
 
@@ -21,7 +22,7 @@ interface CreateUserFormData {
   phone_number: string;
   department: string;
   position: string;
-  role_id?: number;
+  roles: number[]; // Array of role IDs to assign
 }
 
 interface EditUserFormData {
@@ -65,7 +66,7 @@ const UserManagement: React.FC<UserManagementProps> = ({ className = '' }) => {
     phone_number: '',
     department: '',
     position: '',
-    role_id: undefined
+    roles: []
   });
   
   const [editUserForm, setEditUserForm] = useState<EditUserFormData>({
@@ -166,9 +167,22 @@ const UserManagement: React.FC<UserManagementProps> = ({ className = '' }) => {
     setOperationLoading(true);
     
     try {
-      await apiService.createUser(createUserForm);
+      // Create the user first
+      const newUser = await apiService.createUser(createUserForm);
       
-      // Reload users
+      // Assign selected roles if any
+      if (createUserForm.roles.length > 0) {
+        for (const roleId of createUserForm.roles) {
+          try {
+            await apiService.assignRole(newUser.id, roleId, 'Initial role assignment during user creation');
+          } catch (roleError: any) {
+            console.warn(`Failed to assign role ${roleId} to user ${newUser.username}:`, roleError);
+            // Continue with other roles even if one fails
+          }
+        }
+      }
+      
+      // Reload users to get updated role information
       const usersData = await apiService.getUsers();
       setUsers(usersData);
       
@@ -184,9 +198,12 @@ const UserManagement: React.FC<UserManagementProps> = ({ className = '' }) => {
         phone_number: '',
         department: '',
         position: '',
-        role_id: undefined
+        roles: []
       });
       setShowCreateUser(false);
+      
+      // Clear any errors on success
+      setError(null);
       
     } catch (error: any) {
       setError(error.response?.data?.detail || 'Failed to create user');
@@ -508,8 +525,7 @@ const UserManagement: React.FC<UserManagementProps> = ({ className = '' }) => {
               
               <div>
                 <label className="block text-sm font-medium text-gray-700">Password</label>
-                <input
-                  type="password"
+                <PasswordInput
                   required
                   minLength={12}
                   className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
@@ -527,8 +543,7 @@ const UserManagement: React.FC<UserManagementProps> = ({ className = '' }) => {
               
               <div>
                 <label className="block text-sm font-medium text-gray-700">Confirm Password</label>
-                <input
-                  type="password"
+                <PasswordInput
                   required
                   minLength={12}
                   className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
@@ -546,18 +561,42 @@ const UserManagement: React.FC<UserManagementProps> = ({ className = '' }) => {
                 )}
               </div>
               
+              {/* Role Selection */}
               <div>
-                <label className="block text-sm font-medium text-gray-700">Initial Role (Optional)</label>
-                <select
-                  className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
-                  value={createUserForm.role_id || ''}
-                  onChange={(e) => setCreateUserForm({...createUserForm, role_id: e.target.value ? Number(e.target.value) : undefined})}
-                >
-                  <option value="">Select a role...</option>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Assign Roles</label>
+                <div className="space-y-2 max-h-32 overflow-y-auto border border-gray-200 rounded p-3">
                   {roles.map((role) => (
-                    <option key={role.id} value={role.id}>{role.name}</option>
+                    <label key={role.id} className="flex items-center">
+                      <input
+                        type="checkbox"
+                        className="rounded border-gray-300 text-blue-600 shadow-sm focus:border-blue-300 focus:ring focus:ring-blue-200 focus:ring-opacity-50"
+                        checked={createUserForm.roles.includes(role.id)}
+                        onChange={(e) => {
+                          if (e.target.checked) {
+                            setCreateUserForm({
+                              ...createUserForm,
+                              roles: [...createUserForm.roles, role.id]
+                            });
+                          } else {
+                            setCreateUserForm({
+                              ...createUserForm,
+                              roles: createUserForm.roles.filter(id => id !== role.id)
+                            });
+                          }
+                        }}
+                      />
+                      <span className="ml-2 text-sm text-gray-700">
+                        {role.name} ({role.permission_level})
+                      </span>
+                    </label>
                   ))}
-                </select>
+                  {roles.length === 0 && (
+                    <p className="text-sm text-gray-500 italic">Loading roles...</p>
+                  )}
+                </div>
+                <div className="mt-1 text-xs text-gray-500">
+                  Select one or more roles for the user. Roles can be modified later through "Manage Roles".
+                </div>
               </div>
               
               <div className="flex justify-end space-x-3">
@@ -662,8 +701,7 @@ const UserManagement: React.FC<UserManagementProps> = ({ className = '' }) => {
             <form onSubmit={handlePasswordReset} className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700">New Password</label>
-                <input
-                  type="password"
+                <PasswordInput
                   required
                   minLength={12}
                   className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
@@ -681,8 +719,7 @@ const UserManagement: React.FC<UserManagementProps> = ({ className = '' }) => {
               
               <div>
                 <label className="block text-sm font-medium text-gray-700">Confirm New Password</label>
-                <input
-                  type="password"
+                <PasswordInput
                   required
                   minLength={12}
                   className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"

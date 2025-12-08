@@ -64,12 +64,18 @@ class Command(BaseCommand):
             action='store_true',
             help='Show what would be deleted without actually doing it'
         )
+        parser.add_argument(
+            '--skip-interactive',
+            action='store_true',
+            help='Skip interactive confirmation (for API/automated calls)'
+        )
 
     def handle(self, *args, **options):
         confirm = options['confirm']
         preserve_templates = True  # Always preserve templates and placeholders - they are core system infrastructure
         preserve_backups = options['preserve_backups']
         dry_run = options['dry_run']
+        skip_interactive = options['skip_interactive']
 
         self.stdout.write(self.style.WARNING('🚨 EDMS SYSTEM REINIT OPERATION'))
         self.stdout.write('=' * 60)
@@ -94,24 +100,33 @@ class Command(BaseCommand):
         self.display_current_state()
 
         if not dry_run:
-            # Final confirmation for non-dry-run
-            self.stdout.write(self.style.ERROR('\n⚠️  FINAL WARNING: This operation CANNOT be undone!'))
-            confirm_text = input('Type "RESET SYSTEM" to proceed: ')
-            if confirm_text != "RESET SYSTEM":
-                self.stdout.write('Operation cancelled.')
-                return
+            # Skip interactive confirmation when called via API or explicitly requested
+            import sys
+            if skip_interactive or not sys.stdin.isatty():
+                # Running in non-interactive mode (API call) - confirmations already handled
+                self.stdout.write(self.style.NOTICE('✅ Running in non-interactive mode - confirmations verified'))
+            else:
+                # Interactive mode - require manual confirmation
+                self.stdout.write(self.style.ERROR('\n⚠️  FINAL WARNING: This operation CANNOT be undone!'))
+                try:
+                    confirm_text = input('Type "RESET SYSTEM" to proceed: ')
+                    if confirm_text != "RESET SYSTEM":
+                        self.stdout.write('Operation cancelled.')
+                        return
+                except (EOFError, KeyboardInterrupt):
+                    self.stdout.write('\nOperation cancelled.')
+                    return
 
         # Execute reset operations
         try:
-            with transaction.atomic():
-                if dry_run:
-                    self.stdout.write('\n🔍 DRY RUN - Operations that would be performed:')
-                    self.display_reset_plan(preserve_templates, preserve_backups)
-                else:
-                    self.stdout.write('\n🔄 Executing system reset...')
-                    self.execute_system_reset(preserve_templates, preserve_backups)
-                    self.stdout.write(self.style.SUCCESS('\n✅ System reset completed successfully!'))
-                    self.display_final_state()
+            if dry_run:
+                self.stdout.write('\n🔍 DRY RUN - Operations that would be performed:')
+                self.display_reset_plan(preserve_templates, preserve_backups)
+            else:
+                self.stdout.write('\n🔄 Executing system reset...')
+                self.execute_system_reset(preserve_templates, preserve_backups)
+                self.stdout.write(self.style.SUCCESS('\n✅ System reset completed successfully!'))
+                self.display_final_state()
 
         except Exception as e:
             self.stdout.write(self.style.ERROR(f'❌ System reset failed: {str(e)}'))
@@ -201,15 +216,31 @@ class Command(BaseCommand):
         
         # STEP 1: Clear workflow dependencies first (proper cascade order)
         try:
-            # Try to clear workflow tasks if the model exists
-            # Note: WorkflowTask may not exist in current schema
+            # Clear notification queue recipients first (they reference users)
+            from django.db import connection
+            with connection.cursor() as cursor:
+                cursor.execute("SELECT EXISTS (SELECT FROM information_schema.tables WHERE table_name = 'notification_queue_recipients');")
+                if cursor.fetchone()[0]:
+                    cursor.execute("DELETE FROM notification_queue_recipients;")
+                    self.stdout.write('  ✅ Notification queue recipients cleared first')
+                    
+            # Clear workflow notifications
             WorkflowNotification.objects.all().delete()
-            self.stdout.write('  ✅ Workflow notifications cleared first')
+            self.stdout.write('  ✅ Workflow notifications cleared')
         except Exception as e:
-            self.stdout.write(f'  ⚠️  Workflow dependencies cleanup warning: {str(e)}')
+            self.stdout.write(f'  ⚠️  Notification cleanup warning: {str(e)}')
             
         # STEP 2: Clear workflow-related objects in proper order
         try:
+            # Clear workflow tasks first (they reference workflow instances)
+            from django.db import connection
+            with connection.cursor() as cursor:
+                cursor.execute("SELECT EXISTS (SELECT FROM information_schema.tables WHERE table_name = 'workflow_tasks');")
+                if cursor.fetchone()[0]:
+                    cursor.execute("DELETE FROM workflow_tasks;")
+                    self.stdout.write('  ✅ Workflow tasks cleared first')
+            
+            # Now clear other workflow objects
             DocumentTransition.objects.all().delete()
             DocumentWorkflow.objects.all().delete()
             WorkflowInstance.objects.all().delete()
@@ -272,18 +303,26 @@ class Command(BaseCommand):
 
         # Scheduler (handle carefully due to potential table issues)
         try:
-            # Only clear if table exists
+            # Clear scheduled tasks before deleting users (they have FK to users)
             from django.db import connection
             with connection.cursor() as cursor:
+                # Check for both possible table names
                 cursor.execute("""
                     SELECT EXISTS (
                         SELECT FROM information_schema.tables 
-                        WHERE table_name = 'scheduler_scheduledtask'
+                        WHERE table_name IN ('scheduler_scheduledtask', 'scheduled_tasks')
                     );
                 """)
                 if cursor.fetchone()[0]:
-                    ScheduledTask.objects.all().delete()
-                    self.stdout.write('  ✅ Scheduled tasks cleared')
+                    # Try Django ORM first
+                    try:
+                        ScheduledTask.objects.all().delete()
+                        self.stdout.write('  ✅ Scheduled tasks cleared via ORM')
+                    except Exception as orm_error:
+                        # Fallback to direct SQL
+                        cursor.execute("DELETE FROM scheduled_tasks;")
+                        cursor.execute("DELETE FROM scheduler_scheduledtask;")
+                        self.stdout.write('  ✅ Scheduled tasks cleared via SQL')
         except Exception as e:
             self.stdout.write(f'  ⚠️  Scheduler cleanup warning: {str(e)}')
 
@@ -300,11 +339,11 @@ class Command(BaseCommand):
             from django.contrib.auth import get_user_model
             User = get_user_model()
             
-            # Create system admin to preserve FK references
-            system_admin, created = User.objects.get_or_create(
-                username='system_admin_temp',
+            # Create the final admin user first
+            final_admin, created = User.objects.get_or_create(
+                username='admin',
                 defaults={
-                    'email': 'system@edms.local',
+                    'email': 'admin@edms.local',
                     'is_staff': True,
                     'is_superuser': True,
                     'first_name': 'System',
@@ -312,26 +351,40 @@ class Command(BaseCommand):
                 }
             )
             
-            # Update all core infrastructure to reference system admin
-            DocumentType.objects.all().update(created_by=system_admin)
-            WorkflowType.objects.all().update(created_by=system_admin) 
-            PlaceholderDefinition.objects.all().update(created_by=system_admin)
+            # Set password for the final admin
+            final_admin.set_password('test123')
+            final_admin.save()
             
+            # Update all core infrastructure to reference the final admin user
+            DocumentType.objects.all().update(created_by=final_admin)
+            WorkflowType.objects.all().update(created_by=final_admin) 
+            PlaceholderDefinition.objects.all().update(created_by=final_admin)
+            BackupConfiguration.objects.all().update(created_by=final_admin)
+            
+            # Update scheduled tasks if they exist
             try:
-                BackupConfiguration.objects.filter(created_by__isnull=False).update(created_by=system_admin)
-            except:
-                pass  # BackupConfiguration might not have created_by field
+                ScheduledTask.objects.all().update(created_by=final_admin)
+            except Exception:
+                # Handle case where ScheduledTask model might not have created_by field
+                # or might not exist, use direct SQL
+                from django.db import connection
+                with connection.cursor() as cursor:
+                    try:
+                        cursor.execute(f"UPDATE scheduled_tasks SET created_by_id = {final_admin.id} WHERE created_by_id IS NOT NULL;")
+                    except Exception:
+                        pass  # Table might not exist or have created_by field
                 
-            self.stdout.write('  ✅ Core infrastructure references updated to system admin')
+            self.stdout.write('  ✅ Core infrastructure references updated to final admin user')
         except Exception as e:
             self.stdout.write(f'  ⚠️  Infrastructure reference update warning: {str(e)}')
 
-        # STEP 11: Delete all users except system admin
+        # STEP 11: Delete all users except the final admin
         try:
             User = get_user_model()
-            deleted_count = User.objects.exclude(username='system_admin_temp').count()
-            User.objects.exclude(username='system_admin_temp').delete()
-            self.stdout.write(f'  ✅ Users cleared ({deleted_count} users deleted, core infrastructure preserved)')
+            users_to_delete = User.objects.exclude(username='admin')
+            deleted_count = users_to_delete.count()
+            users_to_delete.delete()
+            self.stdout.write(f'  ✅ Users cleared ({deleted_count} users deleted, admin user preserved with core infrastructure)')
         except Exception as e:
             self.stdout.write(f'  ⚠️  User deletion warning: {str(e)}')
 
@@ -367,53 +420,46 @@ class Command(BaseCommand):
                 self.stdout.write(f'  ⚠️  Error clearing {storage_dir}: {str(e)}')
 
     def create_superuser(self):
-        """Create or update the admin superuser account."""
+        """Verify and finalize the admin superuser account."""
         try:
             User = get_user_model()
             
-            # Remove temporary system admin if it exists
-            User.objects.filter(username='system_admin_temp').delete()
+            # The admin user should already exist from the database cleanup phase
+            admin_user = User.objects.filter(username='admin').first()
             
-            # Get or create admin user
-            admin_user, created = User.objects.get_or_create(
-                username='admin',
-                defaults={
-                    'email': 'admin@edms.local',
-                    'is_staff': True,
-                    'is_superuser': True,
-                    'first_name': 'System',
-                    'last_name': 'Administrator'
-                }
-            )
-            
-            if not created:
-                # Update existing admin user
+            if admin_user:
+                # Verify admin user properties are correct
                 admin_user.email = 'admin@edms.local'
                 admin_user.is_staff = True
                 admin_user.is_superuser = True
                 admin_user.first_name = 'System'
                 admin_user.last_name = 'Administrator'
+                admin_user.set_password('test123')
                 admin_user.save()
                 
-            # Set password
-            admin_user.set_password('test123')
-            admin_user.save()
-            
-            # Update core infrastructure to reference the admin user
-            DocumentType.objects.all().update(created_by=admin_user)
-            WorkflowType.objects.all().update(created_by=admin_user) 
-            PlaceholderDefinition.objects.all().update(created_by=admin_user)
-            
-            try:
-                BackupConfiguration.objects.filter(created_by__isnull=False).update(created_by=admin_user)
-            except:
-                pass  # BackupConfiguration might not have created_by field
-            
-            action = 'created' if created else 'updated'
-            self.stdout.write(f'  ✅ Superuser {action}: {admin_user.username}')
-            self.stdout.write(f'  📧 Email: {admin_user.email}')
-            self.stdout.write(f'  🔑 Password: test123')
-            self.stdout.write(f'  🛡️ Core infrastructure references updated')
+                self.stdout.write(f'  ✅ Admin user finalized: {admin_user.username}')
+                self.stdout.write(f'  📧 Email: {admin_user.email}')
+                self.stdout.write(f'  🔑 Password: test123')
+                self.stdout.write(f'  🛡️ Staff: {admin_user.is_staff}, Superuser: {admin_user.is_superuser}')
+            else:
+                # Fallback: create admin user if it doesn't exist
+                admin_user = User.objects.create_user(
+                    username='admin',
+                    email='admin@edms.local',
+                    password='test123',
+                    is_staff=True,
+                    is_superuser=True,
+                    first_name='System',
+                    last_name='Administrator'
+                )
+                
+                # Update core infrastructure to reference the admin user
+                DocumentType.objects.all().update(created_by=admin_user)
+                WorkflowType.objects.all().update(created_by=admin_user) 
+                PlaceholderDefinition.objects.all().update(created_by=admin_user)
+                BackupConfiguration.objects.all().update(created_by=admin_user)
+                
+                self.stdout.write(f'  ✅ Admin user created as fallback: {admin_user.username}')
             
         except Exception as e:
             self.stdout.write(f'  ❌ Error with superuser: {str(e)}')

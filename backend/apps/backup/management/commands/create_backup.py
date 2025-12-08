@@ -194,44 +194,150 @@ class Command(BaseCommand):
         
         db_settings = settings.DATABASES['default']
         
-        # Create a simple metadata backup instead of full dumpdata
-        # This avoids cursor issues with Django serialization
+        # Create complete database backup with actual data using Django's dumpdata
+        from django.core.management import call_command
         from django.apps import apps
         import json
+        import tempfile
         
-        self.stdout.write("Creating metadata-based database backup...")
+        self.stdout.write("Creating complete database backup with actual data...")
         
-        # Create a simplified backup with key information
+        # Define apps and models to backup
+        # Include Django system tables for complete restoration
+        apps_to_backup = [
+            'contenttypes',     # Django content types - CRITICAL for model references
+            'auth',             # Django auth (groups, permissions) - CRITICAL for authorization
+            'admin',            # Django admin logs
+            'sessions',         # User sessions - for session persistence across restore
+            'django_celery_beat', # Scheduled tasks - CRITICAL for automation
+            # EDMS Core Apps
+            'users',            # User accounts and roles
+            'documents',        # Document management
+            'workflows',        # Workflow definitions and instances
+            'audit',            # Audit trails and compliance
+            'security',         # Security certificates and signatures
+            'placeholders',     # Document placeholders and templates
+            'backup',           # Backup configurations
+            'settings',         # System settings and configurations
+        ]
+        
+        # Models to exclude (contain sensitive or non-essential data)
+        exclude_models = [
+            'sessions.session',      # User sessions (can be regenerated)
+            'admin.logentry',        # Admin logs (optional, can be excluded for size)
+        ]
+        
+        # Create complete data backup using Django's dumpdata
         data_file = db_dir / 'database_backup.json'
-        backup_data = {
-            'backup_type': 'edms_metadata',
-            'created_at': timezone.now().isoformat(),
-            'database_info': {
-                'engine': db_settings['ENGINE'],
-                'name': db_settings['NAME']
-            },
-            'tables_info': {}
-        }
         
-        # Get basic table information without full serialization
-        from django.db import connection
-        with connection.cursor() as cursor:
-            cursor.execute("""
-                SELECT table_name, 
-                       (SELECT COUNT(*) FROM information_schema.columns 
-                        WHERE table_name = t.table_name AND table_schema = 'public') as column_count
-                FROM information_schema.tables t
-                WHERE table_schema = 'public' AND table_type = 'BASE TABLE'
-                ORDER BY table_name;
-            """)
-            for table_name, column_count in cursor.fetchall():
-                backup_data['tables_info'][table_name] = {
-                    'column_count': column_count,
-                    'backup_note': 'Full data backup requires pg_dump or manual export'
-                }
-        
-        with open(data_file, 'w') as f:
-            json.dump(backup_data, f, indent=2, default=str)
+        try:
+            # Use temporary file to handle large datasets
+            with tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False) as temp_file:
+                self.stdout.write(f"Exporting data from apps: {', '.join(apps_to_backup)}")
+                
+                # Export data using Django's dumpdata with natural keys
+                call_command(
+                    'dumpdata',
+                    *apps_to_backup,      # Include all critical apps
+                    '--natural-foreign',  # Use natural keys for foreign key references
+                    '--natural-primary',  # Use natural keys for primary keys where available
+                    '--indent=2',         # Pretty formatting for debugging
+                    '--exclude=sessions.session',  # Exclude session data
+                    stdout=temp_file,
+                    verbosity=0          # Quiet output to avoid mixing with our messages
+                )
+                temp_file_path = temp_file.name
+            
+            # Move temporary file to final location
+            import shutil
+            shutil.move(temp_file_path, str(data_file))
+            
+            # Get statistics about the backup
+            with open(data_file, 'r') as f:
+                backup_data = json.load(f)
+                
+            # Create backup metadata
+            metadata = {
+                'backup_type': 'django_complete_data',
+                'created_at': timezone.now().isoformat(),
+                'database_info': {
+                    'engine': db_settings['ENGINE'],
+                    'name': db_settings['NAME']
+                },
+                'apps_included': apps_to_backup,
+                'excluded_models': exclude_models,
+                'total_records': len(backup_data),
+                'model_counts': {}
+            }
+            
+            # Count records by model
+            for record in backup_data:
+                model = record.get('model', 'unknown')
+                metadata['model_counts'][model] = metadata['model_counts'].get(model, 0) + 1
+            
+            # Save metadata file
+            metadata_file = db_dir / 'backup_metadata.json'
+            with open(metadata_file, 'w') as f:
+                json.dump(metadata, f, indent=2, default=str)
+                
+            self.stdout.write(f"✓ Exported {len(backup_data)} database records")
+            self.stdout.write(f"✓ Backup includes {len(metadata['model_counts'])} model types")
+            
+            # Show breakdown of what was backed up
+            critical_models = [
+                'contenttypes.contenttype',
+                'auth.permission', 'auth.group',
+                'users.user', 'users.role', 'users.userrole',
+                'documents.documenttype', 'documents.document',
+                'workflows.documentstate', 'workflows.workflowtype',
+                'placeholders.placeholderdefinition',
+                'security.pdfsigningcertificate'
+            ]
+            
+            self.stdout.write("\nCritical data backup status:")
+            for model in critical_models:
+                count = metadata['model_counts'].get(model, 0)
+                status = '✓' if count > 0 else '⚠️'
+                self.stdout.write(f"  {status} {model}: {count} records")
+                
+        except Exception as e:
+            self.stderr.write(f"❌ Complete database backup failed: {str(e)}")
+            # Fallback to metadata-only backup
+            self.stdout.write("Creating fallback metadata backup...")
+            backup_data = {
+                'backup_type': 'edms_metadata_fallback',
+                'created_at': timezone.now().isoformat(),
+                'database_info': {
+                    'engine': db_settings['ENGINE'],
+                    'name': db_settings['NAME']
+                },
+                'error': str(e),
+                'note': 'Full data export failed, metadata only',
+                'tables_info': {}
+            }
+            
+            # Get basic table information as fallback
+            from django.db import connection
+            try:
+                with connection.cursor() as cursor:
+                    cursor.execute("""
+                        SELECT table_name, 
+                               (SELECT COUNT(*) FROM information_schema.columns 
+                                WHERE table_name = t.table_name AND table_schema = 'public') as column_count
+                        FROM information_schema.tables t
+                        WHERE table_schema = 'public' AND table_type = 'BASE TABLE'
+                        ORDER BY table_name;
+                    """)
+                    for table_name, column_count in cursor.fetchall():
+                        backup_data['tables_info'][table_name] = {
+                            'column_count': column_count,
+                            'backup_note': 'Fallback metadata only - full backup failed'
+                        }
+            except Exception as db_error:
+                backup_data['db_error'] = str(db_error)
+            
+            with open(data_file, 'w') as f:
+                json.dump(backup_data, f, indent=2, default=str)
         
         # Create a simple schema reference file
         schema_file = db_dir / 'schema_info.txt'
@@ -272,9 +378,13 @@ class Command(BaseCommand):
         self.stdout.write("✓ Exported database")
 
     def _export_storage(self, temp_dir: Path):
-        """Export all storage files with manifest."""
+        """Export all storage files and critical configuration files with manifest."""
         storage_dir = temp_dir / 'storage'
         storage_dir.mkdir(exist_ok=True)
+        
+        # CRITICAL FIX: Create configuration directory for environment files
+        config_dir = temp_dir / 'configuration'
+        config_dir.mkdir(exist_ok=True)
         
         # Define source directories
         storage_sources = {
@@ -283,11 +393,26 @@ class Command(BaseCommand):
             'certificates': Path(settings.OFFICIAL_PDF_CONFIG['CERTIFICATE_STORAGE_PATH'])
         }
         
+        # CRITICAL FIX: Define critical configuration files to backup
+        critical_config_files = [
+            ('/app/.env', 'environment_variables.env'),
+            ('/app/.env.workflow', 'workflow_environment.env'),
+        ]
+        
         manifest = {
             'created_at': timezone.now().isoformat(),
             'files': {}
         }
         
+        config_manifest = {
+            'backup_type': 'configuration_files',
+            'created_at': timezone.now().isoformat(),
+            'critical_warning': 'These files contain sensitive information including SECRET_KEY - handle securely',
+            'files_backed_up': 0,
+            'config_files': []
+        }
+        
+        # Export storage files
         for storage_type, source_path in storage_sources.items():
             if not Path(source_path).exists():
                 self.stdout.write(
@@ -317,12 +442,122 @@ class Command(BaseCommand):
                             'modified': file_path.stat().st_mtime
                         }
         
-        # Save manifest
+        # CRITICAL FIX: Export environment configuration files
+        config_backed_up = 0
+        for source_path, backup_name in critical_config_files:
+            source = Path(source_path)
+            if source.exists():
+                import shutil
+                target = config_dir / backup_name
+                shutil.copy2(source, target)
+                self.stdout.write(f"✓ Backed up critical configuration: {source_path}")
+                config_backed_up += 1
+                
+                # Add to config manifest
+                config_manifest['config_files'].append({
+                    'original_path': source_path,
+                    'backup_name': backup_name,
+                    'size': source.stat().st_size,
+                    'contains_secrets': True,
+                    'restore_location': source_path,
+                    'checksum': self._calculate_file_checksum(source)
+                })
+            else:
+                self.stdout.write(f"⚠ Critical configuration file not found: {source_path}")
+        
+        # CRITICAL FIX: Export Django settings directory
+        settings_source = Path('/app/edms/settings')
+        if settings_source.exists():
+            import shutil
+            settings_target = config_dir / 'django_settings'
+            shutil.copytree(settings_source, settings_target, dirs_exist_ok=True)
+            self.stdout.write(f"✓ Backed up Django settings directory")
+            config_backed_up += 1
+            
+            # Add settings files to manifest
+            for settings_file in settings_target.rglob('*.py'):
+                rel_path = settings_file.relative_to(config_dir)
+                config_manifest['config_files'].append({
+                    'original_path': f'/app/edms/settings/{settings_file.name}',
+                    'backup_name': str(rel_path),
+                    'size': settings_file.stat().st_size,
+                    'contains_secrets': 'SECRET' in settings_file.read_text() or 'PASSWORD' in settings_file.read_text(),
+                    'restore_location': f'/app/edms/settings/{settings_file.name}',
+                    'checksum': self._calculate_file_checksum(settings_file)
+                })
+        else:
+            self.stdout.write("⚠ Django settings directory not found")
+        
+        # Update config manifest
+        config_manifest['files_backed_up'] = config_backed_up
+        
+        # Save manifests
         manifest_file = storage_dir / 'manifest.json'
         with open(manifest_file, 'w') as f:
             json.dump(manifest, f, indent=2)
         
+        config_manifest_file = config_dir / 'config_manifest.json'
+        with open(config_manifest_file, 'w') as f:
+            json.dump(config_manifest, f, indent=2)
+        
+        # CRITICAL FIX: Create environment restoration instructions
+        restore_instructions = config_dir / 'RESTORE_INSTRUCTIONS.md'
+        with open(restore_instructions, 'w') as f:
+            f.write("""# Environment Configuration Restore Instructions
+
+## CRITICAL: Environment Variables
+
+This backup includes environment configuration files that contain sensitive information:
+
+1. **environment_variables.env** - Main Django environment file
+   - Contains SECRET_KEY (REQUIRED for Django to start)
+   - Contains database credentials
+   - Contains ALLOWED_HOSTS configuration
+
+2. **Django Settings** - Django configuration files
+   - Contains application configuration
+   - May contain additional sensitive settings
+
+## Restore Process
+
+1. **Copy environment file**:
+   ```bash
+   cp configuration/environment_variables.env /app/.env
+   ```
+
+2. **Copy Django settings** (if needed):
+   ```bash
+   cp -r configuration/django_settings/* /app/edms/settings/
+   ```
+
+3. **Set proper permissions**:
+   ```bash
+   chmod 600 /app/.env
+   chmod 644 /app/edms/settings/*.py
+   ```
+
+4. **Verify environment variables are loaded**:
+   ```bash
+   python manage.py check
+   ```
+
+## Security Notes
+
+- These files contain SECRET_KEY and database passwords
+- Store this backup securely
+- Rotate SECRET_KEY if this backup is compromised
+- Review ALLOWED_HOSTS for your target environment
+
+""")
+        
         self.stdout.write("✓ Exported storage files")
+        self.stdout.write(f"✓ Backed up {config_backed_up} critical configuration components")
+        
+        if config_backed_up < 2:
+            self.stdout.write("⚠ WARNING: Some critical configuration files missing")
+            self.stdout.write("⚠ Manual environment setup may be required during restore")
+        else:
+            self.stdout.write("✓ All critical configuration files backed up successfully")
 
     def _export_configuration(self, temp_dir: Path, options: Dict):
         """Export system configuration and user accounts."""

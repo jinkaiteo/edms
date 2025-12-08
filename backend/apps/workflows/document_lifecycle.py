@@ -787,7 +787,7 @@ class DocumentLifecycleService:
             return workflow
     
     def obsolete_document_directly(self, document: Document, user: User, 
-                                  reason: str, obsolescence_date: date) -> bool:
+                                  reason: str, obsolescence_date) -> bool:
         """
         Direct obsolescence for authorized users (approvers/admins).
         No workflow needed - immediate scheduling with notifications.
@@ -796,22 +796,34 @@ class DocumentLifecycleService:
             document: Document to obsolete
             user: User with obsolescence authority
             reason: Reason for obsolescence (required)
-            obsolescence_date: Date when document becomes obsolete (required)
+            obsolescence_date: Date when document becomes obsolete (required) - can be date object or string
             
         Returns:
             bool: True if successfully scheduled
         """
         with transaction.atomic():
             # Validate document can be obsoleted
-            if document.status != 'EFFECTIVE':
-                raise ValidationError("Can only obsolete EFFECTIVE documents")
+            if document.status == 'SCHEDULED_FOR_OBSOLESCENCE':
+                raise ValidationError(f"Document is already scheduled for obsolescence on {document.obsolescence_date}. Cancel the existing schedule first if you need to change it.")
+            elif document.status in ['OBSOLETE', 'SUPERSEDED', 'TERMINATED']:
+                raise ValidationError(f"Cannot obsolete document with status: {document.status}")
+            elif document.status != 'EFFECTIVE':
+                raise ValidationError(f"Can only obsolete EFFECTIVE documents. Current status: {document.status}")
             
             if not reason:
                 raise ValidationError("Reason for obsolescence is required")
                 
             if not obsolescence_date:
                 raise ValidationError("Obsolescence date is required")
-                
+            
+            # Convert string date to date object if needed
+            if isinstance(obsolescence_date, str):
+                from datetime import datetime
+                try:
+                    obsolescence_date = datetime.strptime(obsolescence_date, '%Y-%m-%d').date()
+                except ValueError as e:
+                    raise ValidationError(f"Invalid date format. Expected YYYY-MM-DD, got: {obsolescence_date}")
+            
             today = timezone.now().date()
             if obsolescence_date <= today:
                 raise ValidationError(f"Obsolescence date must be in the future. Today is {today}, provided date is {obsolescence_date}")
@@ -861,7 +873,8 @@ class DocumentLifecycleService:
         from apps.documents.models import DocumentDependency
         
         active_dependents = DocumentDependency.objects.filter(
-            depends_on=document
+            depends_on=document,
+            is_active=True
         ).exclude(
             document__status__in=['TERMINATED', 'SUPERSEDED', 'OBSOLETE']
         )
@@ -881,7 +894,7 @@ class DocumentLifecycleService:
             document=document,
             workflow_type__in=['REVIEW', 'UP_VERSION'],
             is_terminated=False  # Only consider non-terminated workflows as active
-        ).exclude(current_state__code__in=['TERMINATED', 'COMPLETED', 'OBSOLETE'])
+        ).exclude(current_state__code__in=['TERMINATED', 'COMPLETED', 'OBSOLETE', 'EFFECTIVE'])
         
         if active_workflows.exists():
             workflow_types = [w.workflow_type for w in active_workflows]

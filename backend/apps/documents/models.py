@@ -729,13 +729,306 @@ class DocumentDependency(models.Model):
         if self.document_id == self.depends_on_id:
             raise ValidationError("Document cannot depend on itself")
         
-        # Check for circular dependencies (basic check)
-        if DocumentDependency.objects.filter(
-            document=self.depends_on,
-            depends_on=self.document,
-            is_active=True
-        ).exists():
+        # Check for circular dependencies using comprehensive algorithm
+        if self._would_create_circular_dependency():
             raise ValidationError("Circular dependency detected")
+    
+    def save(self, *args, **kwargs):
+        """
+        Override save to ensure validation is always called.
+        This is a safety net to prevent circular dependencies even if clean() is bypassed.
+        """
+        # Always run validation before saving (unless explicitly skipped)
+        if not kwargs.pop('skip_validation', False):
+            self.clean()
+        super().save(*args, **kwargs)
+    
+    def _would_create_circular_dependency(self):
+        """
+        Check if adding this dependency would create a circular dependency.
+        Uses base document number approach for robust version-aware detection.
+        """
+        if not self.document_id or not self.depends_on_id:
+            return False
+        
+        try:
+            from_doc = Document.objects.get(id=self.document_id)
+            to_doc = Document.objects.get(id=self.depends_on_id)
+            
+            # Extract base document numbers (remove version suffixes)
+            from_base_number = self._get_base_document_number(from_doc.document_number)
+            to_base_number = self._get_base_document_number(to_doc.document_number)
+            
+            # RULE 1: Document cannot depend on another version of itself
+            if from_base_number == to_base_number:
+                return True
+            
+            # RULE 2: Check if target document family has any dependencies back to source family
+            return self._has_base_number_circular_dependency(from_base_number, to_base_number)
+            
+        except Document.DoesNotExist:
+            # Fallback to ID-based checking if documents not found
+            dependency_graph = self._build_dependency_graph()
+            return self._has_path(dependency_graph, self.depends_on_id, self.document_id)
+    
+    def _get_base_document_number(self, document_number):
+        """
+        Extract base document number without version suffix.
+        POL-2025-0001-v02.00 -> POL-2025-0001
+        """
+        if '-v' in document_number:
+            return document_number.split('-v')[0]
+        return document_number
+    
+    def _has_base_number_circular_dependency(self, from_base_number, to_base_number):
+        """
+        Check if target document family has any dependencies back to source family.
+        Simple and robust base number approach.
+        
+        Example: POL-2025-0001 v2.0 → SOP-2025-0001
+        - from_base_number = "POL-2025-0001" 
+        - to_base_number = "SOP-2025-0001"
+        - Check: Does any version of SOP-2025-0001 depend on any version of POL-2025-0001?
+        """
+        # Get all active dependencies
+        all_dependencies = DocumentDependency.objects.filter(is_active=True).select_related('document', 'depends_on')
+        
+        # Build base number dependency map
+        base_dependencies = {}
+        for dep in all_dependencies:
+            dep_from_base = self._get_base_document_number(dep.document.document_number)
+            dep_to_base = self._get_base_document_number(dep.depends_on.document_number)
+            
+            if dep_from_base not in base_dependencies:
+                base_dependencies[dep_from_base] = set()
+            base_dependencies[dep_from_base].add(dep_to_base)
+        
+        # Check if target document family depends on source document family
+        # Use simple BFS/DFS on base document numbers instead of IDs
+        visited = set()
+        
+        def has_dependency_path(current_base, target_base):
+            if current_base == target_base:
+                return True
+            
+            if current_base in visited:
+                return False
+            
+            visited.add(current_base)
+            
+            # Check all dependencies of current document family
+            for dependent_base in base_dependencies.get(current_base, []):
+                if has_dependency_path(dependent_base, target_base):
+                    return True
+            
+            return False
+        
+        return has_dependency_path(to_base_number, from_base_number)
+    
+    def _build_dependency_graph(self):
+        """
+        Build a dependency graph as an adjacency list.
+        Returns: dict where keys are document IDs and values are lists of dependent document IDs.
+        """
+        graph = {}
+        
+        # Get all active dependencies (excluding current one if updating)
+        dependencies = DocumentDependency.objects.filter(is_active=True)
+        if self.pk:  # If updating existing dependency, exclude it from graph
+            dependencies = dependencies.exclude(pk=self.pk)
+        
+        for dep in dependencies:
+            if dep.document_id not in graph:
+                graph[dep.document_id] = []
+            graph[dep.document_id].append(dep.depends_on_id)
+        
+        return graph
+    
+    def _has_path(self, graph, start_id, target_id, visited=None):
+        """
+        Check if there's a path from start_id to target_id in the dependency graph.
+        Uses depth-first search with cycle detection.
+        """
+        if visited is None:
+            visited = set()
+        
+        if start_id == target_id:
+            return True
+        
+        if start_id in visited:
+            return False  # Cycle detected, but not the one we're looking for
+        
+        visited.add(start_id)
+        
+        # Check all documents that start_id depends on
+        for neighbor_id in graph.get(start_id, []):
+            if self._has_path(graph, neighbor_id, target_id, visited.copy()):
+                return True
+        
+        return False
+    
+    @classmethod
+    def detect_circular_dependencies(cls):
+        """
+        Analyze the entire dependency system to detect existing circular dependencies.
+        Uses base document number approach for robust version-aware detection.
+        Returns: list of circular dependency chains found (base document numbers).
+        """
+        all_dependencies = cls.objects.filter(is_active=True).select_related('document', 'depends_on')
+        
+        # Build base number dependency graph
+        base_dependency_graph = {}
+        for dep in all_dependencies:
+            from_base = cls._get_base_document_number_static(dep.document.document_number)
+            to_base = cls._get_base_document_number_static(dep.depends_on.document_number)
+            
+            if from_base not in base_dependency_graph:
+                base_dependency_graph[from_base] = set()
+            base_dependency_graph[from_base].add(to_base)
+        
+        # Find all cycles using base document numbers
+        cycles = []
+        visited_global = set()
+        
+        for base_doc in base_dependency_graph:
+            if base_doc not in visited_global:
+                cycle = cls._find_base_cycle_from_node(base_dependency_graph, base_doc, visited_global)
+                if cycle:
+                    cycles.append(cycle)
+        
+        return cycles
+    
+    @classmethod
+    def _get_base_document_number_static(cls, document_number):
+        """
+        Static version of _get_base_document_number for class method use.
+        Extract base document number without version suffix.
+        """
+        if '-v' in document_number:
+            return document_number.split('-v')[0]
+        return document_number
+    
+    @classmethod
+    def _find_base_cycle_from_node(cls, graph, start_base, visited_global):
+        """
+        Find cycles starting from a specific base document number using DFS.
+        Returns the cycle path if found, None otherwise.
+        """
+        visited_path = set()
+        path = []
+        
+        def dfs(base_doc):
+            if base_doc in visited_path:
+                # Found a cycle - return the cycle portion
+                try:
+                    cycle_start_index = path.index(base_doc)
+                    return path[cycle_start_index:] + [base_doc]
+                except ValueError:
+                    return [base_doc]  # Single node cycle
+            
+            if base_doc in visited_global:
+                return None
+            
+            visited_path.add(base_doc)
+            path.append(base_doc)
+            
+            for neighbor in graph.get(base_doc, set()):
+                cycle = dfs(neighbor)
+                if cycle:
+                    return cycle
+            
+            path.pop()
+            visited_path.remove(base_doc)
+            visited_global.add(base_doc)
+            return None
+        
+        return dfs(start_base)
+    
+    @classmethod
+    def _find_cycle_from_node(cls, graph, start_id, visited_global):
+        """
+        Find cycles starting from a specific node using DFS.
+        Returns the cycle path if found, None otherwise.
+        """
+        visited_path = set()
+        path = []
+        
+        def dfs(node_id):
+            if node_id in visited_path:
+                # Found a cycle - return the cycle portion
+                cycle_start_index = path.index(node_id)
+                return path[cycle_start_index:] + [node_id]
+            
+            if node_id in visited_global:
+                return None
+            
+            visited_path.add(node_id)
+            path.append(node_id)
+            
+            for neighbor in graph.get(node_id, []):
+                cycle = dfs(neighbor)
+                if cycle:
+                    return cycle
+            
+            path.pop()
+            visited_path.remove(node_id)
+            visited_global.add(node_id)
+            return None
+        
+        return dfs(start_id)
+    
+    @classmethod
+    def get_dependency_chain(cls, document_id, max_depth=10):
+        """
+        Get the complete dependency chain for a document.
+        Useful for impact analysis when documents change.
+        """
+        dependencies = {}
+        dependents = {}
+        
+        # Build bidirectional graph
+        for dep in cls.objects.filter(is_active=True):
+            # Forward dependencies (what this document depends on)
+            if dep.document_id not in dependencies:
+                dependencies[dep.document_id] = []
+            dependencies[dep.document_id].append({
+                'id': dep.depends_on_id,
+                'type': dep.dependency_type,
+                'is_critical': dep.is_critical
+            })
+            
+            # Reverse dependencies (what depends on this document)
+            if dep.depends_on_id not in dependents:
+                dependents[dep.depends_on_id] = []
+            dependents[dep.depends_on_id].append({
+                'id': dep.document_id,
+                'type': dep.dependency_type,
+                'is_critical': dep.is_critical
+            })
+        
+        def get_chain(doc_id, chain_type, visited, depth):
+            if depth > max_depth or doc_id in visited:
+                return []
+            
+            visited.add(doc_id)
+            result = []
+            
+            source = dependencies if chain_type == 'dependencies' else dependents
+            for item in source.get(doc_id, []):
+                result.append({
+                    'document_id': item['id'],
+                    'depth': depth,
+                    'type': item['type'],
+                    'is_critical': item['is_critical'],
+                    'chain': get_chain(item['id'], chain_type, visited.copy(), depth + 1)
+                })
+            
+            return result
+        
+        return {
+            'dependencies': get_chain(document_id, 'dependencies', set(), 1),
+            'dependents': get_chain(document_id, 'dependents', set(), 1)
+        }
 
 
 class DocumentAccessLog(models.Model):

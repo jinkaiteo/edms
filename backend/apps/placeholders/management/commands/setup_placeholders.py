@@ -400,22 +400,22 @@ class Command(BaseCommand):
         """Get or create system user for placeholder management."""
         try:
             system_user, created = User.objects.get_or_create(
-                username='system_placeholders',
+                username='edms_system',
                 defaults={
-                    'email': 'placeholders@edms.local',
-                    'first_name': 'System',
-                    'last_name': 'Placeholders',
+                    'email': 'system@edms.local',
+                    'first_name': 'EDMS',
+                    'last_name': 'System Service',
                     'is_active': True,
                     'is_staff': False,
-                    'department': 'System',
-                    'position': 'Placeholder Manager'
+                    'department': 'System Services',
+                    'position': 'Template Processing Service'
                 }
             )
             
             if created:
-                self.stdout.write('✅ Created system placeholder user')
+                self.stdout.write('✅ Created EDMS system service user')
             else:
-                self.stdout.write('ℹ️  System placeholder user already exists')
+                self.stdout.write('ℹ️  EDMS system service user already exists')
                 
             return system_user
             
@@ -451,11 +451,11 @@ class Command(BaseCommand):
                 self.stdout.write(f'   ⚠️  Missing required placeholders: {missing_placeholders}')
             
             # Check system user
-            system_users = User.objects.filter(username='system_placeholders')
+            system_users = User.objects.filter(username='edms_system')
             if system_users.exists():
-                self.stdout.write('   ✅ System placeholder user configured')
+                self.stdout.write('   ✅ EDMS system service user configured')
             else:
-                self.stdout.write('   ⚠️  System placeholder user missing')
+                self.stdout.write('   ⚠️  EDMS system service user missing')
                 
             self.stdout.write('   ✅ Placeholder validation complete')
             

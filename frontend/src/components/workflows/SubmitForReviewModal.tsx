@@ -8,6 +8,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContext.tsx';
 import apiService from '../../services/api.ts';
+import { triggerBadgeRefresh } from '../../utils/badgeRefresh';
 
 interface SubmitForReviewModalProps {
   document: any;
@@ -164,6 +165,10 @@ const SubmitForReviewModal: React.FC<SubmitForReviewModalProps> = ({
       }
 
       console.log('🎉 FRONTEND DEBUG: All API calls successful, calling onSubmitSuccess');
+      
+      // 🔄 IMMEDIATE BADGE REFRESH: Update badge count immediately after submit
+      triggerBadgeRefresh();
+      console.log('✅ Badge refreshed immediately after document submission');
       
       // Success
       onSubmitSuccess();

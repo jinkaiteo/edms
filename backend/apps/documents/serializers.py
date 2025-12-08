@@ -113,13 +113,41 @@ class DocumentDependencySerializer(serializers.ModelSerializer):
         if data['document'] == data['depends_on']:
             raise serializers.ValidationError("Document cannot depend on itself")
         
-        # Check for circular dependencies
-        if DocumentDependency.objects.filter(
-            document=data['depends_on'],
-            depends_on=data['document'],
+        # Create a temporary dependency object to test comprehensive validation
+        temp_dependency = DocumentDependency(
+            document=data['document'],
+            depends_on=data['depends_on'],
+            dependency_type=data.get('dependency_type', 'REFERENCE'),
             is_active=True
-        ).exists():
-            raise serializers.ValidationError("Circular dependency detected")
+        )
+        
+        # Use the comprehensive circular dependency check
+        if temp_dependency._would_create_circular_dependency():
+            # Get detailed information about the potential circular dependency
+            try:
+                chain = DocumentDependency.get_dependency_chain(data['depends_on'].id, max_depth=5)
+                dependency_info = chain.get('dependencies', [])
+                
+                error_detail = (
+                    f"Circular dependency detected: Adding dependency from "
+                    f"{data['document'].document_number} to {data['depends_on'].document_number} "
+                    f"would create a dependency loop."
+                )
+                
+                if dependency_info:
+                    error_detail += f" Existing dependency chain: {len(dependency_info)} levels deep."
+                
+                raise serializers.ValidationError({
+                    'non_field_errors': [error_detail],
+                    'dependency_chain_preview': dependency_info[:3] if dependency_info else []
+                })
+            except Exception as e:
+                # Fallback to simple error message if dependency chain analysis fails
+                raise serializers.ValidationError(
+                    f"Circular dependency detected: Adding dependency from "
+                    f"{data['document'].document_number} to {data['depends_on'].document_number} "
+                    f"would create a dependency loop."
+                )
         
         return data
     
@@ -314,13 +342,19 @@ class DocumentDetailSerializer(serializers.ModelSerializer):
         return obj.can_approve(user)
     
     def get_dependencies(self, obj):
-        """Get only active dependencies."""
-        active_dependencies = obj.dependencies.filter(is_active=True)
+        """Get only active dependencies where target documents are approved/effective."""
+        active_dependencies = obj.dependencies.filter(
+            is_active=True,
+            depends_on__status__in=['APPROVED_PENDING_EFFECTIVE', 'EFFECTIVE']
+        )
         return DocumentDependencySerializer(active_dependencies, many=True, context=self.context).data
     
     def get_dependents(self, obj):
-        """Get only active dependents."""
-        active_dependents = obj.dependents.filter(is_active=True)
+        """Get only active dependents where source documents are approved/effective."""
+        active_dependents = obj.dependents.filter(
+            is_active=True,
+            document__status__in=['APPROVED_PENDING_EFFECTIVE', 'EFFECTIVE']
+        )
         return DocumentDependencySerializer(active_dependents, many=True, context=self.context).data
     
     def get_obsoleted_by_display(self, obj):
