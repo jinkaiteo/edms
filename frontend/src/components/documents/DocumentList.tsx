@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import apiService from '../../services/api.ts';
+import { useAuth } from '../../contexts/AuthContext.tsx';
 
 interface Document {
   id?: number;
@@ -34,6 +35,7 @@ const DocumentList: React.FC<DocumentListProps> = ({
   searchFilters = {},
 }) => {
   console.log('🔍 DocumentList: Received props:', { filterType, refreshTrigger, selectedDocument: selectedDocument?.uuid });
+  const { user } = useAuth();
   const [documents, setDocuments] = useState<Document[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -163,12 +165,22 @@ const DocumentList: React.FC<DocumentListProps> = ({
         console.log('🔄 DocumentList: Fetching documents...', refreshTrigger ? `(trigger: ${refreshTrigger})` : '(initial load)', `[filter: ${filterType}]`);
         console.log('📍 DocumentList: Current URL:', window.location.pathname);
         
-        // Build API endpoint with filter parameter
+        // Build API endpoint with filter parameter  
         const filterParam = filterType === 'approved' ? 'approved_latest' : 
                            filterType === 'pending' ? 'my_tasks' :
                            filterType === 'archived' ? 'archived' :
                            filterType === 'obsolete' ? 'obsolete' :
                            filterType === 'all' ? 'library' : '';
+        
+        // ADMIN OVERRIDE: For admins/superusers, default to no filter (see all documents)
+        const shouldShowAllForAdmin = !filterType && user?.is_superuser;
+        
+        console.log('👤 User admin status:', { 
+          username: user?.username, 
+          is_superuser: user?.is_superuser,
+          filterType,
+          shouldShowAllForAdmin 
+        });
         
         console.log('🔧 DocumentList: Filter mapping:', { filterType, filterParam });
         
