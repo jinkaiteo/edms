@@ -93,6 +93,11 @@ These insights focus on patterns that prevent common development pitfalls and im
 - **Field existence verification**: Use `getattr()` and `hasattr()` when adding new fields to handle cases where migrations haven't run yet
 - **Container service dependencies**: When modifying database schema, ensure Django Channels dependencies are properly installed and container is rebuilt
 
+### API Serializer Consistency Patterns
+- **Synchronize serializer filtering**: When multiple serializers (List vs Detail) handle same data, ensure identical filtering logic to prevent frontend inconsistencies
+- **Status filter alignment**: DocumentListSerializer and DocumentDetailSerializer must use identical status filtering (`APPROVED_PENDING_EFFECTIVE`, `EFFECTIVE`, `SCHEDULED_FOR_OBSOLESCENCE`) to avoid data discrepancies
+- **Frontend data expectations**: When frontend components switch between list and detail APIs, ensure both return identical data structures and field coverage
+
 ### Database Field Constraints and Error Handling
 - **CharField max_length constraints**: Always check model field max_length limits when writing audit trails or other dynamic content - Django's CharField fields have strict length limits (e.g., 30 chars for action fields)
 - **Audit trail field optimization**: Use shortened, meaningful action names instead of descriptive sentences to avoid length constraint errors (e.g., `DOC_EFFECTIVE_PROCESSED` vs `DOCUMENT_EFFECTIVE_DATE_PROCESSED`)
@@ -118,17 +123,19 @@ These insights focus on patterns that prevent common development pitfalls and im
 - **Progressive Fallback Strategy**: Implement graceful fallback from detailed API data → basic document data → clear error messages with actionable guidance
 - **No Misleading Mock Data**: Never use mock data as fallback - show clear errors when real data can't be retrieved to prevent user misrepresentation and maintain system integrity
 
-## Frontend-Backend Integration Debugging
+### Frontend-Backend Integration Debugging
 - **API endpoint verification first**: Always verify API endpoints exist and return expected data structure before debugging frontend logic
 - **Response structure mapping**: Frontend components may expect different data structures than backend provides - check actual API response format vs frontend expectations
 - **URL pattern matching**: Ensure URL patterns match between frontend calls (`my-notifications`) and backend routes (`my_notifications`) - hyphens vs underscores matter
 - **API parameter format validation**: Frontend and backend parameter formats must match exactly - query filters like `?filter=pending_my_action` vs `?pending_my_action=true` can return completely different results leading to incorrect UI state
-- **Badge and UI state consistency**: When UI elements show unexpected values (like "0" badges), check both the API response format and the component logic that processes the response - hardcoded values often result from mismatched parameter formats
-- **Navigation highlighting with query parameters**: When using URL query parameters for filtering (e.g., `/document-management?filter=pending`), navigation highlighting logic needs special handling to distinguish between base routes and filtered routes
-- **UX principle - proximity and single action**: Place counters/badges directly on navigation items rather than separate header elements to reduce cognitive load and provide clearer user affordance
-- **Document-centric architecture benefits**: For document management systems, consolidating around document filtering with query parameters (/document-management?filter=type) provides better UX than separate pages for different document states
-- **Modern navigation patterns**: Following established app patterns (Gmail's inbox badges, Slack's channel counters) improves user adoption and reduces cognitive load
+- **Multiple API call debugging**: When frontend components make multiple API calls (list + detail), ensure both endpoints return consistent data - detail endpoints overwriting good list data is a common integration failure pattern
+- **Debug logging strategic placement**: Add detailed debug logging in frontend components to trace data flow between API calls, especially when components switch between different endpoints
 - **Content-Disposition header authority**: Frontend should extract filenames from server's `Content-Disposition` header instead of constructing them client-side - server determines correct filename and extension, especially important for ZIP packages vs single files
+
+### Performance Optimization Patterns
+- **Event-driven over polling**: Replace regular HTTP polling with event-triggered updates plus minimal backup polling (5-minute safety net vs 15-60 second intervals) for 95% server load reduction
+- **Infinite loop prevention**: Remove changing values (like `lastRefreshTime`) from useEffect dependencies to prevent continuous re-renders and API calls
+- **Server resource management**: Aggressive polling can cause "too many open files" and database connection exhaustion in Docker containers - prioritize event-driven patterns for production scalability
 
 ### Search Filter Implementation
 - **Backend-frontend filter alignment**: Always verify backend DocumentFilter capabilities before implementing frontend search options - remove unsupported filters (e.g., department) to prevent user confusion
