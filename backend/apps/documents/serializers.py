@@ -249,6 +249,10 @@ class DocumentListSerializer(serializers.ModelSerializer):
     # Add obsolescence user display name
     obsoleted_by_display = serializers.SerializerMethodField()
     
+    # Add dependency information
+    dependencies = serializers.SerializerMethodField()
+    dependents = serializers.SerializerMethodField()
+    
     class Meta:
         model = Document
         fields = [
@@ -261,7 +265,9 @@ class DocumentListSerializer(serializers.ModelSerializer):
             # Add file information for workflow button logic
             'file_name', 'file_path', 'file_size',
             # Add obsolescence information
-            'obsolescence_date', 'obsolescence_reason', 'obsoleted_by', 'obsoleted_by_display'
+            'obsolescence_date', 'obsolescence_reason', 'obsoleted_by', 'obsoleted_by_display',
+            # Add dependency information
+            'dependencies', 'dependents'
         ]
     
     def get_obsoleted_by_display(self, obj):
@@ -269,6 +275,22 @@ class DocumentListSerializer(serializers.ModelSerializer):
         if obj.obsoleted_by:
             return obj.obsoleted_by.get_full_name() or obj.obsoleted_by.username
         return None
+    
+    def get_dependencies(self, obj):
+        """Get active dependencies where target documents are approved/effective."""
+        active_dependencies = obj.dependencies.filter(
+            is_active=True,
+            depends_on__status__in=['APPROVED_PENDING_EFFECTIVE', 'EFFECTIVE', 'SCHEDULED_FOR_OBSOLESCENCE']
+        )
+        return DocumentDependencySerializer(active_dependencies, many=True, context=self.context).data
+    
+    def get_dependents(self, obj):
+        """Get active dependents where source documents are approved/effective."""
+        active_dependents = obj.dependents.filter(
+            is_active=True,
+            document__status__in=['APPROVED_PENDING_EFFECTIVE', 'EFFECTIVE', 'SCHEDULED_FOR_OBSOLESCENCE']
+        )
+        return DocumentDependencySerializer(active_dependents, many=True, context=self.context).data
 
 
 class DocumentDetailSerializer(serializers.ModelSerializer):
@@ -345,7 +367,7 @@ class DocumentDetailSerializer(serializers.ModelSerializer):
         """Get only active dependencies where target documents are approved/effective."""
         active_dependencies = obj.dependencies.filter(
             is_active=True,
-            depends_on__status__in=['APPROVED_PENDING_EFFECTIVE', 'EFFECTIVE']
+            depends_on__status__in=['APPROVED_PENDING_EFFECTIVE', 'EFFECTIVE', 'SCHEDULED_FOR_OBSOLESCENCE']
         )
         return DocumentDependencySerializer(active_dependencies, many=True, context=self.context).data
     
@@ -353,7 +375,7 @@ class DocumentDetailSerializer(serializers.ModelSerializer):
         """Get only active dependents where source documents are approved/effective."""
         active_dependents = obj.dependents.filter(
             is_active=True,
-            document__status__in=['APPROVED_PENDING_EFFECTIVE', 'EFFECTIVE']
+            document__status__in=['APPROVED_PENDING_EFFECTIVE', 'EFFECTIVE', 'SCHEDULED_FOR_OBSOLESCENCE']
         )
         return DocumentDependencySerializer(active_dependents, many=True, context=self.context).data
     

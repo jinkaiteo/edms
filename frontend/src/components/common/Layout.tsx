@@ -103,7 +103,8 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
       return count;
     } catch (err) {
       console.error('❌ Failed to refresh badge:', err);
-      console.error('Badge refresh error details:', err.response?.data || err.message);
+      console.error('Badge refresh error details:', err.response?.data || err.message || 'Unknown error');
+      console.error('Full error object:', err);
       
       // Don't reset to 0 on error - keep current count
       console.log('Keeping current badge count due to error');
@@ -124,39 +125,17 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
     
     window.addEventListener('badgeRefresh', handleBadgeRefreshEvent);
     
-    // Adaptive polling based on user activity
-    const getPollingInterval = () => {
-      const now = Date.now();
-      const timeSinceLastRefresh = now - lastRefreshTime;
-      
-      // More frequent polling if recently refreshed (user is active)
-      if (timeSinceLastRefresh < 2 * 60 * 1000) { // 2 minutes
-        return 15000; // 15 seconds when recently active
-      } else if (timeSinceLastRefresh < 10 * 60 * 1000) { // 10 minutes
-        return 30000; // 30 seconds when moderately active
-      } else {
-        return 60000; // 60 seconds when idle
-      }
-    };
+    // EVENT-DRIVEN: Minimal backup polling (5 minutes) for safety net only
+    const backupPolling = setInterval(() => {
+      console.log('🔄 Backup polling: 5-minute safety refresh');
+      refreshBadge();
+    }, 5 * 60 * 1000); // 5 minutes instead of 60 seconds
 
-    const startPolling = () => {
-      const poll = () => {
-        refreshBadge();
-        const nextInterval = getPollingInterval();
-        setTimeout(poll, nextInterval);
-      };
-      
-      // Start first poll after initial interval
-      const initialInterval = getPollingInterval();
-      setTimeout(poll, initialInterval);
-    };
-
-    startPolling();
-    
     return () => {
       window.removeEventListener('badgeRefresh', handleBadgeRefreshEvent);
+      clearInterval(backupPolling);
     };
-  }, [authenticated, user, lastRefreshTime]);
+  }, [authenticated, user]); // FIXED: Removed lastRefreshTime to prevent infinite loop
 
   // Handle click outside dropdown to close it
   useEffect(() => {

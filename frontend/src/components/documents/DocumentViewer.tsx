@@ -1242,7 +1242,6 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({
                 <div className="border border-gray-200 rounded-lg p-4">
                   <div className="flex items-center justify-between mb-3">
                     <h4 className="text-sm font-semibold text-gray-700">📥 Dependencies</h4>
-                    <span className="text-xs text-gray-500">What this document depends on</span>
                   </div>
                   
                   {(completeDocument?.dependencies || document.dependencies) && (completeDocument?.dependencies || document.dependencies).length > 0 ? (
@@ -1295,7 +1294,6 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({
                 <div className="border border-gray-200 rounded-lg p-4">
                   <div className="flex items-center justify-between mb-3">
                     <h4 className="text-sm font-semibold text-gray-700">📤 Dependents</h4>
-                    <span className="text-xs text-gray-500">What depends on this document</span>
                   </div>
                   
                   {(completeDocument?.dependents || document.dependents) && (completeDocument?.dependents || document.dependents).length > 0 ? (
@@ -1345,26 +1343,6 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({
                 </div>
               </div>
               
-              {/* Circular Dependency Warning */}
-              {((document.dependencies && document.dependencies.length > 0) || 
-                (document.dependents && document.dependents.length > 0)) && (
-                <div className="mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
-                  <div className="flex">
-                    <div className="flex-shrink-0">
-                      <svg className="h-5 w-5 text-yellow-400" fill="currentColor" viewBox="0 0 20 20">
-                        <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 00-1-1z" clipRule="evenodd" />
-                        </svg>
-                    </div>
-                    <div className="ml-3">
-                      <h4 className="text-sm font-medium text-yellow-800">⚠️ Dependency Notice</h4>
-                      <p className="text-sm text-yellow-700 mt-1">
-                        This document has dependency relationships. Changes to dependencies may affect related documents.
-                        The system prevents circular dependencies to maintain document integrity.
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              )}
             </div>
 
             {/* Workflow Assignment Information */}

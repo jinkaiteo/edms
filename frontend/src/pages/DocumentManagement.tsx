@@ -8,6 +8,7 @@ import DocumentList from '../components/documents/DocumentList.tsx';
 import DocumentViewer from '../components/documents/DocumentViewer.tsx';
 import DocumentSearch from '../components/documents/DocumentSearch.tsx';
 import DocumentUploadNewModal from '../components/documents/DocumentUploadNewModal';
+import { triggerBadgeRefresh } from '../utils/badgeRefresh.ts';
 
 interface DocumentManagementProps {
   filterType?: 'pending' | 'approved' | 'archived' | 'obsolete';
@@ -364,9 +365,12 @@ const DocumentManagement: React.FC<DocumentManagementProps> = ({
                   if (selectedDocument) {
                     handleDocumentRefresh();
                   }
+                  // 🎯 REFRESH MY TASKS BADGE: Update badge count when user manually refreshes
+                  console.log('🔔 Triggering My Tasks badge refresh from manual refresh button');
+                  triggerBadgeRefresh();
                 }}
                 className="flex items-center space-x-2 px-3 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
-                title="Refresh document list and selected document data"
+                title="Refresh document list, selected document data, and My Tasks badge"
               >
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />

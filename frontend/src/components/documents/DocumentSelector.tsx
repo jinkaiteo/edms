@@ -41,21 +41,57 @@ const DocumentSelector: React.FC<DocumentSelectorProps> = ({
 
   // Filter documents based on search term
   useEffect(() => {
+    console.log('🔍 FILTER DEBUG: Search term changed:', {
+      searchTerm,
+      trimmed: searchTerm.trim(),
+      totalDocuments: documents.length,
+      excludeIds: excludeIds.length
+    });
+
     if (!searchTerm.trim()) {
+      console.log('🔍 FILTER DEBUG: Empty search, clearing results');
       setFilteredDocuments([]);
       setIsOpen(false);
       return;
     }
 
-    const filtered = (documents || []).filter(doc => 
-      !excludeIds.includes(doc.id) &&
-      (doc.document_number?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-       doc.title?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-       doc.document_type?.toLowerCase().includes(searchTerm.toLowerCase()))
-    );
+    console.log('🔍 FILTER DEBUG: Filtering documents...');
+    console.log('📋 FILTER DEBUG: Available documents:', documents.map(d => `${d.document_number} (${d.status})`));
+
+    const filtered = (documents || []).filter(doc => {
+      const isExcluded = excludeIds.includes(doc.id);
+      const matchesNumber = doc.document_number?.toLowerCase().includes(searchTerm.toLowerCase());
+      const matchesTitle = doc.title?.toLowerCase().includes(searchTerm.toLowerCase());
+      const matchesType = doc.document_type?.toLowerCase().includes(searchTerm.toLowerCase());
+      const matchesStatus = doc.status?.toLowerCase().includes(searchTerm.toLowerCase());
+      const matchesAny = matchesNumber || matchesTitle || matchesType || matchesStatus;
+
+      console.log(`🔍 FILTER DEBUG: ${doc.document_number}:`, {
+        isExcluded,
+        matchesNumber,
+        matchesTitle,
+        matchesType,
+        matchesStatus,
+        matchesAny,
+        included: !isExcluded && matchesAny
+      });
+
+      return !isExcluded && matchesAny;
+    });
+
+    console.log('🔍 FILTER DEBUG: Filter results:', {
+      totalFiltered: filtered.length,
+      limitedTo10: Math.min(filtered.length, 10),
+      matchedDocuments: filtered.slice(0, 10).map(d => d.document_number)
+    });
 
     setFilteredDocuments(filtered.slice(0, 10)); // Limit to 10 results
     setIsOpen(filtered.length > 0);
+    
+    console.log('🔍 FILTER DEBUG: Dropdown state:', {
+      isOpen: filtered.length > 0,
+      filteredCount: filtered.length
+    });
   }, [searchTerm, documents, excludeIds]);
 
   // Close dropdown when clicking outside
@@ -104,8 +140,8 @@ const DocumentSelector: React.FC<DocumentSelectorProps> = ({
         // Filter for only approved/effective documents that can be used as dependencies
         const approvedDocuments = documentsArray.filter((doc: any) => 
           doc.status === 'EFFECTIVE' || 
-          doc.status === 'EFFECTIVE' ||
-          doc.status === 'APPROVED'
+          doc.status === 'APPROVED' ||
+          doc.status === 'APPROVED_PENDING_EFFECTIVE'
         );
         
         console.log(`✅ DocumentSelector: Found ${approvedDocuments.length} approved documents for dependencies`);
@@ -186,6 +222,17 @@ const DocumentSelector: React.FC<DocumentSelectorProps> = ({
       </div>
 
       {/* Dropdown */}
+      {(() => {
+        console.log('🔍 DROPDOWN RENDER: Checking dropdown visibility:', {
+          isOpen,
+          filteredDocumentsLength: filteredDocuments.length,
+          searchTerm: searchTerm.trim(),
+          loading,
+          error
+        });
+        return null;
+      })()}
+      
       {isOpen && (
         <div className="absolute z-10 mt-1 w-full bg-white shadow-lg max-h-60 rounded-md py-1 text-base ring-1 ring-black ring-opacity-5 overflow-auto focus:outline-none">
           {loading && (
