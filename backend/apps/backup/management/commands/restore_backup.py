@@ -473,24 +473,133 @@ class Command(BaseCommand):
             raise CommandError("No database backup file found in package")
 
     def _restore_from_django_fixture(self, json_file: Path):
-        """Restore from Django JSON fixture with foreign key fixes."""
+        """Restore from Django JSON fixture with post-reinit conflict resolution."""
         from django.core.management import call_command
         from django.contrib.auth import get_user_model
         import json
+        import tempfile
         
         User = get_user_model()
         
-        self.stdout.write("Loading Django fixture with foreign key fixes...")
+        self.stdout.write("Loading Django fixture with post-reinit compatibility...")
         
-        # Load and fix the backup data
+        # Load backup data
         with open(json_file, 'r') as f:
             backup_data = json.load(f)
         
-        # Create user mapping for current system
+        # CRITICAL FIX: Detect post-reinit state and handle admin conflicts
+        user_count_before = User.objects.count()
+        
+        if user_count_before <= 1:  # Post-reinit state (only admin exists)
+            self.stdout.write("🔧 Post-reinit restoration detected - resolving admin conflicts...")
+            self._restore_with_admin_conflict_resolution(backup_data)
+        else:
+            # Normal restoration with foreign key fixes
+            self.stdout.write("Standard restoration with foreign key fixes...")
+            self._restore_with_fk_fixes(backup_data)
+    
+    def _restore_with_admin_conflict_resolution(self, backup_data):
+        """Handle restoration after reinit with admin user conflict resolution."""
+        from django.core.management import call_command
+        from django.contrib.auth import get_user_model
+        import json
+        import tempfile
+        
+        User = get_user_model()
+        
+        try:
+            # Step 1: Update current admin to match backup admin
+            current_admin = User.objects.get(username='admin')
+            self.stdout.write(f"Current admin: {current_admin.email}")
+            
+            # Find admin user in backup data
+            backup_admin = None
+            for obj in backup_data:
+                if (obj.get('model') == 'users.user' and 
+                    obj.get('fields', {}).get('username') == 'admin'):
+                    backup_admin = obj
+                    break
+            
+            if backup_admin:
+                backup_fields = backup_admin['fields']
+                self.stdout.write(f"Backup admin: {backup_fields.get('email')}")
+                
+                # Update current admin to match backup admin (prevents conflicts)
+                current_admin.email = backup_fields.get('email', current_admin.email)
+                current_admin.first_name = backup_fields.get('first_name', current_admin.first_name)
+                current_admin.last_name = backup_fields.get('last_name', current_admin.last_name)
+                current_admin.is_superuser = backup_fields.get('is_superuser', current_admin.is_superuser)
+                current_admin.is_staff = backup_fields.get('is_staff', current_admin.is_staff)
+                current_admin.save()
+                
+                self.stdout.write("✅ Admin user updated to match backup data")
+                
+                # Step 2: Filter out the admin user from backup to prevent conflicts
+                filtered_backup = [
+                    obj for obj in backup_data 
+                    if not (obj.get('model') == 'users.user' and 
+                           obj.get('fields', {}).get('username') == 'admin')
+                ]
+                
+                self.stdout.write(f"Filtered backup: {len(backup_data)} → {len(filtered_backup)} objects (admin excluded)")
+                
+            else:
+                # No admin conflict, use full backup
+                filtered_backup = backup_data
+                self.stdout.write("No admin user conflict found")
+                
+            # Step 3: Load the filtered data
+            with tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False) as temp_file:
+                json.dump(filtered_backup, temp_file, indent=2)
+                temp_file_path = temp_file.name
+            
+            try:
+                # Load filtered data using Django loaddata
+                self.stdout.write(f"Loading {len(filtered_backup)} objects with conflict resolution...")
+                call_command('loaddata', temp_file_path, verbosity=1)
+                
+                # Step 4: Verify user roles were restored
+                from apps.users.models import UserRole
+                user_roles_count = UserRole.objects.count()
+                self.stdout.write(f"✅ User roles restored: {user_roles_count} assignments")
+                
+                if user_roles_count == 0:
+                    self.stdout.write(self.style.WARNING("⚠️  No user roles found after restore"))
+                else:
+                    # Show restored assignments
+                    for user_role in UserRole.objects.all()[:5]:  # Show first 5
+                        self.stdout.write(f"  - {user_role.user.username} → {user_role.role.name}")
+                
+                self.stdout.write("✅ Post-reinit restoration completed successfully")
+                
+            finally:
+                # Cleanup
+                import os
+                if os.path.exists(temp_file_path):
+                    os.remove(temp_file_path)
+                    
+        except User.DoesNotExist:
+            self.stdout.write("No existing admin user found, proceeding with standard restore")
+            self._restore_with_fk_fixes(backup_data)
+        except Exception as e:
+            self.stdout.write(f"❌ Conflict resolution failed: {e}")
+            self.stdout.write("Falling back to standard restore")
+            self._restore_with_fk_fixes(backup_data)
+    
+    def _restore_with_fk_fixes(self, backup_data):
+        """Standard restoration with basic foreign key fixes."""
+        from django.core.management import call_command
+        from django.contrib.auth import get_user_model
+        import json
+        import tempfile
+        
+        User = get_user_model()
+        
+        # Create user mapping for current system  
         current_users = User.objects.all()
         user_map = {user.username: user.id for user in current_users}
         
-        # Fix foreign key references
+        # Fix foreign key references (basic approach)
         user_fields = [
             'author', 'reviewer', 'approver', 'user', 'triggered_by', 
             'requested_by', 'created_by', 'updated_by', 'initiated_by',
@@ -526,7 +635,6 @@ class Command(BaseCommand):
                     fixed_count += 1
         
         # Save fixed data to temporary file
-        import tempfile
         with tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False) as temp_file:
             json.dump(backup_data, temp_file)
             temp_file_path = temp_file.name
@@ -537,6 +645,7 @@ class Command(BaseCommand):
             self.stdout.write(f"✓ Database restored successfully ({fixed_count} foreign key fixes applied)")
         finally:
             # Clean up temporary file
+            import os
             os.unlink(temp_file_path)
 
     def _restore_from_sql_dump(self, sql_file: Path):

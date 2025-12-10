@@ -1,0 +1,59 @@
+{
+  "backup_type": "django_complete_data",
+  "created_at": "2025-12-09T10:01:42.283314+00:00",
+  "database_info": {
+    "engine": "django.db.backends.postgresql",
+    "name": "edms_db"
+  },
+  "apps_included": [
+    "contenttypes",
+    "auth",
+    "admin",
+    "sessions",
+    "django_celery_beat",
+    "users",
+    "documents",
+    "workflows",
+    "audit",
+    "security",
+    "placeholders",
+    "backup",
+    "settings"
+  ],
+  "auth_models_included": [
+    "auth.user",
+    "auth.group",
+    "auth.permission"
+  ],
+  "excluded_models": [
+    "sessions.session",
+    "admin.logentry"
+  ],
+  "total_records": 491,
+  "model_counts": {
+    "contenttypes.contenttype": 71,
+    "auth.permission": 287,
+    "auth.group": 4,
+    "django_celery_beat.crontabschedule": 5,
+    "django_celery_beat.periodictasks": 1,
+    "django_celery_beat.periodictask": 5,
+    "users.user": 7,
+    "users.role": 7,
+    "users.userrole": 5,
+    "documents.documenttype": 6,
+    "documents.documentsource": 3,
+    "documents.document": 1,
+    "documents.documentversion": 1,
+    "documents.documentaccesslog": 3,
+    "workflows.workflowtype": 5,
+    "workflows.documentstate": 19,
+    "audit.audittrail": 9,
+    "audit.systemevent": 2,
+    "audit.loginaudit": 1,
+    "audit.databasechangelog": 1,
+    "audit.complianceevent": 1,
+    "security.pdfsigningcertificate": 1,
+    "placeholders.placeholderdefinition": 32,
+    "backup.backupconfiguration": 14
+  }
+}

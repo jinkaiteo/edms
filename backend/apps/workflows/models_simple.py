@@ -63,6 +63,15 @@ class DocumentState(models.Model):
         db_table = 'workflow_document_states'
         ordering = ['name']
     
+    def natural_key(self):
+        """Return the natural key for this state (code)"""
+        return (self.code,)
+
+    @classmethod  
+    def get_by_natural_key(cls, code):
+        """Get state by natural key (code)"""
+        return cls.objects.get(code=code)
+
     def __str__(self):
         return self.name
 
@@ -165,6 +174,17 @@ class DocumentWorkflow(models.Model):
         app_label = "workflows"
         db_table = 'document_workflows'
         ordering = ['-updated_at']
+    
+    def natural_key(self):
+        """Return the natural key for this workflow (document natural key + workflow_type)"""
+        return (self.document.natural_key()[0], self.workflow_type)
+    
+    @classmethod
+    def get_by_natural_key(cls, document_number, workflow_type):
+        """Get workflow by natural key (document_number + workflow_type)"""
+        from apps.documents.models import Document
+        document = Document.objects.get(document_number=document_number)
+        return cls.objects.get(document=document, workflow_type=workflow_type)
     
     def __str__(self):
         return f"{self.document} - {self.current_state}"
@@ -278,5 +298,19 @@ class DocumentTransition(models.Model):
         db_table = 'document_transitions'
         ordering = ['-transitioned_at']
     
+    def natural_key(self):
+        """Return the natural key for this transition"""
+        return (
+            self.workflow.natural_key()[0],  # Document number
+            self.workflow.natural_key()[1],  # Workflow type  
+            str(self.id)  # Transition sequence (use ID as last resort)
+        )
+
+    @classmethod
+    def get_by_natural_key(cls, doc_number, workflow_type, transition_id):
+        """Get transition by natural key"""
+        workflow = DocumentWorkflow.get_by_natural_key(doc_number, workflow_type)
+        return cls.objects.get(workflow=workflow, id=transition_id)
+
     def __str__(self):
         return f"{self.from_state} → {self.to_state} by {self.transitioned_by.username}"

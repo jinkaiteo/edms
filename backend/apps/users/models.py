@@ -24,6 +24,15 @@ class User(AbstractUser):
     uuid = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
     employee_id = models.CharField(max_length=20, unique=True, null=True, blank=True)
     
+    def natural_key(self):
+        """Return the natural key for this user (username)"""
+        return (self.username,)
+    
+    @classmethod  
+    def get_by_natural_key(cls, username):
+        """Get user by natural key (username)"""
+        return cls.objects.get(username=username)
+    
     def save(self, *args, **kwargs):
         """Override save to handle empty employee_id consistently."""
         # Convert empty string to None to avoid unique constraint violations
@@ -161,6 +170,15 @@ class Role(models.Model):
         unique_together = ['module', 'permission_level']
         ordering = ['module', 'permission_level']
     
+    def natural_key(self):
+        """Return the natural key for this role (name)"""
+        return (self.name,)
+
+    @classmethod
+    def get_by_natural_key(cls, name):
+        """Get role by natural key (name)"""
+        return cls.objects.get(name=name)
+
     def __str__(self):
         return f"{self.get_module_display()} - {self.get_permission_level_display()}"
 
@@ -211,6 +229,17 @@ class UserRole(models.Model):
         unique_together = ['user', 'role']
         ordering = ['-assigned_at']
     
+    def natural_key(self):
+        """Return the natural key for this user role (user + role)"""
+        return (self.user.natural_key()[0], self.role.natural_key()[0])
+
+    @classmethod
+    def get_by_natural_key(cls, username, role_name):
+        """Get user role by natural key (username + role_name)"""
+        user = User.objects.get(username=username)
+        role = Role.objects.get(name=role_name)
+        return cls.objects.get(user=user, role=role)
+
     def __str__(self):
         return f"{self.user.username} - {self.role.name}"
 

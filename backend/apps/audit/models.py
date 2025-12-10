@@ -162,6 +162,18 @@ class AuditTrail(models.Model):
             models.Index(fields=['checksum']),
         ]
     
+    def natural_key(self):
+        """Return the natural key for this audit trail entry"""
+        return (
+            str(self.uuid),  # Unique UUID for this audit entry
+            self.timestamp.isoformat()  # Timestamp for additional uniqueness
+        )
+
+    @classmethod
+    def get_by_natural_key(cls, audit_uuid, timestamp_iso):
+        """Get audit trail entry by natural key"""
+        return cls.objects.get(uuid=audit_uuid)
+
     def __str__(self):
         return f"{self.timestamp} - {self.action} by {self.user_display_name or 'System'}"
     
@@ -410,6 +422,18 @@ class SystemEvent(models.Model):
         app_label = "audit"
         db_table = 'system_events'
         ordering = ['-timestamp']
+
+    def natural_key(self):
+        """Return the natural key for this system event"""
+        return (
+            str(self.uuid),  # Unique UUID
+            self.timestamp.isoformat()  # Timestamp for additional context
+        )
+
+    @classmethod
+    def get_by_natural_key(cls, event_uuid, timestamp_iso):
+        """Get system event by natural key"""
+        return cls.objects.get(uuid=event_uuid)
 
     def __str__(self):
         return f"{self.event_type} at {self.timestamp}"

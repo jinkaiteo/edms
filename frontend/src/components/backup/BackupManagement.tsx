@@ -1,6 +1,10 @@
 import React, { useState, useEffect } from 'react';
+import { backupApiService } from '../../services/backupApi';
+import { AuthHelpers } from '../../utils/authHelpers';
 import PasswordInput from '../common/PasswordInput.tsx';
 import { apiService } from '../../services/api.ts';
+
+// Test function will be available globally in development
 
 interface BackupJob {
   uuid: string;
@@ -598,6 +602,9 @@ const BackupManagement: React.FC = () => {
         throw new Error('Please log in first to perform restore operations');
       }
 
+      console.log('🚀 FRONTEND DEBUG: Starting restore with UUID conflict resolution...');
+      console.log('📦 File:', selectedFile.name, 'Size:', selectedFile.size);
+      
       const response = await fetch('/api/v1/backup/system/restore/', {
         method: 'POST',
         credentials: 'include',
@@ -608,12 +615,34 @@ const BackupManagement: React.FC = () => {
         body: formData
       });
 
+      console.log('📡 Response status:', response.status);
+      console.log('📡 Response headers:', Object.fromEntries(response.headers.entries()));
+
       if (response.ok) {
         const result = await response.json();
+        console.log('✅ RESTORE SUCCESS RESULT:', result);
+        
         alert(`✅ RESTORE SUCCESSFUL!\n\n` +
               `Restored from: ${selectedFile.name}\n` +
-              `Operation ID: ${result.operation_id || 'N/A'}\n\n` +
+              `Operation ID: ${result.operation_id || 'N/A'}\n` +
+              `Status: ${result.status || 'N/A'}\n` +
+              `Message: ${result.message || 'N/A'}\n\n` +
+              `🔍 Check browser console for detailed debugging info.\n` +
               `Please refresh the page to see the restored data.`);
+        
+        // Add detailed debugging for what was actually restored
+        console.log('🔍 DEBUG: Checking what was actually restored...');
+        try {
+          const statusResponse = await fetch('/api/v1/backup/system/system_status/', {
+            headers: { 'Authorization': `Bearer ${accessToken}` }
+          });
+          if (statusResponse.ok) {
+            const statusData = await statusResponse.json();
+            console.log('📊 System status after restore:', statusData);
+          }
+        } catch (e) {
+          console.log('⚠️ Could not get system status:', e);
+        }
         
         console.log('✅ Restore operation completed successfully');
         setSelectedFile(null);
@@ -665,6 +694,12 @@ const BackupManagement: React.FC = () => {
     console.log('🔄 Starting backup job restore...');
 
     try {
+      // Get JWT token for authentication
+      const accessToken = localStorage.getItem('accessToken');
+      if (!accessToken) {
+        throw new Error('Please log in first to perform restore operations');
+      }
+
       // Get CSRF token for the request
       const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || 
                         document.cookie.split('; ').find(row => row.startsWith('csrftoken='))?.split('=')[1];
@@ -673,6 +708,7 @@ const BackupManagement: React.FC = () => {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Authorization': `Bearer ${accessToken}`,
           'X-CSRFToken': csrfToken || '',
         },
         credentials: 'include',

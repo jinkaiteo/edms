@@ -79,6 +79,15 @@ class DocumentType(models.Model):
             models.Index(fields=['is_active']),
         ]
     
+    def natural_key(self):
+        """Return the natural key for this document type (code)"""
+        return (self.code,)
+
+    @classmethod
+    def get_by_natural_key(cls, code):
+        """Get document type by natural key (code)"""
+        return cls.objects.get(code=code)
+
     def __str__(self):
         return f"{self.name} ({self.code})"
 
@@ -121,6 +130,15 @@ class DocumentSource(models.Model):
         verbose_name_plural = _('Document Sources')
         ordering = ['name']
     
+    def natural_key(self):
+        """Return the natural key for this document source (name)"""
+        return (self.name,)
+
+    @classmethod
+    def get_by_natural_key(cls, name):
+        """Get document source by natural key (name)"""
+        return cls.objects.get(name=name)
+
     def __str__(self):
         return self.name
 
@@ -334,6 +352,27 @@ class Document(models.Model):
                 name='version_minor_range'
             ),
         ]
+    
+    def natural_key(self):
+        """Return the natural key for this document (document_number)"""
+        return (self.document_number,)
+    
+    @classmethod
+    def get_by_natural_key(cls, document_number):
+        """Get document by natural key (document_number)"""
+        from apps.backup.optimization import NaturalKeyOptimizer
+        
+        # Try cache first
+        cached_obj = NaturalKeyOptimizer.get_cached_natural_key_lookup(cls, (document_number,))
+        if cached_obj:
+            return cached_obj
+        
+        # Cache miss - do database lookup
+        obj = cls.objects.get(document_number=document_number)
+        
+        # Cache the result
+        NaturalKeyOptimizer.cache_natural_key_lookup(cls, (document_number,), obj)
+        return obj
     
     def __str__(self):
         return f"{self.document_number} - {self.title} (v{self.version_major:02d}.{self.version_minor:02d})"
@@ -645,6 +684,25 @@ class DocumentVersion(models.Model):
             models.Index(fields=['created_by']),
         ]
     
+    def natural_key(self):
+        """Return the natural key for this document version"""
+        return (
+            self.document.natural_key()[0],  # Document number
+            self.version_major,
+            self.version_minor
+        )
+
+    @classmethod
+    def get_by_natural_key(cls, document_number, version_major, version_minor):
+        """Get document version by natural key"""
+        from apps.documents.models import Document
+        document = Document.objects.get(document_number=document_number)
+        return cls.objects.get(
+            document=document,
+            version_major=version_major,
+            version_minor=version_minor
+        )
+
     def __str__(self):
         return f"{self.document.document_number} v{self.version_major:02d}.{self.version_minor:02d}"
     
@@ -721,6 +779,25 @@ class DocumentDependency(models.Model):
             ),
         ]
     
+    def natural_key(self):
+        """Return the natural key for this document dependency"""
+        return (
+            self.document.natural_key()[0],     # Source document number
+            self.depends_on.natural_key()[0],   # Target document number
+            self.dependency_type                # Dependency type
+        )
+
+    @classmethod
+    def get_by_natural_key(cls, source_doc_number, target_doc_number, dependency_type):
+        """Get document dependency by natural key"""
+        source_doc = Document.objects.get(document_number=source_doc_number)
+        target_doc = Document.objects.get(document_number=target_doc_number)
+        return cls.objects.get(
+            document=source_doc,
+            depends_on=target_doc,
+            dependency_type=dependency_type
+        )
+
     def __str__(self):
         return f"{self.document.document_number} {self.get_dependency_type_display()} {self.depends_on.document_number}"
     
@@ -1183,6 +1260,19 @@ class DocumentComment(models.Model):
             models.Index(fields=['requires_response', 'is_resolved']),
         ]
     
+    def natural_key(self):
+        """Return the natural key for this document comment"""
+        return (
+            self.document.natural_key()[0],  # Document number
+            str(self.id)                     # Comment ID (unique per document)
+        )
+
+    @classmethod
+    def get_by_natural_key(cls, document_number, comment_id):
+        """Get document comment by natural key"""
+        document = Document.objects.get(document_number=document_number)
+        return cls.objects.get(document=document, id=comment_id)
+
     def __str__(self):
         return f"Comment on {self.document.document_number} by {self.author.username}"
 

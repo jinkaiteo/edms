@@ -114,6 +114,15 @@ class BackupConfiguration(models.Model):
             models.Index(fields=['status', 'is_enabled']),
         ]
     
+    def natural_key(self):
+        """Return the natural key for this backup configuration (name)"""
+        return (self.name,)
+
+    @classmethod
+    def get_by_natural_key(cls, name):
+        """Get backup configuration by natural key (name)"""
+        return cls.objects.get(name=name)
+
     def __str__(self):
         return f"{self.name} ({self.backup_type} - {self.frequency})"
 
@@ -197,6 +206,19 @@ class BackupJob(models.Model):
             models.Index(fields=['backup_type']),
         ]
     
+    def natural_key(self):
+        """Return the natural key for this backup job"""
+        return (
+            self.configuration.natural_key()[0],  # Configuration name
+            str(self.uuid)                        # Job UUID for uniqueness
+        )
+
+    @classmethod
+    def get_by_natural_key(cls, config_name, job_uuid):
+        """Get backup job by natural key"""
+        config = BackupConfiguration.objects.get(name=config_name)
+        return cls.objects.get(configuration=config, uuid=job_uuid)
+
     def __str__(self):
         return f"{self.job_name} - {self.status} - {self.created_at}"
     
@@ -323,6 +345,20 @@ class RestoreJob(models.Model):
             models.Index(fields=['requested_by']),
         ]
     
+    def natural_key(self):
+        """Return the natural key for this restore job"""
+        return (
+            self.backup_job.natural_key()[0],  # Configuration name
+            self.backup_job.natural_key()[1],  # Job UUID
+            str(self.uuid)                     # Restore job UUID
+        )
+
+    @classmethod
+    def get_by_natural_key(cls, config_name, job_uuid, restore_uuid):
+        """Get restore job by natural key"""
+        backup_job = BackupJob.get_by_natural_key(config_name, job_uuid)
+        return cls.objects.get(backup_job=backup_job, uuid=restore_uuid)
+
     def __str__(self):
         return f"Restore {self.restore_type} - {self.status} - {self.created_at}"
 

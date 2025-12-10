@@ -39,7 +39,7 @@ class ApiService {
   private token: string | null = null;
 
   constructor() {
-    this.baseURL = process.env.REACT_APP_API_URL || '/api/v1';
+    this.baseURL = process.env.REACT_APP_API_URL || 'http://localhost:8000/api/v1';
     
     this.client = axios.create({
       baseURL: this.baseURL,
@@ -64,8 +64,11 @@ class ApiService {
           config.headers.Authorization = `Bearer ${accessToken}`;
         }
         
-        // Temporarily disable request ID to avoid CORS issues
-        // config.headers['X-Request-ID'] = this.generateRequestId();
+        // Add CSRF token for session auth support
+        const csrfToken = this.getCSRFToken();
+        if (csrfToken) {
+          config.headers['X-CSRFToken'] = csrfToken;
+        }
         
         return config;
       },
@@ -75,13 +78,63 @@ class ApiService {
     // Response interceptor
     this.client.interceptors.response.use(
       (response: AxiosResponse) => response,
-      (error: AxiosError) => {
+      async (error: AxiosError) => {
         if (error.response?.status === 401) {
+          // Try to refresh token before giving up
+          const refreshToken = localStorage.getItem('refreshToken');
+          if (refreshToken && !error.config?.url?.includes('/auth/token/refresh/')) {
+            try {
+              const newToken = await this.refreshAccessToken();
+              if (newToken && error.config) {
+                // Retry original request with new token
+                error.config.headers = error.config.headers || {};
+                error.config.headers.Authorization = `Bearer ${newToken}`;
+                return this.client.request(error.config);
+              }
+            } catch (refreshError) {
+              console.error('Token refresh failed:', refreshError);
+            }
+          }
           this.handleUnauthorized();
         }
         return Promise.reject(this.handleError(error));
       }
     );
+  }
+
+  private getCSRFToken(): string | null {
+    const cookies = document.cookie.split(';');
+    const csrfCookie = cookies.find(cookie => 
+      cookie.trim().startsWith('csrftoken=')
+    );
+    
+    if (csrfCookie) {
+      return csrfCookie.split('=')[1];
+    }
+    
+    return null;
+  }
+
+  private async refreshAccessToken(): Promise<string | null> {
+    try {
+      const refreshToken = localStorage.getItem('refreshToken');
+      if (!refreshToken) return null;
+
+      const response = await this.client.post('/auth/token/refresh/', {
+        refresh: refreshToken
+      });
+
+      const newToken = response.data.access;
+      if (newToken) {
+        localStorage.setItem('accessToken', newToken);
+        this.token = newToken;
+        return newToken;
+      }
+    } catch (error) {
+      console.error('Token refresh failed:', error);
+    }
+    
+    return null;
   }
 
   private generateRequestId(): string {

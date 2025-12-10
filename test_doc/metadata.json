@@ -1,0 +1,31 @@
+{
+  "export_timestamp": "2025-12-09T10:01:41.379308+00:00",
+  "edms_version": "1.0.0",
+  "django_version": "unknown",
+  "python_version": "unknown",
+  "export_type": "migration_package",
+  "database_engine": "django.db.backends.postgresql",
+  "export_options": {
+    "settings": null,
+    "pythonpath": null,
+    "traceback": false,
+    "no_color": false,
+    "force_color": false,
+    "skip_checks": true,
+    "type": "export",
+    "output": "/tmp/edms_export_20251209_100141.tar.gz",
+    "schedule": false,
+    "compress": true,
+    "encrypt": false,
+    "verify": true,
+    "include_users": true,
+    "config_name": null
+  },
+  "components": {
+    "database": true,
+    "storage_files": true,
+    "configuration": true,
+    "user_accounts": true,
+    "restore_scripts": true
+  }
+}

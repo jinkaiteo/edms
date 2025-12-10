@@ -180,16 +180,25 @@ class BackupService:
             'settings',         # System settings and configurations
         ]
         
+        # CRITICAL FIX: Ensure Many-to-Many relationships are included
+        include_models = [
+            'auth.user_groups',           # User-to-Group assignments (CRITICAL)
+            'auth.user_user_permissions', # User-specific permissions  
+            'auth.group_permissions',     # Group-to-Permission assignments
+        ]
+        all_models_to_backup = list(apps_to_backup) + include_models
+        
         try:
             # Create complete data backup using Django's dumpdata
             backup_buffer = StringIO()
             
             logger.info(f"Starting database backup with apps: {', '.join(apps_to_backup)}")
+            logger.info(f"Including M2M models: {', '.join(include_models)}")
             
             # Export data using Django's dumpdata with natural keys
             call_command(
                 'dumpdata',
-                *apps_to_backup,      # Include all critical apps
+                *all_models_to_backup,      # Include all critical apps + M2M models (FIXED)
                 '--natural-foreign',  # Use natural keys for foreign key references
                 '--natural-primary',  # Use natural keys for primary keys where available
                 '--indent=2',         # Pretty formatting
@@ -762,6 +771,7 @@ class RestoreService:
             logger.warning("Sequence reset failed - manual sequence reset may be required")
             logger.warning("Run: SELECT setval('table_id_seq', (SELECT COALESCE(MAX(id), 1) FROM table)); for each table")
 
+
     def _restore_configuration_from_path(self, config_path: str):
         """Restore critical configuration files including environment variables."""
         import shutil
@@ -892,7 +902,7 @@ class RestoreService:
         restore_job.restored_items_count = 1
 
     def _restore_database_from_file(self, backup_path: str):
-        """Restore database from backup file using Django's loaddata for complete restoration."""
+        """Restore database from backup file using Django's loaddata with foreign key mapping."""
         import tempfile
         import json
         from django.core.management import call_command
@@ -920,9 +930,21 @@ class RestoreService:
                         temp_fixture_path = temp_file.name
                     
                     try:
-                        # Load data using Django's loaddata
-                        logger.info("Loading fixture data into database...")
-                        call_command('loaddata', temp_fixture_path, verbosity=1)
+                        # CRITICAL FIX: Handle post-reinit restoration properly
+                        logger.info("Loading fixture data into database with post-reinit compatibility...")
+                        
+                        # Step 1: Check if this is a post-reinit restoration
+                        from django.contrib.auth import get_user_model
+                        User = get_user_model()
+                        user_count_before = User.objects.count()
+                        
+                        if user_count_before <= 1:  # Only admin user exists (post-reinit state)
+                            logger.info("🔧 Post-reinit restoration detected - using enhanced restore process")
+                            self._restore_with_conflict_resolution(temp_fixture_path, backup_data)
+                        else:
+                            # Normal restoration
+                            call_command('loaddata', temp_fixture_path, verbosity=1)
+                        
                         logger.info("✓ Django fixture loaded successfully")
                         
                         # Count what was loaded
@@ -967,10 +989,48 @@ class RestoreService:
                     # This is actual Django fixture data
                     logger.info(f"Processing Django fixture with {len(backup_data)} records")
                     
-                    # Load data directly using Django's loaddata
-                    logger.info("Loading fixture data into database...")
-                    call_command('loaddata', backup_path, verbosity=1)
-                    logger.info("✓ Django fixture loaded successfully")
+                    # Use Enhanced Restore Processor with Direct Critical Data Recovery
+                    logger.info("🚀 Loading data using Enhanced Restore Processor with Critical Data Recovery...")
+                    
+                    from .restore_processor import EnhancedRestoreProcessor
+                    from .direct_restore_processor import DirectRestoreProcessor
+                    
+                    # Step 1: Enhanced Restore Processor for infrastructure
+                    processor = EnhancedRestoreProcessor()
+                    restore_report = processor.process_backup_data(backup_path)
+                    
+                    # Step 2: Direct Restore Processor for critical business data
+                    logger.info("🎯 Processing Critical Business Data with Direct Restore Processor...")
+                    
+                    direct_processor = DirectRestoreProcessor()
+                    direct_report = direct_processor.process_critical_business_data(backup_path)
+                    
+                    # Check combined restoration success
+                    business_score = restore_report['summary']['business_functionality_score']
+                    critical_data_success = direct_report['critical_data_restored']
+                    
+                    logger.info(f"📋 Combined Restoration Results:")
+                    logger.info(f"   Infrastructure: {business_score}% business functionality")
+                    logger.info(f"   UserRoles Created: {direct_report['user_roles_created']}")
+                    logger.info(f"   Documents Created: {direct_report['documents_created']}")
+                    logger.info(f"   Critical Data Restored: {'✅ YES' if critical_data_success else '❌ NO'}")
+                    
+                    if business_score >= 75 and critical_data_success:
+                        logger.info("✅ Complete restoration successful: Infrastructure + Critical Business Data")
+                    elif business_score >= 75:
+                        logger.info("✅ Infrastructure restoration successful")
+                        if not critical_data_success:
+                            logger.warning("⚠️ Critical business data restoration failed - manual setup required")
+                    else:
+                        logger.warning(f"⚠️ Restoration below threshold: {business_score}% business functionality")
+                        logger.info("🔄 Attempting fallback to standard Django loaddata...")
+                        
+                        try:
+                            call_command('loaddata', backup_path, verbosity=1)
+                            logger.info("✓ Fallback Django loaddata completed")
+                        except Exception as fallback_error:
+                            logger.error(f"❌ Both enhanced and fallback restoration failed: {fallback_error}")
+                            raise fallback_error
                     
                     # Count what was loaded
                     model_counts = {}
@@ -1143,6 +1203,48 @@ class RestoreService:
                 except KeyError:
                     restore_job.failed_items_count += 1
                     logger.warning(f"Item not found in backup: {item}")
+
+    def _restore_with_conflict_resolution(self, temp_fixture_path, backup_data):
+        """
+        Enhanced restore process using natural key resolution processor.
+        
+        After system_reinit, only an 'admin' user exists. When restoring a backup that
+        also contains an 'admin' user, Django loaddata fails due to conflicts.
+        
+        This method resolves conflicts by:
+        1. Temporarily updating the existing admin user to match backup admin
+        2. Running standard loaddata 
+        3. Ensuring all user roles and relationships are properly restored
+        """
+        import tempfile
+        import json
+        from django.contrib.auth import get_user_model
+        from django.core.management import call_command
+        
+        from .restore_processor import EnhancedRestoreProcessor
+        
+        logger.info("🚀 Using Enhanced Restore Processor for complete natural key resolution")
+        
+        processor = EnhancedRestoreProcessor()
+        restore_report = processor.process_backup_data(temp_fixture_path)
+        
+        logger.info(f"📋 Enhanced Restoration Report:")
+        logger.info(f"   Success Rate: {restore_report['summary']['success_rate']}%")
+        logger.info(f"   Records Processed: {restore_report['summary']['total_records']}")
+        logger.info(f"   Successful: {restore_report['summary']['successful_restorations']}")
+        logger.info(f"   Created: {restore_report['summary']['objects_created']}")
+        logger.info(f"   Updated: {restore_report['summary']['objects_updated']}")
+        logger.info(f"   Skipped: {restore_report['summary']['skipped_records']}")
+        logger.info(f"   Failed: {restore_report['summary']['failed_records']}")
+        
+        if restore_report['recommendations']:
+            logger.info("💡 Recommendations:")
+            for rec in restore_report['recommendations']:
+                logger.info(f"   - {rec}")
+        
+        # Return success if we achieved a good restoration rate
+        success_threshold = 70  # 70% success rate threshold
+        return restore_report['summary']['success_rate'] >= success_threshold
 
 
 # Global service instances

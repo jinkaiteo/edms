@@ -227,6 +227,15 @@ class Command(BaseCommand):
             'admin.logentry',        # Admin logs (optional, can be excluded for size)
         ]
         
+        # CRITICAL FIX: Ensure Django auth models and M2M relationships are included
+        # Django's dumpdata includes M2M tables automatically when parent models are included
+        # Note: System uses custom user model (users.User), not auth.user
+        include_models = [
+            'auth.group',            # Django groups (includes group_permissions M2M automatically)  
+            'auth.permission',       # Django permissions
+            # auth.user not needed - system uses custom users.User model
+        ]
+        
         # Create complete data backup using Django's dumpdata
         data_file = db_dir / 'database_backup.json'
         
@@ -236,15 +245,18 @@ class Command(BaseCommand):
                 self.stdout.write(f"Exporting data from apps: {', '.join(apps_to_backup)}")
                 
                 # Export data using Django's dumpdata with natural keys
+                # CRITICAL FIX: Include specific models to ensure M2M relationships are exported
+                all_models_to_backup = list(apps_to_backup) + include_models
+                
                 call_command(
                     'dumpdata',
-                    *apps_to_backup,      # Include all critical apps
-                    '--natural-foreign',  # Use natural keys for foreign key references
-                    '--natural-primary',  # Use natural keys for primary keys where available
-                    '--indent=2',         # Pretty formatting for debugging
+                    *all_models_to_backup,  # Include all critical apps AND specific M2M models
+                    '--natural-foreign',    # Use natural keys for foreign key references
+                    '--natural-primary',    # Use natural keys for primary keys where available
+                    '--indent=2',           # Pretty formatting for debugging
                     '--exclude=sessions.session',  # Exclude session data
                     stdout=temp_file,
-                    verbosity=0          # Quiet output to avoid mixing with our messages
+                    verbosity=0            # Quiet output to avoid mixing with our messages
                 )
                 temp_file_path = temp_file.name
             
@@ -265,6 +277,7 @@ class Command(BaseCommand):
                     'name': db_settings['NAME']
                 },
                 'apps_included': apps_to_backup,
+                'auth_models_included': include_models,     # FIXED: Track explicitly included Django auth models
                 'excluded_models': exclude_models,
                 'total_records': len(backup_data),
                 'model_counts': {}
@@ -386,12 +399,76 @@ class Command(BaseCommand):
         config_dir = temp_dir / 'configuration'
         config_dir.mkdir(exist_ok=True)
         
-        # Define source directories
-        storage_sources = {
-            'documents': getattr(settings, 'DOCUMENT_STORAGE_ROOT', Path(settings.BASE_DIR).parent / 'storage' / 'documents'),
-            'media': getattr(settings, 'MEDIA_ROOT', Path(settings.BASE_DIR).parent / 'storage' / 'media'),
-            'certificates': Path(settings.OFFICIAL_PDF_CONFIG['CERTIFICATE_STORAGE_PATH'])
-        }
+        # Define source directories with multiple fallback paths
+        base_dir = Path(settings.BASE_DIR)
+        
+        # Try multiple possible storage locations
+        possible_storage_roots = [
+            base_dir.parent / 'storage',  # /storage (sibling to backend)
+            base_dir / 'storage',         # backend/storage  
+            Path('/app/storage'),         # Docker container storage
+            getattr(settings, 'DOCUMENT_STORAGE_ROOT', None),  # Configured path
+        ]
+        
+        # Find actual storage root
+        storage_root = None
+        for path in possible_storage_roots:
+            if path and Path(path).exists():
+                storage_root = Path(path)
+                break
+        
+        if not storage_root:
+            # Create a fallback storage mapping
+            self.stdout.write(self.style.WARNING("No storage root found, checking individual paths..."))
+        
+        storage_sources = {}
+        
+        # Check for document storage
+        doc_paths = [
+            storage_root / 'documents' if storage_root else None,
+            base_dir.parent / 'storage' / 'documents',
+            Path('/app/storage/documents'),
+            getattr(settings, 'DOCUMENT_STORAGE_ROOT', None)
+        ]
+        
+        for path in doc_paths:
+            if path and Path(path).exists():
+                storage_sources['documents'] = path
+                break
+                
+        # Check for media storage  
+        media_paths = [
+            storage_root / 'media' if storage_root else None,
+            base_dir.parent / 'storage' / 'media',
+            Path('/app/storage/media'),
+            getattr(settings, 'MEDIA_ROOT', None)
+        ]
+        
+        for path in media_paths:
+            if path and Path(path).exists():
+                storage_sources['media'] = path
+                break
+        
+        # Check for certificates
+        cert_paths = [
+            Path(settings.OFFICIAL_PDF_CONFIG.get('CERTIFICATE_STORAGE_PATH', '')),
+            storage_root / 'certificates' if storage_root else None,
+            base_dir.parent / 'storage' / 'certificates',
+            Path('/app/storage/certificates')
+        ]
+        
+        for path in cert_paths:
+            if path and Path(path).exists():
+                storage_sources['certificates'] = path
+                break
+        
+        self.stdout.write(f"Found storage sources: {list(storage_sources.keys())}")
+        if storage_sources:
+            for storage_type, path in storage_sources.items():
+                file_count = len(list(Path(path).rglob('*'))) if Path(path).is_dir() else 0
+                self.stdout.write(f"  {storage_type}: {path} ({file_count} files)")
+        else:
+            self.stdout.write(self.style.WARNING("No storage directories found!"))
         
         # CRITICAL FIX: Define critical configuration files to backup
         critical_config_files = [

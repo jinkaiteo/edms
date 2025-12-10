@@ -124,6 +124,27 @@ class PlaceholderDefinition(models.Model):
             models.Index(fields=['is_active']),
         ]
     
+    def natural_key(self):
+        """Return the natural key for this placeholder definition (name)"""
+        return (self.name,)
+
+    @classmethod
+    def get_by_natural_key(cls, name):
+        """Get placeholder definition by natural key (name)"""
+        from apps.backup.optimization import NaturalKeyOptimizer
+        
+        # Try cache first
+        cached_obj = NaturalKeyOptimizer.get_cached_natural_key_lookup(cls, (name,))
+        if cached_obj:
+            return cached_obj
+        
+        # Cache miss - do database lookup
+        obj = cls.objects.get(name=name)
+        
+        # Cache the result
+        NaturalKeyOptimizer.cache_natural_key_lookup(cls, (name,), obj)
+        return obj
+
     def __str__(self):
         return f"{{{{ {self.name} }}}}"
     

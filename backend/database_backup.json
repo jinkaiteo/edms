@@ -1,0 +1,3008 @@
+[
+  {
+    "model": "auth.group",
+    "fields": {
+      "name": "Document Reviewers_restored",
+      "permissions": [
+        [
+          "can_review_document",
+          "documents",
+          "document"
+        ]
+      ]
+    }
+  },
+  {
+    "model": "auth.group",
+    "fields": {
+      "name": "Document Approvers_restored",
+      "permissions": [
+        [
+          "can_approve_document",
+          "documents",
+          "document"
+        ]
+      ]
+    }
+  },
+  {
+    "model": "auth.group",
+    "fields": {
+      "name": "Senior Document Approvers_restored",
+      "permissions": [
+        [
+          "can_approve_document",
+          "documents",
+          "document"
+        ],
+        [
+          "can_senior_approve_document",
+          "documents",
+          "document"
+        ]
+      ]
+    }
+  },
+  {
+    "model": "auth.group",
+    "fields": {
+      "name": "Document Authors_restored",
+      "permissions": []
+    }
+  },
+  {
+    "model": "django_celery_beat.crontabschedule",
+    "pk": 1,
+    "fields": {
+      "minute": "0",
+      "hour": "*",
+      "day_of_week": "*",
+      "day_of_month": "*",
+      "month_of_year": "*",
+      "timezone": "UTC"
+    }
+  },
+  {
+    "model": "django_celery_beat.crontabschedule",
+    "pk": 2,
+    "fields": {
+      "minute": "15",
+      "hour": "*",
+      "day_of_week": "*",
+      "day_of_month": "*",
+      "month_of_year": "*",
+      "timezone": "UTC"
+    }
+  },
+  {
+    "model": "django_celery_beat.crontabschedule",
+    "pk": 3,
+    "fields": {
+      "minute": "0",
+      "hour": "*/4",
+      "day_of_week": "*",
+      "day_of_month": "*",
+      "month_of_year": "*",
+      "timezone": "UTC"
+    }
+  },
+  {
+    "model": "django_celery_beat.crontabschedule",
+    "pk": 4,
+    "fields": {
+      "minute": "*/30",
+      "hour": "*",
+      "day_of_week": "*",
+      "day_of_month": "*",
+      "month_of_year": "*",
+      "timezone": "UTC"
+    }
+  },
+  {
+    "model": "django_celery_beat.crontabschedule",
+    "pk": 5,
+    "fields": {
+      "minute": "0",
+      "hour": "*/6",
+      "day_of_week": "*",
+      "day_of_month": "*",
+      "month_of_year": "*",
+      "timezone": "UTC"
+    }
+  },
+  {
+    "model": "django_celery_beat.periodictasks",
+    "pk": 1,
+    "fields": {
+      "last_update": "2025-12-08T09:11:10.443Z"
+    }
+  },
+  {
+    "model": "django_celery_beat.periodictask",
+    "pk": 1,
+    "fields": {
+      "name": "S3 Document Effective Date Processing",
+      "task": "apps.scheduler.automated_tasks.process_document_effective_dates",
+      "interval": null,
+      "crontab": 1,
+      "solar": null,
+      "clocked": null,
+      "args": "[]",
+      "kwargs": "{}",
+      "queue": null,
+      "exchange": null,
+      "routing_key": null,
+      "headers": "{}",
+      "priority": null,
+      "expires": null,
+      "expire_seconds": null,
+      "one_off": false,
+      "start_time": null,
+      "enabled": true,
+      "last_run_at": null,
+      "total_run_count": 0,
+      "date_changed": "2025-11-23T11:17:20.211Z",
+      "description": ""
+    }
+  },
+  {
+    "model": "django_celery_beat.periodictask",
+    "pk": 2,
+    "fields": {
+      "name": "S3 Document Obsoletion Processing",
+      "task": "apps.scheduler.automated_tasks.process_document_obsoletion_dates",
+      "interval": null,
+      "crontab": 2,
+      "solar": null,
+      "clocked": null,
+      "args": "[]",
+      "kwargs": "{}",
+      "queue": null,
+      "exchange": null,
+      "routing_key": null,
+      "headers": "{}",
+      "priority": null,
+      "expires": null,
+      "expire_seconds": null,
+      "one_off": false,
+      "start_time": null,
+      "enabled": true,
+      "last_run_at": null,
+      "total_run_count": 0,
+      "date_changed": "2025-11-23T11:17:20.226Z",
+      "description": ""
+    }
+  },
+  {
+    "model": "django_celery_beat.periodictask",
+    "pk": 3,
+    "fields": {
+      "name": "S3 Workflow Timeout Monitoring",
+      "task": "apps.scheduler.automated_tasks.check_workflow_timeouts",
+      "interval": null,
+      "crontab": 3,
+      "solar": null,
+      "clocked": null,
+      "args": "[]",
+      "kwargs": "{}",
+      "queue": null,
+      "exchange": null,
+      "routing_key": null,
+      "headers": "{}",
+      "priority": null,
+      "expires": null,
+      "expire_seconds": null,
+      "one_off": false,
+      "start_time": null,
+      "enabled": true,
+      "last_run_at": null,
+      "total_run_count": 0,
+      "date_changed": "2025-11-23T11:17:20.239Z",
+      "description": ""
+    }
+  },
+  {
+    "model": "django_celery_beat.periodictask",
+    "pk": 4,
+    "fields": {
+      "name": "S3 System Health Check",
+      "task": "apps.scheduler.automated_tasks.perform_system_health_check",
+      "interval": null,
+      "crontab": 4,
+      "solar": null,
+      "clocked": null,
+      "args": "[]",
+      "kwargs": "{}",
+      "queue": null,
+      "exchange": null,
+      "routing_key": null,
+      "headers": "{}",
+      "priority": null,
+      "expires": null,
+      "expire_seconds": null,
+      "one_off": false,
+      "start_time": null,
+      "enabled": true,
+      "last_run_at": null,
+      "total_run_count": 0,
+      "date_changed": "2025-11-23T11:17:20.250Z",
+      "description": ""
+    }
+  },
+  {
+    "model": "django_celery_beat.periodictask",
+    "pk": 5,
+    "fields": {
+      "name": "Cleanup Orphaned Workflow Tasks",
+      "task": "apps.scheduler.automated_tasks.cleanup_workflow_tasks",
+      "interval": null,
+      "crontab": 5,
+      "solar": null,
+      "clocked": null,
+      "args": "[]",
+      "kwargs": "{\"dry_run\": false}",
+      "queue": null,
+      "exchange": null,
+      "routing_key": null,
+      "headers": "{}",
+      "priority": null,
+      "expires": null,
+      "expire_seconds": null,
+      "one_off": false,
+      "start_time": null,
+      "enabled": true,
+      "last_run_at": null,
+      "total_run_count": 0,
+      "date_changed": "2025-12-01T08:29:37.084Z",
+      "description": ""
+    }
+  },
+  {
+    "model": "users.user",
+    "fields": {
+      "password": "pbkdf2_sha256$600000$CMYTw1D6u78cO2gLoDhJq7$D/Iu4MNL6YDIfNLKkuqpKxyqFOcvnYI4rHQghOTwN30=",
+      "last_login": "2025-12-04T16:57:11.139Z",
+      "is_superuser": true,
+      "username": "admin_restored",
+      "first_name": "System",
+      "last_name": "Administrator",
+      "email": "admin_restored@restored.local",
+      "is_staff": true,
+      "is_active": true,
+      "date_joined": "2025-11-22T08:56:00.322Z",
+      "uuid": "8d27aa87-b22a-41ab-9876-aad732f1270d",
+      "employee_id": null,
+      "phone_number": "",
+      "department": "",
+      "position": "",
+      "manager": null,
+      "is_validated": false,
+      "validation_date": null,
+      "validation_expiry": null,
+      "password_changed_at": "2025-11-22T08:56:00.323Z",
+      "mfa_enabled": false,
+      "failed_login_attempts": 0,
+      "account_locked_until": null,
+      "created_at": "2025-11-22T08:56:00.323Z",
+      "updated_at": "2025-12-09T09:49:59.881Z",
+      "created_by": null,
+      "metadata": {},
+      "groups": [
+        [
+          "Document Reviewers"
+        ],
+        [
+          "Document Approvers"
+        ],
+        [
+          "Senior Document Approvers"
+        ]
+      ],
+      "user_permissions": []
+    }
+  },
+  {
+    "model": "users.user",
+    "fields": {
+      "password": "",
+      "last_login": null,
+      "is_superuser": false,
+      "username": "edms_system_restored",
+      "first_name": "EDMS",
+      "last_name": "System Service",
+      "email": "edms_system_restored@restored.local",
+      "is_staff": false,
+      "is_active": true,
+      "date_joined": "2025-12-09T09:49:59.890Z",
+      "uuid": "8192f8a7-6a22-4b0f-86ac-f26cf004c2ef",
+      "employee_id": null,
+      "phone_number": null,
+      "department": "System Services",
+      "position": "Template Processing Service",
+      "manager": null,
+      "is_validated": false,
+      "validation_date": null,
+      "validation_expiry": null,
+      "password_changed_at": "2025-12-09T09:49:59.890Z",
+      "mfa_enabled": false,
+      "failed_login_attempts": 0,
+      "account_locked_until": null,
+      "created_at": "2025-12-09T09:49:59.890Z",
+      "updated_at": "2025-12-09T09:49:59.890Z",
+      "created_by": null,
+      "metadata": {},
+      "groups": [],
+      "user_permissions": []
+    }
+  },
+  {
+    "model": "users.user",
+    "fields": {
+      "password": "pbkdf2_sha256$600000$63R4611aD77ZQiy8y7uIIB$N1he0j6tO+U1746/b5xzkqAwLgWO85J6u6o3fldi9Dw=",
+      "last_login": null,
+      "is_superuser": false,
+      "username": "author01_restored",
+      "first_name": "author01",
+      "last_name": "edms",
+      "email": "author01_restored@restored.local",
+      "is_staff": false,
+      "is_active": true,
+      "date_joined": "2025-12-09T09:50:23.779Z",
+      "uuid": "10493f90-69dc-464c-a7ec-199eeb976e8d",
+      "employee_id": null,
+      "phone_number": "",
+      "department": "",
+      "position": "",
+      "manager": null,
+      "is_validated": false,
+      "validation_date": null,
+      "validation_expiry": null,
+      "password_changed_at": "2025-12-09T09:50:24.163Z",
+      "mfa_enabled": false,
+      "failed_login_attempts": 0,
+      "account_locked_until": null,
+      "created_at": "2025-12-09T09:50:24.163Z",
+      "updated_at": "2025-12-09T09:50:24.163Z",
+      "created_by": null,
+      "metadata": {},
+      "groups": [],
+      "user_permissions": []
+    }
+  },
+  {
+    "model": "users.user",
+    "fields": {
+      "password": "pbkdf2_sha256$600000$rf7RY1jnW6TmnuX7GrH135$9GkjY/Hhyjzci9PRsW8cm2cwDkKlSyWwzvSuu3fUdUM=",
+      "last_login": null,
+      "is_superuser": false,
+      "username": "reviewer01_restored",
+      "first_name": "reviewer01",
+      "last_name": "edms",
+      "email": "reviewer01_restored@restored.local",
+      "is_staff": false,
+      "is_active": true,
+      "date_joined": "2025-12-09T09:50:23.998Z",
+      "uuid": "82c11cc4-09b6-48d7-8e0c-f283d27ade8f",
+      "employee_id": null,
+      "phone_number": "",
+      "department": "",
+      "position": "",
+      "manager": null,
+      "is_validated": false,
+      "validation_date": null,
+      "validation_expiry": null,
+      "password_changed_at": "2025-12-09T09:50:24.383Z",
+      "mfa_enabled": false,
+      "failed_login_attempts": 0,
+      "account_locked_until": null,
+      "created_at": "2025-12-09T09:50:24.383Z",
+      "updated_at": "2025-12-09T09:50:24.383Z",
+      "created_by": null,
+      "metadata": {},
+      "groups": [],
+      "user_permissions": []
+    }
+  },
+  {
+    "model": "users.user",
+    "fields": {
+      "password": "pbkdf2_sha256$600000$oypuuRPBk6vyk4xq7ffDJT$MlOlLlzTtcdAFLdIw4HNMkU5pzKsyqDLRI6VGxlT4Oc=",
+      "last_login": null,
+      "is_superuser": false,
+      "username": "viewer01_restored",
+      "first_name": "viewer01",
+      "last_name": "edms",
+      "email": "viewer01_restored@restored.local",
+      "is_staff": false,
+      "is_active": true,
+      "date_joined": "2025-12-09T09:50:23.662Z",
+      "uuid": "739ad66d-bbca-484d-877f-58176034307b",
+      "employee_id": null,
+      "phone_number": "",
+      "department": "",
+      "position": "",
+      "manager": null,
+      "is_validated": false,
+      "validation_date": null,
+      "validation_expiry": null,
+      "password_changed_at": "2025-12-09T09:50:24.387Z",
+      "mfa_enabled": false,
+      "failed_login_attempts": 0,
+      "account_locked_until": null,
+      "created_at": "2025-12-09T09:50:24.387Z",
+      "updated_at": "2025-12-09T09:50:24.387Z",
+      "created_by": null,
+      "metadata": {},
+      "groups": [],
+      "user_permissions": []
+    }
+  },
+  {
+    "model": "users.user",
+    "fields": {
+      "password": "pbkdf2_sha256$600000$fNgEP7OdgI4tyMDa4gAmOq$H5+BQ9I0eOdqHH5c44R2c+wwIiXMIn27OAjz5ukVWuA=",
+      "last_login": null,
+      "is_superuser": false,
+      "username": "approver01_restored",
+      "first_name": "approver01",
+      "last_name": "edms",
+      "email": "approver01_restored@restored.local",
+      "is_staff": false,
+      "is_active": true,
+      "date_joined": "2025-12-09T09:50:25.465Z",
+      "uuid": "0218976d-8ad5-454b-8cae-d1ff92f56b06",
+      "employee_id": null,
+      "phone_number": "",
+      "department": "",
+      "position": "",
+      "manager": null,
+      "is_validated": false,
+      "validation_date": null,
+      "validation_expiry": null,
+      "password_changed_at": "2025-12-09T09:50:25.819Z",
+      "mfa_enabled": false,
+      "failed_login_attempts": 0,
+      "account_locked_until": null,
+      "created_at": "2025-12-09T09:50:25.819Z",
+      "updated_at": "2025-12-09T09:50:25.819Z",
+      "created_by": null,
+      "metadata": {},
+      "groups": [],
+      "user_permissions": []
+    }
+  },
+  {
+    "model": "users.user",
+    "fields": {
+      "password": "pbkdf2_sha256$600000$oCFjM7iAYrKLp2kSP2rvx3$uT5jXMDxjX7XoVDW8NNywsl/Zs2W4YoWUvUpQDvK48w=",
+      "last_login": null,
+      "is_superuser": false,
+      "username": "admin01_restored",
+      "first_name": "admin01",
+      "last_name": "edms",
+      "email": "admin01_restored@restored.local",
+      "is_staff": false,
+      "is_active": true,
+      "date_joined": "2025-12-09T09:50:26.827Z",
+      "uuid": "1e9ecf9a-2aa0-4014-baff-4c0cce147b5d",
+      "employee_id": null,
+      "phone_number": "",
+      "department": "",
+      "position": "",
+      "manager": null,
+      "is_validated": false,
+      "validation_date": null,
+      "validation_expiry": null,
+      "password_changed_at": "2025-12-09T09:50:27.151Z",
+      "mfa_enabled": false,
+      "failed_login_attempts": 0,
+      "account_locked_until": null,
+      "created_at": "2025-12-09T09:50:27.151Z",
+      "updated_at": "2025-12-09T09:50:27.151Z",
+      "created_by": null,
+      "metadata": {},
+      "groups": [],
+      "user_permissions": []
+    }
+  },
+  {
+    "model": "users.role",
+    "fields": {
+      "name": "Document Reviewer_restored",
+      "description": "Can review and approve/reject documents during review process",
+      "module": "O1",
+      "permission_level": "review",
+      "inherits_from": null,
+      "is_active": true,
+      "is_system_role": true,
+      "created_at": "2025-11-22T08:59:23.351Z",
+      "updated_at": "2025-11-27T14:44:16.221Z",
+      "created_by": null,
+      "metadata": {}
+    }
+  },
+  {
+    "model": "users.role",
+    "fields": {
+      "name": "Document Admin_restored",
+      "description": "Full administrative access to document management system",
+      "module": "O1",
+      "permission_level": "admin",
+      "inherits_from": null,
+      "is_active": true,
+      "is_system_role": true,
+      "created_at": "2025-11-22T15:37:33.642Z",
+      "updated_at": "2025-11-27T14:44:16.228Z",
+      "created_by": null,
+      "metadata": {}
+    }
+  },
+  {
+    "model": "users.role",
+    "fields": {
+      "name": "Document Author_restored",
+      "description": "Can create, edit, and submit documents for review",
+      "module": "O1",
+      "permission_level": "write",
+      "inherits_from": null,
+      "is_active": true,
+      "is_system_role": true,
+      "created_at": "2025-11-22T15:37:33.646Z",
+      "updated_at": "2025-11-27T14:44:16.217Z",
+      "created_by": null,
+      "metadata": {}
+    }
+  },
+  {
+    "model": "users.role",
+    "fields": {
+      "name": "Document Approver_restored",
+      "description": "Can give final approval to documents and set effective dates",
+      "module": "O1",
+      "permission_level": "approve",
+      "inherits_from": null,
+      "is_active": true,
+      "is_system_role": true,
+      "created_at": "2025-11-22T15:37:33.651Z",
+      "updated_at": "2025-11-27T14:44:16.224Z",
+      "created_by": null,
+      "metadata": {}
+    }
+  },
+  {
+    "model": "users.role",
+    "fields": {
+      "name": "User Admin_restored",
+      "description": "",
+      "module": "S1",
+      "permission_level": "admin",
+      "inherits_from": null,
+      "is_active": true,
+      "is_system_role": true,
+      "created_at": "2025-11-22T15:37:33.656Z",
+      "updated_at": "2025-11-22T15:37:33.656Z",
+      "created_by": null,
+      "metadata": {}
+    }
+  },
+  {
+    "model": "users.role",
+    "fields": {
+      "name": "Placeholder Admin_restored",
+      "description": "",
+      "module": "S6",
+      "permission_level": "admin",
+      "inherits_from": null,
+      "is_active": true,
+      "is_system_role": true,
+      "created_at": "2025-11-22T15:37:33.661Z",
+      "updated_at": "2025-11-22T15:37:33.661Z",
+      "created_by": null,
+      "metadata": {}
+    }
+  },
+  {
+    "model": "users.role",
+    "fields": {
+      "name": "Document Viewer_restored",
+      "description": "Can view approved/effective documents only",
+      "module": "O1",
+      "permission_level": "read",
+      "inherits_from": null,
+      "is_active": true,
+      "is_system_role": true,
+      "created_at": "2025-11-22T16:13:57.646Z",
+      "updated_at": "2025-11-27T14:44:16.213Z",
+      "created_by": [
+        "admin"
+      ],
+      "metadata": {}
+    }
+  },
+  {
+    "model": "users.userrole",
+    "fields": {
+      "uuid": "e86a4128-67bc-4795-bfa0-6f387d6c56de",
+      "user": [
+        "author01"
+      ],
+      "role": [
+        "Document Author"
+      ],
+      "assigned_at": "2025-12-09T09:50:24.206Z",
+      "assigned_by": [
+        "admin"
+      ],
+      "expires_at": null,
+      "is_active": true,
+      "revoked_at": null,
+      "revoked_by": null,
+      "assignment_reason": "Initial role assignment during user creation",
+      "revocation_reason": "",
+      "metadata": {}
+    }
+  },
+  {
+    "model": "users.userrole",
+    "fields": {
+      "uuid": "43d6e3fe-c6f4-4240-9f79-b8bb91c3e42d",
+      "user": [
+        "reviewer01"
+      ],
+      "role": [
+        "Document Reviewer"
+      ],
+      "assigned_at": "2025-12-09T09:50:24.423Z",
+      "assigned_by": [
+        "admin"
+      ],
+      "expires_at": null,
+      "is_active": true,
+      "revoked_at": null,
+      "revoked_by": null,
+      "assignment_reason": "Initial role assignment during user creation",
+      "revocation_reason": "",
+      "metadata": {}
+    }
+  },
+  {
+    "model": "users.userrole",
+    "fields": {
+      "uuid": "f953fa02-31dd-4767-843b-28fcddac8401",
+      "user": [
+        "viewer01"
+      ],
+      "role": [
+        "Document Author"
+      ],
+      "assigned_at": "2025-12-09T09:50:24.427Z",
+      "assigned_by": [
+        "admin"
+      ],
+      "expires_at": null,
+      "is_active": true,
+      "revoked_at": null,
+      "revoked_by": null,
+      "assignment_reason": "Initial role assignment during user creation",
+      "revocation_reason": "",
+      "metadata": {}
+    }
+  },
+  {
+    "model": "users.userrole",
+    "fields": {
+      "uuid": "660e3f4a-dac3-4c04-ad1a-c282927ad5c7",
+      "user": [
+        "approver01"
+      ],
+      "role": [
+        "Document Approver"
+      ],
+      "assigned_at": "2025-12-09T09:50:25.857Z",
+      "assigned_by": [
+        "admin"
+      ],
+      "expires_at": null,
+      "is_active": true,
+      "revoked_at": null,
+      "revoked_by": null,
+      "assignment_reason": "Initial role assignment during user creation",
+      "revocation_reason": "",
+      "metadata": {}
+    }
+  },
+  {
+    "model": "users.userrole",
+    "fields": {
+      "uuid": "0ce28480-5989-46c1-8d01-c0b2ae5670dc",
+      "user": [
+        "admin01"
+      ],
+      "role": [
+        "Document Approver"
+      ],
+      "assigned_at": "2025-12-09T09:50:27.198Z",
+      "assigned_by": [
+        "admin"
+      ],
+      "expires_at": null,
+      "is_active": true,
+      "revoked_at": null,
+      "revoked_by": null,
+      "assignment_reason": "Initial role assignment during user creation",
+      "revocation_reason": "",
+      "metadata": {}
+    }
+  },
+  {
+    "model": "documents.documenttype",
+    "fields": {
+      "uuid": "dade3eeb-36db-4f37-a98b-68b34006ccc5",
+      "name": "Work Instructions (SOP)",
+      "code": "SOP",
+      "description": "Work instructions and standard operating procedures",
+      "template_required": false,
+      "template_path": "",
+      "approval_required": true,
+      "review_required": true,
+      "retention_years": 7,
+      "numbering_prefix": "",
+      "numbering_format": "{prefix}-{year}-{sequence:04d}",
+      "is_active": true,
+      "created_at": "2025-11-22T08:59:10.943Z",
+      "updated_at": "2025-12-08T15:52:30.237Z",
+      "created_by": [
+        "admin"
+      ],
+      "metadata": {}
+    }
+  },
+  {
+    "model": "documents.documenttype",
+    "fields": {
+      "uuid": "76b1c970-d62b-40e9-908a-bb7c7c895d68",
+      "name": "Policy",
+      "code": "POL",
+      "description": "Company policies and guidelines",
+      "template_required": false,
+      "template_path": "",
+      "approval_required": true,
+      "review_required": true,
+      "retention_years": 7,
+      "numbering_prefix": "",
+      "numbering_format": "{prefix}-{year}-{sequence:04d}",
+      "is_active": true,
+      "created_at": "2025-11-24T08:38:58.453Z",
+      "updated_at": "2025-11-24T08:38:58.453Z",
+      "created_by": [
+        "admin"
+      ],
+      "metadata": {}
+    }
+  },
+  {
+    "model": "documents.documenttype",
+    "fields": {
+      "uuid": "df1998ce-ba9b-4fae-b36d-c02efca2e3da",
+      "name": "Manual",
+      "code": "MAN",
+      "description": "User manuals and handbooks",
+      "template_required": false,
+      "template_path": "",
+      "approval_required": true,
+      "review_required": true,
+      "retention_years": 7,
+      "numbering_prefix": "",
+      "numbering_format": "{prefix}-{year}-{sequence:04d}",
+      "is_active": true,
+      "created_at": "2025-11-24T08:38:58.459Z",
+      "updated_at": "2025-11-24T08:38:58.459Z",
+      "created_by": [
+        "admin"
+      ],
+      "metadata": {}
+    }
+  },
+  {
+    "model": "documents.documenttype",
+    "fields": {
+      "uuid": "40447922-8e76-4981-afc3-9f7da33866f0",
+      "name": "Forms and Templates",
+      "code": "FORM",
+      "description": "Forms, templates, and document formats",
+      "template_required": false,
+      "template_path": "",
+      "approval_required": true,
+      "review_required": true,
+      "retention_years": 7,
+      "numbering_prefix": "",
+      "numbering_format": "{prefix}-{year}-{sequence:04d}",
+      "is_active": true,
+      "created_at": "2025-11-24T08:38:58.464Z",
+      "updated_at": "2025-12-02T14:43:32.271Z",
+      "created_by": [
+        "admin"
+      ],
+      "metadata": {}
+    }
+  },
+  {
+    "model": "documents.documenttype",
+    "fields": {
+      "uuid": "c4c50536-2a06-4d0f-a653-af94aa859a2c",
+      "name": "Procedures",
+      "code": "PROC",
+      "description": "Procedural documents outlining step-by-step processes",
+      "template_required": false,
+      "template_path": "",
+      "approval_required": true,
+      "review_required": true,
+      "retention_years": 7,
+      "numbering_prefix": "",
+      "numbering_format": "{prefix}-{year}-{sequence:04d}",
+      "is_active": true,
+      "created_at": "2025-12-02T14:43:32.258Z",
+      "updated_at": "2025-12-02T14:43:32.258Z",
+      "created_by": [
+        "admin"
+      ],
+      "metadata": {}
+    }
+  },
+  {
+    "model": "documents.documenttype",
+    "fields": {
+      "uuid": "8faeabc8-afe5-42d2-89f2-18e2e3deea8b",
+      "name": "Records",
+      "code": "REC",
+      "description": "Records and documentation for compliance and audit purposes",
+      "template_required": false,
+      "template_path": "",
+      "approval_required": true,
+      "review_required": true,
+      "retention_years": 7,
+      "numbering_prefix": "",
+      "numbering_format": "{prefix}-{year}-{sequence:04d}",
+      "is_active": true,
+      "created_at": "2025-12-02T14:43:32.266Z",
+      "updated_at": "2025-12-02T14:43:32.266Z",
+      "created_by": [
+        "admin"
+      ],
+      "metadata": {}
+    }
+  },
+  {
+    "model": "documents.documentsource",
+    "fields": {
+      "uuid": "599a395a-4a24-4024-82e2-985aabb5dcf7",
+      "name": "Original Digital Draft",
+      "source_type": "original_digital",
+      "description": "Original draft uploaded to EDMS in which upon approval, a digitally signed official PDF will be created.",
+      "requires_verification": false,
+      "requires_signature": false,
+      "is_active": true,
+      "created_at": "2025-11-22T10:15:02.349Z"
+    }
+  },
+  {
+    "model": "documents.documentsource",
+    "fields": {
+      "uuid": "078efc60-f405-417e-9f47-f80bcc924a6b",
+      "name": "Scanned Original",
+      "source_type": "scanned_original",
+      "description": "A digital file created directly from the original physical document.",
+      "requires_verification": false,
+      "requires_signature": false,
+      "is_active": true,
+      "created_at": "2025-11-24T10:01:09.910Z"
+    }
+  },
+  {
+    "model": "documents.documentsource",
+    "fields": {
+      "uuid": "e0f5887e-fc8a-434f-a332-48607ed39334",
+      "name": "Scanned Copy",
+      "source_type": "scanned_copy",
+      "description": "A digital file created by scanning a paper photocopy of the original document.",
+      "requires_verification": false,
+      "requires_signature": false,
+      "is_active": true,
+      "created_at": "2025-11-24T10:01:09.914Z"
+    }
+  },
+  {
+    "model": "documents.document",
+    "fields": {
+      "uuid": "45392854-75a9-431b-8a10-be1b8c5aa99e",
+      "document_number": "POL-2025-0001-v01.00",
+      "title": "Policy_01",
+      "description": "This is the first policy.",
+      "keywords": "",
+      "version_major": 1,
+      "version_minor": 0,
+      "document_type": [
+        "POL"
+      ],
+      "document_source": [
+        "Original Digital Draft"
+      ],
+      "status": "DRAFT",
+      "priority": "normal",
+      "author": [
+        "author01"
+      ],
+      "reviewer": null,
+      "approver": null,
+      "file_name": "edms_template.docx",
+      "file_path": "storage/documents/45392854-75a9-431b-8a10-be1b8c5aa99e.docx",
+      "file_size": 124263,
+      "file_checksum": "8bfcc6a9366ed5f2bd2588542c0fe7f6f1b6e93e587651469b835b9ba29d2b8c",
+      "mime_type": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+      "is_encrypted": false,
+      "encryption_metadata": {},
+      "created_at": "2025-12-09T09:50:43.359Z",
+      "updated_at": "2025-12-09T09:50:43.391Z",
+      "review_date": null,
+      "approval_date": null,
+      "effective_date": null,
+      "review_due_date": null,
+      "obsolete_date": null,
+      "obsolescence_date": null,
+      "obsolescence_reason": "",
+      "obsoleted_by": null,
+      "reason_for_change": "",
+      "change_summary": "",
+      "supersedes": null,
+      "is_active": true,
+      "requires_training": false,
+      "is_controlled": true,
+      "search_vector": "",
+      "metadata": {}
+    }
+  },
+  {
+    "model": "documents.documentversion",
+    "fields": {
+      "uuid": "d326a934-3a2c-4ef1-b1ad-9c5eea13c9d7",
+      "document": [
+        "POL-2025-0001-v01.00"
+      ],
+      "version_major": 1,
+      "version_minor": 0,
+      "version_comment": "",
+      "file_name": "",
+      "file_path": "",
+      "file_size": null,
+      "file_checksum": "",
+      "created_at": "2025-12-09T09:50:43.370Z",
+      "created_by": [
+        "author01"
+      ],
+      "status": "DRAFT",
+      "change_summary": "Initial document creation",
+      "reason_for_change": "",
+      "metadata": {
+        "document_type": "Policy",
+        "initial_version": true
+      }
+    }
+  },
+  {
+    "model": "documents.documentaccesslog",
+    "pk": 1845,
+    "fields": {
+      "uuid": "131ac363-17be-4a67-b7d7-d15e27270942",
+      "document": [
+        "POL-2025-0001-v01.00"
+      ],
+      "user": [
+        "author01"
+      ],
+      "access_type": "EDIT",
+      "access_timestamp": "2025-12-09T09:50:43.408Z",
+      "ip_address": "172.19.0.7",
+      "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.7499.4 Safari/537.36",
+      "session_id": null,
+      "success": true,
+      "failure_reason": "",
+      "document_version": "01.00",
+      "file_downloaded": false,
+      "access_duration": null,
+      "metadata": {}
+    }
+  },
+  {
+    "model": "documents.documentaccesslog",
+    "pk": 1846,
+    "fields": {
+      "uuid": "f691434a-f800-49bf-b086-b9c69bace946",
+      "document": [
+        "POL-2025-0001-v01.00"
+      ],
+      "user": [
+        "author01"
+      ],
+      "access_type": "VIEW",
+      "access_timestamp": "2025-12-09T09:51:25.938Z",
+      "ip_address": "172.19.0.7",
+      "user_agent": "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:145.0) Gecko/20100101 Firefox/145.0",
+      "session_id": null,
+      "success": true,
+      "failure_reason": "",
+      "document_version": "01.00",
+      "file_downloaded": false,
+      "access_duration": null,
+      "metadata": {}
+    }
+  },
+  {
+    "model": "documents.documentaccesslog",
+    "pk": 1847,
+    "fields": {
+      "uuid": "82828d08-48c6-4e92-980a-beda6afe771c",
+      "document": [
+        "POL-2025-0001-v01.00"
+      ],
+      "user": [
+        "author01"
+      ],
+      "access_type": "VIEW",
+      "access_timestamp": "2025-12-09T09:51:25.940Z",
+      "ip_address": "172.19.0.7",
+      "user_agent": "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:145.0) Gecko/20100101 Firefox/145.0",
+      "session_id": null,
+      "success": true,
+      "failure_reason": "",
+      "document_version": "01.00",
+      "file_downloaded": false,
+      "access_duration": null,
+      "metadata": {}
+    }
+  },
+  {
+    "model": "workflows.workflowtype",
+    "pk": 1,
+    "fields": {
+      "uuid": "c09327e4-cc57-4c60-a039-f8fb06aed16d",
+      "name": "Document Review Workflow",
+      "workflow_type": "REVIEW",
+      "description": "Standard document review and approval workflow",
+      "is_active": true,
+      "requires_approval": true,
+      "allows_parallel": false,
+      "auto_transition": false,
+      "timeout_days": 30,
+      "reminder_days": 7,
+      "created_at": "2025-11-22T09:50:48.628Z",
+      "created_by": [
+        "admin"
+      ],
+      "metadata": {}
+    }
+  },
+  {
+    "model": "workflows.workflowtype",
+    "pk": 2,
+    "fields": {
+      "uuid": "e5458a91-6c0c-4ea6-9358-7c9ab6d96883",
+      "name": "Document Up-versioning Workflow",
+      "workflow_type": "UP_VERSION",
+      "description": "Workflow for creating new versions of documents",
+      "is_active": true,
+      "requires_approval": true,
+      "allows_parallel": false,
+      "auto_transition": false,
+      "timeout_days": 14,
+      "reminder_days": 3,
+      "created_at": "2025-11-22T09:50:48.635Z",
+      "created_by": [
+        "admin"
+      ],
+      "metadata": {}
+    }
+  },
+  {
+    "model": "workflows.workflowtype",
+    "pk": 3,
+    "fields": {
+      "uuid": "b2f58c61-c827-47bd-87c9-255bc590e05d",
+      "name": "Document Obsolescence Workflow",
+      "workflow_type": "OBSOLETE",
+      "description": "Workflow for marking documents as obsolete",
+      "is_active": true,
+      "requires_approval": true,
+      "allows_parallel": false,
+      "auto_transition": false,
+      "timeout_days": 7,
+      "reminder_days": 2,
+      "created_at": "2025-11-22T09:50:48.640Z",
+      "created_by": [
+        "admin"
+      ],
+      "metadata": {}
+    }
+  },
+  {
+    "model": "workflows.workflowtype",
+    "pk": 9,
+    "fields": {
+      "uuid": "4b976f4c-c7e2-4ef4-8ea3-4ec91c7927ec",
+      "name": "Document Approval Workflow",
+      "workflow_type": "",
+      "description": "Final approval workflow for documents",
+      "is_active": true,
+      "requires_approval": true,
+      "allows_parallel": false,
+      "auto_transition": false,
+      "timeout_days": 30,
+      "reminder_days": 7,
+      "created_at": "2025-12-04T15:52:56.702Z",
+      "created_by": [
+        "admin"
+      ],
+      "metadata": {}
+    }
+  },
+  {
+    "model": "workflows.workflowtype",
+    "pk": 10,
+    "fields": {
+      "uuid": "69863c77-9604-42d0-933b-cb4f7784d583",
+      "name": "Document Versioning Workflow",
+      "workflow_type": "",
+      "description": "Version control and update workflow",
+      "is_active": true,
+      "requires_approval": true,
+      "allows_parallel": false,
+      "auto_transition": false,
+      "timeout_days": 30,
+      "reminder_days": 7,
+      "created_at": "2025-12-04T15:52:56.711Z",
+      "created_by": [
+        "admin"
+      ],
+      "metadata": {}
+    }
+  },
+  {
+    "model": "workflows.documentstate",
+    "fields": {
+      "name": "Approved",
+      "description": "Approved and ready to be effective",
+      "is_initial": false,
+      "is_final": false
+    }
+  },
+  {
+    "model": "workflows.documentstate",
+    "fields": {
+      "name": "Approved",
+      "description": "Approved and ready to be effective",
+      "is_initial": false,
+      "is_final": false
+    }
+  },
+  {
+    "model": "workflows.documentstate",
+    "fields": {
+      "name": "Approved and Effective",
+      "description": "",
+      "is_initial": false,
+      "is_final": false
+    }
+  },
+  {
+    "model": "workflows.documentstate",
+    "fields": {
+      "name": "Approved - Pending Effective",
+      "description": "",
+      "is_initial": false,
+      "is_final": false
+    }
+  },
+  {
+    "model": "workflows.documentstate",
+    "fields": {
+      "name": "Draft",
+      "description": "Initial draft state",
+      "is_initial": true,
+      "is_final": false
+    }
+  },
+  {
+    "model": "workflows.documentstate",
+    "fields": {
+      "name": "Approved and Effective",
+      "description": "Document is effective and in use",
+      "is_initial": false,
+      "is_final": false
+    }
+  },
+  {
+    "model": "workflows.documentstate",
+    "fields": {
+      "name": "In Review",
+      "description": "Document is under review",
+      "is_initial": false,
+      "is_final": false
+    }
+  },
+  {
+    "model": "workflows.documentstate",
+    "fields": {
+      "name": "Obsolete",
+      "description": "No longer in use",
+      "is_initial": false,
+      "is_final": true
+    }
+  },
+  {
+    "model": "workflows.documentstate",
+    "fields": {
+      "name": "Pending Approval",
+      "description": "Waiting for approval",
+      "is_initial": false,
+      "is_final": false
+    }
+  },
+  {
+    "model": "workflows.documentstate",
+    "fields": {
+      "name": "Approved, Pending Effective",
+      "description": "",
+      "is_initial": false,
+      "is_final": false
+    }
+  },
+  {
+    "model": "workflows.documentstate",
+    "fields": {
+      "name": "Pending Obsoletion",
+      "description": "",
+      "is_initial": false,
+      "is_final": false
+    }
+  },
+  {
+    "model": "workflows.documentstate",
+    "fields": {
+      "name": "Pending Obsoletion",
+      "description": "Document is pending obsoletion approval",
+      "is_initial": false,
+      "is_final": false
+    }
+  },
+  {
+    "model": "workflows.documentstate",
+    "fields": {
+      "name": "Pending Review",
+      "description": "Waiting for review assignment",
+      "is_initial": false,
+      "is_final": false
+    }
+  },
+  {
+    "model": "workflows.documentstate",
+    "fields": {
+      "name": "Review Completed",
+      "description": "Review completed, awaiting approval",
+      "is_initial": false,
+      "is_final": false
+    }
+  },
+  {
+    "model": "workflows.documentstate",
+    "fields": {
+      "name": "Reviewed",
+      "description": "Document has been reviewed and approved by reviewer",
+      "is_initial": false,
+      "is_final": false
+    }
+  },
+  {
+    "model": "workflows.documentstate",
+    "fields": {
+      "name": "Superseded",
+      "description": "Replaced by newer version",
+      "is_initial": false,
+      "is_final": true
+    }
+  },
+  {
+    "model": "workflows.documentstate",
+    "fields": {
+      "name": "Terminated",
+      "description": "Workflow terminated early",
+      "is_initial": false,
+      "is_final": true
+    }
+  },
+  {
+    "model": "workflows.documentstate",
+    "fields": {
+      "name": "Under Approval",
+      "description": "Currently being approved",
+      "is_initial": false,
+      "is_final": false
+    }
+  },
+  {
+    "model": "workflows.documentstate",
+    "fields": {
+      "name": "Under Review",
+      "description": "Currently being reviewed",
+      "is_initial": false,
+      "is_final": false
+    }
+  },
+  {
+    "model": "audit.audittrail",
+    "fields": {
+      "uuid": "2284641c-16e4-4517-bb81-565e491d4451",
+      "timestamp": "2025-12-09T09:49:58.863Z",
+      "action": "USER_ROLE_REMOVED",
+      "severity": "INFO",
+      "user": null,
+      "user_display_name": "",
+      "session_id": "api-session",
+      "ip_address": "127.0.0.1",
+      "user_agent": "API-Client",
+      "content_type": [
+        "users",
+        "user"
+      ],
+      "object_id": "209",
+      "object_representation": "",
+      "field_changes": {},
+      "old_values": {},
+      "new_values": {},
+      "description": "Role 'Document Author' removed from author01",
+      "module": "",
+      "request_path": "",
+      "request_method": "",
+      "checksum": "a41a40384fdea93af9f79d39d878c87cbb46e011d18be4a8f16a3ca23fd3c947",
+      "is_tampered": false,
+      "verification_status": "VERIFIED",
+      "metadata": {
+        "role_name": "Document Author",
+        "role_module": "O1",
+        "affected_user": "author01"
+      }
+    }
+  },
+  {
+    "model": "audit.audittrail",
+    "fields": {
+      "uuid": "b69942c4-570d-4c5c-b618-be671e609c82",
+      "timestamp": "2025-12-09T09:50:43.365Z",
+      "action": "CREATE",
+      "severity": "INFO",
+      "user": null,
+      "user_display_name": "System",
+      "session_id": "",
+      "ip_address": null,
+      "user_agent": "",
+      "content_type": [
+        "documents",
+        "document"
+      ],
+      "object_id": "230",
+      "object_representation": "POL-2025-0001-v01.00 - Policy_01 (v01.00)",
+      "field_changes": {},
+      "old_values": {},
+      "new_values": {},
+      "description": "Document create: POL-2025-0001-v01.00",
+      "module": "O1",
+      "request_path": "",
+      "request_method": "",
+      "checksum": "782e1824b9678034b387f57dd65ea8988665c88dcce871b9b05e923ed37091ad",
+      "is_tampered": false,
+      "verification_status": "VERIFIED",
+      "metadata": {
+        "title": "Policy_01",
+        "author": "author01",
+        "status": "DRAFT",
+        "version": "01.00",
+        "document_type": "Policy",
+        "document_number": "POL-2025-0001-v01.00"
+      }
+    }
+  },
+  {
+    "model": "audit.audittrail",
+    "fields": {
+      "uuid": "9678cf06-4b77-44cc-981e-8b9822aa735c",
+      "timestamp": "2025-12-09T09:50:43.375Z",
+      "action": "DOCUMENT_CREATE",
+      "severity": "INFO",
+      "user": null,
+      "user_display_name": "",
+      "session_id": "api-session",
+      "ip_address": "127.0.0.1",
+      "user_agent": "API-Client",
+      "content_type": [
+        "documents",
+        "document"
+      ],
+      "object_id": "230",
+      "object_representation": "",
+      "field_changes": {},
+      "old_values": {},
+      "new_values": {},
+      "description": "Created document POL-2025-0001-v01.00: Policy_01",
+      "module": "",
+      "request_path": "",
+      "request_method": "",
+      "checksum": "94443cd5bb6aac83d36d090f41727afb9c721f8e75d7d401803c583125c20aa9",
+      "is_tampered": false,
+      "verification_status": "VERIFIED",
+      "metadata": {
+        "title": "Policy_01",
+        "status": "DRAFT",
+        "version": "1.0",
+        "document_type": "Policy",
+        "document_number": "POL-2025-0001-v01.00"
+      }
+    }
+  },
+  {
+    "model": "audit.audittrail",
+    "fields": {
+      "uuid": "7c3fa427-2ce0-444e-accc-e1b964206add",
+      "timestamp": "2025-12-09T09:50:43.394Z",
+      "action": "UPDATE",
+      "severity": "INFO",
+      "user": null,
+      "user_display_name": "System",
+      "session_id": "",
+      "ip_address": null,
+      "user_agent": "",
+      "content_type": [
+        "documents",
+        "document"
+      ],
+      "object_id": "230",
+      "object_representation": "POL-2025-0001-v01.00 - Policy_01 (v01.00)",
+      "field_changes": {
+        "file_path": {
+          "new": "storage/documents/45392854-75a9-431b-8a10-be1b8c5aa99e.docx",
+          "old": null
+        },
+        "file_checksum": {
+          "new": "8bfcc6a9366ed5f2bd2588542c0fe7f6f1b6e93e587651469b835b9ba29d2b8c",
+          "old": null
+        }
+      },
+      "old_values": {},
+      "new_values": {},
+      "description": "Document update: POL-2025-0001-v01.00",
+      "module": "O1",
+      "request_path": "",
+      "request_method": "",
+      "checksum": "1f56a58fee37469b6a2f87b756810e14a3afc5fb500a428a1c5dbb70f74bc165",
+      "is_tampered": false,
+      "verification_status": "VERIFIED",
+      "metadata": {
+        "title": "Policy_01",
+        "author": "author01",
+        "status": "DRAFT",
+        "version": "01.00",
+        "document_type": "Policy",
+        "document_number": "POL-2025-0001-v01.00"
+      }
+    }
+  },
+  {
+    "model": "audit.audittrail",
+    "fields": {
+      "uuid": "64748005-3287-440a-b95b-44784e7356e7",
+      "timestamp": "2025-12-09T09:50:43.397Z",
+      "action": "DOCUMENT_UPDATE",
+      "severity": "INFO",
+      "user": null,
+      "user_display_name": "",
+      "session_id": "api-session",
+      "ip_address": "127.0.0.1",
+      "user_agent": "API-Client",
+      "content_type": [
+        "documents",
+        "document"
+      ],
+      "object_id": "230",
+      "object_representation": "",
+      "field_changes": {},
+      "old_values": {},
+      "new_values": {},
+      "description": "Updated document POL-2025-0001-v01.00",
+      "module": "",
+      "request_path": "",
+      "request_method": "",
+      "checksum": "d737cdf7942e1b29457905f5c48f682b0c79f9187f56cd2bffbe8bf26d2602cf",
+      "is_tampered": false,
+      "verification_status": "VERIFIED",
+      "metadata": {
+        "changed_fields": {
+          "file_name": {
+            "new": "edms_template.docx",
+            "old": ""
+          },
+          "file_path": {
+            "new": "storage/documents/45392854-75a9-431b-8a10-be1b8c5aa99e.docx",
+            "old": ""
+          },
+          "file_size": {
+            "new": 124263,
+            "old": null
+          },
+          "mime_type": {
+            "new": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+            "old": ""
+          },
+          "file_checksum": {
+            "new": "8bfcc6a9366ed5f2bd2588542c0fe7f6f1b6e93e587651469b835b9ba29d2b8c",
+            "old": ""
+          }
+        },
+        "document_number": "POL-2025-0001-v01.00"
+      }
+    }
+  },
+  {
+    "model": "audit.audittrail",
+    "fields": {
+      "uuid": "8affc76a-82be-4423-b30d-7bf4d29cdabe",
+      "timestamp": "2025-12-09T09:50:43.412Z",
+      "action": "EDIT",
+      "severity": "INFO",
+      "user": [
+        "author01"
+      ],
+      "user_display_name": "author01 edms",
+      "session_id": null,
+      "ip_address": "172.19.0.7",
+      "user_agent": "",
+      "content_type": [
+        "documents",
+        "document"
+      ],
+      "object_id": "230",
+      "object_representation": "POL-2025-0001-v01.00 - Policy_01 (v01.00)",
+      "field_changes": {},
+      "old_values": {},
+      "new_values": {},
+      "description": "Document edit: POL-2025-0001-v01.00",
+      "module": "O1",
+      "request_path": "",
+      "request_method": "",
+      "checksum": "54169e1875d1a295c8a66ee38cb35b3cc95349e03f5a540bd743625462330104",
+      "is_tampered": false,
+      "verification_status": "VERIFIED",
+      "metadata": {
+        "success": true,
+        "access_type": "EDIT",
+        "failure_reason": "",
+        "file_downloaded": false,
+        "document_version": "01.00"
+      }
+    }
+  },
+  {
+    "model": "audit.audittrail",
+    "fields": {
+      "uuid": "00d90851-8d14-4561-a42f-ed750c2292f6",
+      "timestamp": "2025-12-09T09:51:25.943Z",
+      "action": "VIEW",
+      "severity": "INFO",
+      "user": [
+        "author01"
+      ],
+      "user_display_name": "author01 edms",
+      "session_id": null,
+      "ip_address": "172.19.0.7",
+      "user_agent": "",
+      "content_type": [
+        "documents",
+        "document"
+      ],
+      "object_id": "230",
+      "object_representation": "POL-2025-0001-v01.00 - Policy_01 (v01.00)",
+      "field_changes": {},
+      "old_values": {},
+      "new_values": {},
+      "description": "Document view: POL-2025-0001-v01.00",
+      "module": "O1",
+      "request_path": "",
+      "request_method": "",
+      "checksum": "8423946ab11bc5e9f8820f3e29dd50d531e8c3a4d61c3d5e5d0cfa71defdf208",
+      "is_tampered": false,
+      "verification_status": "VERIFIED",
+      "metadata": {
+        "success": true,
+        "access_type": "VIEW",
+        "failure_reason": "",
+        "file_downloaded": false,
+        "document_version": "01.00"
+      }
+    }
+  },
+  {
+    "model": "audit.audittrail",
+    "fields": {
+      "uuid": "0433bd8b-60c7-41e7-b1d3-f046745270eb",
+      "timestamp": "2025-12-09T09:51:25.944Z",
+      "action": "VIEW",
+      "severity": "INFO",
+      "user": [
+        "author01"
+      ],
+      "user_display_name": "author01 edms",
+      "session_id": null,
+      "ip_address": "172.19.0.7",
+      "user_agent": "",
+      "content_type": [
+        "documents",
+        "document"
+      ],
+      "object_id": "230",
+      "object_representation": "POL-2025-0001-v01.00 - Policy_01 (v01.00)",
+      "field_changes": {},
+      "old_values": {},
+      "new_values": {},
+      "description": "Document view: POL-2025-0001-v01.00",
+      "module": "O1",
+      "request_path": "",
+      "request_method": "",
+      "checksum": "8423946ab11bc5e9f8820f3e29dd50d531e8c3a4d61c3d5e5d0cfa71defdf208",
+      "is_tampered": false,
+      "verification_status": "VERIFIED",
+      "metadata": {
+        "success": true,
+        "access_type": "VIEW",
+        "failure_reason": "",
+        "file_downloaded": false,
+        "document_version": "01.00"
+      }
+    }
+  },
+  {
+    "model": "audit.audittrail",
+    "fields": {
+      "uuid": "4a86c8cf-6cad-4a1b-9f97-80063f45edf7",
+      "timestamp": "2025-12-09T09:53:20.592Z",
+      "action": "EXPORT_PACKAGE_CREATED",
+      "severity": "INFO",
+      "user": [
+        "admin"
+      ],
+      "user_display_name": "System Administrator",
+      "session_id": "api-session",
+      "ip_address": "127.0.0.1",
+      "user_agent": "API-Client",
+      "content_type": null,
+      "object_id": null,
+      "object_representation": "",
+      "field_changes": {},
+      "old_values": {},
+      "new_values": {},
+      "description": "Created migration export package",
+      "module": "",
+      "request_path": "",
+      "request_method": "",
+      "checksum": "3707f18d44e952b52f69c93808a4c5842cade8c5c24ce0ff41e6969da31c4a06",
+      "is_tampered": false,
+      "verification_status": "VERIFIED",
+      "metadata": {
+        "options": {
+          "encrypt": false,
+          "compress": true,
+          "include_users": true
+        },
+        "file_size": 119811
+      }
+    }
+  },
+  {
+    "model": "audit.systemevent",
+    "fields": {
+      "uuid": "4eed975f-52c1-4eaa-95fa-9bd86c31d67f",
+      "event_type": "SYSTEM_REINIT_OK",
+      "timestamp": "2025-12-09T09:49:59.935Z",
+      "description": "System reinit completed successfully via API",
+      "details": {
+        "executed_by": "admin",
+        "completion_time": "2025-12-09T09:49:59.934748+00:00"
+      },
+      "severity": "INFO"
+    }
+  },
+  {
+    "model": "audit.systemevent",
+    "fields": {
+      "uuid": "872990cc-542e-4a23-ad55-0ab997416aa0",
+      "event_type": "BACKUP",
+      "timestamp": "2025-12-09T09:53:20.586Z",
+      "description": "Migration package created: edms_export_20251209_095320.tar.gz",
+      "details": {
+        "package_path": "/tmp/edms_export_20251209_095320.tar.gz",
+        "package_size": 119811,
+        "export_options": {
+          "type": "export",
+          "output": "/tmp/edms_export_20251209_095320.tar.gz",
+          "verify": true,
+          "encrypt": false,
+          "compress": true,
+          "no_color": false,
+          "schedule": false,
+          "settings": null,
+          "traceback": false,
+          "verbosity": 1,
+          "pythonpath": null,
+          "config_name": null,
+          "force_color": false,
+          "skip_checks": true,
+          "include_users": true
+        }
+      },
+      "severity": "INFO"
+    }
+  },
+  {
+    "model": "audit.loginaudit",
+    "pk": 434,
+    "fields": {
+      "uuid": "5419ce15-a482-4003-8143-082ee0d389c1",
+      "user": [
+        "author01"
+      ],
+      "username": "author01",
+      "timestamp": "2025-12-09T09:51:13.129Z",
+      "success": false,
+      "ip_address": null,
+      "user_agent": null,
+      "failure_reason": "Invalid credentials"
+    }
+  },
+  {
+    "model": "audit.databasechangelog",
+    "pk": 761,
+    "fields": {
+      "uuid": "6250b526-7749-4776-a02b-a76228cff02c",
+      "timestamp": "2025-12-09T09:50:43.402Z",
+      "table_name": "",
+      "operation": "",
+      "record_id": "",
+      "user": null,
+      "old_values": {
+        "id": 230,
+        "title": "Policy_01",
+        "author": 213,
+        "status": "DRAFT",
+        "approver": null,
+        "keywords": "",
+        "metadata": {},
+        "priority": "normal",
+        "reviewer": null,
+        "file_name": "",
+        "file_path": "",
+        "file_size": null,
+        "is_active": true,
+        "mime_type": "",
+        "supersedes": null,
+        "description": "This is the first policy.",
+        "review_date": null,
+        "is_encrypted": false,
+        "obsoleted_by": null,
+        "approval_date": null,
+        "document_type": 4,
+        "file_checksum": "",
+        "is_controlled": true,
+        "obsolete_date": null,
+        "search_vector": "",
+        "version_major": 1,
+        "version_minor": 0,
+        "change_summary": "",
+        "effective_date": null,
+        "document_number": "POL-2025-0001-v01.00",
+        "document_source": 1,
+        "review_due_date": null,
+        "obsolescence_date": null,
+        "reason_for_change": "",
+        "requires_training": false,
+        "encryption_metadata": {},
+        "obsolescence_reason": ""
+      },
+      "new_values": {
+        "id": 230,
+        "title": "Policy_01",
+        "author": 213,
+        "status": "DRAFT",
+        "approver": null,
+        "keywords": "",
+        "metadata": {},
+        "priority": "normal",
+        "reviewer": null,
+        "file_name": "edms_template.docx",
+        "file_path": "storage/documents/45392854-75a9-431b-8a10-be1b8c5aa99e.docx",
+        "file_size": 124263,
+        "is_active": true,
+        "mime_type": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        "supersedes": null,
+        "description": "This is the first policy.",
+        "review_date": null,
+        "is_encrypted": false,
+        "obsoleted_by": null,
+        "approval_date": null,
+        "document_type": 4,
+        "file_checksum": "8bfcc6a9366ed5f2bd2588542c0fe7f6f1b6e93e587651469b835b9ba29d2b8c",
+        "is_controlled": true,
+        "obsolete_date": null,
+        "search_vector": "",
+        "version_major": 1,
+        "version_minor": 0,
+        "change_summary": "",
+        "effective_date": null,
+        "document_number": "POL-2025-0001-v01.00",
+        "document_source": 1,
+        "review_due_date": null,
+        "obsolescence_date": null,
+        "reason_for_change": "",
+        "requires_training": false,
+        "encryption_metadata": {},
+        "obsolescence_reason": ""
+      },
+      "content_type": [
+        "documents",
+        "document"
+      ],
+      "object_id": "230",
+      "action": "UPDATE",
+      "ip_address": null,
+      "session_id": null,
+      "integrity_hash": "38856b300ec6b1d389169e3d158a45d1b6a1aa47f0d7fc377c5287d2b984023d"
+    }
+  },
+  {
+    "model": "audit.complianceevent",
+    "pk": 399,
+    "fields": {
+      "uuid": "32c25b8f-5b5c-4a68-88a2-ee1924637d22",
+      "event_type": "USER_LOGIN_FAILED",
+      "timestamp": "2025-12-09T09:51:13.133Z",
+      "description": "Failed login attempt for username: author01",
+      "severity": "WARNING",
+      "user": [
+        "author01"
+      ],
+      "resolution_status": "OPEN"
+    }
+  },
+  {
+    "model": "security.pdfsigningcertificate",
+    "fields": {
+      "uuid": "0e819e0b-ddcd-467e-9698-06371c9b9e47",
+      "name": "Self-Signed Certificate - EDMS PDF Signer",
+      "certificate_type": "SELF_SIGNED",
+      "certificate_pem": "-----BEGIN CERTIFICATE-----\nMIIDhjCCAm6gAwIBAgIUIQgy8r7UsUrAzUOm2JY8ihTYeVUwDQYJKoZIhvcNAQEL\nBQAwYjELMAkGA1UEBhMCVVMxCzAJBgNVBAgMAkNBMRYwFAYDVQQHDA1TYW4gRnJh\nbmNpc2NvMRQwEgYDVQQKDAtFRE1TIFN5c3RlbTEYMBYGA1UEAwwPRURNUyBQREYg\nU2lnbmVyMB4XDTI1MTEyNzE2MDA0MloXDTI2MTEyNzE2MDA0MlowYjELMAkGA1UE\nBhMCVVMxCzAJBgNVBAgMAkNBMRYwFAYDVQQHDA1TYW4gRnJhbmNpc2NvMRQwEgYD\nVQQKDAtFRE1TIFN5c3RlbTEYMBYGA1UEAwwPRURNUyBQREYgU2lnbmVyMIIBIjAN\nBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAq3GpOcKIfVtUWK5WGMznRZ/QSwdF\nZC34XshmD7qb0DN4XmCoTIB5v2EGN5Ra89kdYFbxUtRLVSP3rp89WuiCRu4qKr63\nBBBfP79D5zAWLTIqYasTm6FUDbxYnoZpU1UkTn1/tu/XWigh+quOXKb9VZkxIBu2\nCjx8nwrUSnp+6CxychCMsumpkFGoAnXB2K88DE55Axuf17oB2GuRg7K93mSpfWlF\nUN+Bz6T3xM/KJI9S1CSWVNhflOlQFQ/Cx+RXetNmn29VTh3Agbwds5hYVGr/rtNy\n12PhEijWEQAOx5P1oA8O8VigUgZPIczR83T8bv3lMWj1Od5wt7vCAlxXZQIDAQAB\nozQwMjAgBgNVHREEGTAXgglsb2NhbGhvc3SCCmVkbXMubG9jYWwwDgYDVR0PAQH/\nBAQDAgHGMA0GCSqGSIb3DQEBCwUAA4IBAQCl7fQ5ezEReZjWiEEXa1DxnWBITvmw\nYdXjxL/b1QptcVlmASVuWcYMkHuXBXPhMFYIdwhSTL5AwLJsT+yBIgbq0ogiktI9\nnFMD7w8ne0/ZZ71YH1MfFtvludiW87lQkm/Sn3NA8kYoIt3jrcThW3qmzvjvu5Ne\ndnGQh15PSiP/CxK6s+KnFNJ8EMUFYcwNkPgbZPGp9oyhAibsbrdMXZlW7ZX5SeG3\n725P7YkM5WsMywkoNPCU+O4UBxtUHxzCD9M/AfoBKuq5kZv1HPeaT2vj4yTHe+kV\nALjuihlFkAQnS360zYgRdGmoe4jkUGrX+BBi0O95gqMW3fh2cvHX097e\n-----END CERTIFICATE-----\n",
+      "private_key_pem": "-----BEGIN PRIVATE KEY-----\nMIIEvAIBADANBgkqhkiG9w0BAQEFAASCBKYwggSiAgEAAoIBAQCrcak5woh9W1RY\nrlYYzOdFn9BLB0VkLfheyGYPupvQM3heYKhMgHm/YQY3lFrz2R1gVvFS1EtVI/eu\nnz1a6IJG7ioqvrcEEF8/v0PnMBYtMiphqxOboVQNvFiehmlTVSROfX+279daKCH6\nq45cpv1VmTEgG7YKPHyfCtRKen7oLHJyEIyy6amQUagCdcHYrzwMTnkDG5/XugHY\na5GDsr3eZKl9aUVQ34HPpPfEz8okj1LUJJZU2F+U6VAVD8LH5Fd602afb1VOHcCB\nvB2zmFhUav+u03LXY+ESKNYRAA7Hk/WgDw7xWKBSBk8hzNHzdPxu/eUxaPU53nC3\nu8ICXFdlAgMBAAECggEABXb9ButNgHltydncwrOdV5nNgOa9boEMnrDSmAPBvbQ2\nTQPVuYKK3u/Py+u9rnIoPo7m6FX+BLu9xGItCX3J0Ur8KxqjKM0AzD5jgrYErvIf\nabeTS22sCTgMtxjfuJlJK/tSG9mvSp9m3d+kDQ4Bmz3j0/suJUtiSYuF0s3ux6W9\nmpXpsvcs1z6BtqL1c8D2dEEsMgx/p5gtNWvcE/EwIQQrPsk4iF8MYL/YmitnegO3\nkgCV8+ohtjDWnoHlXOcYtb9CDTqnixRxCUmD/t55IXMUKDpVxCeYr+d1MbTWnZ5C\nySrmhWBcUtFj3Px6/jYRU1q/oXBs9lJEH+mN3y+OLQKBgQDq8S1i+SFLaFtwe+r9\nuRaWBT7ZI659j5Vy13EO/d7gW67l2BfyLtt6QR5SaLr/X9/OrWrkpRPrhfm/HLNU\nHu2Je4MX6xifJ37TdO/m4QTENajKHLQcBcZswGpwWGbE+fEfwBtzdQP81AaXijTZ\no6PFfnIqC3prYzXoueaedM/eOwKBgQC6z3++JQbEjcFni9oK/Zmae0fw2VYhqFzU\n55pfQOx9CpPoyG5zqGDT/Ufb5Btz9DXBdYD14j8Lu0qkSkga/D1RBNUM1lH1yP87\nwhliR40VapbgPaCgaMsPpauiuq2XcSDi707xW2FMN5HU9Q38JgV568HmBDl84Stb\nPXlBXRcm3wKBgEewvGa9GpnGCFD0nyo49llk1F6x8qbBz5qxfwBSG1Ze46mjHPt7\nrOFLSZNf/d+7Q7HvXPTUIpX11dWpTldW8KjJFaGQzXyTMrIXtrS+6RNuREkYJSV/\n5aJ9vHz3nLRyiE9l8XpztHnLwQ8wzxuyQWEcSn3l7r8iEOso/uRPRLbNAoGAOFHC\nY2LqTWunOT5yeAnIu0gbgkMjsnX9tro0Ui9SnMgJm46BriC/QGoFtgdpN2YSpsZ0\nIK0a8MCAWlOCtZACNGDOklYy03TLbgqweG613BUMc4Jg4Lt3LLp3qlG5cATNM12O\nYTl5de7y6k8O7kvQLtei12PCqSGBXrqDye70weUCgYAsX6T5H7wckefnDt+49NNY\nM/7kIjr9hcDjhxpvUz/dUNGrlzXXsx1hjpHFuDmOPqJTk2zKmA67sGqg1CJyEYQB\nGVrxMRclN6kaO0792YxvEpKRSb0G4mX6IolRLxxF/G7K701xcC6P8sNzHBHvVcrs\nzE/B1YYsXzUDftXWDSa0Sw==\n-----END PRIVATE KEY-----\n",
+      "public_key_pem": "-----BEGIN PUBLIC KEY-----\nMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAq3GpOcKIfVtUWK5WGMzn\nRZ/QSwdFZC34XshmD7qb0DN4XmCoTIB5v2EGN5Ra89kdYFbxUtRLVSP3rp89WuiC\nRu4qKr63BBBfP79D5zAWLTIqYasTm6FUDbxYnoZpU1UkTn1/tu/XWigh+quOXKb9\nVZkxIBu2Cjx8nwrUSnp+6CxychCMsumpkFGoAnXB2K88DE55Axuf17oB2GuRg7K9\n3mSpfWlFUN+Bz6T3xM/KJI9S1CSWVNhflOlQFQ/Cx+RXetNmn29VTh3Agbwds5hY\nVGr/rtNy12PhEijWEQAOx5P1oA8O8VigUgZPIczR83T8bv3lMWj1Od5wt7vCAlxX\nZQIDAQAB\n-----END PUBLIC KEY-----\n",
+      "subject_cn": "EDMS PDF Signer",
+      "issuer_name": "EDMS PDF Signer",
+      "serial_number": "188579539615062014206463065910382346076813818197",
+      "valid_from": "2025-11-27T16:00:42.609Z",
+      "valid_until": "2026-11-27T16:00:42.609Z",
+      "is_active": true,
+      "is_default": true,
+      "created_at": "2025-11-27T16:00:42.610Z",
+      "created_by": [
+        "admin"
+      ]
+    }
+  },
+  {
+    "model": "placeholders.placeholderdefinition",
+    "fields": {
+      "uuid": "9a58d8b6-ebd7-46fd-9c6d-f4ed4f6eed5e",
+      "name": "DOCUMENT_NUMBER",
+      "display_name": "Document Number",
+      "description": "Auto-generated unique document number",
+      "placeholder_type": "DOCUMENT",
+      "data_source": "DOCUMENT_MODEL",
+      "source_field": "document_number",
+      "format_string": "",
+      "date_format": "%Y-%m-%d",
+      "default_value": "TBD-0000-0000",
+      "validation_rules": {},
+      "is_active": true,
+      "requires_permission": "",
+      "cache_duration": 300,
+      "created_at": "2025-12-03T06:00:19.565Z",
+      "updated_at": "2025-12-03T06:00:19.565Z",
+      "created_by": [
+        "admin"
+      ]
+    }
+  },
+  {
+    "model": "placeholders.placeholderdefinition",
+    "fields": {
+      "uuid": "68cfe531-5907-46f1-a8e9-7c310c79b809",
+      "name": "DOCUMENT_TITLE",
+      "display_name": "Document Title",
+      "description": "Document title or subject",
+      "placeholder_type": "DOCUMENT",
+      "data_source": "DOCUMENT",
+      "source_field": "",
+      "format_string": "",
+      "date_format": "%Y-%m-%d",
+      "default_value": "",
+      "validation_rules": {},
+      "is_active": true,
+      "requires_permission": "",
+      "cache_duration": 300,
+      "created_at": "2025-12-03T06:00:19.572Z",
+      "updated_at": "2025-12-03T06:00:19.572Z",
+      "created_by": [
+        "admin"
+      ]
+    }
+  },
+  {
+    "model": "placeholders.placeholderdefinition",
+    "fields": {
+      "uuid": "a151b740-eeea-41cd-bc63-8b148fba3416",
+      "name": "DOCUMENT_TYPE",
+      "display_name": "Document Type",
+      "description": "Type of document (Policy, SOP, etc.)",
+      "placeholder_type": "DOCUMENT",
+      "data_source": "DOCUMENT",
+      "source_field": "",
+      "format_string": "",
+      "date_format": "%Y-%m-%d",
+      "default_value": "",
+      "validation_rules": {},
+      "is_active": true,
+      "requires_permission": "",
+      "cache_duration": 300,
+      "created_at": "2025-12-03T06:00:19.576Z",
+      "updated_at": "2025-12-03T06:00:19.576Z",
+      "created_by": [
+        "admin"
+      ]
+    }
+  },
+  {
+    "model": "placeholders.placeholderdefinition",
+    "fields": {
+      "uuid": "9eb800fd-d01e-4d7e-b3b9-d5b8489ee4d0",
+      "name": "DOCUMENT_SOURCE",
+      "display_name": "Document Source",
+      "description": "Origin type of the document",
+      "placeholder_type": "DOCUMENT",
+      "data_source": "DOCUMENT",
+      "source_field": "",
+      "format_string": "",
+      "date_format": "%Y-%m-%d",
+      "default_value": "",
+      "validation_rules": {},
+      "is_active": true,
+      "requires_permission": "",
+      "cache_duration": 300,
+      "created_at": "2025-12-03T06:00:19.581Z",
+      "updated_at": "2025-12-03T06:00:19.581Z",
+      "created_by": [
+        "admin"
+      ]
+    }
+  },
+  {
+    "model": "placeholders.placeholderdefinition",
+    "fields": {
+      "uuid": "2590b5c0-e127-4d7d-b12b-72c3e7dd50e7",
+      "name": "VERSION_MAJOR",
+      "display_name": "Major Version",
+      "description": "Major version number",
+      "placeholder_type": "DOCUMENT",
+      "data_source": "DOCUMENT",
+      "source_field": "",
+      "format_string": "",
+      "date_format": "%Y-%m-%d",
+      "default_value": "1",
+      "validation_rules": {},
+      "is_active": true,
+      "requires_permission": "",
+      "cache_duration": 300,
+      "created_at": "2025-12-03T06:00:19.585Z",
+      "updated_at": "2025-12-03T06:00:19.585Z",
+      "created_by": [
+        "admin"
+      ]
+    }
+  },
+  {
+    "model": "placeholders.placeholderdefinition",
+    "fields": {
+      "uuid": "cc83f8a9-8ebe-43b4-8e54-f7ba61960162",
+      "name": "VERSION_MINOR",
+      "display_name": "Minor Version",
+      "description": "Minor version number",
+      "placeholder_type": "DOCUMENT",
+      "data_source": "DOCUMENT",
+      "source_field": "",
+      "format_string": "",
+      "date_format": "%Y-%m-%d",
+      "default_value": "0",
+      "validation_rules": {},
+      "is_active": true,
+      "requires_permission": "",
+      "cache_duration": 300,
+      "created_at": "2025-12-03T06:00:19.590Z",
+      "updated_at": "2025-12-03T06:00:19.590Z",
+      "created_by": [
+        "admin"
+      ]
+    }
+  },
+  {
+    "model": "placeholders.placeholderdefinition",
+    "fields": {
+      "uuid": "c5eb440a-57df-46df-ac3f-cf2bf43a8d26",
+      "name": "VERSION_FULL",
+      "display_name": "Full Version",
+      "description": "Complete version number (major.minor)",
+      "placeholder_type": "DOCUMENT",
+      "data_source": "DOCUMENT",
+      "source_field": "",
+      "format_string": "",
+      "date_format": "%Y-%m-%d",
+      "default_value": "",
+      "validation_rules": {},
+      "is_active": true,
+      "requires_permission": "",
+      "cache_duration": 300,
+      "created_at": "2025-12-03T06:00:19.594Z",
+      "updated_at": "2025-12-03T06:00:19.594Z",
+      "created_by": [
+        "admin"
+      ]
+    }
+  },
+  {
+    "model": "placeholders.placeholderdefinition",
+    "fields": {
+      "uuid": "aeb907aa-15f5-4033-96b9-35d1fa8d5d0d",
+      "name": "DOCUMENT_STATUS",
+      "display_name": "Document Status",
+      "description": "Current document workflow status",
+      "placeholder_type": "DOCUMENT",
+      "data_source": "DOCUMENT",
+      "source_field": "",
+      "format_string": "",
+      "date_format": "%Y-%m-%d",
+      "default_value": "",
+      "validation_rules": {},
+      "is_active": true,
+      "requires_permission": "",
+      "cache_duration": 300,
+      "created_at": "2025-12-03T06:00:19.598Z",
+      "updated_at": "2025-12-03T06:00:19.598Z",
+      "created_by": [
+        "admin"
+      ]
+    }
+  },
+  {
+    "model": "placeholders.placeholderdefinition",
+    "fields": {
+      "uuid": "ed777b16-86cc-4b5d-be23-32b82fdefc7f",
+      "name": "APPROVAL_DATE",
+      "display_name": "Approval Date",
+      "description": "Date when document was approved",
+      "placeholder_type": "DOCUMENT",
+      "data_source": "DOCUMENT",
+      "source_field": "",
+      "format_string": "",
+      "date_format": "%Y-%m-%d",
+      "default_value": "",
+      "validation_rules": {},
+      "is_active": true,
+      "requires_permission": "",
+      "cache_duration": 300,
+      "created_at": "2025-12-03T06:00:19.603Z",
+      "updated_at": "2025-12-03T06:00:19.603Z",
+      "created_by": [
+        "admin"
+      ]
+    }
+  },
+  {
+    "model": "placeholders.placeholderdefinition",
+    "fields": {
+      "uuid": "5b3dd64c-9022-454e-b6de-6a8867429708",
+      "name": "EFFECTIVE_DATE",
+      "display_name": "Effective Date",
+      "description": "Date when document becomes effective",
+      "placeholder_type": "DOCUMENT",
+      "data_source": "DOCUMENT",
+      "source_field": "",
+      "format_string": "",
+      "date_format": "%Y-%m-%d",
+      "default_value": "",
+      "validation_rules": {},
+      "is_active": true,
+      "requires_permission": "",
+      "cache_duration": 300,
+      "created_at": "2025-12-03T06:00:19.607Z",
+      "updated_at": "2025-12-03T06:00:19.607Z",
+      "created_by": [
+        "admin"
+      ]
+    }
+  },
+  {
+    "model": "placeholders.placeholderdefinition",
+    "fields": {
+      "uuid": "c13d7354-2d32-4a9e-9442-f63cff52603b",
+      "name": "AUTHOR",
+      "display_name": "Document Author",
+      "description": "Full name of document author",
+      "placeholder_type": "DOCUMENT",
+      "data_source": "DOCUMENT",
+      "source_field": "",
+      "format_string": "",
+      "date_format": "%Y-%m-%d",
+      "default_value": "",
+      "validation_rules": {},
+      "is_active": true,
+      "requires_permission": "",
+      "cache_duration": 300,
+      "created_at": "2025-12-03T06:00:19.612Z",
+      "updated_at": "2025-12-03T06:00:19.612Z",
+      "created_by": [
+        "admin"
+      ]
+    }
+  },
+  {
+    "model": "placeholders.placeholderdefinition",
+    "fields": {
+      "uuid": "8e8a8aa9-83d4-44ce-825b-97772bbf4871",
+      "name": "REVIEWER",
+      "display_name": "Document Reviewer",
+      "description": "Full name of document reviewer",
+      "placeholder_type": "DOCUMENT",
+      "data_source": "DOCUMENT",
+      "source_field": "",
+      "format_string": "",
+      "date_format": "%Y-%m-%d",
+      "default_value": "",
+      "validation_rules": {},
+      "is_active": true,
+      "requires_permission": "",
+      "cache_duration": 300,
+      "created_at": "2025-12-03T06:00:19.616Z",
+      "updated_at": "2025-12-03T06:00:19.616Z",
+      "created_by": [
+        "admin"
+      ]
+    }
+  },
+  {
+    "model": "placeholders.placeholderdefinition",
+    "fields": {
+      "uuid": "e5107a23-3599-46b8-9482-4bb81ca72bd3",
+      "name": "APPROVER",
+      "display_name": "Document Approver",
+      "description": "Full name of document approver",
+      "placeholder_type": "DOCUMENT",
+      "data_source": "DOCUMENT",
+      "source_field": "",
+      "format_string": "",
+      "date_format": "%Y-%m-%d",
+      "default_value": "",
+      "validation_rules": {},
+      "is_active": true,
+      "requires_permission": "",
+      "cache_duration": 300,
+      "created_at": "2025-12-03T06:00:19.620Z",
+      "updated_at": "2025-12-03T06:00:19.620Z",
+      "created_by": [
+        "admin"
+      ]
+    }
+  },
+  {
+    "model": "placeholders.placeholderdefinition",
+    "fields": {
+      "uuid": "04e4885f-7d7b-41c6-ae78-9361b8d693c5",
+      "name": "DEPARTMENT",
+      "display_name": "Author Department",
+      "description": "Department of document author",
+      "placeholder_type": "DOCUMENT",
+      "data_source": "DOCUMENT",
+      "source_field": "",
+      "format_string": "",
+      "date_format": "%Y-%m-%d",
+      "default_value": "",
+      "validation_rules": {},
+      "is_active": true,
+      "requires_permission": "",
+      "cache_duration": 300,
+      "created_at": "2025-12-03T06:00:19.625Z",
+      "updated_at": "2025-12-03T06:00:19.625Z",
+      "created_by": [
+        "admin"
+      ]
+    }
+  },
+  {
+    "model": "placeholders.placeholderdefinition",
+    "fields": {
+      "uuid": "829c1500-00ab-4bb5-bc44-0c27fe3904b0",
+      "name": "CREATION_DATE",
+      "display_name": "Creation Date",
+      "description": "Date when document was created",
+      "placeholder_type": "DOCUMENT",
+      "data_source": "DOCUMENT",
+      "source_field": "",
+      "format_string": "",
+      "date_format": "%Y-%m-%d",
+      "default_value": "",
+      "validation_rules": {},
+      "is_active": true,
+      "requires_permission": "",
+      "cache_duration": 300,
+      "created_at": "2025-12-03T06:00:19.629Z",
+      "updated_at": "2025-12-03T06:00:19.629Z",
+      "created_by": [
+        "admin"
+      ]
+    }
+  },
+  {
+    "model": "placeholders.placeholderdefinition",
+    "fields": {
+      "uuid": "ea9a5cd9-e7b9-4b58-ab7f-e7ec7b2f2cc7",
+      "name": "LAST_MODIFIED",
+      "display_name": "Last Modified",
+      "description": "Date and time of last modification",
+      "placeholder_type": "DOCUMENT",
+      "data_source": "DOCUMENT",
+      "source_field": "",
+      "format_string": "",
+      "date_format": "%Y-%m-%d",
+      "default_value": "",
+      "validation_rules": {},
+      "is_active": true,
+      "requires_permission": "",
+      "cache_duration": 300,
+      "created_at": "2025-12-03T06:00:19.635Z",
+      "updated_at": "2025-12-03T06:00:19.635Z",
+      "created_by": [
+        "admin"
+      ]
+    }
+  },
+  {
+    "model": "placeholders.placeholderdefinition",
+    "fields": {
+      "uuid": "3b232d9a-59c3-4e55-b8f9-37a2ea2645b5",
+      "name": "DOWNLOADED_DATE",
+      "display_name": "Downloaded Date",
+      "description": "Current date/time when document is accessed",
+      "placeholder_type": "SYSTEM",
+      "data_source": "SYSTEM_CONFIG",
+      "source_field": "",
+      "format_string": "",
+      "date_format": "%Y-%m-%d",
+      "default_value": "",
+      "validation_rules": {},
+      "is_active": true,
+      "requires_permission": "",
+      "cache_duration": 300,
+      "created_at": "2025-12-03T06:00:19.640Z",
+      "updated_at": "2025-12-03T07:06:58.069Z",
+      "created_by": [
+        "admin"
+      ]
+    }
+  },
+  {
+    "model": "placeholders.placeholderdefinition",
+    "fields": {
+      "uuid": "df27b7d7-4eda-4eb7-9bf8-7be48cce952d",
+      "name": "ORGANIZATION",
+      "display_name": "Organization Name",
+      "description": "Name of the organization",
+      "placeholder_type": "SYSTEM",
+      "data_source": "SYSTEM_CONFIG",
+      "source_field": "",
+      "format_string": "",
+      "date_format": "%Y-%m-%d",
+      "default_value": "EDMS Organization",
+      "validation_rules": {},
+      "is_active": true,
+      "requires_permission": "",
+      "cache_duration": 300,
+      "created_at": "2025-12-03T06:00:19.646Z",
+      "updated_at": "2025-12-03T07:06:58.073Z",
+      "created_by": [
+        "admin"
+      ]
+    }
+  },
+  {
+    "model": "placeholders.placeholderdefinition",
+    "fields": {
+      "uuid": "59b841a8-5693-4fab-8e95-2c31b7affbc9",
+      "name": "SYSTEM_NAME",
+      "display_name": "System Name",
+      "description": "Name of the EDMS system",
+      "placeholder_type": "SYSTEM",
+      "data_source": "DOCUMENT",
+      "source_field": "",
+      "format_string": "",
+      "date_format": "%Y-%m-%d",
+      "default_value": "EDMS",
+      "validation_rules": {},
+      "is_active": true,
+      "requires_permission": "",
+      "cache_duration": 300,
+      "created_at": "2025-12-03T06:00:19.651Z",
+      "updated_at": "2025-12-03T06:00:19.651Z",
+      "created_by": [
+        "admin"
+      ]
+    }
+  },
+  {
+    "model": "placeholders.placeholderdefinition",
+    "fields": {
+      "uuid": "afa54101-3610-41c8-a39b-766c14a68114",
+      "name": "DOC_BASE_NUMBER",
+      "display_name": "Document Base Number",
+      "description": "Document number without version suffix (e.g., PROC-2025-0001)",
+      "placeholder_type": "DOCUMENT",
+      "data_source": "DOCUMENT",
+      "source_field": "document_number",
+      "format_string": "",
+      "date_format": "%Y-%m-%d",
+      "default_value": "",
+      "validation_rules": {},
+      "is_active": true,
+      "requires_permission": "",
+      "cache_duration": 300,
+      "created_at": "2025-12-03T06:35:36.737Z",
+      "updated_at": "2025-12-03T06:35:36.737Z",
+      "created_by": [
+        "admin"
+      ]
+    }
+  },
+  {
+    "model": "placeholders.placeholderdefinition",
+    "fields": {
+      "uuid": "6ca6edd8-573e-428d-968b-8add9792da14",
+      "name": "COMPANY_NAME",
+      "display_name": "Company Name",
+      "description": "Name of the organization",
+      "placeholder_type": "SYSTEM",
+      "data_source": "SYSTEM_CONFIG",
+      "source_field": "",
+      "format_string": "",
+      "date_format": "%Y-%m-%d",
+      "default_value": "",
+      "validation_rules": {},
+      "is_active": true,
+      "requires_permission": "",
+      "cache_duration": 0,
+      "created_at": "2025-12-03T07:07:14.692Z",
+      "updated_at": "2025-12-03T07:07:14.692Z",
+      "created_by": [
+        "admin"
+      ]
+    }
+  },
+  {
+    "model": "placeholders.placeholderdefinition",
+    "fields": {
+      "uuid": "c1a6b49c-6fd1-46d3-9216-3a0228d2da54",
+      "name": "CURRENT_DATE",
+      "display_name": "Current Date",
+      "description": "Current date when document is generated",
+      "placeholder_type": "SYSTEM",
+      "data_source": "SYSTEM_CONFIG",
+      "source_field": "",
+      "format_string": "",
+      "date_format": "%Y-%m-%d",
+      "default_value": "",
+      "validation_rules": {},
+      "is_active": true,
+      "requires_permission": "",
+      "cache_duration": 0,
+      "created_at": "2025-12-03T07:07:14.698Z",
+      "updated_at": "2025-12-03T07:07:14.698Z",
+      "created_by": [
+        "admin"
+      ]
+    }
+  },
+  {
+    "model": "placeholders.placeholderdefinition",
+    "fields": {
+      "uuid": "f190114f-30d2-4c28-826c-704261299756",
+      "name": "CURRENT_TIME",
+      "display_name": "Current Time",
+      "description": "Current time when document is generated",
+      "placeholder_type": "SYSTEM",
+      "data_source": "SYSTEM_CONFIG",
+      "source_field": "",
+      "format_string": "",
+      "date_format": "%Y-%m-%d",
+      "default_value": "",
+      "validation_rules": {},
+      "is_active": true,
+      "requires_permission": "",
+      "cache_duration": 0,
+      "created_at": "2025-12-03T07:07:14.704Z",
+      "updated_at": "2025-12-03T07:07:14.704Z",
+      "created_by": [
+        "admin"
+      ]
+    }
+  },
+  {
+    "model": "placeholders.placeholderdefinition",
+    "fields": {
+      "uuid": "e79654c0-aecc-4e34-86d3-acd185298341",
+      "name": "CURRENT_YEAR",
+      "display_name": "Current Year",
+      "description": "Current year",
+      "placeholder_type": "SYSTEM",
+      "data_source": "SYSTEM_CONFIG",
+      "source_field": "",
+      "format_string": "",
+      "date_format": "%Y-%m-%d",
+      "default_value": "",
+      "validation_rules": {},
+      "is_active": true,
+      "requires_permission": "",
+      "cache_duration": 0,
+      "created_at": "2025-12-03T07:07:14.709Z",
+      "updated_at": "2025-12-03T07:07:14.709Z",
+      "created_by": [
+        "admin"
+      ]
+    }
+  },
+  {
+    "model": "placeholders.placeholderdefinition",
+    "fields": {
+      "uuid": "2bb4dae8-d4ca-4abd-8477-d50c739fad8c",
+      "name": "CURRENT_DATETIME",
+      "display_name": "Current Datetime",
+      "description": "Current date and time",
+      "placeholder_type": "SYSTEM",
+      "data_source": "SYSTEM_CONFIG",
+      "source_field": "",
+      "format_string": "",
+      "date_format": "%Y-%m-%d",
+      "default_value": "",
+      "validation_rules": {},
+      "is_active": true,
+      "requires_permission": "",
+      "cache_duration": 0,
+      "created_at": "2025-12-03T07:07:14.714Z",
+      "updated_at": "2025-12-03T07:07:14.714Z",
+      "created_by": [
+        "admin"
+      ]
+    }
+  },
+  {
+    "model": "placeholders.placeholderdefinition",
+    "fields": {
+      "uuid": "c4984da1-87b9-4244-a238-0547dd1d0fd8",
+      "name": "DOWNLOAD_DATE",
+      "display_name": "Download Date",
+      "description": "Date when document is downloaded",
+      "placeholder_type": "SYSTEM",
+      "data_source": "SYSTEM_CONFIG",
+      "source_field": "",
+      "format_string": "",
+      "date_format": "%Y-%m-%d",
+      "default_value": "",
+      "validation_rules": {},
+      "is_active": true,
+      "requires_permission": "",
+      "cache_duration": 0,
+      "created_at": "2025-12-03T07:07:14.718Z",
+      "updated_at": "2025-12-03T07:07:14.718Z",
+      "created_by": [
+        "admin"
+      ]
+    }
+  },
+  {
+    "model": "placeholders.placeholderdefinition",
+    "fields": {
+      "uuid": "794bd40d-fb3d-455b-84bc-276134624a8a",
+      "name": "DOWNLOAD_TIME",
+      "display_name": "Download Time",
+      "description": "Time when document is downloaded",
+      "placeholder_type": "SYSTEM",
+      "data_source": "SYSTEM_CONFIG",
+      "source_field": "",
+      "format_string": "",
+      "date_format": "%Y-%m-%d",
+      "default_value": "",
+      "validation_rules": {},
+      "is_active": true,
+      "requires_permission": "",
+      "cache_duration": 0,
+      "created_at": "2025-12-03T07:07:14.722Z",
+      "updated_at": "2025-12-03T07:07:14.722Z",
+      "created_by": [
+        "admin"
+      ]
+    }
+  },
+  {
+    "model": "placeholders.placeholderdefinition",
+    "fields": {
+      "uuid": "f8a16306-7f65-4366-8eb7-b6b6e4a05773",
+      "name": "DOWNLOAD_DATETIME",
+      "display_name": "Download Datetime",
+      "description": "Date and time when document is downloaded",
+      "placeholder_type": "SYSTEM",
+      "data_source": "SYSTEM_CONFIG",
+      "source_field": "",
+      "format_string": "",
+      "date_format": "%Y-%m-%d",
+      "default_value": "",
+      "validation_rules": {},
+      "is_active": true,
+      "requires_permission": "",
+      "cache_duration": 0,
+      "created_at": "2025-12-03T07:07:14.726Z",
+      "updated_at": "2025-12-03T07:07:14.726Z",
+      "created_by": [
+        "admin"
+      ]
+    }
+  },
+  {
+    "model": "placeholders.placeholderdefinition",
+    "fields": {
+      "uuid": "cb8e12c5-ca8e-4148-b6f2-bfb52e7b8992",
+      "name": "VERSION_HISTORY",
+      "display_name": "Version History Table",
+      "description": "Complete version history table showing all versions, dates, authors, status, and reasons for changes",
+      "placeholder_type": "DOCUMENT",
+      "data_source": "COMPUTED",
+      "source_field": "VERSION_HISTORY",
+      "format_string": "",
+      "date_format": "%Y-%m-%d",
+      "default_value": "",
+      "validation_rules": {},
+      "is_active": true,
+      "requires_permission": "",
+      "cache_duration": 0,
+      "created_at": "2025-12-03T09:42:54.420Z",
+      "updated_at": "2025-12-03T09:51:51.539Z",
+      "created_by": [
+        "admin"
+      ]
+    }
+  },
+  {
+    "model": "placeholders.placeholderdefinition",
+    "fields": {
+      "uuid": "7082dc5c-50b7-4646-8f66-1970bbc62285",
+      "name": "REVISION_COUNT",
+      "display_name": "Revision Count",
+      "description": "Total number of document revisions",
+      "placeholder_type": "SYSTEM",
+      "data_source": "COMPUTED",
+      "source_field": "REVISION_COUNT",
+      "format_string": "",
+      "date_format": "%Y-%m-%d",
+      "default_value": "",
+      "validation_rules": {},
+      "is_active": true,
+      "requires_permission": "",
+      "cache_duration": 300,
+      "created_at": "2025-12-03T09:50:49.065Z",
+      "updated_at": "2025-12-03T09:51:51.545Z",
+      "created_by": [
+        "admin"
+      ]
+    }
+  },
+  {
+    "model": "placeholders.placeholderdefinition",
+    "fields": {
+      "uuid": "8dca73fb-ac80-4aed-bfb8-76634c036ed1",
+      "name": "PREVIOUS_VERSION",
+      "display_name": "Previous Version",
+      "description": "Previous version number",
+      "placeholder_type": "SYSTEM",
+      "data_source": "COMPUTED",
+      "source_field": "PREVIOUS_VERSION",
+      "format_string": "",
+      "date_format": "%Y-%m-%d",
+      "default_value": "",
+      "validation_rules": {},
+      "is_active": true,
+      "requires_permission": "",
+      "cache_duration": 300,
+      "created_at": "2025-12-03T09:50:49.071Z",
+      "updated_at": "2025-12-03T09:51:51.550Z",
+      "created_by": [
+        "admin"
+      ]
+    }
+  },
+  {
+    "model": "placeholders.placeholderdefinition",
+    "fields": {
+      "uuid": "7e476345-fc3d-47fe-8ac9-1e0558770ca3",
+      "name": "DIGITAL_SIGNATURE",
+      "display_name": "Digital Signature",
+      "description": "Digital signature or electronic validation statement",
+      "placeholder_type": "SYSTEM",
+      "data_source": "COMPUTED",
+      "source_field": "DIGITAL_SIGNATURE",
+      "format_string": "",
+      "date_format": "%Y-%m-%d",
+      "default_value": "This document has been electronically processed and validated by the Electronic Document Management System (EDMS). For verification, contact your system administrator.",
+      "validation_rules": {},
+      "is_active": true,
+      "requires_permission": "",
+      "cache_duration": 300,
+      "created_at": "2025-12-03T15:17:21.836Z",
+      "updated_at": "2025-12-03T15:17:21.836Z",
+      "created_by": [
+        "admin"
+      ]
+    }
+  },
+  {
+    "model": "backup.backupconfiguration",
+    "fields": {
+      "uuid": "5c30dd30-d884-4f56-add1-d91e9c2bc915",
+      "name": "daily_full_backup",
+      "description": "Daily full system backup",
+      "backup_type": "FULL",
+      "frequency": "DAILY",
+      "schedule_time": "02:00:00",
+      "schedule_days": [],
+      "retention_days": 30,
+      "max_backups": 10,
+      "storage_path": "/opt/edms/backups/daily",
+      "compression_enabled": true,
+      "encryption_enabled": true,
+      "status": "ACTIVE",
+      "is_enabled": true,
+      "created_at": "2025-12-04T01:06:33.588Z",
+      "updated_at": "2025-12-04T01:07:43.597Z",
+      "created_by": [
+        "admin"
+      ]
+    }
+  },
+  {
+    "model": "backup.backupconfiguration",
+    "fields": {
+      "uuid": "6d98da9f-2675-44a7-93ea-4d6c3a9c3747",
+      "name": "hourly_incremental",
+      "description": "Hourly incremental backup",
+      "backup_type": "INCREMENTAL",
+      "frequency": "HOURLY",
+      "schedule_time": "00:00:00",
+      "schedule_days": [],
+      "retention_days": 7,
+      "max_backups": 50,
+      "storage_path": "/opt/edms/backups/incremental",
+      "compression_enabled": true,
+      "encryption_enabled": true,
+      "status": "ACTIVE",
+      "is_enabled": true,
+      "created_at": "2025-12-04T01:07:32.424Z",
+      "updated_at": "2025-12-04T01:07:32.424Z",
+      "created_by": [
+        "admin"
+      ]
+    }
+  },
+  {
+    "model": "backup.backupconfiguration",
+    "fields": {
+      "uuid": "1a5c56b5-66f3-4ac8-ad9c-041ef8e8b471",
+      "name": "weekly_export",
+      "description": "Weekly export package for migration",
+      "backup_type": "FULL",
+      "frequency": "WEEKLY",
+      "schedule_time": "03:00:00",
+      "schedule_days": [
+        6
+      ],
+      "retention_days": 90,
+      "max_backups": 12,
+      "storage_path": "/opt/edms/backups/export",
+      "compression_enabled": true,
+      "encryption_enabled": true,
+      "status": "ACTIVE",
+      "is_enabled": true,
+      "created_at": "2025-12-04T01:07:32.429Z",
+      "updated_at": "2025-12-04T01:07:32.429Z",
+      "created_by": [
+        "admin"
+      ]
+    }
+  },
+  {
+    "model": "backup.backupconfiguration",
+    "fields": {
+      "uuid": "6a90d93a-b700-4d90-971b-7cdc56c2d1ae",
+      "name": "adhoc_incremental_20251204_101826",
+      "description": "Ad-hoc incremental backup created via management command",
+      "backup_type": "INCREMENTAL",
+      "frequency": "ON_DEMAND",
+      "schedule_time": "12:00:00",
+      "schedule_days": [],
+      "retention_days": 7,
+      "max_backups": 5,
+      "storage_path": "/opt/edms/backups/incremental",
+      "compression_enabled": true,
+      "encryption_enabled": false,
+      "status": "ACTIVE",
+      "is_enabled": true,
+      "created_at": "2025-12-04T10:18:26.857Z",
+      "updated_at": "2025-12-04T10:18:26.857Z",
+      "created_by": [
+        "admin"
+      ]
+    }
+  },
+  {
+    "model": "backup.backupconfiguration",
+    "fields": {
+      "uuid": "fce5c98c-db63-4bbb-bf18-2ad9a9049502",
+      "name": "adhoc_full_20251204_101920",
+      "description": "Ad-hoc full backup created via management command",
+      "backup_type": "FULL",
+      "frequency": "ON_DEMAND",
+      "schedule_time": "12:00:00",
+      "schedule_days": [],
+      "retention_days": 7,
+      "max_backups": 5,
+      "storage_path": "/storage/backups",
+      "compression_enabled": true,
+      "encryption_enabled": false,
+      "status": "ACTIVE",
+      "is_enabled": true,
+      "created_at": "2025-12-04T10:19:20.370Z",
+      "updated_at": "2025-12-04T10:19:20.370Z",
+      "created_by": [
+        "admin"
+      ]
+    }
+  },
+  {
+    "model": "backup.backupconfiguration",
+    "fields": {
+      "uuid": "a7eccf2c-6e84-461c-93a5-08086b96bb4f",
+      "name": "adhoc_full_20251204_102011",
+      "description": "Ad-hoc full backup created via management command",
+      "backup_type": "FULL",
+      "frequency": "ON_DEMAND",
+      "schedule_time": "12:00:00",
+      "schedule_days": [],
+      "retention_days": 7,
+      "max_backups": 5,
+      "storage_path": "/storage/backups",
+      "compression_enabled": true,
+      "encryption_enabled": false,
+      "status": "ACTIVE",
+      "is_enabled": true,
+      "created_at": "2025-12-04T10:20:11.850Z",
+      "updated_at": "2025-12-04T10:20:11.850Z",
+      "created_by": [
+        "admin"
+      ]
+    }
+  },
+  {
+    "model": "backup.backupconfiguration",
+    "fields": {
+      "uuid": "caa13620-fac1-4bbf-b751-2240a06a0894",
+      "name": "adhoc_incremental_20251204_114306",
+      "description": "Ad-hoc incremental backup created via management command",
+      "backup_type": "INCREMENTAL",
+      "frequency": "ON_DEMAND",
+      "schedule_time": "12:00:00",
+      "schedule_days": [],
+      "retention_days": 7,
+      "max_backups": 5,
+      "storage_path": "/storage/backups",
+      "compression_enabled": true,
+      "encryption_enabled": false,
+      "status": "ACTIVE",
+      "is_enabled": true,
+      "created_at": "2025-12-04T11:43:06.885Z",
+      "updated_at": "2025-12-04T11:43:06.885Z",
+      "created_by": [
+        "admin"
+      ]
+    }
+  },
+  {
+    "model": "backup.backupconfiguration",
+    "fields": {
+      "uuid": "2dadb29e-d0a2-41b2-99b4-d88ce09f094c",
+      "name": "test_config",
+      "description": "",
+      "backup_type": "FULL",
+      "frequency": "ON_DEMAND",
+      "schedule_time": "12:00:00",
+      "schedule_days": [],
+      "retention_days": 30,
+      "max_backups": 10,
+      "storage_path": "/tmp",
+      "compression_enabled": true,
+      "encryption_enabled": true,
+      "status": "ACTIVE",
+      "is_enabled": true,
+      "created_at": "2025-12-04T12:15:29.236Z",
+      "updated_at": "2025-12-04T12:15:29.236Z",
+      "created_by": [
+        "admin"
+      ]
+    }
+  },
+  {
+    "model": "backup.backupconfiguration",
+    "fields": {
+      "uuid": "2bd97970-c62b-42ea-8c77-e348058a5ab0",
+      "name": "upload_restore_config",
+      "description": "",
+      "backup_type": "FULL",
+      "frequency": "ON_DEMAND",
+      "schedule_time": "12:00:00",
+      "schedule_days": [],
+      "retention_days": 30,
+      "max_backups": 10,
+      "storage_path": "/tmp",
+      "compression_enabled": true,
+      "encryption_enabled": true,
+      "status": "ACTIVE",
+      "is_enabled": true,
+      "created_at": "2025-12-04T12:16:27.657Z",
+      "updated_at": "2025-12-04T12:16:27.657Z",
+      "created_by": [
+        "admin"
+      ]
+    }
+  },
+  {
+    "model": "backup.backupconfiguration",
+    "fields": {
+      "uuid": "2970f5ef-69d4-4df9-9817-fd255cfecb57",
+      "name": "adhoc_full_20251204_134318",
+      "description": "Ad-hoc full backup created via management command",
+      "backup_type": "FULL",
+      "frequency": "ON_DEMAND",
+      "schedule_time": "12:00:00",
+      "schedule_days": [],
+      "retention_days": 7,
+      "max_backups": 5,
+      "storage_path": "/tmp",
+      "compression_enabled": true,
+      "encryption_enabled": false,
+      "status": "ACTIVE",
+      "is_enabled": true,
+      "created_at": "2025-12-04T13:43:18.805Z",
+      "updated_at": "2025-12-04T13:43:18.806Z",
+      "created_by": [
+        "admin"
+      ]
+    }
+  },
+  {
+    "model": "backup.backupconfiguration",
+    "fields": {
+      "uuid": "b2c44fc9-1c62-41f0-800e-34a956e16220",
+      "name": "cli_restore_config",
+      "description": "",
+      "backup_type": "FULL",
+      "frequency": "ON_DEMAND",
+      "schedule_time": "12:00:00",
+      "schedule_days": [],
+      "retention_days": 30,
+      "max_backups": 10,
+      "storage_path": "/tmp",
+      "compression_enabled": true,
+      "encryption_enabled": true,
+      "status": "ACTIVE",
+      "is_enabled": true,
+      "created_at": "2025-12-04T13:56:23.661Z",
+      "updated_at": "2025-12-09T07:22:06.735Z",
+      "created_by": [
+        "admin"
+      ]
+    }
+  },
+  {
+    "model": "backup.backupconfiguration",
+    "fields": {
+      "uuid": "1ea83494-ff29-4683-90e7-44114b7ff27c",
+      "name": "adhoc_full_20251204_141442",
+      "description": "Ad-hoc full backup created via management command",
+      "backup_type": "FULL",
+      "frequency": "ON_DEMAND",
+      "schedule_time": "12:00:00",
+      "schedule_days": [],
+      "retention_days": 7,
+      "max_backups": 5,
+      "storage_path": "/tmp",
+      "compression_enabled": true,
+      "encryption_enabled": false,
+      "status": "ACTIVE",
+      "is_enabled": true,
+      "created_at": "2025-12-04T14:14:42.282Z",
+      "updated_at": "2025-12-04T14:14:42.282Z",
+      "created_by": [
+        "admin"
+      ]
+    }
+  },
+  {
+    "model": "backup.backupconfiguration",
+    "fields": {
+      "uuid": "0ee70537-86f0-4667-a675-e4d29f72e814",
+      "name": "temp_restore_config",
+      "description": "Temporary configuration for file-based restores",
+      "backup_type": "FULL",
+      "frequency": "ON_DEMAND",
+      "schedule_time": "14:26:23.770",
+      "schedule_days": [],
+      "retention_days": 30,
+      "max_backups": 10,
+      "storage_path": "/tmp",
+      "compression_enabled": true,
+      "encryption_enabled": true,
+      "status": "ACTIVE",
+      "is_enabled": true,
+      "created_at": "2025-12-04T14:26:23.795Z",
+      "updated_at": "2025-12-04T14:26:23.795Z",
+      "created_by": [
+        "admin"
+      ]
+    }
+  },
+  {
+    "model": "backup.backupconfiguration",
+    "fields": {
+      "uuid": "9d75f6e5-0fd0-479c-a4fa-e763138de222",
+      "name": "restore_operation_config",
+      "description": "",
+      "backup_type": "FULL",
+      "frequency": "ON_DEMAND",
+      "schedule_time": "12:00:00",
+      "schedule_days": [],
+      "retention_days": 30,
+      "max_backups": 10,
+      "storage_path": "/tmp",
+      "compression_enabled": true,
+      "encryption_enabled": true,
+      "status": "ACTIVE",
+      "is_enabled": true,
+      "created_at": "2025-12-04T15:28:28.187Z",
+      "updated_at": "2025-12-04T15:28:28.187Z",
+      "created_by": [
+        "admin"
+      ]
+    }
+  }
+]

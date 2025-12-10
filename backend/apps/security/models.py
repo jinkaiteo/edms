@@ -119,6 +119,15 @@ class PDFSigningCertificate(models.Model):
         verbose_name = "PDF Signing Certificate"
         verbose_name_plural = "PDF Signing Certificates"
     
+    def natural_key(self):
+        """Return the natural key for this PDF signing certificate"""
+        return (self.serial_number,)
+
+    @classmethod
+    def get_by_natural_key(cls, serial_number):
+        """Get PDF signing certificate by natural key (serial_number)"""
+        return cls.objects.get(serial_number=serial_number)
+
     def __str__(self):
         return f"{self.name} ({self.subject_cn})"
     
