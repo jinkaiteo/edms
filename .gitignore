@@ -160,3 +160,4 @@ $RECYCLE.BIN/
 /blob-report/
 /playwright/.cache/
 /playwright/.auth/
+backend/database/database_backup.json
