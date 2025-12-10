@@ -30,6 +30,8 @@ class EnhancedRestoreProcessor:
     def __init__(self):
         self.natural_key_cache = {}
         self.object_mappings = {}
+        self.role_mapping = {}  # Maps backup Role UUIDs to current Role objects
+        self.post_reinit_mode = False  # Flag for post-reinit scenario
         self.restoration_stats = {
             'total_records': 0,
             'successful_restorations': 0,
@@ -55,6 +57,9 @@ class EnhancedRestoreProcessor:
         try:
             # Load backup data
             backup_data = self._load_backup_data(backup_file_path)
+            
+            # Detect post-reinit scenario and set up role mapping
+            self.detect_post_reinit_scenario(backup_data)
             
             # Pre-process and validate data
             processed_data = self._preprocess_backup_data(backup_data)
@@ -87,6 +92,76 @@ class EnhancedRestoreProcessor:
         logger.info(f"✅ Loaded {len(data)} records from backup")
         
         return data
+    
+    def detect_post_reinit_scenario(self, backup_data: List[Dict]):
+        """Detect if we're in a post-reinit scenario and set up role mapping"""
+        from apps.users.models import Role
+        
+        # Get backup roles and current roles
+        backup_roles = [r for r in backup_data if r.get('model') == 'users.role']
+        current_roles = {role.name: role for role in Role.objects.all()}
+        
+        # Check if backup contains Role objects with different UUIDs than current
+        role_uuid_conflicts = False
+        for backup_role in backup_roles:
+            role_name = backup_role['fields']['name']
+            backup_uuid = backup_role['fields']['uuid']
+            
+            if role_name in current_roles:
+                current_role = current_roles[role_name]
+                if str(current_role.uuid) != backup_uuid:
+                    role_uuid_conflicts = True
+                    self.role_mapping[backup_uuid] = current_role
+                    logger.info(f"🔄 Role UUID mapping: {role_name}")
+                    logger.info(f"   Backup UUID: {backup_uuid[:8]}... → Current UUID: {str(current_role.uuid)[:8]}...")
+        
+        if role_uuid_conflicts:
+            self.post_reinit_mode = True
+            logger.info("🎯 Post-reinit scenario detected - enabling role UUID mapping")
+            
+            # Create missing users that UserRoles reference
+            self._create_missing_users(backup_data)
+            
+        return role_uuid_conflicts
+    
+    def _create_missing_users(self, backup_data: List[Dict]):
+        """Create users referenced by UserRoles but missing from system"""
+        from django.contrib.auth import get_user_model
+        
+        User = get_user_model()
+        
+        # Extract all user references from UserRoles
+        user_role_records = [r for r in backup_data if r.get('model') == 'users.userrole']
+        
+        referenced_users = set()
+        for ur in user_role_records:
+            fields = ur['fields']
+            if 'user' in fields and isinstance(fields['user'], list):
+                referenced_users.add(fields['user'][0])
+            if 'assigned_by' in fields and isinstance(fields['assigned_by'], list):
+                referenced_users.add(fields['assigned_by'][0])
+        
+        # Check which users exist
+        existing_users = {user.username for user in User.objects.all()}
+        missing_users = referenced_users - existing_users
+        
+        # Create missing users
+        for username in missing_users:
+            try:
+                user = User.objects.create(
+                    username=username,
+                    email=f'{username}@edms.local',
+                    first_name=username.capitalize(),
+                    last_name='User',
+                    is_active=True
+                )
+                user.set_password('edms123')  # Default password for restored users
+                user.save()
+                
+                logger.info(f"  ✅ Created missing user: {username}")
+                
+            except Exception as e:
+                logger.warning(f"  ❌ Failed to create user {username}: {str(e)}")
     
     def _preprocess_backup_data(self, backup_data: List[Dict]) -> Dict[str, List[Dict]]:
         """
@@ -203,6 +278,12 @@ class EnhancedRestoreProcessor:
         
         for record in records:
             try:
+                # Skip Role objects in post-reinit mode (they already exist)
+                if self.post_reinit_mode and record.get('model') == 'users.role':
+                    phase_stats['skipped'] += 1
+                    self.restoration_stats['skipped_records'] += 1
+                    continue
+                    
                 result = self._restore_single_record(record, phase)
                 phase_stats['processed'] += 1
                 
@@ -248,6 +329,11 @@ class EnhancedRestoreProcessor:
             
             # Resolve natural keys and foreign key references
             resolved_fields = self._resolve_foreign_keys(Model, fields)
+            
+            # Generate new UUID for objects in post-reinit mode to avoid conflicts
+            if self.post_reinit_mode and hasattr(Model, 'uuid'):
+                import uuid as uuid_lib
+                resolved_fields['uuid'] = uuid_lib.uuid4()
             
             # For critical models, skip field validation if we have essential data
             if is_critical:
@@ -787,19 +873,33 @@ class EnhancedRestoreProcessor:
         return None
     
     def _resolve_role_natural_key(self, natural_key: List) -> Optional[Any]:
-        """Resolve Role model natural keys (name)."""
+        """Resolve Role model natural keys (name) with post-reinit mapping support."""
         if len(natural_key) >= 1:
             name = natural_key[0]
-            try:
-                from apps.users.models import Role
-                return Role.objects.get(name=name)
-            except:
-                # Try case-insensitive match
+            
+            # In post-reinit mode, use existing roles instead of backup roles
+            if self.post_reinit_mode:
                 try:
                     from apps.users.models import Role
-                    return Role.objects.get(name__iexact=name)
+                    return Role.objects.get(name=name)
                 except:
-                    pass
+                    try:
+                        from apps.users.models import Role
+                        return Role.objects.get(name__iexact=name)
+                    except:
+                        pass
+            else:
+                # Normal mode - try to find or create roles
+                try:
+                    from apps.users.models import Role
+                    return Role.objects.get(name=name)
+                except:
+                    # Try case-insensitive match
+                    try:
+                        from apps.users.models import Role
+                        return Role.objects.get(name__iexact=name)
+                    except:
+                        pass
         return None
     
     def _resolve_document_type_natural_key(self, natural_key: List) -> Optional[Any]:
