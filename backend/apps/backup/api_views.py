@@ -1145,28 +1145,43 @@ class SystemBackupViewSet(viewsets.ViewSet):
                                     infrastructure_skipped += 1
                                     continue
                             
-                            # Fix groups arrays and convert to group IDs
+                            # Fix groups arrays and convert to group IDs - DETAILED DEBUG
                             if 'groups' in fields and isinstance(fields['groups'], list):
                                 from django.contrib.auth.models import Group
                                 
+                                username = fields.get('username', 'unknown-user')
+                                print(f"👤 USER GROUP DEBUG: Processing user '{username}'")
+                                print(f"👤 USER GROUP DEBUG: Original groups: {fields['groups']} (type: {type(fields['groups'])})")
+                                
                                 group_ids = []
-                                for group_item in fields['groups']:
+                                for i, group_item in enumerate(fields['groups']):
+                                    print(f"👤 USER GROUP DEBUG: Group {i}: {group_item} (type: {type(group_item)})")
+                                    
                                     if isinstance(group_item, list) and group_item:
                                         group_name = group_item[0]
+                                        print(f"👤 USER GROUP DEBUG: Extracted from array: '{group_name}'")
                                     elif isinstance(group_item, str):
                                         group_name = group_item
+                                        print(f"👤 USER GROUP DEBUG: Direct string: '{group_name}'")
                                     else:
+                                        print(f"👤 USER GROUP DEBUG: Skipping unknown format: {group_item}")
                                         continue
                                     
                                     try:
                                         group = Group.objects.get(name=group_name)
                                         group_ids.append(group.id)
+                                        print(f"✅ USER GROUP DEBUG: Found existing group '{group_name}' -> ID {group.id}")
                                     except Group.DoesNotExist:
                                         group = Group.objects.create(name=group_name)
                                         group_ids.append(group.id)
+                                        print(f"✅ USER GROUP DEBUG: Created new group '{group_name}' -> ID {group.id}")
                                 
                                 fields['groups'] = group_ids
                                 array_format_fixes += 1
+                                print(f"👤 USER GROUP DEBUG: Final group IDs for '{username}': {group_ids}")
+                                
+                                if not group_ids:
+                                    print(f"⚠️ USER GROUP DEBUG: WARNING - User '{username}' has no group assignments after processing!")
                             
                             # Fix UserRole arrays
                             if model_name == 'users.userrole':
@@ -1201,22 +1216,167 @@ class SystemBackupViewSet(viewsets.ViewSet):
                                             record['_skip_missing_user'] = True
                                             continue
                             
-                            # Fix document foreign key arrays
+                            # Fix document foreign key arrays AND resolve to IDs
                             if model_name == 'documents.document':
-                                if 'author' in fields and isinstance(fields['author'], list) and fields['author']:
-                                    fields['author'] = fields['author'][0]
-                                    array_format_fixes += 1
+                                print(f"🔍 PROCESSING DOCUMENT: {record.get('pk', 'no-pk')} - {fields.get('document_number', 'no-number')}")
+                                from apps.documents.models import DocumentType, DocumentSource
                                 
-                                if 'document_type' in fields and isinstance(fields['document_type'], list) and fields['document_type']:
-                                    fields['document_type'] = fields['document_type'][0]
-                                    array_format_fixes += 1
+                                # Fix author - convert username to user ID
+                                if 'author' in fields:
+                                    author_value = fields['author']
+                                    print(f"🔍 AUTHOR DEBUG: Original value: {author_value} (type: {type(author_value)})")
+                                    
+                                    if isinstance(author_value, list) and author_value:
+                                        author_value = author_value[0]
+                                        print(f"🔍 AUTHOR DEBUG: After array extraction: {author_value}")
+                                    
+                                    if isinstance(author_value, str):
+                                        print(f"🔍 AUTHOR DEBUG: Converting username '{author_value}' to user ID")
+                                        from django.contrib.auth import get_user_model
+                                        User = get_user_model()
+                                        try:
+                                            user = User.objects.get(username=author_value)
+                                            fields['author'] = user.id
+                                            array_format_fixes += 1
+                                            print(f"✅ AUTHOR DEBUG: Converted '{author_value}' -> ID {user.id}")
+                                        except User.DoesNotExist:
+                                            print(f"❌ AUTHOR DEBUG: User '{author_value}' not found, skipping document")
+                                            record['_skip_missing_author'] = True
+                                            continue
                                 
-                                if 'document_source' in fields and isinstance(fields['document_source'], list) and fields['document_source']:
-                                    fields['document_source'] = fields['document_source'][0]
+                                # Fix document_type - convert name to ID
+                                if 'document_type' in fields:
+                                    doc_type_value = fields['document_type']
+                                    print(f"🔍 DOCUMENT TYPE DEBUG: Original value: {doc_type_value} (type: {type(doc_type_value)})")
+                                    
+                                    if isinstance(doc_type_value, list) and doc_type_value:
+                                        doc_type_value = doc_type_value[0]
+                                        print(f"🔍 DOCUMENT TYPE DEBUG: After array extraction: {doc_type_value}")
+                                    
+                                    if isinstance(doc_type_value, str):
+                                        print(f"🔍 DOCUMENT TYPE DEBUG: Resolving string '{doc_type_value}' to ID")
+                                        try:
+                                            doc_type = DocumentType.objects.get(name=doc_type_value)
+                                            fields['document_type'] = doc_type.id
+                                            array_format_fixes += 1
+                                            print(f"✅ DOCUMENT TYPE DEBUG: Found existing DocumentType '{doc_type_value}' -> ID {doc_type.id}")
+                                        except DocumentType.DoesNotExist:
+                                            try:
+                                                # Create the document type if it doesn't exist - with required created_by field
+                                                from django.contrib.auth import get_user_model
+                                                User = get_user_model()
+                                                admin_user = User.objects.filter(is_superuser=True).first()
+                                                
+                                                doc_type = DocumentType.objects.create(
+                                                    name=doc_type_value,
+                                                    description=f"Document type {doc_type_value}",
+                                                    created_by=admin_user  # CRITICAL: Add required created_by field
+                                                )
+                                                fields['document_type'] = doc_type.id
+                                                array_format_fixes += 1
+                                                print(f"✅ DOCUMENT TYPE DEBUG: Created DocumentType '{doc_type_value}' -> ID {doc_type.id}")
+                                            except Exception as create_error:
+                                                print(f"❌ DOCUMENT TYPE DEBUG: Failed to create DocumentType '{doc_type_value}': {create_error}")
+                                                # Skip this document if we can't create the DocumentType
+                                                record['_skip_missing_doctype'] = True
+                                                continue
+                                        except Exception as lookup_error:
+                                            print(f"❌ DOCUMENT TYPE DEBUG: Failed to lookup DocumentType '{doc_type_value}': {lookup_error}")
+                                            record['_skip_missing_doctype'] = True
+                                            continue
+                                    else:
+                                        print(f"⚠️ DOCUMENT TYPE DEBUG: Value not a string, keeping as-is: {doc_type_value}")
+                                
+                                # Fix document_source - convert name to ID
+                                if 'document_source' in fields:
+                                    doc_source_value = fields['document_source']
+                                    print(f"🔍 DOCUMENT SOURCE DEBUG: Original value: {doc_source_value} (type: {type(doc_source_value)})")
+                                    
+                                    if isinstance(doc_source_value, list) and doc_source_value:
+                                        doc_source_value = doc_source_value[0]
+                                        print(f"🔍 DOCUMENT SOURCE DEBUG: After array extraction: {doc_source_value}")
+                                    
+                                    if isinstance(doc_source_value, str):
+                                        print(f"🔍 DOCUMENT SOURCE DEBUG: Resolving string '{doc_source_value}' to ID")
+                                        try:
+                                            doc_source = DocumentSource.objects.get(name=doc_source_value)
+                                            fields['document_source'] = doc_source.id
+                                            array_format_fixes += 1
+                                            print(f"✅ DOCUMENT SOURCE DEBUG: Found existing DocumentSource '{doc_source_value}' -> ID {doc_source.id}")
+                                        except DocumentSource.DoesNotExist:
+                                            # Create the document source if it doesn't exist - with required created_by field
+                                            from django.contrib.auth import get_user_model
+                                            User = get_user_model()
+                                            admin_user = User.objects.filter(is_superuser=True).first()
+                                            
+                                            doc_source = DocumentSource.objects.create(
+                                                name=doc_source_value,
+                                                description=f"Document source {doc_source_value}",
+                                                created_by=admin_user  # CRITICAL: Add required created_by field
+                                            )
+                                            fields['document_source'] = doc_source.id
+                                            array_format_fixes += 1
+                                            print(f"✅ DOCUMENT SOURCE DEBUG: Created DocumentSource '{doc_source_value}' -> ID {doc_source.id}")
+                                    else:
+                                        print(f"⚠️ DOCUMENT SOURCE DEBUG: Value not a string, keeping as-is: {doc_source_value}")
+                            
+                            # Fix DocumentVersion arrays
+                            if model_name == 'documents.documentversion':
+                                print(f"🔍 PROCESSING DOCUMENT VERSION: {record.get('pk', 'no-pk')}")
+                                
+                                # Fix document field - convert document number to document ID
+                                if 'document' in fields:
+                                    doc_value = fields['document']
+                                    print(f"🔍 DOCUMENT VERSION DEBUG: Original document value: {doc_value} (type: {type(doc_value)})")
+                                    
+                                    if isinstance(doc_value, list) and doc_value:
+                                        doc_value = doc_value[0]
+                                        print(f"🔍 DOCUMENT VERSION DEBUG: After array extraction: {doc_value}")
+                                    
+                                    if isinstance(doc_value, str):
+                                        print(f"🔍 DOCUMENT VERSION DEBUG: Converting document number '{doc_value}' to document ID")
+                                        from apps.documents.models import Document
+                                        try:
+                                            document = Document.objects.get(document_number=doc_value)
+                                            fields['document'] = document.id
+                                            array_format_fixes += 1
+                                            print(f"✅ DOCUMENT VERSION DEBUG: Converted '{doc_value}' -> ID {document.id}")
+                                        except Document.DoesNotExist:
+                                            print(f"❌ DOCUMENT VERSION DEBUG: Document '{doc_value}' not found, skipping version")
+                                            record['_skip_missing_document'] = True
+                                            continue
+                                
+                                # Fix any other array fields in DocumentVersion
+                                for field_name in ['version_number', 'created_by', 'approved_by']:
+                                    if field_name in fields and isinstance(fields[field_name], list) and fields[field_name]:
+                                        fields[field_name] = fields[field_name][0]
+                                        array_format_fixes += 1
+                                        print(f"✅ DOCUMENT VERSION DEBUG: Fixed {field_name} array")
+                            
+                            # Fix DocumentAccessLog arrays
+                            if model_name == 'documents.documentaccesslog':
+                                print(f"🔍 PROCESSING DOCUMENT ACCESS LOG: {record.get('pk', 'no-pk')}")
+                                
+                                # Fix document field array
+                                if 'document' in fields and isinstance(fields['document'], list) and fields['document']:
+                                    fields['document'] = fields['document'][0]
                                     array_format_fixes += 1
+                                    print(f"✅ ACCESS LOG DEBUG: Fixed document array")
+                                
+                                # Fix user field array
+                                if 'user' in fields and isinstance(fields['user'], list) and fields['user']:
+                                    fields['user'] = fields['user'][0]
+                                    array_format_fixes += 1
+                                    print(f"✅ ACCESS LOG DEBUG: Fixed user array")
                         
-                        # Remove infrastructure records and records with missing users marked for skipping
-                        data[:] = [record for record in data if not record.get('_skip_infrastructure', False) and not record.get('_skip_missing_user', False)]
+                        # Remove infrastructure records and records with missing dependencies marked for skipping
+                        data[:] = [record for record in data if not any([
+                            record.get('_skip_infrastructure', False),
+                            record.get('_skip_missing_user', False), 
+                            record.get('_skip_missing_doctype', False),
+                            record.get('_skip_missing_author', False),
+                            record.get('_skip_missing_document', False)
+                        ])]
                         
                         print(f"🔧 BACKEND DEBUG: Fixed {records_fixed} UUID conflicts, {array_format_fixes} array fixes, skipped {infrastructure_skipped} duplicates")
                         print(f"📋 Final data records: {len(data)}")
