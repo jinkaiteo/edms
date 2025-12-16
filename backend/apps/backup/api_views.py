@@ -46,6 +46,7 @@ class BackupConfigurationViewSet(viewsets.ModelViewSet):
     queryset = BackupConfiguration.objects.all()
     serializer_class = BackupConfigurationSerializer
     permission_classes = [IsAuthenticated, IsAdminUser]
+    lookup_field = 'uuid'
     
     def perform_create(self, serializer):
         """Create backup configuration with audit logging."""
@@ -68,6 +69,14 @@ class BackupConfigurationViewSet(viewsets.ModelViewSet):
         """Execute backup for this configuration."""
         config = self.get_object()
         
+        # Idempotency: prevent duplicate runs if one is already running
+        running = BackupJob.objects.filter(configuration=config, status__in=['QUEUED','RUNNING']).exists()
+        if running:
+            return Response({
+                'status': 'conflict',
+                'message': 'A backup job for this configuration is already running'
+            }, status=status.HTTP_409_CONFLICT)
+        
         try:
             job = backup_service.execute_backup(config, request.user)
             
@@ -83,6 +92,34 @@ class BackupConfigurationViewSet(viewsets.ModelViewSet):
                 'status': 'error',
                 'message': f'Failed to start backup: {str(e)}'
             }, status=status.HTTP_400_BAD_REQUEST)
+
+    @action(detail=True, methods=['post'], url_path='run-now')
+    def run_now(self, request, uuid=None):
+        """Run Now: immediate backup for this configuration (admin-only)."""
+        config = self.get_object()
+        
+        # Only enabled FULL/WEEKLY/DAILY makes sense for run-now; allow others if needed
+        if not config.is_enabled:
+            return Response({'status':'error','message':'Configuration is disabled'}, status=status.HTTP_400_BAD_REQUEST)
+        
+        # Idempotency guard
+        running = BackupJob.objects.filter(configuration=config, status__in=['QUEUED','RUNNING']).exists()
+        if running:
+            return Response({
+                'status': 'conflict',
+                'message': 'A backup job for this configuration is already running'
+            }, status=status.HTTP_409_CONFLICT)
+        
+        try:
+            job = backup_service.execute_backup(config, request.user)
+            return Response({
+                'status': 'started',
+                'job_id': str(job.uuid),
+                'job_name': job.job_name,
+                'message': f'Backup job started: {job.job_name}'
+            }, status=status.HTTP_201_CREATED)
+        except Exception as e:
+            return Response({'status':'error','message':f'Failed to start backup: {str(e)}'}, status=status.HTTP_400_BAD_REQUEST)
     
     @action(detail=True, methods=['post'])
     def enable(self, request, pk=None):
@@ -223,10 +260,12 @@ class BackupJobViewSet(viewsets.ReadOnlyModelViewSet):
     
     @action(detail=True, methods=['post'])
     def restore(self, request, pk=None):
-        """Restore from a specific backup job."""
+        """Restore from a specific backup job (real restore, admin-only)."""
+        if not request.user.is_staff:
+            return Response({'error': 'Staff privileges required for restore operations'}, status=status.HTTP_403_FORBIDDEN)
         backup_job = self.get_object()
-        restore_type = request.data.get('restore_type', 'full')
-        overwrite_existing = request.data.get('overwrite_existing', False)
+        restore_type = request.data.get('restore_type', 'FULL_RESTORE')
+        target_location = request.data.get('target_location', '/tmp/restore')
         
         if backup_job.status != 'COMPLETED':
             return Response({
@@ -239,19 +278,13 @@ class BackupJobViewSet(viewsets.ReadOnlyModelViewSet):
             }, status=status.HTTP_404_NOT_FOUND)
         
         try:
-            # Create restore job record
-            restore_job = RestoreJob(
-                backup_job=backup_job,  # Use the existing backup job
-                restore_type=restore_type.upper() + '_RESTORE',
-                target_location='/app',
-                status='COMPLETED',  # Simulating successful restore for now
-                requested_by=request.user,
-                started_at=timezone.now(),
-                completed_at=timezone.now()
+            restore_job = restore_service.restore_from_backup(
+                backup_job=backup_job,
+                restore_type=restore_type,
+                target_location=target_location,
+                requested_by=request.user
             )
-            restore_job.save()
             
-            # Log audit event
             audit_service.log_user_action(
                 user=request.user,
                 action='BACKUP_JOB_RESTORE_COMPLETED',
@@ -260,8 +293,7 @@ class BackupJobViewSet(viewsets.ReadOnlyModelViewSet):
                 description=f'Restore completed from backup job {backup_job.job_name}',
                 additional_data={
                     'source_backup_job': backup_job.job_name,
-                    'restore_type': restore_type,
-                    'overwrite_existing': overwrite_existing
+                    'restore_type': restore_type
                 }
             )
             
@@ -272,11 +304,6 @@ class BackupJobViewSet(viewsets.ReadOnlyModelViewSet):
             }, status=status.HTTP_200_OK)
             
         except Exception as e:
-            if 'restore_job' in locals():
-                restore_job.status = 'FAILED'
-                restore_job.error_message = str(e)
-                restore_job.save()
-            
             return Response({
                 'status': 'error',
                 'message': f'Restore failed: {str(e)}'
@@ -388,7 +415,159 @@ class SystemBackupViewSet(viewsets.ViewSet):
     
     authentication_classes = [JWTAuthentication, SessionAuthentication]
     permission_classes = [IsAuthenticated]
+
+    def _extract_backup_json_from_tar(self, tar_path: str) -> str | None:
+        """Extract database_backup.json from a tar.gz to a temp file and return its path, or None."""
+        import tempfile
+        try:
+            with tarfile.open(tar_path, 'r:gz') as tar:
+                member = None
+                for m in tar.getmembers():
+                    name_low = m.name.lower()
+                    if name_low.endswith('/database/database_backup.json'):
+                        member = m
+                        break
+                if member is None:
+                    # fallback: any database_backup.json
+                    for m in tar.getmembers():
+                        if m.name.lower().endswith('database_backup.json'):
+                            member = m
+                            break
+                if member is None:
+                    return None
+                with tar.extractfile(member) as fobj:
+                    with tempfile.NamedTemporaryFile(delete=False, suffix='.json') as tmpf:
+                        tmpf.write(fobj.read())
+                        return tmpf.name
+        except Exception:
+            return None
+
+    def _verify_history_summary(self, backup_json_path: str) -> dict:
+        """Compute workflow history verification summary using natural keys."""
+        from apps.workflows.models_simple import DocumentWorkflow, DocumentTransition, DocumentState
+        from apps.documents.models import Document
+        import json
+
+        with open(backup_json_path, 'r') as f:
+            data = json.load(f)
+
+        # Build backup maps
+        backup_wf = {}
+        backup_tr = {}
+        for rec in data:
+            model = rec.get('model')
+            fields = rec.get('fields', {})
+            if model == 'workflows.documentworkflow':
+                doc_num = (fields.get('document', [None])[0] or '').strip() or None
+                if doc_num:
+                    backup_wf[doc_num] = {
+                        'current_state': (fields.get('current_state', [None])[0] or None),
+                        'workflow_type': (fields.get('workflow_type', [None])[0] or None),
+                        'is_terminated': fields.get('is_terminated', False),
+                    }
+            elif model == 'workflows.documenttransition':
+                doc_num = (fields.get('workflow', [None])[0] or '').strip() or None
+                if doc_num:
+                    backup_tr.setdefault(doc_num, []).append({
+                        'from_state': (fields.get('from_state', [None])[0] or None),
+                        'to_state': (fields.get('to_state', [None])[0] or None),
+                        'transitioned_at': fields.get('transitioned_at') or None,
+                        'transitioned_by': (fields.get('transitioned_by', [None])[0] or None),
+                    })
+
+        doc_numbers = list(set(list(backup_wf.keys()) + list(backup_tr.keys())))
+
+        checked = 0
+        missing_in_db = []
+        mismatch_counts = []
+        mismatch_sequences = []
+        ok = 0
+
+        for num in doc_numbers:
+            checked += 1
+            try:
+                doc = Document.objects.get(document_number=num)
+            except Document.DoesNotExist:
+                missing_in_db.append(num)
+                continue
+            db_wf = DocumentWorkflow.objects.filter(document=doc).first()
+            db_tr_qs = DocumentTransition.objects.filter(workflow=db_wf).order_by('transitioned_at', 'id') if db_wf else []
+            db_tr = [
+                {
+                    'from_state': t.from_state.code if t.from_state else None,
+                    'to_state': t.to_state.code if t.to_state else None,
+                    'transitioned_at': t.transitioned_at.isoformat() if t.transitioned_at else None,
+                    'transitioned_by': t.transitioned_by.username if t.transitioned_by else None,
+                }
+                for t in db_tr_qs
+            ]
+
+            b_tr = sorted(backup_tr.get(num, []), key=lambda x: (x.get('transitioned_at') or '', x.get('to_state') or ''))
+            if len(db_tr) != len(b_tr):
+                mismatch_counts.append({'document_number': num, 'backup': len(b_tr), 'db': len(db_tr)})
+                continue
+            seq_equal = True
+            for i in range(len(b_tr)):
+                b = b_tr[i]
+                d = db_tr[i]
+                if (b.get('from_state') != d.get('from_state') or
+                    b.get('to_state') != d.get('to_state') or
+                    (b.get('transitioned_by') or None) != (d.get('transitioned_by') or None)):
+                    seq_equal = False
+                    break
+            if not seq_equal:
+                mismatch_sequences.append({'document_number': num, 'backup': b_tr, 'db': db_tr})
+            else:
+                ok += 1
+
+        return {
+            'checked_documents': checked,
+            'ok': ok,
+            'missing_in_db': missing_in_db,
+            'mismatch_counts': mismatch_counts,
+            'mismatch_sequences': mismatch_sequences,
+        }
     
+    @action(detail=False, methods=['post'])
+    def verify_history(self, request):
+        """Verify workflow history in a provided backup package (or backup JSON path)."""
+        # Authz
+        if not request.user.is_authenticated:
+            return Response({'error': 'Authentication required'}, status=status.HTTP_401_UNAUTHORIZED)
+        if not request.user.is_staff:
+            return Response({'error': 'Staff privileges required'}, status=status.HTTP_403_FORBIDDEN)
+
+        backup_json_path = request.data.get('backup_json') or request.data.get('backup_json_path')
+        temp_path = None
+        try:
+            # Accept uploaded tar.gz
+            if 'backup_file' in request.FILES:
+                bf = request.FILES['backup_file']
+                temp_dir = '/tmp/verify_uploads'
+                os.makedirs(temp_dir, exist_ok=True)
+                temp_path = os.path.join(temp_dir, bf.name)
+                with open(temp_path, 'wb+') as dest:
+                    for chunk in bf.chunks():
+                        dest.write(chunk)
+                # Extract database_backup.json from tar
+                backup_json_path = self._extract_backup_json_from_tar(temp_path)
+                if not backup_json_path:
+                    return Response({'error': 'database_backup.json not found in package'}, status=status.HTTP_400_BAD_REQUEST)
+
+            if not backup_json_path:
+                return Response({'error': 'Provide backup_file (tar.gz) or backup_json path'}, status=status.HTTP_400_BAD_REQUEST)
+
+            summary = self._verify_history_summary(backup_json_path)
+            return Response({'status': 'completed', 'summary': summary})
+        except Exception as e:
+            return Response({'status': 'error', 'message': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+        finally:
+            if temp_path and os.path.exists(temp_path):
+                try:
+                    os.remove(temp_path)
+                except Exception:
+                    pass
+
     @action(detail=False, methods=['post'])
     def create_export_package(self, request):
         """Create migration export package."""
@@ -446,8 +625,20 @@ class SystemBackupViewSet(viewsets.ViewSet):
                     filename=f"edms_migration_package_{timestamp}.tar.gz"
                 )
                 
-                # Schedule cleanup of temporary file
-                # Note: In production, use a background task for cleanup
+                # Schedule cleanup of temporary file in background
+                try:
+                    import threading, time
+                    def _cleanup_tmp(path):
+                        try:
+                            time.sleep(120)
+                            if os.path.exists(path):
+                                os.remove(path)
+                                logger.info("Cleaned up temporary export file: %s", path)
+                        except Exception as ce:
+                            logger.warning("Failed to cleanup temporary export file %s: %s", path, ce)
+                    threading.Thread(target=_cleanup_tmp, args=(output_path,), daemon=True).start()
+                except Exception:
+                    pass
                 return response
             else:
                 return Response({
@@ -549,6 +740,22 @@ class SystemBackupViewSet(viewsets.ViewSet):
         restore_type = request.data.get('restore_type', 'full')
         overwrite_existing = request.data.get('overwrite_existing', 'false').lower() == 'true'
         
+        # Admin-only guarded reinit support (multiple confirmation steps)
+        with_reinit_flag = str(request.data.get('with_reinit', 'false')).lower() == 'true'
+        confirmation_code = request.data.get('reinit_confirm', '')
+        if with_reinit_flag:
+            # Require admin and strong confirmation code
+            if not request.user.is_staff:
+                return Response({'error': 'Admin privileges required for reinit before restore'}, status=status.HTTP_403_FORBIDDEN)
+            if confirmation_code != 'RESTORE CLEAN':
+                return Response({'error': "Reinit confirmation failed. Type 'RESTORE CLEAN' to proceed."}, status=status.HTTP_400_BAD_REQUEST)
+            # Perform reinit before proceeding
+            try:
+                call_command('system_reinit', confirm=True, skip_interactive=True)
+                logger.warning('System reinit executed via API by admin user %s', request.user.username)
+            except Exception as e:
+                return Response({'error': f'System reinit failed: {str(e)}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        
         try:
             # Save uploaded file temporarily
             temp_dir = '/tmp/restore_uploads'
@@ -572,6 +779,52 @@ class SystemBackupViewSet(viewsets.ViewSet):
                     'message': f'Backup file is corrupted: {validation_results["error"]}',
                     'validation_details': validation_results['details']
                 }, status=status.HTTP_400_BAD_REQUEST)
+
+            # Strict validation for types/sources presence per document (feature-flag auto-fix)
+            auto_fix = str(request.data.get('auto_fix_types_sources', 'false')).lower() == 'true'
+            try:
+                missing_type = 0
+                missing_source = 0
+                import tarfile, io
+                with tarfile.open(temp_path, 'r:gz') as tar:
+                    db_member = None
+                    for m in tar.getmembers():
+                        if m.name.endswith('database_backup.json'):
+                            db_member = m; break
+                    if not db_member:
+                        raise Exception('database_backup.json not found in archive')
+                    with tar.extractfile(db_member) as fobj:
+                        db_data = json.load(io.TextIOWrapper(fobj, encoding='utf-8'))
+                    type_codes = {rec['fields'].get('code') for rec in db_data if rec.get('model') == 'documents.documenttype'}
+                    source_names = {rec['fields'].get('name') for rec in db_data if rec.get('model') == 'documents.documentsource'}
+                    for rec in db_data:
+                        if rec.get('model') == 'documents.document':
+                            flds = rec.get('fields', {})
+                            dt = flds.get('document_type')
+                            ds = flds.get('document_source')
+                            dt_code = dt[0] if isinstance(dt, list) and dt else None
+                            ds_name = ds[0] if isinstance(ds, list) and ds else None
+                            if not dt_code or dt_code not in type_codes:
+                                missing_type += 1
+                            if not ds_name or ds_name not in source_names:
+                                missing_source += 1
+                if (missing_type or missing_source) and not auto_fix:
+                    # Do not proceed without explicit auto-fix
+                    if os.path.exists(temp_path):
+                        os.remove(temp_path)
+                    return Response({
+                        'status': 'error',
+                        'message': 'Restore validation failed: missing or unknown DocumentType/DocumentSource references',
+                        'details': {'missing_type': missing_type, 'missing_source': missing_source}
+                    }, status=status.HTTP_400_BAD_REQUEST)
+            except Exception as strict_err:
+                if not auto_fix:
+                    if os.path.exists(temp_path):
+                        os.remove(temp_path)
+                    return Response({
+                        'status': 'error',
+                        'message': f'Restore strict validation failed: {strict_err}'
+                    }, status=status.HTTP_400_BAD_REQUEST)
             
             # Create or get a default configuration for uploaded backups
             from apps.backup.models import BackupConfiguration
@@ -616,13 +869,738 @@ class SystemBackupViewSet(viewsets.ViewSet):
             # ACTUAL RESTORE PROCESS - Execute real restoration
             if validation_results['restorable']:
                 try:
-                    # Execute the actual restore operation
-                    restore_success = self._execute_restore_operation(
-                        backup_file_path=temp_path,
-                        restore_type=restore_type,
-                        restore_job=restore_job,
-                        user=user
-                    )
+                    # If this was a WITH-REINIT flow, force EnhancedRestoreProcessor for post-reinit restoration
+                    if with_reinit_flag:
+                        import tempfile
+                        logger.info("WITH-REINIT: extracting archive and preparing enhanced restore...")
+                        # Extract the package
+                        temp_extract_dir = tempfile.mkdtemp(prefix='edms_enhanced_restore_')
+                        with tarfile.open(temp_path, 'r:gz') as tar:
+                            tar.extractall(temp_extract_dir)
+                        logger.info("WITH-REINIT: archive extracted to %s", temp_extract_dir)
+                        # Locate database_backup.json
+                        db_file = None
+                        for root, dirs, files in os.walk(temp_extract_dir):
+                            for fn in files:
+                                if fn == 'database_backup.json':
+                                    db_file = os.path.join(root, fn)
+                                    break
+                            if db_file:
+                                break
+                        if not db_file:
+                            shutil.rmtree(temp_extract_dir, ignore_errors=True)
+                            raise Exception('database_backup.json not found in package for enhanced restore')
+                        logger.info("WITH-REINIT: found database json at %s", db_file)
+
+                        # Pre-create users from backup to guarantee UserRole FK resolution
+                        try:
+                            from django.contrib.auth import get_user_model
+                            with open(db_file, 'r') as f:
+                                db_data = json.load(f)
+                            backup_users = [r for r in db_data if r.get('model') in ('users.user','auth.user')]
+                            User = get_user_model()
+                            created_users = 0
+                            for rec in backup_users:
+                                fields = rec.get('fields', {})
+                                username = fields.get('username')
+                                if not username:
+                                    continue
+                                if not User.objects.filter(username=username).exists():
+                                    user_obj = User.objects.create(
+                                        username=username,
+                                        email=fields.get('email', f'{username}@edms.local'),
+                                        first_name=fields.get('first_name',''),
+                                        last_name=fields.get('last_name',''),
+                                        is_staff=fields.get('is_staff', False),
+                                        is_superuser=fields.get('is_superuser', False),
+                                        is_active=fields.get('is_active', True),
+                                    )
+                                    # Set a default password for restored users
+                                    user_obj.set_password('edms123')
+                                    user_obj.save()
+                                    created_users += 1
+                            logger.info("WITH-REINIT: pre-created %d users from backup", created_users)
+                        except Exception as pre_user_err:
+                            logger.warning("WITH-REINIT: pre-create users step failed: %s", pre_user_err)
+
+                        # Run enhanced restore for roles, userroles, documents, etc.
+                        from apps.backup.restore_processor import EnhancedRestoreProcessor
+                        # Pre-restore: ensure DocumentType and DocumentSource exist and are aligned by code/name
+                        try:
+                            if 'db_data' not in locals():
+                                with open(db_file, 'r') as f:
+                                    db_data = json.load(f)
+                            from django.db import transaction
+                            from apps.documents.models import DocumentType, DocumentSource
+                            # Upsert DocumentType by code
+                            dt_records = [r for r in db_data if r.get('model') == 'documents.documenttype']
+                            with transaction.atomic():
+                                for rec in dt_records:
+                                    f = rec.get('fields', {})
+                                    code = f.get('code')
+                                    if not code:
+                                        continue
+                                    defaults = {
+                                        'name': f.get('name') or code,
+                                        'description': f.get('description','')
+                                    }
+                                    obj, created = DocumentType.objects.get_or_create(code=code, defaults=defaults)
+                                    if not created:
+                                        # Reconcile fields
+                                        updated = False
+                                        if f.get('name') and obj.name != f.get('name'):
+                                            obj.name = f.get('name'); updated = True
+                                        if obj.description != f.get('description',''):
+                                            obj.description = f.get('description',''); updated = True
+                                        if updated:
+                                            obj.save(update_fields=['name','description'])
+                            # Upsert DocumentSource by name (or code if present)
+                            ds_records = [r for r in db_data if r.get('model') == 'documents.documentsource']
+                            with transaction.atomic():
+                                for rec in ds_records:
+                                    f = rec.get('fields', {})
+                                    name = f.get('name') or f.get('code')
+                                    if not name:
+                                        continue
+                                    defaults = {
+                                        'description': f.get('description','')
+                                    }
+                                    obj, created = DocumentSource.objects.get_or_create(name=name, defaults=defaults)
+                                    if not created and obj.description != defaults['description']:
+                                        obj.description = defaults['description']
+                                        obj.save(update_fields=['description'])
+                        except Exception as pretype_err:
+                            logger.warning("WITH-REINIT: pre-restore type/source upsert failed: %s", pretype_err)
+
+                        processor = EnhancedRestoreProcessor()
+                        restoration_result = processor.process_backup_data(db_file)
+
+                        # Gap-aware fallback: ensure missing items are created without duplication
+                        try:
+                            # Reload db_data if not loaded
+                            if 'db_data' not in locals():
+                                with open(db_file, 'r') as f:
+                                    db_data = json.load(f)
+
+                            from django.db import transaction
+                            from apps.users.models import UserRole, Role
+                            from apps.documents.models import Document, DocumentType, DocumentSource
+                            from django.contrib.auth import get_user_model
+                            User = get_user_model()
+
+                            # UserRole gap-fill: ensure each (username, role) exists
+                            ur_recs = [r for r in db_data if r.get('model') == 'users.userrole']
+                            with transaction.atomic():
+                                for rec in ur_recs:
+                                    flds = rec.get('fields', {})
+                                    uname = flds.get('user', [None])[0]
+                                    rname = flds.get('role', [None])[0]
+                                    assigned_by_name = flds.get('assigned_by', [None])[0]
+                                    if not (uname and rname):
+                                        continue
+                                    u = User.objects.filter(username=uname).first()
+                                    role = Role.objects.filter(name=rname).first() or Role.objects.filter(name__iexact=rname).first()
+                                    assigned_by = User.objects.filter(username=assigned_by_name).first() if assigned_by_name else None
+                                    if u and role:
+                                        if not UserRole.objects.filter(user=u, role=role).exists():
+                                            UserRole.objects.create(
+                                                user=u,
+                                                role=role,
+                                                assigned_by=assigned_by,
+                                                assignment_reason=flds.get('assignment_reason','Restored'),
+                                                is_active=flds.get('is_active', True)
+                                            )
+
+                            # Document gap-fill: ensure each document_number exists and type/source binding is correct
+                            doc_recs = [r for r in db_data if r.get('model') == 'documents.document']
+                            with transaction.atomic():
+                                for rec in doc_recs:
+                                    flds = rec.get('fields', {})
+                                    number = flds.get('document_number')
+                                    if not number or Document.objects.filter(document_number=number).exists():
+                                        continue
+                                    author_name = flds.get('author', [None])[0]
+                                    dtype_code = (flds.get('document_type', [None])[0] or '').strip() or None
+                                    dsource_name = (flds.get('document_source', [None])[0] or '').strip() or None
+                                    author = User.objects.filter(username=author_name).first()
+                                    dtype = None
+                                    if dtype_code:
+                                        dtype = DocumentType.objects.filter(code=dtype_code).first() or \
+                                                DocumentType.objects.filter(code__iexact=dtype_code).first()
+                                    dsource = None
+                                    if dsource_name:
+                                        dsource = DocumentSource.objects.filter(name=dsource_name).first() or \
+                                                  DocumentSource.objects.filter(name__iexact=dsource_name).first()
+                                    if not (author and dtype and dsource):
+                                        continue
+                                    Document.objects.create(
+                                        title=flds.get('title','Restored Document'),
+                                        document_number=number,
+                                        author=author,
+                                        document_type=dtype,
+                                        document_source=dsource,
+                                        version_major=flds.get('version_major',1),
+                                        version_minor=flds.get('version_minor',0),
+                                        status=flds.get('status','DRAFT'),
+                                        file_path=flds.get('file_path') or '',
+                                        file_name=flds.get('file_name') or '',
+                                        file_size=flds.get('file_size')
+                                    )
+                        except Exception as gap_err:
+                            logger.warning("WITH-REINIT: gap-aware fallback failed: %s", gap_err)
+                        logger.info("WITH-REINIT: enhanced restore completed: %s", bool(restoration_result))
+
+                        # Fallback: if user roles or documents were not restored, attempt manual restoration
+                        try:
+                            from apps.users.models import UserRole, Role
+                            from apps.documents.models import Document, DocumentType, DocumentSource
+                            from django.contrib.auth import get_user_model
+                            User = get_user_model()
+
+                            # Refresh db_data if not present
+                            if 'db_data' not in locals():
+                                with open(db_file, 'r') as f:
+                                    db_data = json.load(f)
+
+                            # Attempt to restore UserRoles if missing
+                            current_userroles = UserRole.objects.count()
+                            if current_userroles == 0:
+                                created_ur = 0
+                                ur_recs = [r for r in db_data if r.get('model') == 'users.userrole']
+                                for rec in ur_recs:
+                                    fields = rec.get('fields', {})
+                                    try:
+                                        uname = fields.get('user', [None])[0]
+                                        rname = fields.get('role', [None])[0]
+                                        assigned_by_name = fields.get('assigned_by', [None])[0]
+                                        if not (uname and rname):
+                                            continue
+                                        user_obj = User.objects.filter(username=uname).first()
+                                        role_obj = Role.objects.filter(name=rname).first() or Role.objects.filter(name__iexact=rname).first()
+                                        assigned_by = User.objects.filter(username=assigned_by_name).first() if assigned_by_name else None
+                                        if user_obj and role_obj:
+                                            # Avoid duplicates
+                                            if not UserRole.objects.filter(user=user_obj, role=role_obj).exists():
+                                                UserRole.objects.create(
+                                                    user=user_obj,
+                                                    role=role_obj,
+                                                    assigned_by=assigned_by,
+                                                    assignment_reason=fields.get('assignment_reason','Restored'),
+                                                    is_active=fields.get('is_active', True)
+                                                )
+                                                created_ur += 1
+                                    except Exception as e:
+                                        logger.warning("WITH-REINIT: skipping UserRole record due to error: %s", e)
+                                logger.info("WITH-REINIT: manual UserRole restore created %d records", created_ur)
+
+                            # Attempt to restore Documents if missing
+                            current_docs = Document.objects.count()
+                            if current_docs == 0:
+                                created_docs = 0
+                                doc_recs = [r for r in db_data if r.get('model') == 'documents.document']
+                                for rec in doc_recs:
+                                    fields = rec.get('fields', {})
+                                    try:
+                                        number = fields.get('document_number')
+                                        if not number:
+                                            continue
+                                        if Document.objects.filter(document_number=number).exists():
+                                            continue
+                                        author_name = fields.get('author', [None])[0]
+                                        dtype_code = fields.get('document_type', [None])[0]
+                                        dsource_name = fields.get('document_source', [None])[0]
+                                        author = User.objects.filter(username=author_name).first()
+                                        dtype = DocumentType.objects.filter(code=dtype_code).first() if dtype_code else None
+                                        dsource = DocumentSource.objects.filter(name=dsource_name).first() if dsource_name else None
+                                        if not (author and dtype and dsource):
+                                            continue
+                                        Document.objects.create(
+                                            title=fields.get('title','Restored Document'),
+                                            document_number=number,
+                                            author=author,
+                                            document_type=dtype,
+                                            document_source=dsource,
+                                            version_major=fields.get('version_major',1),
+                                            version_minor=fields.get('version_minor',0),
+                                            status=fields.get('status','DRAFT'),
+                                            file_path=fields.get('file_path') or '',
+                                            file_name=fields.get('file_name') or '',
+                                            file_size=fields.get('file_size')
+                                        )
+                                        created_docs += 1
+                                    except Exception as e:
+                                        logger.warning("WITH-REINIT: skipping Document record due to error: %s", e)
+                                logger.info("WITH-REINIT: manual Document restore created %d records", created_docs)
+                        except Exception as manual_err:
+                            logger.warning("WITH-REINIT: manual fallback restore step failed: %s", manual_err)
+
+                        # Restore storage files as part of catastrophic recovery (if present)
+                        # Intelligent mapping: if 'storage' exists at archive root, merge its contents into MEDIA_ROOT
+                        restored_dirs = 0
+                        media_root = getattr(settings, 'MEDIA_ROOT', '/app/storage')
+                        storage_root_src = os.path.join(temp_extract_dir, 'storage')
+                        try:
+                            if os.path.exists(storage_root_src):
+                                # Copy storage/* -> MEDIA_ROOT
+                                for root, dirs, files in os.walk(storage_root_src):
+                                    rel = os.path.relpath(root, storage_root_src)
+                                    target_root = os.path.join(media_root, rel) if rel != '.' else media_root
+                                    os.makedirs(target_root, exist_ok=True)
+                                    for fn in files:
+                                        shutil.copy2(os.path.join(root, fn), os.path.join(target_root, fn))
+                                restored_dirs += 1
+                                logger.info("WITH-REINIT: restored storage/* into %s", media_root)
+                            else:
+                                # Fallback: map known top-level dirs
+                                mapping = {
+                                    'documents': os.path.join(media_root, 'documents'),
+                                    'media': media_root,
+                                    'staticfiles': getattr(settings, 'STATIC_ROOT', '/app/staticfiles'),
+                                }
+                                for dirname, dst in mapping.items():
+                                    src = os.path.join(temp_extract_dir, dirname)
+                                    if os.path.exists(src):
+                                        os.makedirs(dst, exist_ok=True)
+                                        for root, dirs, files in os.walk(src):
+                                            rel = os.path.relpath(root, src)
+                                            target_root = os.path.join(dst, rel) if rel != '.' else dst
+                                            os.makedirs(target_root, exist_ok=True)
+                                            for fn in files:
+                                                shutil.copy2(os.path.join(root, fn), os.path.join(target_root, fn))
+                                        restored_dirs += 1
+                                        logger.info("WITH-REINIT: restored directory %s -> %s", src, dst)
+                        except Exception as copy_err:
+                            logger.warning("WITH-REINIT: storage restoration error: %s", copy_err)
+
+                        # Post-restore reconciliation: fix Document.file_path to actual stored files and recompute checksum if present
+                        try:
+                            from apps.documents.models import Document
+                            # Build indices under MEDIA_ROOT/documents and from backup metadata
+                            documents_dir = os.path.join(media_root, 'documents')
+                            filename_index = {}
+                            checksum_index = {}
+
+                            # Build backup-derived mapping: document_number -> {checksum, file_uuid_stem, ext}
+                            backup_map = {}
+                            try:
+                                for rec in db_data:
+                                    if rec.get('model') == 'documents.document':
+                                        flds = rec.get('fields', {})
+                                        num = flds.get('document_number')
+                                        if not num:
+                                            continue
+                                        # Natural key storage for type/source etc. may be arrays; file fields are scalars
+                                        b_checksum = flds.get('file_checksum') or ''
+                                        b_path = flds.get('file_path') or ''
+                                        # Extract UUID stem if present in backup file_path
+                                        b_uuid = ''
+                                        b_ext = ''
+                                        if b_path:
+                                            import os as _os
+                                            stem = _os.path.splitext(_os.path.basename(b_path))[0]
+                                            b_ext = _os.path.splitext(_os.path.basename(b_path))[1]
+                                            # Heuristic: UUID-like stem has dashes
+                                            if '-' in stem and len(stem) >= 32:
+                                                b_uuid = stem
+                                        backup_map[num] = {
+                                            'checksum': b_checksum,
+                                            'uuid': b_uuid,
+                                            'ext': b_ext or ''
+                                        }
+                            except Exception:
+                                backup_map = {}
+
+                            if os.path.exists(documents_dir):
+                                import hashlib
+                                for root, dirs, files in os.walk(documents_dir):
+                                    for fn in files:
+                                        abs_fp = os.path.join(root, fn)
+                                        rel_path = os.path.relpath(abs_fp, media_root)
+                                        filename_index.setdefault(fn, []).append(rel_path)
+                                        # compute checksum for accurate matching
+                                        try:
+                                            sha256 = hashlib.sha256()
+                                            with open(abs_fp, 'rb') as fh:
+                                                for chunk in iter(lambda: fh.read(65536), b""):
+                                                    sha256.update(chunk)
+                                            checksum_index[sha256.hexdigest()] = rel_path
+                                        except Exception:
+                                            pass
+                            repaired = 0
+                            from apps.documents.models import DocumentVersion
+                            # Precompute uuid-based file mapping for common pattern: documents/<uuid>.<ext>
+                            uuid_candidates = {}
+                            if os.path.exists(documents_dir):
+                                for root, dirs, files in os.walk(documents_dir):
+                                    for fn in files:
+                                        name, ext = os.path.splitext(fn)
+                                        # map uuid string -> rel path
+                                        uuid_candidates[name] = os.path.relpath(os.path.join(root, fn), media_root)
+
+                            # Reconcile Document by checksum, then by backup uuid/extension, then by uuid-based filename, then by original filename
+                            for doc in Document.objects.all():
+                                fpath = doc.full_file_path
+                                if fpath and os.path.exists(fpath):
+                                    continue
+                                # 1) checksum match
+                                if doc.file_checksum and doc.file_checksum in checksum_index:
+                                    rel = checksum_index[doc.file_checksum]
+                                    doc.file_path = rel
+                                    doc.save(update_fields=['file_path','updated_at'])
+                                    repaired += 1
+                                    continue
+                                # 2) backup-informed uuid/ext mapping (if present)
+                                binfo = backup_map.get(doc.document_number, {})
+                                b_uuid = binfo.get('uuid') or ''
+                                b_ext = binfo.get('ext') or (os.path.splitext(doc.file_name)[1] or '.docx')
+                                if b_uuid and b_uuid in uuid_candidates:
+                                    candidate_rel = uuid_candidates[b_uuid]
+                                    if candidate_rel and candidate_rel.endswith(b_ext):
+                                        doc.file_path = candidate_rel
+                                        try:
+                                            doc.file_checksum = doc.calculate_file_checksum() or doc.file_checksum
+                                        except Exception:
+                                            pass
+                                        doc.save(update_fields=['file_path','file_checksum','updated_at'])
+                                        repaired += 1
+                                        continue
+
+                                # 3) uuid-based candidate using current extension from file_name (fallback .docx)
+                                ext = os.path.splitext(doc.file_name)[1] or '.docx'
+                                uuid_key = str(doc.uuid)
+                                candidate_rel = uuid_candidates.get(uuid_key)
+                                if candidate_rel and candidate_rel.endswith(ext):
+                                    doc.file_path = candidate_rel
+                                    try:
+                                        doc.file_checksum = doc.calculate_file_checksum() or doc.file_checksum
+                                    except Exception:
+                                        pass
+                                    doc.save(update_fields=['file_path','file_checksum','updated_at'])
+                                    repaired += 1
+                                    continue
+                                # 3) fallback by original filename
+                                if doc.file_name and doc.file_name in filename_index:
+                                    rel = filename_index[doc.file_name][0]
+                                    doc.file_path = rel
+                                    try:
+                                        doc.file_checksum = doc.calculate_file_checksum() or doc.file_checksum
+                                    except Exception:
+                                        pass
+                                    doc.save(update_fields=['file_path','file_checksum','updated_at'])
+                                    repaired += 1
+                            # Reconcile DocumentVersion entries similarly
+                            repaired_versions = 0
+                            for ver in DocumentVersion.objects.all():
+                                v_full = None
+                                try:
+                                    # Construct full path like Document.full_file_path logic
+                                    if ver.file_path:
+                                        if ver.file_path.startswith('storage/documents/'):
+                                            v_full = os.path.join(settings.BASE_DIR, ver.file_path)
+                                        else:
+                                            v_full = os.path.join(media_root, ver.file_path)
+                                except Exception:
+                                    v_full = None
+                                if v_full and os.path.exists(v_full):
+                                    continue
+                                if ver.file_checksum and ver.file_checksum in checksum_index:
+                                    ver.file_path = checksum_index[ver.file_checksum]
+                                    ver.save(update_fields=['file_path'])
+                                    repaired_versions += 1
+                                    continue
+                                if ver.file_name and ver.file_name in filename_index:
+                                    ver.file_path = filename_index[ver.file_name][0]
+                                    try:
+                                        # No direct checksum helper on version; skip
+                                        pass
+                                    except Exception:
+                                        pass
+                                    ver.save(update_fields=['file_path'])
+                                    repaired_versions += 1
+                            if repaired or repaired_versions:
+                                logger.info("WITH-REINIT: repaired file paths for %d documents and %d versions", repaired, repaired_versions)
+                        except Exception as recon_err:
+                            logger.warning("WITH-REINIT: file reconciliation failed: %s", recon_err)
+
+                        # Restore document dependencies
+                        try:
+                            from apps.documents.models import DocumentDependency
+                            dep_recs = [r for r in db_data if r.get('model') == 'documents.documentdependency']
+                            created_deps = 0
+                            with transaction.atomic():
+                                for rec in dep_recs:
+                                    f = rec.get('fields', {})
+                                    doc_num = (f.get('document', [None])[0] or '').strip() or None
+                                    dep_on_num = (f.get('depends_on', [None])[0] or '').strip() or None
+                                    dep_type = f.get('dependency_type') or 'REFERENCE'
+                                    desc = f.get('description', '')
+                                    is_critical = f.get('is_critical', False)
+                                    created_by_name = (f.get('created_by', [None])[0] or '').strip() or None
+                                    if not (doc_num and dep_on_num):
+                                        continue
+                                    doc_obj = Document.objects.filter(document_number=doc_num).first()
+                                    dep_on_obj = Document.objects.filter(document_number=dep_on_num).first()
+                                    created_by_user = User.objects.filter(username=created_by_name).first() if created_by_name else None
+                                    if not (doc_obj and dep_on_obj and created_by_user):
+                                        continue
+                                    exists = DocumentDependency.objects.filter(
+                                        document=doc_obj, depends_on=dep_on_obj, dependency_type=dep_type
+                                    ).exists()
+                                    if not exists:
+                                        DocumentDependency.objects.create(
+                                            document=doc_obj,
+                                            depends_on=dep_on_obj,
+                                            dependency_type=dep_type,
+                                            description=desc or '',
+                                            is_critical=bool(is_critical),
+                                            created_by=created_by_user,
+                                            is_active=True
+                                        )
+                                        created_deps += 1
+                            if created_deps:
+                                logger.info("WITH-REINIT: restored %d document dependencies", created_deps)
+                        except Exception as dep_err:
+                            logger.warning("WITH-REINIT: dependency restoration failed: %s", dep_err)
+
+                        # Restore workflow history (DocumentWorkflow and DocumentTransition)
+                        try:
+                            from apps.workflows.models_simple import DocumentWorkflow, DocumentTransition, DocumentState, WorkflowType
+                            # Build quick lookup for backup records
+                            wf_recs = [r for r in db_data if r.get('model') == 'workflows.documentworkflow']
+                            tr_recs = [r for r in db_data if r.get('model') == 'workflows.documenttransition']
+
+                            # 1) Pre-upsert workflow metadata (types and states) from backup to avoid missing refs
+                            try:
+                                from django.db import transaction as _tx
+                                # Upsert WorkflowType by code
+                                wt_recs = [r for r in db_data if r.get('model') == 'workflows.workflowtype']
+                                with _tx.atomic():
+                                    for rec in wt_recs:
+                                        f = rec.get('fields', {})
+                                        code = f.get('code')
+                                        if not code:
+                                            continue
+                                        defaults = {
+                                            'name': f.get('name') or code,
+                                            'description': f.get('description','')
+                                        }
+                                        obj, created = WorkflowType.objects.get_or_create(code=code, defaults=defaults)
+                                        if not created:
+                                            updated = False
+                                            if f.get('name') and obj.name != f.get('name'):
+                                                obj.name = f.get('name'); updated = True
+                                            if obj.description != f.get('description',''):
+                                                obj.description = f.get('description',''); updated = True
+                                            if updated:
+                                                obj.save(update_fields=['name','description'])
+                                # Upsert DocumentState by code
+                                ds_recs = [r for r in db_data if r.get('model') == 'workflows.documentstate']
+                                with _tx.atomic():
+                                    for rec in ds_recs:
+                                        f = rec.get('fields', {})
+                                        code = f.get('code')
+                                        if not code:
+                                            continue
+                                        defaults = {
+                                            'name': f.get('name') or code,
+                                            'description': f.get('description',''),
+                                            'order': f.get('order') or 0
+                                        }
+                                        obj, created = DocumentState.objects.get_or_create(code=code, defaults=defaults)
+                                        if not created:
+                                            updated = False
+                                            if f.get('name') and obj.name != f.get('name'):
+                                                obj.name = f.get('name'); updated = True
+                                            if obj.description != f.get('description',''):
+                                                obj.description = f.get('description',''); updated = True
+                                            if f.get('order') is not None and obj.order != f.get('order'):
+                                                obj.order = f.get('order'); updated = True
+                                            if updated:
+                                                obj.save(update_fields=['name','description','order'])
+                            except Exception as meta_err:
+                                logger.warning("WITH-REINIT: workflow metadata upsert encountered an issue: %s", meta_err)
+
+                            restored_wf = 0
+                            restored_tr = 0
+                            skipped_missing = 0
+                            dup_suppressed = 0
+                            state_by_code = {s.code: s for s in DocumentState.objects.all()}
+                            type_by_code = {t.code: t for t in WorkflowType.objects.all()}
+                            with transaction.atomic():
+                                # 2) Restore workflows
+                                for rec in wf_recs:
+                                    f = rec.get('fields', {})
+                                    # Resolve document by natural key (document_number)
+                                    doc_num = (f.get('document', [None])[0] or '').strip() or None
+                                    if not doc_num:
+                                        continue
+                                    doc_obj = Document.objects.filter(document_number=doc_num).first()
+                                    if not doc_obj:
+                                        continue
+                                    # Resolve workflow_type and current_state by code
+                                    wtype_code = (f.get('workflow_type', [None])[0] or '').strip() or None
+                                    state_code = (f.get('current_state', [None])[0] or '').strip() or None
+                                    wtype = type_by_code.get(wtype_code)
+                                    cstate = state_by_code.get(state_code)
+                                    # Resolve users
+                                    initiated_by_name = (f.get('initiated_by', [None])[0] or '').strip() or None
+                                    current_assignee_name = (f.get('current_assignee', [None])[0] or '').strip() or None
+                                    reviewer_name = (f.get('selected_reviewer', [None])[0] or '').strip() or None
+                                    approver_name = (f.get('selected_approver', [None])[0] or '').strip() or None
+                                    initiated_by = User.objects.filter(username=initiated_by_name).first() if initiated_by_name else None
+                                    current_assignee = User.objects.filter(username=current_assignee_name).first() if current_assignee_name else None
+                                    reviewer = User.objects.filter(username=reviewer_name).first() if reviewer_name else None
+                                    approver = User.objects.filter(username=approver_name).first() if approver_name else None
+                                    # Create if not exists for this document
+                                    if not DocumentWorkflow.objects.filter(document=doc_obj).exists():
+                                        DocumentWorkflow.objects.create(
+                                            document=doc_obj,
+                                            workflow_type=wtype,
+                                            current_state=cstate,
+                                            initiated_by=initiated_by,
+                                            current_assignee=current_assignee,
+                                            selected_reviewer=reviewer,
+                                            selected_approver=approver,
+                                            is_terminated=f.get('is_terminated', False),
+                                            due_date=f.get('due_date') or None,
+                                            effective_date=f.get('effective_date') or None,
+                                            obsoleting_date=f.get('obsoleting_date') or None,
+                                            workflow_data=f.get('workflow_data') or {},
+                                            up_version_reason=f.get('up_version_reason') or '',
+                                            obsoleting_reason=f.get('obsoleting_reason') or '',
+                                            termination_reason=f.get('termination_reason') or ''
+                                        )
+                                        restored_wf += 1
+                                # 3) Restore transitions
+                                from datetime import datetime
+                                import pytz
+                                for rec in tr_recs:
+                                    f = rec.get('fields', {})
+                                    # Resolve owning workflow via document natural key
+                                    doc_num = (f.get('workflow', [None])[0] or '').strip() or None
+                                    if not doc_num:
+                                        continue
+                                    doc_obj = Document.objects.filter(document_number=doc_num).first()
+                                    if not doc_obj:
+                                        continue
+                                    wf = DocumentWorkflow.objects.filter(document=doc_obj).first()
+                                    if not wf:
+                                        skipped_missing += 1
+                                        continue
+                                    from_code = (f.get('from_state', [None])[0] or '').strip() or None
+                                    to_code = (f.get('to_state', [None])[0] or '').strip() or None
+                                    from_state = state_by_code.get(from_code)
+                                    to_state = state_by_code.get(to_code)
+                                    by_name = (f.get('transitioned_by', [None])[0] or '').strip() or None
+                                    by_user = User.objects.filter(username=by_name).first() if by_name else None
+                                    # Ensure states exist; create on-the-fly if missing
+                                    if not from_state and from_code:
+                                        from_state = DocumentState.objects.filter(code=from_code).first()
+                                        if not from_state:
+                                            from_state = DocumentState.objects.create(code=from_code, name=from_code, order=0)
+                                    if not to_state and to_code:
+                                        to_state = DocumentState.objects.filter(code=to_code).first()
+                                        if not to_state:
+                                            to_state = DocumentState.objects.create(code=to_code, name=to_code, order=0)
+                                    if not (from_state and to_state):
+                                        skipped_missing += 1
+                                        logger.warning("WITH-REINIT: skipped transition for %s due to missing states: from=%s to=%s by=%s at=%s", doc_num, from_code, to_code, by_name, f.get('transitioned_at'))
+                                        continue
+                                    # Robust datetime parse
+                                    transitioned_at_dt = None
+                                    transitioned_at_val = f.get('transitioned_at') or None
+                                    if transitioned_at_val:
+                                        try:
+                                            ts = transitioned_at_val
+                                            if isinstance(ts, str) and ts.endswith('Z'):
+                                                ts = ts.replace('Z', '+00:00')
+                                            transitioned_at_dt = datetime.fromisoformat(ts) if isinstance(ts, str) else ts
+                                            if transitioned_at_dt and transitioned_at_dt.tzinfo is None:
+                                                transitioned_at_dt = pytz.utc.localize(transitioned_at_dt)
+                                        except Exception:
+                                            transitioned_at_dt = None
+                                    # Duplicate suppression: only include timestamp if parsed
+                                    dup_qs = DocumentTransition.objects.filter(
+                                        workflow=wf,
+                                        from_state=from_state,
+                                        to_state=to_state,
+                                        transitioned_by=by_user,
+                                    )
+                                    if transitioned_at_dt is not None:
+                                        dup_qs = dup_qs.filter(transitioned_at=transitioned_at_dt)
+                                    if dup_qs.exists():
+                                        dup_suppressed += 1
+                                        continue
+                                    DocumentTransition.objects.create(
+                                        workflow=wf,
+                                        from_state=from_state,
+                                        to_state=to_state,
+                                        transitioned_by=by_user,
+                                        transitioned_at=transitioned_at_dt,
+                                        comment=f.get('comment') or '',
+                                        transition_data=f.get('transition_data') or {},
+                                    )
+                                    restored_tr += 1
+                            # 4) Recompute current_state to the final transition's to_state for each affected workflow
+                            try:
+                                affected_docs = set()
+                                for rec in tr_recs:
+                                    f = rec.get('fields', {})
+                                    doc_num = (f.get('workflow', [None])[0] or '').strip() or None
+                                    if doc_num:
+                                        affected_docs.add(doc_num)
+                                for doc_num in affected_docs:
+                                    doc_obj = Document.objects.filter(document_number=doc_num).first()
+                                    if not doc_obj:
+                                        continue
+                                    wf = DocumentWorkflow.objects.filter(document=doc_obj).first()
+                                    if not wf:
+                                        continue
+                                    last_tr = DocumentTransition.objects.filter(workflow=wf).order_by('transitioned_at','id').last()
+                                    if last_tr and last_tr.to_state and wf.current_state_id != last_tr.to_state_id:
+                                        wf.current_state = last_tr.to_state
+                                        wf.save(update_fields=['current_state','updated_at'])
+                            except Exception as cs_err:
+                                logger.warning("WITH-REINIT: failed to recompute current_state: %s", cs_err)
+
+                            if restored_wf or restored_tr or skipped_missing or dup_suppressed:
+                                logger.info(
+                                    "WITH-REINIT: restored %d workflows, %d transitions (skipped_missing=%d, dup_suppressed=%d)",
+                                    restored_wf, restored_tr, skipped_missing, dup_suppressed
+                                )
+                        except Exception as wf_err:
+                            logger.warning("WITH-REINIT: workflow restoration failed: %s", wf_err)
+
+                        # Compute counts for reporting
+                        users_count = 0
+                        userroles_count = 0
+                        documents_count = 0
+                        try:
+                            from apps.users.models import UserRole
+                            from apps.documents.models import Document
+                            users_count = User.objects.count()
+                            userroles_count = UserRole.objects.count()
+                            documents_count = Document.objects.count()
+                        except Exception as count_err:
+                            logger.warning("WITH-REINIT: counting restored objects failed: %s", count_err)
+
+                        # Cleanup extraction dir
+                        shutil.rmtree(temp_extract_dir, ignore_errors=True)
+                        restore_success = True if restoration_result else False
+                        # Attach counts to restore_job for visibility
+                        try:
+                            restore_job.restored_items_count = (userroles_count + documents_count)
+                            restore_job.save()
+                        except Exception:
+                            pass
+                    else:
+                        # Execute the actual restore operation (legacy/full path)
+                        restore_success = self._execute_restore_operation(
+                            backup_file_path=temp_path,
+                            restore_type=restore_type,
+                            restore_job=restore_job,
+                            user=user
+                        )
                     
                     if restore_success:
                         restore_job.status = 'COMPLETED'
@@ -677,11 +1655,21 @@ class SystemBackupViewSet(viewsets.ViewSet):
             if os.path.exists(temp_path):
                 os.remove(temp_path)
             
-            return Response({
+            # Build response with optional counts for WITH-REINIT flow
+            resp = {
                 'status': 'completed',
                 'operation_id': str(restore_job.uuid),
                 'message': 'System restore completed successfully'
-            }, status=status.HTTP_200_OK)
+            }
+            try:
+                if with_reinit_flag:
+                    resp['post_reinit'] = True
+                    resp['users_restored'] = users_count
+                    resp['userroles_restored'] = userroles_count
+                    resp['documents_restored'] = documents_count
+            except Exception:
+                pass
+            return Response(resp, status=status.HTTP_200_OK)
             
         except Exception as e:
             # Cleanup on error
@@ -895,10 +1883,22 @@ class SystemBackupViewSet(viewsets.ViewSet):
             success_count = 0
             total_operations = 0
             
+            # Track database JSON candidates to import workflow history later
+            db_json_candidates = []
+            preferred_json_path = None
+            
             # Restore database if present
             for root, dirs, files in os.walk(temp_dir):
                 for file in files:
                     file_path = os.path.join(root, file)
+                    rel_path = os.path.relpath(file_path, temp_dir)
+                    
+                    # Capture database_backup.json locations for history import
+                    if file.lower() == 'database_backup.json':
+                        db_json_candidates.append(file_path)
+                        # Prefer the canonical path .../database/database_backup.json
+                        if os.path.sep + 'database' + os.path.sep in file_path and preferred_json_path is None:
+                            preferred_json_path = file_path
                     
                     # Database restoration
                     if any(keyword in file.lower() for keyword in ['database', 'db']) and \
@@ -914,16 +1914,31 @@ class SystemBackupViewSet(viewsets.ViewSet):
                             logger.warning("Database restore failed")
                     
                     # Configuration files restoration
-                    elif 'configuration/' in os.path.relpath(file_path, temp_dir) and file.endswith('.json'):
+                    elif 'configuration/' in rel_path and file.endswith('.json'):
                         total_operations += 1
-                        relative_path = os.path.relpath(file_path, temp_dir)
-                        logger.info(f"Restoring configuration from: {relative_path}")
+                        logger.info(f"Restoring configuration from: {rel_path}")
                         
-                        if self._restore_configuration_file(file_path, relative_path):
+                        if self._restore_configuration_file(file_path, rel_path):
                             success_count += 1
-                            logger.info(f"Configuration restore successful: {relative_path}")
+                            logger.info(f"Configuration restore successful: {rel_path}")
                         else:
-                            logger.warning(f"Configuration restore failed: {relative_path}")
+                            logger.warning(f"Configuration restore failed: {rel_path}")
+            
+            # After core DB restore, import workflow history using natural keys if backup JSON present
+            try:
+                from django.core.management import call_command
+                db_json_path = preferred_json_path or (db_json_candidates[0] if db_json_candidates else None)
+                if db_json_path:
+                    logger.info(f"Importing workflow history from backup JSON: {db_json_path}")
+                    # Import transitions and set current_state deterministically
+                    call_command('import_workflow_history', backup_json=db_json_path)
+                    # Verify and log summary (non-fatal on mismatch)
+                    logger.info("Verifying workflow history after import...")
+                    call_command('verify_workflow_history', backup_json=db_json_path)
+                else:
+                    logger.warning("No database_backup.json found in extracted package. Skipping workflow history import.")
+            except Exception as e:
+                logger.warning(f"Workflow history import/verification encountered an issue: {e}")
             
             # Restore file system components
             storage_dirs = ['storage', 'media', 'documents', 'staticfiles']
@@ -1105,6 +2120,9 @@ class SystemBackupViewSet(viewsets.ViewSet):
                         array_format_fixes = 0
                         
                         for record in data:
+                            # SKIP PREPROCESSING - EnhancedRestoreProcessor handles all natural key resolution
+                            continue
+                            
                             model_name = record.get('model', '')
                             fields = record.get('fields', {})
                             
@@ -1381,28 +2399,44 @@ class SystemBackupViewSet(viewsets.ViewSet):
                         print(f"🔧 BACKEND DEBUG: Fixed {records_fixed} UUID conflicts, {array_format_fixes} array fixes, skipped {infrastructure_skipped} duplicates")
                         print(f"📋 Final data records: {len(data)}")
                         
-                        # Create temporary file for fixed data and use Django loaddata
-                        with tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False) as temp_file:
-                            json.dump(data, temp_file, indent=2)
-                            temp_fixture_path = temp_file.name
-                        
+                        # Use EnhancedRestoreProcessor - it handles UUID conflicts, natural keys, and everything
                         try:
-                            # Use Django's loaddata with the fixed data
-                            print("🔄 BACKEND DEBUG: Starting Django loaddata...")
-                            call_command('loaddata', temp_fixture_path, verbosity=1)
-                            print("✅ BACKEND DEBUG: Django loaddata completed successfully")
+                            print("🔄 BACKEND DEBUG: Starting EnhancedRestoreProcessor...")
+                            from apps.backup.restore_processor import EnhancedRestoreProcessor
+                            
+                            # Write raw data to temp file for processor
+                            # The processor handles:
+                            # - UUID conflict resolution (post_reinit mode)
+                            # - Natural key resolution for all FKs
+                            # - Infrastructure preservation
+                            # - Proper phase-based restoration
+                            with tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False) as temp_file:
+                                json.dump(data, temp_file, indent=2)
+                                temp_fixture_path = temp_file.name
+                            
+                            processor = EnhancedRestoreProcessor()
+                            restoration_result = processor.process_backup_data(temp_fixture_path)
                             
                             # Cleanup temp file
                             os.unlink(temp_fixture_path)
                             
+                            if restoration_result:
+                                print("✅ BACKEND DEBUG: EnhancedRestoreProcessor completed successfully")
+                            else:
+                                print("⚠️ BACKEND DEBUG: EnhancedRestoreProcessor completed with warnings")
+                            
                             # Check what was actually restored
                             from django.contrib.auth import get_user_model
                             from apps.documents.models import Document
+                            from apps.workflows.models_simple import DocumentWorkflow, DocumentTransition
                             User = get_user_model()
                             
                             users_count = User.objects.count()
                             docs_count = Document.objects.count()
-                            print(f"📊 BACKEND DEBUG: After restore - Users: {users_count}, Documents: {docs_count}")
+                            wf_count = DocumentWorkflow.objects.count()
+                            tr_count = DocumentTransition.objects.count()
+                            
+                            print(f"📊 BACKEND DEBUG: After restore - Users: {users_count}, Documents: {docs_count}, Workflows: {wf_count}, Transitions: {tr_count}")
                             
                             for user in User.objects.all():
                                 groups = list(user.groups.values_list('name', flat=True))
@@ -1411,9 +2445,9 @@ class SystemBackupViewSet(viewsets.ViewSet):
                             return True
                             
                         except Exception as e:
-                            if os.path.exists(temp_fixture_path):
-                                os.unlink(temp_fixture_path)
-                            print(f"❌ BACKEND DEBUG: loaddata failed: {e}")
+                            print(f"❌ BACKEND DEBUG: EnhancedRestoreProcessor failed: {e}")
+                            import traceback
+                            traceback.print_exc()
                             return False
                         
                         # CRITICAL FIX: Use UUID conflict resolution for frontend restore
@@ -1963,8 +2997,48 @@ class SystemBackupViewSet(viewsets.ViewSet):
                 restore_service._restore_database_from_file(db_file_path)
                 return True
             else:
-                logger.warning(f"Unsupported backup format: {db_file_path}")
-                return False
+                # FIXED: Try enhanced restore method for unknown formats
+                logger.info(f"Unknown format {db_file_path}, trying enhanced restore method...")
+                try:
+                    from apps.backup.restore_processor import EnhancedRestoreProcessor
+                    
+                    # Check if it's a tar.gz with database_backup.json inside
+                    if db_file_path.endswith('.tar.gz'):
+                        import tempfile, tarfile
+                        temp_dir = tempfile.mkdtemp(prefix='restore_extract_')
+                        
+                        with tarfile.open(db_file_path, 'r:gz') as tar:
+                            tar.extractall(temp_dir)
+                        
+                        # Find database file
+                        database_file = None
+                        for root, dirs, files in os.walk(temp_dir):
+                            for file in files:
+                                if file.endswith('database_backup.json'):
+                                    database_file = os.path.join(root, file)
+                                    break
+                        
+                        if database_file:
+                            processor = EnhancedRestoreProcessor()
+                            result = processor.process_backup_data(database_file)
+                            
+                            # Cleanup temp directory
+                            shutil.rmtree(temp_dir)
+                            
+                            if result and result.get('summary', {}).get('successful_restorations', 0) > 0:
+                                logger.info("✅ Enhanced restore method succeeded")
+                                return True
+                        
+                        # Cleanup temp directory if it still exists
+                        if os.path.exists(temp_dir):
+                            shutil.rmtree(temp_dir)
+                    
+                    logger.warning(f"Enhanced restore also failed for: {db_file_path}")
+                    return False
+                    
+                except Exception as e:
+                    logger.error(f"Enhanced restore method failed: {str(e)}")
+                    return False
             
         except Exception as e:
             logger.error(f"Database file restore failed: {str(e)}")

@@ -330,8 +330,16 @@ class EnhancedRestoreProcessor:
             # Resolve natural keys and foreign key references
             resolved_fields = self._resolve_foreign_keys(Model, fields)
             
-            # Generate new UUID for objects in post-reinit mode to avoid conflicts
-            if self.post_reinit_mode and hasattr(Model, 'uuid'):
+            # In post-reinit mode, check if this is an infrastructure model that was preserved
+            if self.post_reinit_mode and phase == 'core_configuration':
+                # Check if object already exists by natural key (code, name, etc.)
+                existing_obj = self._find_existing_object(Model, resolved_fields, None)
+                if existing_obj:
+                    logger.debug(f"Skipping preserved infrastructure: {model_name}")
+                    return 'skipped'
+            
+            # Generate new UUID for business data objects in post-reinit mode to avoid conflicts
+            if self.post_reinit_mode and hasattr(Model, 'uuid') and phase not in ['core_configuration', 'system_infrastructure']:
                 import uuid as uuid_lib
                 resolved_fields['uuid'] = uuid_lib.uuid4()
             
@@ -424,8 +432,11 @@ class EnhancedRestoreProcessor:
             'documents.document',
             'documents.documenttype',
             'documents.documentsource',
+            'documents.documentdependency',
             'workflows.workflowtype',
             'workflows.documentstate',
+            'workflows.documentworkflow',
+            'workflows.documenttransition',
             'placeholders.placeholderdefinition',
             'auth.group',
         }
@@ -780,6 +791,9 @@ class EnhancedRestoreProcessor:
             elif model_label == 'users.role':
                 resolved_obj = self._resolve_role_natural_key(natural_key)
                 
+            elif model_label == 'documents.document':
+                resolved_obj = self._resolve_document_natural_key(natural_key)
+                
             elif model_label == 'documents.documenttype':
                 resolved_obj = self._resolve_document_type_natural_key(natural_key)
                 
@@ -791,6 +805,15 @@ class EnhancedRestoreProcessor:
                 
             elif model_label == 'workflows.documentstate':
                 resolved_obj = self._resolve_document_state_natural_key(natural_key)
+                
+            elif model_label == 'workflows.documentworkflow':
+                resolved_obj = self._resolve_documentworkflow_natural_key(natural_key)
+                
+            elif model_label == 'workflows.documenttransition':
+                resolved_obj = self._resolve_documenttransition_natural_key(natural_key)
+                
+            elif model_label == 'documents.documentdependency':
+                resolved_obj = self._resolve_documentdependency_natural_key(natural_key)
                 
             elif model_label == 'placeholders.placeholderdefinition':
                 resolved_obj = self._resolve_placeholder_natural_key(natural_key)
@@ -902,6 +925,17 @@ class EnhancedRestoreProcessor:
                         pass
         return None
     
+    def _resolve_document_natural_key(self, natural_key: List) -> Optional[Any]:
+        """Resolve Document model natural keys (document_number)."""
+        if len(natural_key) >= 1:
+            document_number = natural_key[0]
+            try:
+                from apps.documents.models import Document
+                return Document.objects.get(document_number=document_number)
+            except Exception as e:
+                logger.warning(f"Failed to resolve Document natural key {natural_key}: {e}")
+        return None
+    
     def _resolve_document_type_natural_key(self, natural_key: List) -> Optional[Any]:
         """Resolve DocumentType model natural keys (code or name)."""
         if len(natural_key) >= 1:
@@ -989,6 +1023,39 @@ class EnhancedRestoreProcessor:
                 return BackupConfiguration.objects.get(name=name)
             except:
                 pass
+        return None
+    
+    def _resolve_documentworkflow_natural_key(self, natural_key: List) -> Optional[Any]:
+        """Resolve DocumentWorkflow model natural keys [document_number, workflow_type]."""
+        if len(natural_key) >= 2:
+            doc_number, workflow_type = natural_key[:2]
+            try:
+                from apps.workflows.models_simple import DocumentWorkflow
+                return DocumentWorkflow.get_by_natural_key(doc_number, workflow_type)
+            except Exception as e:
+                logger.warning(f"Failed to resolve DocumentWorkflow natural key {natural_key}: {e}")
+        return None
+    
+    def _resolve_documenttransition_natural_key(self, natural_key: List) -> Optional[Any]:
+        """Resolve DocumentTransition model natural keys [doc_number, workflow_type, transition_id]."""
+        if len(natural_key) >= 3:
+            doc_number, workflow_type, transition_id = natural_key[:3]
+            try:
+                from apps.workflows.models_simple import DocumentTransition
+                return DocumentTransition.get_by_natural_key(doc_number, workflow_type, transition_id)
+            except Exception as e:
+                logger.warning(f"Failed to resolve DocumentTransition natural key {natural_key}: {e}")
+        return None
+    
+    def _resolve_documentdependency_natural_key(self, natural_key: List) -> Optional[Any]:
+        """Resolve DocumentDependency model natural keys [source_doc_number, target_doc_number, dependency_type]."""
+        if len(natural_key) >= 3:
+            source_doc_number, target_doc_number, dependency_type = natural_key[:3]
+            try:
+                from apps.documents.models import DocumentDependency
+                return DocumentDependency.get_by_natural_key(source_doc_number, target_doc_number, dependency_type)
+            except Exception as e:
+                logger.warning(f"Failed to resolve DocumentDependency natural key {natural_key}: {e}")
         return None
     
     def _resolve_pdf_cert_natural_key(self, natural_key: List) -> Optional[Any]:
@@ -1138,7 +1205,9 @@ class EnhancedRestoreProcessor:
                 return None
             
         except Exception as e:
-            logger.debug(f"Failed to create {Model._meta.model_name}: {str(e)}")
+            logger.error(f"❌ Failed to create {Model._meta.model_name}: {str(e)}")
+            import traceback
+            logger.error(traceback.format_exc())
             return None
     
     def _prepare_fields_for_creation(self, Model, fields: Dict) -> Dict:
@@ -1187,20 +1256,64 @@ class EnhancedRestoreProcessor:
     def _safe_object_creation(self, Model, clean_fields: Dict) -> Optional[Any]:
         """
         Safely create object with progressive field inclusion to handle missing requirements.
+        Uses transaction savepoints to isolate failures and prevent transaction poisoning.
+        Preserves original timestamps by temporarily disabling auto_now/auto_now_add fields.
         """
+        from django.db import transaction
+        
+        # Preserve auto_now fields by temporarily disabling them
+        auto_now_fields = []
+        auto_now_add_fields = []
+        
+        for field in Model._meta.fields:
+            if hasattr(field, 'auto_now') and field.auto_now:
+                auto_now_fields.append(field)
+            if hasattr(field, 'auto_now_add') and field.auto_now_add:
+                auto_now_add_fields.append(field)
+        
         try:
-            # First attempt: try with all fields
-            return Model.objects.create(**clean_fields)
+            # Temporarily disable auto_now/auto_now_add to preserve historical timestamps
+            for field in auto_now_fields:
+                field.auto_now = False
+            for field in auto_now_add_fields:
+                field.auto_now_add = False
+            
+            try:
+                # Use savepoint to isolate this creation - prevents transaction poisoning
+                with transaction.atomic():
+                    # First attempt: try with all fields
+                    return Model.objects.create(**clean_fields)
+            finally:
+                # Always re-enable auto_now/auto_now_add
+                for field in auto_now_fields:
+                    field.auto_now = True
+                for field in auto_now_add_fields:
+                    field.auto_now_add = True
             
         except Exception as e:
             logger.debug(f"Full creation failed for {Model._meta.model_name}, trying progressive approach: {str(e)}")
             
-            # Second attempt: try with only essential fields
+            # Second attempt: try with only essential fields in a new savepoint
             essential_fields = self._get_minimal_required_fields(Model, clean_fields)
             
             if essential_fields:
                 try:
-                    obj = Model.objects.create(**essential_fields)
+                    # Disable auto_now fields again for the second attempt
+                    for field in auto_now_fields:
+                        field.auto_now = False
+                    for field in auto_now_add_fields:
+                        field.auto_now_add = False
+                    
+                    try:
+                        # Use another savepoint for the second attempt
+                        with transaction.atomic():
+                            obj = Model.objects.create(**essential_fields)
+                    finally:
+                        # Re-enable auto_now fields
+                        for field in auto_now_fields:
+                            field.auto_now = True
+                        for field in auto_now_add_fields:
+                            field.auto_now_add = True
                     
                     # Update with remaining fields after creation
                     remaining_fields = {k: v for k, v in clean_fields.items() if k not in essential_fields}
