@@ -170,9 +170,10 @@ class BackupJobViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = BackupJob.objects.all().order_by('-created_at')
     serializer_class = BackupJobSerializer
     permission_classes = [IsAuthenticated, IsAdminUser]
+    lookup_field = 'uuid'
     
     @action(detail=True, methods=['get'])
-    def download(self, request, pk=None):
+    def download(self, request, uuid=None):
         """Download backup file."""
         job = self.get_object()
         
@@ -203,7 +204,7 @@ class BackupJobViewSet(viewsets.ReadOnlyModelViewSet):
         )
     
     @action(detail=True, methods=['post'])
-    def verify(self, request, pk=None):
+    def verify(self, request, uuid=None):
         """Verify backup integrity."""
         job = self.get_object()
         
@@ -259,7 +260,7 @@ class BackupJobViewSet(viewsets.ReadOnlyModelViewSet):
         return result
     
     @action(detail=True, methods=['post'])
-    def restore(self, request, pk=None):
+    def restore(self, request, uuid=None):
         """Restore from a specific backup job (real restore, admin-only)."""
         if not request.user.is_staff:
             return Response({'error': 'Staff privileges required for restore operations'}, status=status.HTTP_403_FORBIDDEN)

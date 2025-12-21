@@ -200,6 +200,105 @@ export class BackupApiService {
       throw error;
     }
   }
+
+  /**
+   * Restore from existing backup job
+   */
+  async restoreFromBackupJob(jobId: string, options: {
+    restore_type?: string;
+    target_location?: string;
+  } = {}): Promise<any> {
+    try {
+      const response = await AuthHelpers.authenticatedFetch(
+        `${this.baseURL}/backup/jobs/${jobId}/restore/`,
+        {
+          method: 'POST',
+          body: JSON.stringify({
+            restore_type: options.restore_type || 'FULL_RESTORE',
+            target_location: options.target_location || '/app'
+          }),
+        }
+      );
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => null);
+        throw new Error(errorData?.message || `Restore failed: ${response.statusText}`);
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error('Failed to restore from backup job:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Verify backup integrity
+   */
+  async verifyBackup(jobId: string): Promise<any> {
+    try {
+      const response = await AuthHelpers.authenticatedFetch(
+        `${this.baseURL}/backup/jobs/${jobId}/verify/`,
+        {
+          method: 'POST',
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error(`Verification failed: ${response.statusText}`);
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error('Failed to verify backup:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get restore jobs
+   */
+  async getRestoreJobs(): Promise<any[]> {
+    try {
+      const response = await AuthHelpers.authenticatedFetch(
+        `${this.baseURL}/backup/restores/`
+      );
+
+      if (!response.ok) {
+        throw new Error(`Failed to fetch restore jobs: ${response.statusText}`);
+      }
+
+      const data = await response.json();
+      return data.results || data;
+    } catch (error) {
+      console.error('Failed to fetch restore jobs:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Run backup configuration now
+   */
+  async runBackupNow(configUuid: string): Promise<any> {
+    try {
+      const response = await AuthHelpers.authenticatedFetch(
+        `${this.baseURL}/backup/configurations/${configUuid}/run-now/`,
+        {
+          method: 'POST',
+        }
+      );
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => null);
+        throw new Error(errorData?.message || `Backup execution failed: ${response.statusText}`);
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error('Failed to run backup now:', error);
+      throw error;
+    }
+  }
 }
 
 // Export singleton instance
