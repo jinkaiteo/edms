@@ -174,6 +174,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
         roles: ['admin'],
         children: [
           { name: 'User Management', href: '/admin?tab=users', icon: UserGroupIcon },
+          { name: 'Backup Management', href: '/admin?tab=backup', icon: ServerIcon },
           { name: 'System Settings', href: '/admin?tab=settings', icon: Cog6ToothIcon },
           { name: 'Scheduler Dashboard', href: '/admin?tab=scheduler', icon: ComputerDesktopIcon },
           { name: 'Audit Trail', href: '/admin?tab=audit', icon: ShieldCheckIcon },
