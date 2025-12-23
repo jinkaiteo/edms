@@ -23,10 +23,12 @@ import {
   ChevronDownIcon,
   ChevronRightIcon,
   ComputerDesktopIcon,
-  ServerIcon
+  ServerIcon,
+  ChevronLeftIcon,
+  ChevronDoubleLeftIcon,
+  ChevronDoubleRightIcon
 } from '@heroicons/react/24/outline';
 import { useAuth } from '../../contexts/AuthContext.tsx';
-import { ApiStatus } from '../../types/api';
 import { apiService } from '../../services/api.ts';
 import ChangePasswordModal from '../auth/ChangePasswordModal.tsx';
 // NotificationBell removed - counter moved to navigation item
@@ -50,33 +52,10 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
   const location = useLocation();
   const navigate = useNavigate();
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [apiStatus, setApiStatus] = useState<ApiStatus | null>(null);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [showChangePassword, setShowChangePassword] = useState(false);
   const [showProfileDropdown, setShowProfileDropdown] = useState(false);
   const [expandedMenus, setExpandedMenus] = useState<Record<string, boolean>>({});
-
-  // Check API status on mount - temporarily disabled
-  useEffect(() => {
-    const checkStatus = async () => {
-      try {
-        // Temporarily disable API status check to avoid 404 errors
-        // const status = await apiService.getApiStatus();
-        // setApiStatus(status);
-        
-        // Set a default healthy status for now
-        setApiStatus({ status: 'healthy', timestamp: Date.now() });
-      } catch (error) {
-        console.error('Failed to get API status:', error);
-      }
-    };
-    
-    if (authenticated) {
-      checkStatus();
-      // Check status every 5 minutes
-      const interval = setInterval(checkStatus, 5 * 60 * 1000);
-      return () => clearInterval(interval);
-    }
-  }, [authenticated]);
 
   // Document count state and refresh functionality
   const [documentCount, setDocumentCount] = useState<number>(0);
@@ -399,17 +378,37 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
       </div>
 
       {/* Static sidebar for desktop */}
-      <div className="hidden md:flex md:w-64 md:flex-col md:fixed md:inset-y-0">
+      <div className={`hidden md:flex md:flex-col md:fixed md:inset-y-0 transition-all duration-300 ${
+        sidebarCollapsed ? 'md:w-16' : 'md:w-64'
+      }`}>
         <div className="flex flex-col flex-grow border-r border-gray-200 pt-5 bg-white overflow-y-auto">
-          <div className="flex items-center flex-shrink-0 px-4">
-            <h1 className="text-xl font-bold text-gray-900">EDMS</h1>
-            {apiStatus && (
-              <div className={`ml-auto w-3 h-3 rounded-full ${
-                apiStatus.status === 'healthy' ? 'bg-green-400' : 
-                apiStatus.status === 'degraded' ? 'bg-yellow-400' : 'bg-red-400'
-              }`} title={`API Status: ${apiStatus.status}`} />
+          <div className="flex items-center flex-shrink-0 px-4 justify-between">
+            {!sidebarCollapsed && (
+              <>
+                <h1 className="text-xl font-bold text-gray-900">EDMS</h1>
+                <button
+                  onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
+                  className="p-1 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-md transition-colors"
+                  title="Collapse sidebar"
+                >
+                  <ChevronDoubleLeftIcon className="h-5 w-5" />
+                </button>
+              </>
+            )}
+            {sidebarCollapsed && (
+              <div className="w-full flex items-center justify-between">
+                <h1 className="text-xl font-bold text-gray-900">E</h1>
+                <button
+                  onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
+                  className="p-1 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-md transition-colors"
+                  title="Expand sidebar"
+                >
+                  <ChevronDoubleRightIcon className="h-5 w-5" />
+                </button>
+              </div>
             )}
           </div>
+          
           <div className="mt-5 flex-grow flex flex-col">
             <nav className="flex-1 px-2 pb-4 space-y-1">
               {navigation.map((item) => (
@@ -423,23 +422,29 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                           item.current
                             ? 'bg-gray-100 text-gray-900'
                             : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
-                        } group w-full flex items-center px-2 py-2 text-sm font-medium rounded-md`}
+                        } group w-full flex items-center ${sidebarCollapsed ? 'justify-center' : 'px-2'} py-2 text-sm font-medium rounded-md relative`}
+                        title={sidebarCollapsed ? item.name : ''}
                       >
-                        <item.icon className="mr-3 flex-shrink-0 h-5 w-5" />
-                        <span className="flex-1 text-left">{item.name}</span>
-                        {item.badge && item.badge > 0 && (
+                        <item.icon className={`${sidebarCollapsed ? '' : 'mr-3'} flex-shrink-0 h-5 w-5`} />
+                        {!sidebarCollapsed && <span className="flex-1 text-left">{item.name}</span>}
+                        {!sidebarCollapsed && item.badge && item.badge > 0 && (
                           <span className="mr-2 inline-flex items-center justify-center bg-red-100 text-red-800 text-xs font-medium px-2.5 py-0.5 rounded-full min-w-[20px]">
                             {item.badge}
                           </span>
                         )}
-                        {isSubmenuExpanded(item.name) ? (
+                        {sidebarCollapsed && item.badge && item.badge > 0 && (
+                          <span className="absolute -top-1 -right-1 inline-flex items-center justify-center bg-red-500 text-white text-xs font-bold rounded-full w-5 h-5">
+                            {item.badge}
+                          </span>
+                        )}
+                        {!sidebarCollapsed && (isSubmenuExpanded(item.name) ? (
                           <ChevronDownIcon className="ml-auto h-4 w-4" />
                         ) : (
                           <ChevronRightIcon className="ml-auto h-4 w-4" />
-                        )}
+                        ))}
                       </button>
                       
-                      {isSubmenuExpanded(item.name) && (
+                      {!sidebarCollapsed && isSubmenuExpanded(item.name) && (
                         <div className="mt-1 space-y-1">
                           {item.children?.map((child) => {
                             // Handle Scheduler Dashboard differently (external link)
@@ -481,12 +486,18 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                         item.current
                           ? 'bg-gray-100 text-gray-900'
                           : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
-                      } group flex items-center px-2 py-2 text-sm font-medium rounded-md`}
+                      } group flex items-center ${sidebarCollapsed ? 'justify-center' : 'px-2'} py-2 text-sm font-medium rounded-md relative`}
+                      title={sidebarCollapsed ? item.name : ''}
                     >
-                      <item.icon className="mr-3 flex-shrink-0 h-5 w-5" />
-                      <span className="flex-1">{item.name}</span>
-                      {item.badge && item.badge > 0 && (
+                      <item.icon className={`${sidebarCollapsed ? '' : 'mr-3'} flex-shrink-0 h-5 w-5`} />
+                      {!sidebarCollapsed && <span className="flex-1">{item.name}</span>}
+                      {!sidebarCollapsed && item.badge && item.badge > 0 && (
                         <span className="ml-2 inline-flex items-center justify-center bg-red-100 text-red-800 text-xs font-medium px-2.5 py-0.5 rounded-full min-w-[20px]">
+                          {item.badge}
+                        </span>
+                      )}
+                      {sidebarCollapsed && item.badge && item.badge > 0 && (
+                        <span className="absolute -top-1 -right-1 inline-flex items-center justify-center bg-red-500 text-white text-xs font-bold rounded-full w-5 h-5">
                           {item.badge}
                         </span>
                       )}
@@ -500,7 +511,9 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
       </div>
 
       {/* Main content */}
-      <div className="md:pl-64 flex flex-col flex-1">
+      <div className={`flex flex-col flex-1 transition-all duration-300 ${
+        sidebarCollapsed ? 'md:pl-16' : 'md:pl-64'
+      }`}>
         {/* Top header */}
         <div className="sticky top-0 z-10 flex-shrink-0 flex h-16 bg-white shadow">
           <button

@@ -119,10 +119,12 @@ const DocumentManagement: React.FC<DocumentManagementProps> = ({
     };
   }, [selectedDocument, handleDocumentRefresh]);
 
-  // Clear selected document when filter type changes (Document Library, My Tasks, Obsolete Documents)
+  // Clear selected document and search filters when filter type changes (Document Library, My Tasks, Obsolete Documents)
   useEffect(() => {
-    console.log('🔄 DocumentManagement: Filter changed to:', filterType, 'clearing selected document');
+    console.log('🔄 DocumentManagement: Filter changed to:', filterType, 'clearing selected document and filters');
     setSelectedDocument(null);
+    setSearchFilters({}); // Clear search filters when changing pages
+    setSearchQuery(''); // Clear search query as well
   }, [filterType]);
 
   // Clear selected document when navigating away from this page (to Administration)
@@ -215,6 +217,7 @@ const DocumentManagement: React.FC<DocumentManagementProps> = ({
               onSearch={handleSearch}
               onFilterChange={handleFilterChange}
               documentTypes={documentTypes}
+              filterContext={filterType === 'pending' ? 'tasks' : filterType === 'obsolete' ? 'obsolete' : 'library'}
             />
             <DocumentList
               onDocumentSelect={handleDocumentSelect}
@@ -247,6 +250,7 @@ const DocumentManagement: React.FC<DocumentManagementProps> = ({
                 onSearch={handleSearch}
                 onFilterChange={handleFilterChange}
                 documentTypes={documentTypes}
+                filterContext={filterType === 'pending' ? 'tasks' : filterType === 'obsolete' ? 'obsolete' : 'library'}
               />
               <DocumentList
                 onDocumentSelect={handleDocumentSelect}

@@ -6,16 +6,27 @@ interface DocumentSearchProps {
   onFilterChange?: (filters: SearchFilters) => void;
   documentTypes?: DocumentType[];
   className?: string;
+  filterContext?: 'library' | 'tasks' | 'obsolete'; // Add context for smart quick filters
 }
 
 const DocumentSearch: React.FC<DocumentSearchProps> = ({
   onSearch,
   onFilterChange,
   documentTypes = [],
-  className = ''
+  className = '',
+  filterContext = 'library'
 }) => {
   const [query, setQuery] = useState('');
   const [showFilters, setShowFilters] = useState(false);
+  const [expandedSections, setExpandedSections] = useState<{
+    textSearch: boolean;
+    categories: boolean;
+    dates: boolean;
+  }>({
+    textSearch: false,
+    categories: true, // Most commonly used, start expanded
+    dates: false
+  });
   const [filters, setFilters] = useState<SearchFilters>({
     document_type: [],
     status: [],
@@ -36,14 +47,14 @@ const DocumentSearch: React.FC<DocumentSearchProps> = ({
   
   const searchInputRef = useRef<HTMLInputElement>(null);
 
-  // Mock document types if none provided
+  // Document types matching actual database values
   const defaultDocumentTypes: DocumentType[] = [
-    { id: 1, name: 'Policy (POL)', description: 'Policy documents', prefix: 'POL', is_active: true, workflow_required: true, retention_period: null, template: null },
-    { id: 2, name: 'Manual (MAN)', description: 'Manuals', prefix: 'MAN', is_active: true, workflow_required: false, retention_period: null, template: null },
-    { id: 3, name: 'Procedures (PROC)', description: 'Procedures', prefix: 'PROC', is_active: true, workflow_required: true, retention_period: null, template: null },
-    { id: 4, name: 'Work Instructions (SOP)', description: 'Standard Operating Procedures', prefix: 'SOP', is_active: true, workflow_required: true, retention_period: null, template: null },
-    { id: 5, name: 'Forms and Templates (FNT)', description: 'Forms and templates', prefix: 'FNT', is_active: true, workflow_required: false, retention_period: null, template: null },
-    { id: 6, name: 'Records (REC)', description: 'Records', prefix: 'REC', is_active: true, workflow_required: false, retention_period: null, template: null }
+    { id: 4, name: 'Policy', description: 'Policy documents', prefix: 'POL', is_active: true, workflow_required: true, retention_period: null, template: null },
+    { id: 5, name: 'Manual', description: 'Manuals', prefix: 'MAN', is_active: true, workflow_required: false, retention_period: null, template: null },
+    { id: 9, name: 'Procedures', description: 'Procedures', prefix: 'PROC', is_active: true, workflow_required: true, retention_period: null, template: null },
+    { id: 1, name: 'Work Instructions', description: 'Standard Operating Procedures / Work Instructions', prefix: 'SOP', is_active: true, workflow_required: true, retention_period: null, template: null },
+    { id: 6, name: 'Forms and Templates', description: 'Forms and templates', prefix: 'FNT', is_active: true, workflow_required: false, retention_period: null, template: null },
+    { id: 10, name: 'Record', description: 'Records', prefix: 'REC', is_active: true, workflow_required: false, retention_period: null, template: null }
   ];
 
   const availableDocumentTypes = documentTypes.length > 0 ? documentTypes : defaultDocumentTypes;
@@ -74,8 +85,13 @@ const DocumentSearch: React.FC<DocumentSearchProps> = ({
     }
   }, []);
 
+  // Debounce filter changes to avoid excessive API calls
   useEffect(() => {
-    onFilterChange?.(filters);
+    const timeoutId = setTimeout(() => {
+      onFilterChange?.(filters);
+    }, 500); // Wait 500ms after last change before triggering
+
+    return () => clearTimeout(timeoutId);
   }, [filters, onFilterChange]);
 
   const handleSearch = (searchQuery?: string) => {
@@ -143,6 +159,45 @@ const DocumentSearch: React.FC<DocumentSearchProps> = ({
       }
     });
     return count;
+  };
+
+  const toggleSection = (section: 'textSearch' | 'categories' | 'dates') => {
+    setExpandedSections(prev => ({
+      ...prev,
+      [section]: !prev[section]
+    }));
+  };
+
+  // Context-aware quick filters - using actual DB values
+  const getQuickFilters = () => {
+    switch (filterContext) {
+      case 'library':
+        return [
+          { label: 'Effective Documents', onClick: () => updateFilter('status', ['EFFECTIVE']), color: 'green' },
+          { label: 'Drafts', onClick: () => updateFilter('status', ['DRAFT']), color: 'gray' },
+          { label: 'Pending Actions', onClick: () => updateFilter('status', ['PENDING_REVIEW', 'PENDING_APPROVAL']), color: 'yellow' },
+          { label: 'Pending Effective', onClick: () => updateFilter('status', ['APPROVED_PENDING_EFFECTIVE']), color: 'blue' },
+          { label: 'Policies Only', onClick: () => updateFilter('document_type', ['Policy']), color: 'purple' },
+          { label: 'SOPs Only', onClick: () => updateFilter('document_type', ['Work Instructions']), color: 'indigo' },
+        ];
+      case 'tasks':
+        return [
+          { label: 'Policies Only', onClick: () => updateFilter('document_type', ['Policy']), color: 'purple' },
+          { label: 'SOPs Only', onClick: () => updateFilter('document_type', ['Work Instructions']), color: 'indigo' },
+          { label: 'Procedures Only', onClick: () => updateFilter('document_type', ['Procedures']), color: 'blue' },
+          { label: 'Forms Only', onClick: () => updateFilter('document_type', ['Forms and Templates']), color: 'green' },
+        ];
+      case 'obsolete':
+        return [
+          { label: 'Superseded', onClick: () => updateFilter('status', ['SUPERSEDED']), color: 'orange' },
+          { label: 'Terminated', onClick: () => updateFilter('status', ['TERMINATED']), color: 'red' },
+          { label: 'Scheduled for Obsolescence', onClick: () => updateFilter('status', ['SCHEDULED_FOR_OBSOLESCENCE']), color: 'yellow' },
+          { label: 'Policies Only', onClick: () => updateFilter('document_type', ['Policy']), color: 'purple' },
+          { label: 'SOPs Only', onClick: () => updateFilter('document_type', ['Work Instructions']), color: 'indigo' },
+        ];
+      default:
+        return [];
+    }
   };
 
   return (
@@ -231,194 +286,214 @@ const DocumentSearch: React.FC<DocumentSearchProps> = ({
           )}
         </div>
 
-        {/* Advanced Filters */}
+        {/* Advanced Filters - Collapsible Sections */}
         {showFilters && (
-          <div className="mt-6 p-4 bg-gray-50 rounded-lg space-y-4">
-            <h3 className="text-sm font-medium text-gray-900">Advanced Filters</h3>
+          <div className="mt-4 p-4 bg-gray-50 rounded-lg space-y-3">
             
-            {/* Text-based Filters Row - More space for search inputs */}
-            <div className="space-y-3">
-              <h4 className="text-xs font-medium text-gray-600 uppercase tracking-wider">Text Search Filters</h4>
-              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-3">
-                {/* Title Filter */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Title Contains
-                  </label>
-                  <input
-                    type="text"
-                    value={filters.title || ''}
-                    onChange={(e) => updateFilter('title', e.target.value)}
-                    placeholder="Search in document title..."
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-blue-500 focus:border-blue-500"
-                  />
+            {/* Text Search Section - Collapsible */}
+            <div className="border border-gray-200 rounded-lg bg-white">
+              <button
+                onClick={() => toggleSection('textSearch')}
+                className="w-full flex items-center justify-between p-3 hover:bg-gray-50 transition-colors"
+              >
+                <div className="flex items-center space-x-2">
+                  <span className="text-sm font-medium text-gray-700">📝 Text Search</span>
+                  <span className="text-xs text-gray-500">(Title, Description, Doc #, Keywords)</span>
                 </div>
-
-                {/* Description Filter */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Description Contains
-                  </label>
-                  <input
-                    type="text"
-                    value={filters.description || ''}
-                    onChange={(e) => updateFilter('description', e.target.value)}
-                    placeholder="Search in description..."
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-blue-500 focus:border-blue-500"
-                  />
-                </div>
-
-                {/* Document Number Filter */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Document Number Contains
-                  </label>
-                  <input
-                    type="text"
-                    value={filters.document_number || ''}
-                    onChange={(e) => updateFilter('document_number', e.target.value)}
-                    placeholder="e.g., SOP, PROC, FORM..."
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-blue-500 focus:border-blue-500"
-                  />
-                </div>
-
-                {/* Keywords Filter */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Keywords
-                  </label>
-                  <input
-                    type="text"
-                    value={filters.keywords || ''}
-                    onChange={(e) => updateFilter('keywords', e.target.value)}
-                    placeholder="Search keywords..."
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-blue-500 focus:border-blue-500"
-                  />
-                </div>
-              </div>
-            </div>
-
-            {/* Selection-based Filters Row */}
-            <div className="space-y-3">
-              <h4 className="text-xs font-medium text-gray-600 uppercase tracking-wider">Category & Status Filters</h4>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                {/* Document Type Filter */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Document Type
-                </label>
-                <div className="space-y-2">
-                  {availableDocumentTypes.map(type => (
-                    <label key={type.id} className="flex items-center">
-                      <input
-                        type="checkbox"
-                        checked={(filters.document_type || []).includes(type.name)}
-                        onChange={() => toggleArrayFilter('document_type', type.name)}
-                        className="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
-                      />
-                      <span className="ml-2 text-sm text-gray-700">{type.name}</span>
-                    </label>
-                  ))}
-                </div>
-              </div>
-
-              {/* Status Filter */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Status
-                </label>
-                <div className="space-y-2 max-h-32 overflow-y-auto">
-                  {statusOptions.map(status => (
-                    <label key={status.value} className="flex items-center">
-                      <input
-                        type="checkbox"
-                        checked={(filters.status || []).includes(status.value)}
-                        onChange={() => toggleArrayFilter('status', status.value)}
-                        className="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
-                      />
-                      <span className="ml-2 text-sm text-gray-700">{status.label}</span>
-                    </label>
-                  ))}
-                </div>
-              </div>
-
-              {/* Text-based filters moved to top row for better spacing */}
-              </div>
-            </div>
-
-            {/* Date Range Filter Row */}
-            <div className="space-y-3">
-              <h4 className="text-xs font-medium text-gray-600 uppercase tracking-wider">Date Filters</h4>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Date Range
-                  </label>
-                  <div className="space-y-2">
+                <svg
+                  className={`w-5 h-5 text-gray-500 transition-transform ${expandedSections.textSearch ? 'transform rotate-180' : ''}`}
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                </svg>
+              </button>
+              
+              {expandedSections.textSearch && (
+                <div className="p-4 pt-0 border-t border-gray-200">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                     <div>
-                      <label className="block text-xs text-gray-500 mb-1">From</label>
+                      <label className="block text-xs font-medium text-gray-600 mb-1">Title Contains</label>
                       <input
-                        type="date"
-                        value={filters.created_after || ''}
-                        onChange={(e) => updateFilter('created_after', e.target.value)}
-                        className="w-full px-3 py-1 border border-gray-300 rounded-md text-sm focus:ring-blue-500 focus:border-blue-500"
+                        type="text"
+                        value={filters.title || ''}
+                        onChange={(e) => updateFilter('title', e.target.value)}
+                        placeholder="Search in title..."
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-blue-500 focus:border-blue-500"
                       />
                     </div>
                     <div>
-                      <label className="block text-xs text-gray-500 mb-1">To</label>
+                      <label className="block text-xs font-medium text-gray-600 mb-1">Description Contains</label>
                       <input
-                        type="date"
-                        value={filters.created_before || ''}
-                        onChange={(e) => updateFilter('created_before', e.target.value)}
-                        className="w-full px-3 py-1 border border-gray-300 rounded-md text-sm focus:ring-blue-500 focus:border-blue-500"
+                        type="text"
+                        value={filters.description || ''}
+                        onChange={(e) => updateFilter('description', e.target.value)}
+                        placeholder="Search in description..."
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-blue-500 focus:border-blue-500"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-gray-600 mb-1">Document Number</label>
+                      <input
+                        type="text"
+                        value={filters.document_number || ''}
+                        onChange={(e) => updateFilter('document_number', e.target.value)}
+                        placeholder="e.g., SOP, PROC..."
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-blue-500 focus:border-blue-500"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-gray-600 mb-1">Keywords</label>
+                      <input
+                        type="text"
+                        value={filters.keywords || ''}
+                        onChange={(e) => updateFilter('keywords', e.target.value)}
+                        placeholder="Search keywords..."
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-blue-500 focus:border-blue-500"
                       />
                     </div>
                   </div>
                 </div>
-              </div>
+              )}
+            </div>
+
+            {/* Category & Status Section - Collapsible (Default Expanded) */}
+            <div className="border border-gray-200 rounded-lg bg-white">
+              <button
+                onClick={() => toggleSection('categories')}
+                className="w-full flex items-center justify-between p-3 hover:bg-gray-50 transition-colors"
+              >
+                <div className="flex items-center space-x-2">
+                  <span className="text-sm font-medium text-gray-700">🏷️ Categories & Status</span>
+                  <span className="text-xs text-gray-500">(Document Type, Status)</span>
+                </div>
+                <svg
+                  className={`w-5 h-5 text-gray-500 transition-transform ${expandedSections.categories ? 'transform rotate-180' : ''}`}
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                </svg>
+              </button>
+              
+              {expandedSections.categories && (
+                <div className="p-4 pt-0 border-t border-gray-200">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    {/* Document Type */}
+                    <div>
+                      <label className="block text-xs font-medium text-gray-600 mb-2">Document Type</label>
+                      <div className="space-y-2 max-h-48 overflow-y-auto pr-2">
+                        {availableDocumentTypes.map(type => (
+                          <label key={type.id} className="flex items-center cursor-pointer hover:bg-gray-50 p-1 rounded">
+                            <input
+                              type="checkbox"
+                              checked={(filters.document_type || []).includes(type.name)}
+                              onChange={() => toggleArrayFilter('document_type', type.name)}
+                              className="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                            />
+                            <span className="ml-2 text-sm text-gray-700">{type.name}</span>
+                          </label>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Status */}
+                    <div>
+                      <label className="block text-xs font-medium text-gray-600 mb-2">Status</label>
+                      <div className="space-y-2 max-h-48 overflow-y-auto pr-2">
+                        {statusOptions.map(status => (
+                          <label key={status.value} className="flex items-center cursor-pointer hover:bg-gray-50 p-1 rounded">
+                            <input
+                              type="checkbox"
+                              checked={(filters.status || []).includes(status.value)}
+                              onChange={() => toggleArrayFilter('status', status.value)}
+                              className="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                            />
+                            <span className="ml-2 text-sm text-gray-700">{status.label}</span>
+                          </label>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Date Range Section - Collapsible */}
+            <div className="border border-gray-200 rounded-lg bg-white">
+              <button
+                onClick={() => toggleSection('dates')}
+                className="w-full flex items-center justify-between p-3 hover:bg-gray-50 transition-colors"
+              >
+                <div className="flex items-center space-x-2">
+                  <span className="text-sm font-medium text-gray-700">📅 Date Range</span>
+                  <span className="text-xs text-gray-500">(Created From/To)</span>
+                </div>
+                <svg
+                  className={`w-5 h-5 text-gray-500 transition-transform ${expandedSections.dates ? 'transform rotate-180' : ''}`}
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                </svg>
+              </button>
+              
+              {expandedSections.dates && (
+                <div className="p-4 pt-0 border-t border-gray-200">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-xs font-medium text-gray-600 mb-1">From</label>
+                      <input
+                        type="date"
+                        value={filters.created_after || ''}
+                        onChange={(e) => updateFilter('created_after', e.target.value)}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-blue-500 focus:border-blue-500"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-gray-600 mb-1">To</label>
+                      <input
+                        type="date"
+                        value={filters.created_before || ''}
+                        onChange={(e) => updateFilter('created_before', e.target.value)}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-blue-500 focus:border-blue-500"
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         )}
 
-        {/* Quick Filters - Updated with current status values */}
+        {/* Context-Aware Quick Filters */}
         <div className="mt-4">
           <div className="flex flex-wrap gap-2">
-            <button
-              onClick={() => updateFilter('status', ['EFFECTIVE'])}
-              className="px-3 py-1 text-xs font-medium bg-green-100 text-green-800 rounded-full hover:bg-green-200"
-            >
-              Effective Documents
-            </button>
-            <button
-              onClick={() => updateFilter('status', ['DRAFT'])}
-              className="px-3 py-1 text-xs font-medium bg-gray-100 text-gray-800 rounded-full hover:bg-gray-200"
-            >
-              Drafts
-            </button>
-            <button
-              onClick={() => updateFilter('status', ['PENDING_REVIEW', 'PENDING_APPROVAL'])}
-              className="px-3 py-1 text-xs font-medium bg-yellow-100 text-yellow-800 rounded-full hover:bg-yellow-200"
-            >
-              Pending Actions
-            </button>
-            <button
-              onClick={() => updateFilter('status', ['APPROVED_PENDING_EFFECTIVE'])}
-              className="px-3 py-1 text-xs font-medium bg-blue-100 text-blue-800 rounded-full hover:bg-blue-200"
-            >
-              Pending Effective
-            </button>
-            <button
-              onClick={() => updateFilter('document_type', ['Policy'])}
-              className="px-3 py-1 text-xs font-medium bg-purple-100 text-purple-800 rounded-full hover:bg-purple-200"
-            >
-              Policies Only
-            </button>
-            <button
-              onClick={() => updateFilter('document_type', ['SOP'])}
-              className="px-3 py-1 text-xs font-medium bg-indigo-100 text-indigo-800 rounded-full hover:bg-indigo-200"
-            >
-              SOPs Only
-            </button>
+            {getQuickFilters().map((filter, index) => {
+              const colorMap: Record<string, string> = {
+                green: 'bg-green-100 text-green-800 hover:bg-green-200',
+                gray: 'bg-gray-100 text-gray-800 hover:bg-gray-200',
+                yellow: 'bg-yellow-100 text-yellow-800 hover:bg-yellow-200',
+                blue: 'bg-blue-100 text-blue-800 hover:bg-blue-200',
+                purple: 'bg-purple-100 text-purple-800 hover:bg-purple-200',
+                indigo: 'bg-indigo-100 text-indigo-800 hover:bg-indigo-200',
+                orange: 'bg-orange-100 text-orange-800 hover:bg-orange-200',
+                red: 'bg-red-100 text-red-800 hover:bg-red-200'
+              };
+              
+              return (
+                <button
+                  key={index}
+                  onClick={filter.onClick}
+                  className={`px-3 py-1 text-xs font-medium rounded-full ${colorMap[filter.color]}`}
+                >
+                  {filter.label}
+                </button>
+              );
+            })}
           </div>
         </div>
       </div>

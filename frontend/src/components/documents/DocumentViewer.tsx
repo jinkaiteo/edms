@@ -50,10 +50,12 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({
   onRefresh,
   className = ''
 }) => {
-  const [activeTab, setActiveTab] = useState<'details' | 'workflow' | 'signatures' | 'history'>('details');
+  // TODO: Electronic Signatures feature exists but not operational - hidden until tested and documented
+  const [activeTab, setActiveTab] = useState<'details' | 'workflow' | 'history'>('details');
   const [workflowStatus, setWorkflowStatus] = useState<WorkflowInstance | null>(null);
   const [signatures, setSignatures] = useState<ElectronicSignature[]>([]);
   const [completeDocument, setCompleteDocument] = useState<Document | null>(null);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [showUnifiedWorkflowInterface, setShowUnifiedWorkflowInterface] = useState(false);
   const [workflowMode, setWorkflowMode] = useState<'review' | 'approval'>('review');
   
@@ -933,7 +935,8 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({
       {/* Tabs */}
       <div className="border-b border-gray-200">
         <nav className="flex space-x-8 px-6" aria-label="Tabs">
-          {['details', 'workflow', 'signatures', 'history'].map((tab) => (
+          {/* 'signatures' tab hidden - TODO: Implement and test Electronic Signatures feature */}
+          {['details', 'workflow', 'history'].map((tab) => (
             <button
               key={tab}
               onClick={() => setActiveTab(tab as typeof activeTab)}

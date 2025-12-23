@@ -44,10 +44,9 @@ class DocumentFilter(django_filters.FilterSet):
     )
     
     # Exact match filters
-    status = django_filters.ChoiceFilter(
-        field_name='status',
-        choices=Document.DOCUMENT_STATUS_CHOICES,
-        help_text='Filter by document status'
+    status = django_filters.CharFilter(
+        method='filter_status',
+        help_text='Filter by document status (supports multiple)'
     )
     
     priority = django_filters.ChoiceFilter(
@@ -56,10 +55,9 @@ class DocumentFilter(django_filters.FilterSet):
         help_text='Filter by document priority'
     )
     
-    document_type = django_filters.ModelChoiceFilter(
-        field_name='document_type',
-        queryset=DocumentType.objects.filter(is_active=True),
-        help_text='Filter by document type'
+    document_type = django_filters.CharFilter(
+        method='filter_document_type',
+        help_text='Filter by document type name (supports multiple, comma-separated)'
     )
     
     document_source = django_filters.ModelChoiceFilter(
@@ -187,6 +185,42 @@ class DocumentFilter(django_filters.FilterSet):
         method='filter_pending_my_action',
         help_text='Filter documents pending action by current user'
     )
+    
+    def filter_document_type(self, queryset, name, value):
+        """
+        Custom filter method to handle document type filtering by name.
+        Supports multiple values from query params.
+        """
+        if not value:
+            return queryset
+        
+        # Get all values for this parameter from the request
+        # When frontend sends: ?document_type=Policy&document_type=Manual
+        # We need to get both values, not just the last one
+        type_names = self.request.GET.getlist('document_type')
+        
+        if not type_names:
+            return queryset
+        
+        # Filter by document type names
+        return queryset.filter(document_type__name__in=type_names)
+    
+    def filter_status(self, queryset, name, value):
+        """
+        Custom filter method to handle status filtering.
+        Supports multiple values from query params.
+        """
+        if not value:
+            return queryset
+        
+        # Get all status values from the request
+        statuses = self.request.GET.getlist('status')
+        
+        if not statuses:
+            return queryset
+        
+        # Filter by statuses
+        return queryset.filter(status__in=statuses)
     
     class Meta:
         model = Document
