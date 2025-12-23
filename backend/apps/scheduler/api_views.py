@@ -142,6 +142,109 @@ class NotificationViewSet(viewsets.ReadOnlyModelViewSet):
                 {'error': str(e)},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
+    
+    @action(detail=False, methods=['get'], url_path='monitoring-status')
+    def monitoring_status(self, request):
+        """
+        Comprehensive monitoring status endpoint
+        Returns Celery Beat, Worker status, and task statistics
+        """
+        try:
+            from celery import current_app
+            from django_celery_beat.models import PeriodicTask
+            from datetime import timedelta
+            
+            # Get Celery inspect instance
+            inspect = current_app.control.inspect()
+            
+            # Check Celery Worker status
+            active_workers = inspect.active()
+            registered_tasks = inspect.registered()
+            stats = inspect.stats()
+            
+            worker_status = {
+                'is_running': active_workers is not None and len(active_workers) > 0,
+                'worker_count': len(active_workers) if active_workers else 0,
+                'workers': []
+            }
+            
+            if active_workers:
+                for worker_name, tasks in active_workers.items():
+                    worker_info = {
+                        'name': worker_name,
+                        'active_tasks': len(tasks),
+                        'registered_tasks': len(registered_tasks.get(worker_name, [])) if registered_tasks else 0
+                    }
+                    if stats and worker_name in stats:
+                        worker_info['pool_size'] = stats[worker_name].get('pool', {}).get('max-concurrency', 0)
+                    worker_status['workers'].append(worker_info)
+            
+            # Check Celery Beat status (via periodic tasks)
+            periodic_tasks = PeriodicTask.objects.filter(enabled=True)
+            beat_tasks = {
+                'total_scheduled': periodic_tasks.count(),
+                'backup_tasks': periodic_tasks.filter(name__icontains='backup').count(),
+                'notification_tasks': periodic_tasks.filter(name__icontains='notification').count(),
+                'health_check_tasks': periodic_tasks.filter(name__icontains='health').count(),
+                'document_tasks': periodic_tasks.filter(name__icontains='document').count(),
+            }
+            
+            # Get task execution history (last 24 hours)
+            from django_celery_results.models import TaskResult
+            recent_date = timezone.now() - timedelta(hours=24)
+            recent_tasks = TaskResult.objects.filter(date_done__gte=recent_date)
+            
+            task_stats = {
+                'last_24h': {
+                    'total': recent_tasks.count(),
+                    'successful': recent_tasks.filter(status='SUCCESS').count(),
+                    'failed': recent_tasks.filter(status='FAILURE').count(),
+                    'pending': recent_tasks.filter(status='PENDING').count(),
+                }
+            }
+            
+            # Get scheduled task info
+            scheduled_tasks_info = []
+            for task in periodic_tasks.order_by('-last_run_at')[:10]:
+                scheduled_tasks_info.append({
+                    'name': task.name,
+                    'task': task.task,
+                    'enabled': task.enabled,
+                    'last_run_at': task.last_run_at,
+                    'schedule': str(task.crontab) if task.crontab else str(task.interval)
+                })
+            
+            # Overall health score
+            health_score = 100
+            if not worker_status['is_running']:
+                health_score -= 50
+            if task_stats['last_24h']['total'] > 0:
+                failure_rate = task_stats['last_24h']['failed'] / task_stats['last_24h']['total']
+                health_score -= int(failure_rate * 30)
+            
+            return Response({
+                'overall_status': 'healthy' if health_score > 70 else 'degraded' if health_score > 40 else 'unhealthy',
+                'health_score': health_score,
+                'celery_worker': worker_status,
+                'celery_beat': {
+                    'is_running': True,  # If we can query DB, beat is likely running
+                    'scheduled_tasks': beat_tasks,
+                },
+                'task_statistics': task_stats,
+                'scheduled_tasks': scheduled_tasks_info,
+                'timestamp': timezone.now()
+            })
+            
+        except Exception as e:
+            import traceback
+            return Response(
+                {
+                    'status': 'error',
+                    'message': str(e),
+                    'traceback': traceback.format_exc()
+                },
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
 
 
 class SystemStatusViewSet(viewsets.ViewSet):

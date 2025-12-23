@@ -63,7 +63,7 @@ const SchedulerStatusWidget: React.FC<SchedulerStatusWidgetProps> = ({
   const fetchStatus = async () => {
     try {
       console.log('🔍 Fetching scheduler status...');
-      const response = await apiService.get('/scheduler/monitoring/status/');
+      const response = await apiService.get('/api/v1/scheduler/monitoring/status/');
       console.log('📦 Full response:', response);
       console.log('📊 Response data:', response.data);
       console.log('🔍 Response keys:', Object.keys(response || {}));
