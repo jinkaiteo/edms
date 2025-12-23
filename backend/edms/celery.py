@@ -21,6 +21,13 @@ app.config_from_object('django.conf:settings', namespace='CELERY')
 # Load task modules from all registered Django apps
 app.autodiscover_tasks()
 
+# Explicitly import backup tasks to ensure they're registered
+try:
+    import apps.backup.tasks
+except ImportError as e:
+    import logging
+    logging.error(f"Failed to import backup tasks: {e}")
+
 # S3 Scheduler Module - Celery Beat Schedule for automated tasks
 app.conf.beat_schedule = {
     # S3 Document Effective Date Processing - runs every hour
