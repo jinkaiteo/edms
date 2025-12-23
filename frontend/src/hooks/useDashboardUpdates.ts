@@ -1,30 +1,43 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
+import { DashboardStats } from '../types/api';
 
-interface DashboardStats {
-  totalDocuments: number;
-  pendingReviews: number;
-  pendingApprovals: number;
-  effectiveDocuments: number;
+interface UseDashboardUpdatesOptions {
+  enabled?: boolean;
+  autoRefreshInterval?: number;
+  onError?: (error: Error) => void;
+  onUpdate?: (stats: DashboardStats) => void;
 }
 
 /**
- * Simplified dashboard updates using HTTP polling
- * No WebSocket dependency - simple and reliable
+ * Dashboard updates hook using HTTP polling
+ * Supports admin dashboard with proper stats structure
  */
-export const useDashboardUpdates = () => {
-  const [stats, setStats] = useState<DashboardStats>({
-    totalDocuments: 0,
-    pendingReviews: 0,
-    pendingApprovals: 0,
-    effectiveDocuments: 0
-  });
-  const [loading, setLoading] = useState(false);
+export const useDashboardUpdates = (options: UseDashboardUpdatesOptions = {}) => {
+  const {
+    enabled = true,
+    autoRefreshInterval = 60000,
+    onError,
+    onUpdate
+  } = options;
 
-  const fetchDashboardStats = async () => {
+  const [dashboardStats, setDashboardStats] = useState<DashboardStats | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [isPaused, setIsPaused] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+
+  const fetchDashboardStats = useCallback(async () => {
+    if (!enabled || isPaused) return;
+
     try {
-      setLoading(true);
-      const token = localStorage.getItem('access_token');
-      if (!token) return;
+      setIsLoading(true);
+      setIsRefreshing(true);
+      setError(null);
+      
+      const token = localStorage.getItem('accessToken');
+      if (!token) {
+        throw new Error('No authentication token found');
+      }
 
       const response = await fetch('/api/v1/dashboard/stats/', {
         headers: {
@@ -33,27 +46,60 @@ export const useDashboardUpdates = () => {
         }
       });
 
-      if (response.ok) {
-        const data = await response.json();
-        setStats(data);
+      if (!response.ok) {
+        throw new Error(`Failed to fetch dashboard stats: ${response.statusText}`);
       }
-    } catch (error) {
-      console.error('Failed to fetch dashboard stats:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
 
-  // Poll for updates every 60 seconds
-  useEffect(() => {
+      const data = await response.json();
+      setDashboardStats(data);
+      
+      if (onUpdate) {
+        onUpdate(data);
+      }
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Unknown error';
+      console.error('Failed to fetch dashboard stats:', err);
+      setError(errorMessage);
+      
+      if (onError && err instanceof Error) {
+        onError(err);
+      }
+    } finally {
+      setIsLoading(false);
+      setIsRefreshing(false);
+    }
+  }, [enabled, isPaused, onError, onUpdate]);
+
+  const refreshNow = useCallback(() => {
     fetchDashboardStats();
-    const interval = setInterval(fetchDashboardStats, 60000);
-    return () => clearInterval(interval);
+  }, [fetchDashboardStats]);
+
+  const toggle = useCallback(() => {
+    setIsPaused(prev => !prev);
   }, []);
 
+  // Poll for updates
+  useEffect(() => {
+    if (!enabled) return;
+
+    // Initial fetch
+    fetchDashboardStats();
+    
+    // Set up polling interval
+    const interval = setInterval(fetchDashboardStats, autoRefreshInterval);
+    
+    return () => clearInterval(interval);
+  }, [enabled, autoRefreshInterval, fetchDashboardStats]);
+
   return {
-    stats,
-    loading,
-    refreshStats: fetchDashboardStats
+    dashboardStats,
+    isLoading,
+    error,
+    refreshNow,
+    autoRefreshConfig: {
+      isPaused,
+      isRefreshing,
+      toggle
+    }
   };
 };

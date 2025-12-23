@@ -321,3 +321,117 @@ These insights focus on patterns that prevent common development pitfalls and im
 - **Natural key integrity**: If backup data has natural keys (arrays), don't convert them to IDs before passing to a processor that expects natural keys - this corrupts the data
 - **Simple pass-through**: The best API design for complex operations is often the simplest - extract package, pass raw data to processor, return results
 - **Processor responsibility**: Let the processor handle ALL data transformation - that's its job, and it has the context to do it correctly
+
+## State Variable Cleanup Safety
+
+### React State Removal Pattern
+When removing unused React state variables during cleanup, a common mistake is removing the state declaration but forgetting setter calls throughout the component.
+
+**Problem Pattern** (repeated 3 times in one session):
+```typescript
+// Remove this:
+const [loading, setLoading] = useState(false);
+
+// But forget to remove ALL of these:
+setLoading(true);  // Line 85
+setLoading(false); // Line 177
+setLoading(false); // Line 434
+// ... 5 more calls scattered throughout
+```
+
+**Result**: Runtime error "setLoading is not defined" crashes the component
+
+**Solution Pattern**:
+1. Before removing state, grep for ALL references: `grep -n "setStateVariable" Component.tsx`
+2. Remove or refactor ALL setter calls first
+3. Then remove state declaration
+4. Verify no references remain
+
+**Safety Check**: `grep -c "setVariableName" file.tsx` should return 0 after cleanup
+
+## Frontend-Backend API Contract Verification
+
+### API Response Format Mismatches
+When backend API response format is updated, frontend components may still expect the old format, causing "data exists but doesn't display" issues.
+
+**Symptom**: Backend returns valid data, frontend shows "0 items" or empty state
+
+**Example from session**:
+- Backend returns: `{ isValid: true, identifiedPlaceholders: [...], totalPatternsFound: 6 }`
+- Frontend expects: `{ is_valid: true, placeholders_found: [...] }`
+- Result: Shows "0 patterns • 0 issues" despite 6 valid placeholders
+
+**Root Cause**: 
+- Backend API was enhanced with new field names (camelCase)
+- Frontend still mapped old field names (snake_case)
+- No TypeScript interface to catch mismatch
+
+**Prevention**:
+1. **Define shared TypeScript interfaces** for API responses
+2. **Verify frontend mapping** when changing backend response format
+3. **Test API integration** after backend changes, not just unit tests
+4. **Use consistent naming** (pick camelCase or snake_case, not mixed)
+
+**Quick Check**: After updating API response format, search frontend for old field names
+
+## Regex Pattern Exclusivity for Validators
+
+### Overlapping Pattern Detection
+When validating multiple formats (correct and incorrect), regex patterns can accidentally match each other, causing false positives.
+
+**Problem Example**:
+```python
+patterns = [
+    r'\{\{([A-Z_]+)\}\}',  # Standard {{PLACEHOLDER}}
+    r'\{([A-Z_]+)\}',       # Single braces {PLACEHOLDER}
+]
+```
+
+**Issue**: Pattern 2 matches the opening `{` in `{{PLACEHOLDER}}` from Pattern 1, flagging valid placeholders as errors
+
+**Result**: 6 valid placeholders + 18 false positive "errors"
+
+**Solution**: Use negative lookahead/lookbehind for mutual exclusivity
+```python
+patterns = [
+    r'\{\{([A-Z_]+)\}\}',              # Standard (check first)
+    r'(?<!\{)\{([A-Z_]+)\}(?!\})',     # Single braces (exclude if surrounded)
+]
+```
+
+**Pattern Order Matters**: Always check the "correct" format first, then exclude it from "incorrect" patterns
+
+**Verification**: Test with known valid input - should show 0 errors, not false positives
+
+## Deployment Method Selection
+
+### Hot Restart vs Full Rebuild Decision Tree
+Choose deployment method based on what changed:
+
+**Hot Restart (2 minutes, no downtime)**:
+- ✅ Python code changes only
+- ✅ JavaScript/TypeScript changes only
+- ✅ Configuration file changes (settings.py)
+- ❌ Dockerfile changes
+- ❌ requirements.txt changes
+- ❌ System package additions
+
+**Full Rebuild (5 minutes, 2-3 min downtime)**:
+- ✅ Dockerfile modifications
+- ✅ New system dependencies (LibreOffice, etc.)
+- ✅ New Python packages in requirements.txt
+- ✅ Major infrastructure changes
+- ✅ When troubleshooting mysterious issues
+
+**Command Reference**:
+```bash
+# Hot restart (fast)
+docker compose restart backend frontend
+
+# Full rebuild (thorough)
+docker compose down
+docker compose build backend frontend
+docker compose up -d
+```
+
+**Lesson from session**: Full rebuild chosen for code-only changes; hot restart would have been sufficient and 3 minutes faster

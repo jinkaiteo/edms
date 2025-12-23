@@ -1,5 +1,5 @@
 import React, { useState, useCallback, useEffect } from 'react';
-import { useLocation } from 'react-router-dom';
+import { useLocation, Link } from 'react-router-dom';
 import Layout from '../components/common/Layout.tsx';
 import UserManagement from '../components/users/UserManagement.tsx';
 import PlaceholderManagement from '../components/placeholders/PlaceholderManagement.tsx';
@@ -14,22 +14,10 @@ import { DashboardStats } from '../types/api.ts';
 
 const AdminDashboard: React.FC = () => {
   const location = useLocation();
-  const [activeSection, setActiveSection] = useState<'overview' | 'users' | 'placeholders' | 'settings' | 'audit' | 'tasks' | 'reports' | 'scheduler' | 'backup'>('overview');
   
-  // Handle URL parameters to set the active tab
-  useEffect(() => {
-    const searchParams = new URLSearchParams(location.search);
-    const tab = searchParams.get('tab');
-    
-    // Map tab parameter to valid sections
-    const validSections = ['overview', 'users', 'placeholders', 'settings', 'audit', 'tasks', 'reports', 'scheduler', 'backup'];
-    if (tab && validSections.includes(tab)) {
-      setActiveSection(tab as typeof activeSection);
-      console.log(`📂 AdminDashboard: Setting active tab to '${tab}' from URL parameter`);
-    } else {
-      setActiveSection('overview');
-    }
-  }, [location.search]);
+  // Get the active tab from URL parameter
+  const searchParams = new URLSearchParams(location.search);
+  const activeTab = searchParams.get('tab');
   
   // Clear any document selection when entering Administration page
   useEffect(() => {
@@ -55,70 +43,21 @@ const AdminDashboard: React.FC = () => {
     refreshNow,
     autoRefreshConfig
   } = useDashboardUpdates({
-    enabled: activeSection === 'overview', // Only load when overview is active
+    enabled: true, // Always load dashboard data
     autoRefreshInterval: 300000, // 5 minutes
     // HTTP polling used for all dashboard updates
     onError: handleDashboardError,
     onUpdate: handleDashboardUpdate
   });
 
-  const adminSections = [
-    {
-      key: 'overview' as const,
-      title: 'Overview',
-      description: 'System overview and quick stats',
-      icon: '📊',
-      color: 'bg-blue-500'
-    },
-    {
-      key: 'users' as const,
-      title: 'User Management',
-      description: 'Manage users, roles, and permissions',
-      icon: '👥',
-      color: 'bg-green-500'
-    },
-    {
-      key: 'placeholders' as const,
-      title: 'Placeholder Management',
-      description: 'Manage document placeholders',
-      icon: '🔧',
-      color: 'bg-orange-500'
-    },
-    {
-      key: 'settings' as const,
-      title: 'System Settings',
-      description: 'Configure system-wide settings',
-      icon: '⚙️',
-      color: 'bg-gray-500'
-    },
-    {
-      key: 'audit' as const,
-      title: 'Audit Trail',
-      description: 'View system audit logs',
-      icon: '📋',
-      color: 'bg-red-500'
-    },
-    {
-      key: 'reports' as const,
-      title: 'Reports',
-      description: 'Generate compliance reports',
-      icon: '📊',
-      color: 'bg-pink-500'
-    },
-    {
-      key: 'scheduler' as const,
-      title: 'Scheduler Dashboard',
-      description: 'Monitor automated tasks and system health',
-      icon: '🖥️',
-      color: 'bg-indigo-500'
-    },
-    {
-      key: 'backup' as const,
-      title: 'Backup & Recovery',
-      description: 'Manage system backups and disaster recovery',
-      icon: '💾',
-      color: 'bg-teal-500'
-    }
+  // Quick links to admin sections
+  const adminQuickLinks = [
+    { name: 'User Management', href: '/admin?tab=users', icon: '👥', description: 'Manage users, roles, and permissions' },
+    { name: 'Placeholder Management', href: '/admin?tab=placeholders', icon: '🔧', description: 'Manage document placeholders' },
+    { name: 'Backup Management', href: '/admin?tab=backup', icon: '💾', description: 'Manage system backups and disaster recovery' },
+    { name: 'Reports', href: '/admin?tab=reports', icon: '📊', description: 'Generate compliance reports' },
+    { name: 'Scheduler Dashboard', href: '/admin?tab=scheduler', icon: '🖥️', description: 'Monitor automated tasks' },
+    { name: 'Audit Trail', href: '/admin?tab=audit', icon: '📋', description: 'View system audit logs' },
   ];
 
 
@@ -279,28 +218,51 @@ const AdminDashboard: React.FC = () => {
         </div>
       </div>
 
-      {/* Admin Section Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {adminSections.filter(section => section.key !== 'overview').map((section) => (
-          <div
-            key={section.key}
-            onClick={() => setActiveSection(section.key)}
-            className="bg-white p-6 rounded-lg shadow-sm border border-gray-200 hover:shadow-md transition-shadow cursor-pointer"
-          >
-            <div className="flex items-center space-x-3 mb-3">
-              <div className={`w-10 h-10 ${section.color} rounded-lg flex items-center justify-center text-white text-xl`}>
-                {section.icon}
-              </div>
-              <h3 className="text-lg font-semibold text-gray-900">{section.title}</h3>
-            </div>
-            <p className="text-gray-600 text-sm">{section.description}</p>
-            <div className="mt-4">
-              <span className="text-blue-600 text-sm hover:text-blue-800">
-                Configure →
-              </span>
+      {/* System Status Dashboard */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
+        {/* Scheduler Status Widget */}
+        <div className="bg-white rounded-lg shadow-sm border border-gray-200">
+          <div className="p-4 border-b border-gray-200">
+            <h3 className="text-lg font-semibold text-gray-900 flex items-center">
+              <span className="mr-2">🖥️</span>
+              Scheduler & Backup Status
+            </h3>
+          </div>
+          <div className="p-4">
+            <SchedulerStatusWidget detailed={true} />
+          </div>
+        </div>
+
+        {/* Quick Actions */}
+        <div className="bg-white rounded-lg shadow-sm border border-gray-200">
+          <div className="p-4 border-b border-gray-200">
+            <h3 className="text-lg font-semibold text-gray-900 flex items-center">
+              <span className="mr-2">⚡</span>
+              Quick Actions
+            </h3>
+            <p className="text-sm text-gray-500 mt-1">Access admin tools from the sidebar navigation</p>
+          </div>
+          <div className="p-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {adminQuickLinks.map((link) => (
+                <Link
+                  key={link.name}
+                  to={link.href}
+                  className="flex items-center justify-between p-4 bg-gray-50 hover:bg-blue-50 rounded-lg transition-colors border border-gray-200 hover:border-blue-300"
+                >
+                  <div className="flex items-center">
+                    <span className="text-2xl mr-3">{link.icon}</span>
+                    <div className="text-left">
+                      <div className="font-medium text-gray-900">{link.name}</div>
+                      <div className="text-sm text-gray-500">{link.description}</div>
+                    </div>
+                  </div>
+                  <span className="text-gray-400">→</span>
+                </Link>
+              ))}
             </div>
           </div>
-        ))}
+        </div>
       </div>
 
       {/* Recent Activity */}
@@ -342,25 +304,25 @@ const AdminDashboard: React.FC = () => {
     );
   };
 
-  const renderActiveSection = () => {
-    switch (activeSection) {
-      case 'overview':
-        return renderOverview();
+  // Render the appropriate component based on the tab parameter
+  const renderContent = () => {
+    switch (activeTab) {
       case 'users':
         return <UserManagement />;
       case 'placeholders':
         return <PlaceholderManagement />;
-      case 'settings':
-        return <SystemSettings />;
-      case 'audit':
-        return <AuditTrailViewer />;
+      case 'backup':
+        return <BackupManagement />;
       case 'reports':
         return <Reports />;
       case 'scheduler':
         return <SchedulerStatusWidget showDetails={true} />;
-      case 'backup':
-        return <BackupManagement />;
+      case 'audit':
+        return <AuditTrailViewer />;
+      case 'settings':
+        return <SystemSettings />;
       default:
+        // No tab parameter = show overview dashboard
         return renderOverview();
     }
   };
@@ -368,10 +330,7 @@ const AdminDashboard: React.FC = () => {
   return (
     <Layout>
       <div className="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
-
-        {/* Active Section Content */}
-        {renderActiveSection()}
-
+        {renderContent()}
       </div>
     </Layout>
   );
