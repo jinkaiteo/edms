@@ -42,6 +42,13 @@ Port 3001  Port 8001
    - No port numbers in URLs
    - Professional appearance
 
+## ℹ️ Requirements
+
+- **HAProxy Version:** 2.0 or higher (2.4+ recommended)
+- **Operating System:** Ubuntu 20.04/22.04, Debian 10/11, RHEL 8+
+- **Memory:** Minimum 512MB RAM for HAProxy
+- **Ports Required:** 80 (HTTP), 443 (HTTPS optional), 8404 (stats)
+
 ---
 
 ## ⚙️ Configuration
@@ -105,9 +112,13 @@ defaults
     mode    http
     option  httplog
     option  dontlognull
-    timeout connect 5000
-    timeout client  50000
-    timeout server  50000
+    
+    # Timeout settings
+    timeout connect 5000    # 5 seconds to connect to backend
+    timeout client  300000  # 5 minutes for client (allows large uploads)
+    timeout server  300000  # 5 minutes for server (allows long processing)
+    
+    # Custom error pages
     errorfile 400 /etc/haproxy/errors/400.http
     errorfile 403 /etc/haproxy/errors/403.http
     errorfile 408 /etc/haproxy/errors/408.http
@@ -115,6 +126,10 @@ defaults
     errorfile 502 /etc/haproxy/errors/502.http
     errorfile 503 /etc/haproxy/errors/503.http
     errorfile 504 /etc/haproxy/errors/504.http
+    
+    # Compression for better performance
+    compression algo gzip
+    compression type text/html text/plain text/css text/javascript application/javascript application/json application/xml
 
 # ==============================================================================
 # STATISTICS PAGE (Optional - for monitoring)
@@ -229,14 +244,22 @@ docker compose ps | grep -E "PORT|edms_prod"
 sudo apt update
 sudo apt install haproxy -y
 
-# Backup original config
-sudo cp /etc/haproxy/haproxy.cfg /etc/haproxy/haproxy.cfg.backup
+# Verify HAProxy version (should be 2.0 or higher)
+haproxy -v
+# Expected: HAProxy version 2.x.x or higher
+
+# Create backup directory for configs
+sudo mkdir -p /etc/haproxy/backups
+
+# Backup original config with timestamp
+sudo cp /etc/haproxy/haproxy.cfg /etc/haproxy/backups/haproxy.cfg.original.$(date +%Y%m%d-%H%M%S)
 
 # Copy your config
 sudo cp haproxy.cfg /etc/haproxy/haproxy.cfg
 
-# Validate configuration
+# Validate configuration (IMPORTANT - catches syntax errors)
 sudo haproxy -c -f /etc/haproxy/haproxy.cfg
+# Expected: Configuration file is valid
 
 # Start HAProxy
 sudo systemctl restart haproxy
@@ -441,9 +464,70 @@ print(resolve('/health/'))
 "
 ```
 
+### Issue 5: Need to Update HAProxy Config Without Downtime
+
+```bash
+# Method 1: Graceful reload (zero downtime)
+# Edit configuration
+sudo nano /etc/haproxy/haproxy.cfg
+
+# Validate new configuration
+sudo haproxy -c -f /etc/haproxy/haproxy.cfg
+
+# Graceful reload - doesn't drop existing connections
+sudo systemctl reload haproxy
+
+# Method 2: For major changes requiring restart
+sudo systemctl restart haproxy
+
+# Check if reload was successful
+sudo systemctl status haproxy
+```
+
+### Issue 6: Large File Upload Timeouts
+
+```bash
+# If uploads >100MB are timing out, already configured with 5-minute timeouts
+# If you need longer, edit /etc/haproxy/haproxy.cfg:
+
+# In defaults section, increase timeouts:
+timeout client  600000  # 10 minutes
+timeout server  600000  # 10 minutes
+
+# Reload HAProxy
+sudo systemctl reload haproxy
+```
+
 ---
 
 ## 📈 Monitoring
+
+### Configure Log Rotation
+
+Prevent log files from growing too large:
+
+```bash
+# Create logrotate configuration
+sudo tee /etc/logrotate.d/haproxy << 'EOF'
+/var/log/haproxy.log {
+    daily
+    rotate 14
+    missingok
+    notifempty
+    compress
+    delaycompress
+    postrotate
+        /usr/bin/systemctl reload rsyslog > /dev/null 2>&1 || true
+    endscript
+}
+EOF
+
+# Test logrotate configuration
+sudo logrotate -d /etc/logrotate.d/haproxy
+
+# Force rotation (for testing)
+sudo logrotate -f /etc/logrotate.d/haproxy
+```
 
 ### HAProxy Logs
 
@@ -456,6 +540,9 @@ sudo tail -f /var/log/haproxy.log | grep -i error
 
 # Count requests per minute
 sudo tail -f /var/log/haproxy.log | pv -l -i 60 > /dev/null
+
+# View log file size
+ls -lh /var/log/haproxy.log
 ```
 
 ### Stats Page Metrics
@@ -473,16 +560,50 @@ Access: `http://192.168.1.100:8404`
 
 ## 🎯 Production Checklist
 
+### Pre-Deployment
+- [ ] HAProxy version 2.0+ verified
 - [ ] Docker containers running with configurable ports
 - [ ] `.env` file updated with correct ports and CORS
-- [ ] HAProxy installed and configured
+- [ ] Backup of original HAProxy config created
+
+### Installation
+- [ ] HAProxy installed
+- [ ] Configuration file validated (`haproxy -c`)
 - [ ] HAProxy service enabled and running
+- [ ] Log rotation configured
+
+### Configuration
 - [ ] Health checks passing (check stats page)
+- [ ] Timeouts set appropriately (5 min for uploads)
+- [ ] Compression enabled for text/html/css/js
 - [ ] Firewall configured (allow 80, block direct Docker ports)
 - [ ] HAProxy stats page secured with password
+
+### Testing
 - [ ] Tested access through HAProxy (not direct ports)
+- [ ] Backend health check working (`/health/`)
+- [ ] Frontend loading correctly
+- [ ] API calls routing properly
 - [ ] CORS working correctly (no console errors)
+- [ ] Large file upload tested (if applicable)
+
+### Security
+- [ ] Direct Docker ports blocked via firewall
+- [ ] Rate limiting configured
+- [ ] Stats page authentication enabled
 - [ ] SSL certificate ready (if using HTTPS)
+
+### Monitoring
+- [ ] Stats page accessible and monitored
+- [ ] Logs being written and rotated
+- [ ] Health checks monitored
+- [ ] Alert system configured (optional)
+
+### Documentation
+- [ ] Team trained on HAProxy basics
+- [ ] Troubleshooting guide accessible
+- [ ] Backup/restore procedure documented
+- [ ] Contact information for support
 
 ---
 
