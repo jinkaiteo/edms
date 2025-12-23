@@ -20,16 +20,20 @@ class SimpleNotificationService:
         Please log in to the EDMS to review this document.
         """
         
-        # Future: Uncomment when email is configured
-        # send_mail(
-        #     subject,
-        #     message,
-        #     settings.DEFAULT_FROM_EMAIL,
-        #     [user.email],
-        #     fail_silently=True
-        # )
-        
-        print(f"📧 Email notification prepared for {user.username}: {subject}")
+        # Send email notification
+        try:
+            send_mail(
+                subject,
+                message,
+                settings.DEFAULT_FROM_EMAIL,
+                [user.email],
+                fail_silently=False
+            )
+            print(f"✅ Email sent to {user.username}: {subject}")
+            return True
+        except Exception as e:
+            print(f"❌ Failed to send email to {user.username}: {e}")
+            return False
         return True
     
     def send_document_effective_notification(self, document):
@@ -43,8 +47,22 @@ class SimpleNotificationService:
         This document is now effective and available for use.
         """
         
-        print(f"📧 Effective date notification prepared for document {document.document_number}")
-        return True
+        # Send to document author and interested parties
+        recipients = [document.author.email]
+        
+        try:
+            send_mail(
+                subject,
+                message,
+                settings.DEFAULT_FROM_EMAIL,
+                recipients,
+                fail_silently=False
+            )
+            print(f"✅ Effective date notification sent for document {document.document_number}")
+            return True
+        except Exception as e:
+            print(f"❌ Failed to send effective date notification: {e}")
+            return False
     
     def send_document_obsolete_notification(self, document):
         """Send notification when document becomes obsolete"""
@@ -57,8 +75,22 @@ class SimpleNotificationService:
         This document is no longer valid for use.
         """
         
-        print(f"📧 Obsolescence notification prepared for document {document.document_number}")
-        return True
+        # Send to document author and interested parties
+        recipients = [document.author.email]
+        
+        try:
+            send_mail(
+                subject,
+                message,
+                settings.DEFAULT_FROM_EMAIL,
+                recipients,
+                fail_silently=False
+            )
+            print(f"✅ Obsolescence notification sent for document {document.document_number}")
+            return True
+        except Exception as e:
+            print(f"❌ Failed to send obsolescence notification: {e}")
+            return False
     
     def send_workflow_timeout_notification(self, workflow, days_overdue):
         """Send notification for overdue workflow"""
@@ -73,8 +105,20 @@ class SimpleNotificationService:
             Please complete this workflow task immediately.
             """
             
-            print(f"📧 Timeout notification prepared for workflow {workflow.id} ({days_overdue} days overdue)")
-        return True
+            try:
+                send_mail(
+                    subject,
+                    message,
+                    settings.DEFAULT_FROM_EMAIL,
+                    [workflow.current_assignee.email],
+                    fail_silently=False
+                )
+                print(f"✅ Timeout notification sent for workflow {workflow.id} ({days_overdue} days overdue)")
+                return True
+            except Exception as e:
+                print(f"❌ Failed to send timeout notification: {e}")
+                return False
+        return False
 
 # Single instance for application use
 notification_service = SimpleNotificationService()

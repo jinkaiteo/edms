@@ -272,7 +272,7 @@ const DocumentUploadModal: React.FC<DocumentUploadModalProps> = ({
                   <option value="">Select document type</option>
                   {documentTypes.map(type => (
                     <option key={type.id} value={type.id}>
-                      {type.name}
+                      {type.name}{type.code ? ` (${type.code})` : ''}
                     </option>
                   ))}
                 </select>

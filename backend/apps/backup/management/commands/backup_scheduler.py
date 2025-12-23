@@ -46,6 +46,11 @@ class Command(BaseCommand):
             action='store_true',
             help='Run all scheduled backups that are due'
         )
+        parser.add_argument(
+            '--purge-hourly',
+            action='store_true',
+            help='Permanently delete disabled HOURLY configurations from the database'
+        )
 
     def handle(self, *args, **options):
         if options['create_config']:
@@ -58,6 +63,8 @@ class Command(BaseCommand):
             self.disable_configuration(options['disable'])
         elif options['run_scheduled']:
             self.run_scheduled_backups()
+        elif options['purge_hourly']:
+            self.purge_hourly_configurations()
         else:
             self.stdout.write("No action specified. Use --help for options.")
 
@@ -75,16 +82,6 @@ class Command(BaseCommand):
                 'retention_days': 30,
                 'max_backups': 10,
                 'storage_path': '/opt/edms/backups/daily',
-            },
-            {
-                'name': 'hourly_incremental',
-                'description': 'Hourly incremental backup',
-                'backup_type': 'INCREMENTAL',
-                'frequency': 'HOURLY',
-                'schedule_time': time(0, 0),  # Default to midnight for hourly backups
-                'retention_days': 7,
-                'max_backups': 50,
-                'storage_path': '/opt/edms/backups/incremental',
             },
             {
                 'name': 'weekly_export',
@@ -128,11 +125,50 @@ class Command(BaseCommand):
             if created:
                 self.stdout.write(f"✓ Created: {config.name}")
             else:
-                self.stdout.write(f"→ Exists: {config.name}")
+                # Update schedule/retention for daily_full_backup if needed
+                if config.name == 'daily_full_backup':
+                    changed = False
+                    if config.schedule_time != time(2,0):
+                        config.schedule_time = time(2,0)
+                        changed = True
+                    if config.retention_days != 30:
+                        config.retention_days = 30
+                        changed = True
+                    if config.backup_type != 'FULL':
+                        config.backup_type = 'FULL'
+                        changed = True
+                    if config.frequency != 'DAILY':
+                        config.frequency = 'DAILY'
+                        changed = True
+                    if not config.is_enabled:
+                        config.is_enabled = True
+                        config.status = 'ACTIVE'
+                        changed = True
+                    if changed:
+                        config.save()
+                        self.stdout.write(f"↻ Updated: {config.name}")
+                    else:
+                        self.stdout.write(f"→ Exists: {config.name}")
+                else:
+                    self.stdout.write(f"→ Exists: {config.name}")
+        
+        # Disable any existing HOURLY configurations
+        disabled = BackupConfiguration.objects.filter(frequency='HOURLY').update(is_enabled=False, status='INACTIVE')
+        if disabled:
+            self.stdout.write(self.style.WARNING(f"Disabled {disabled} HOURLY configuration(s)"))
         
         self.stdout.write(
-            self.style.SUCCESS("Default backup configurations created")
+            self.style.SUCCESS("Default backup configurations created/updated")
         )
+
+    def purge_hourly_configurations(self):
+        """Permanently delete disabled HOURLY configurations."""
+        qs = BackupConfiguration.objects.filter(frequency='HOURLY')
+        count = qs.count()
+        # Only delete those not enabled to avoid surprises
+        disabled_qs = qs.filter(is_enabled=False)
+        deleted = disabled_qs.delete()[0]
+        self.stdout.write(self.style.WARNING(f"Requested purge of HOURLY: found={count}, deleted_disabled={deleted}"))
 
     def list_configurations(self):
         """List all backup configurations."""

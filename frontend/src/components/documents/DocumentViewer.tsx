@@ -147,20 +147,9 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({
 
       const [workflowResponse, signaturesResponse] = await Promise.all(apiCalls);
 
-      // Use real data if available, fallback to mock data
-      if (workflowResponse) {
-        setWorkflowStatus(workflowResponse);
-      } else {
-        // Fallback to mock workflow status only if API fails
-        setWorkflowStatus(createMockWorkflowStatus(document));
-      }
-
-      if (signaturesResponse) {
-        setSignatures(signaturesResponse.results || []);
-      } else {
-        // Fallback to mock signatures
-        setSignatures(createMockSignatures(document));
-      }
+      // Use real data only - no mock data fallback
+      setWorkflowStatus(workflowResponse || null);
+      setSignatures(signaturesResponse?.results || []);
 
       // Set document preview URL
       if (document.file_path) {
@@ -169,114 +158,11 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({
 
     } catch (error) {
       console.error('Failed to load document data:', error);
-      // Fallback to mock data on any error
-      setWorkflowStatus(createMockWorkflowStatus(document));
-      setSignatures(createMockSignatures(document));
+      setWorkflowStatus(null);
+      setSignatures([]);
     } finally {
       setLoading(false);
     }
-  };
-
-  // Helper function to create mock workflow status
-  const createMockWorkflowStatus = (doc: Document): WorkflowInstance => ({
-    id: 1,
-    uuid: 'workflow-uuid-1',
-    workflow_type: {
-      id: 1,
-      uuid: 'type-uuid-1',
-      name: 'Document Review',
-      workflow_type: 'REVIEW',
-      description: 'Standard document review workflow',
-      is_active: true,
-      requires_approval: true,
-      timeout_days: 7,
-      reminder_days: 2
-    },
-    state: doc.status.toLowerCase() === 'effective' ? 'approved' : doc.status.toLowerCase(),
-    state_display: doc.status.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase()),
-    initiated_by: doc.created_by,
-    current_assignee: null,
-    started_at: doc.created_at,
-    completed_at: doc.status.toLowerCase() === 'effective' ? doc.updated_at : null,
-    due_date: null,
-    is_active: doc.status.toLowerCase() !== 'effective',
-    is_completed: doc.status.toLowerCase() === 'effective',
-    is_overdue: false,
-    completion_reason: doc.status.toLowerCase() === 'effective' ? 'Successfully completed review process' : null,
-    workflow_data: {},
-    content_object_data: {
-      type: 'document',
-      id: doc.id,
-      document_number: doc.document_number,
-      title: doc.title,
-      status: doc.status,
-      version: doc.version
-    }
-  });
-
-  // Helper function to create mock signatures
-  const createMockSignatures = (doc: Document): ElectronicSignature[] => {
-    return doc.status.toLowerCase() === 'effective' ? [
-      {
-        id: 1,
-        uuid: 'sig-uuid-1',
-        document: doc.id,
-        user: {
-          id: 3,
-          username: 'reviewer',
-          email: 'reviewer@edms.local',
-          first_name: 'Document',
-          last_name: 'Reviewer',
-          is_active: true,
-          is_staff: false,
-          is_superuser: false,
-          date_joined: '2024-01-01T00:00:00Z',
-          last_login: '2024-11-21T10:00:00Z',
-          full_name: 'Document Reviewer',
-          roles: []
-        },
-        signature_type: 'REVIEW',
-        reason: 'Document review completed successfully',
-        signature_timestamp: '2024-11-21T15:30:00Z',
-        document_hash: 'sha256:abcdef123456...',
-        signature_data: {},
-        certificate: {
-          id: 1,
-          uuid: 'cert-uuid-1',
-          user: 3,
-          certificate_type: 'SIGNING',
-          serial_number: 'CERT-001-2024',
-          subject_dn: 'CN=Document Reviewer,O=EDMS,C=US',
-          issuer_dn: 'CN=EDMS CA,O=EDMS,C=US',
-          issued_at: '2024-01-01T00:00:00Z',
-          expires_at: '2025-01-01T00:00:00Z',
-          is_active: true,
-          revoked_at: null,
-          revocation_reason: ''
-        },
-        signature_method: 'PKI_DIGITAL',
-        is_valid: true,
-        invalidated_at: null,
-        invalidation_reason: ''
-      }
-    ] : [];
-  };
-
-  const formatDate = (dateString: string): string => {
-    return new Date(dateString).toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    });
-  };
-
-  const formatFileSize = (bytes: number): string => {
-    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
-    if (bytes === 0) return '0 Bytes';
-    const i = Math.floor(Math.log(bytes) / Math.log(1024));
-    return Math.round(bytes / Math.pow(1024, i) * 100) / 100 + ' ' + sizes[i];
   };
 
   const handleWorkflowAction = (actionKey: string) => {

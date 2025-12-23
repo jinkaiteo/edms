@@ -38,10 +38,12 @@ const DocumentSearch: React.FC<DocumentSearchProps> = ({
 
   // Mock document types if none provided
   const defaultDocumentTypes: DocumentType[] = [
-    { id: 1, name: 'Policy', description: 'Company policies', prefix: 'POL', is_active: true, workflow_required: true, retention_period: null, template: null },
-    { id: 2, name: 'SOP', description: 'Standard Operating Procedures', prefix: 'SOP', is_active: true, workflow_required: true, retention_period: null, template: null },
-    { id: 3, name: 'Manual', description: 'User manuals', prefix: 'MAN', is_active: true, workflow_required: false, retention_period: null, template: null },
-    { id: 4, name: 'Form', description: 'Forms and templates', prefix: 'FORM', is_active: true, workflow_required: false, retention_period: null, template: null }
+    { id: 1, name: 'Policy (POL)', description: 'Policy documents', prefix: 'POL', is_active: true, workflow_required: true, retention_period: null, template: null },
+    { id: 2, name: 'Manual (MAN)', description: 'Manuals', prefix: 'MAN', is_active: true, workflow_required: false, retention_period: null, template: null },
+    { id: 3, name: 'Procedures (PROC)', description: 'Procedures', prefix: 'PROC', is_active: true, workflow_required: true, retention_period: null, template: null },
+    { id: 4, name: 'Work Instructions (SOP)', description: 'Standard Operating Procedures', prefix: 'SOP', is_active: true, workflow_required: true, retention_period: null, template: null },
+    { id: 5, name: 'Forms and Templates (FNT)', description: 'Forms and templates', prefix: 'FNT', is_active: true, workflow_required: false, retention_period: null, template: null },
+    { id: 6, name: 'Records (REC)', description: 'Records', prefix: 'REC', is_active: true, workflow_required: false, retention_period: null, template: null }
   ];
 
   const availableDocumentTypes = documentTypes.length > 0 ? documentTypes : defaultDocumentTypes;

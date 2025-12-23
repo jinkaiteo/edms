@@ -356,7 +356,96 @@ class Command(BaseCommand):
             final_admin.save()
             
             # Update all core infrastructure to reference the final admin user
+            # Seed canonical document types with polished names and codes
+            try:
+                from django.contrib.auth import get_user_model
+                User = get_user_model()
+                seed_owner = final_admin if 'final_admin' in locals() and final_admin else User.objects.filter(is_superuser=True).first()
+                # Canonical Document Types per Dev_Docs/EDMS_details.txt
+                # 1. Policy (POL)
+                # 2. Manual (MAN)
+                # 3. Procedures (PROC)
+                # 4. Work Instructions (SOP)
+                # 5. Forms and Templates (FNT)
+                # 6. Records (REC)
+                canonical_types = {
+                    'POL': 'Policy',
+                    'MAN': 'Manual',
+                    'PROC': 'Procedures',
+                    'SOP': 'Work Instructions',
+                    'FNT': 'Forms and Templates',
+                    'REC': 'Records'
+                }
+                for code, title in canonical_types.items():
+                    dt_defaults = {
+                        'name': title,
+                        'description': f'{title} documents',
+                        'template_required': False,
+                        'approval_required': True,
+                        'review_required': True,
+                        'retention_years': 7,
+                        'numbering_prefix': code,
+                        'numbering_format': '{prefix}-{year}-{sequence:04d}',
+                        'is_active': True,
+                        'created_by': seed_owner,
+                        'metadata': {}
+                    }
+                    obj, created = DocumentType.objects.get_or_create(code=code, defaults=dt_defaults)
+                    if not created:
+                        updated = False
+                        if obj.name != title:
+                            obj.name = title; updated = True
+                        if obj.numbering_prefix != code:
+                            obj.numbering_prefix = code; updated = True
+                        if obj.is_active is False:
+                            obj.is_active = True; updated = True
+                        if updated:
+                            obj.save(update_fields=['name','numbering_prefix','is_active'])
+                self.stdout.write('Seeded canonical document types (POL, SOP, WI, MAN, FRM, REC).')
+            except Exception as e:
+                self.stdout.write(f'Warning: Failed to seed canonical document types: {e}')
+
             DocumentType.objects.all().update(created_by=final_admin)
+
+            # Seed canonical document sources with polished names and types
+            try:
+                from apps.documents.models import DocumentSource
+                # Enforce only Dev_Docs canonical sources
+                canonical_sources = [
+                    { 'name': 'Original Digital Draft', 'source_type': 'original_digital', 'description': 'Original digital draft uploaded to EDMS', 'requires_verification': False, 'requires_signature': False },
+                    { 'name': 'Scanned Original', 'source_type': 'scanned_original', 'description': 'Digital file created directly from the original physical document', 'requires_verification': True, 'requires_signature': False },
+                    { 'name': 'Scanned Copy', 'source_type': 'scanned_copy', 'description': 'Digital file created by scanning a photocopy of the original document', 'requires_verification': True, 'requires_signature': False },
+                ]
+                # Remove any non-canonical sources first
+                from django.db.models import Q
+                DocumentSource.objects.exclude(
+                    Q(name='Original Digital Draft') | Q(name='Scanned Original') | Q(name='Scanned Copy')
+                ).delete()
+
+                for src in canonical_sources:
+                    defaults = {
+                        'source_type': src['source_type'],
+                        'description': src['description'],
+                        'requires_verification': src['requires_verification'],
+                        'requires_signature': src['requires_signature'],
+                        'is_active': True,
+                    }
+                    obj, created = DocumentSource.objects.get_or_create(name=src['name'], defaults=defaults)
+                    if not created:
+                        updated = False
+                        # Reconcile core fields
+                        for field in ['source_type','description','requires_verification','requires_signature']:
+                            if getattr(obj, field) != defaults[field]:
+                                setattr(obj, field, defaults[field])
+                                updated = True
+                        if obj.is_active is False:
+                            obj.is_active = True; updated = True
+                        if updated:
+                            obj.save()
+                self.stdout.write('Seeded canonical document sources (strict).')
+            except Exception as e:
+                self.stdout.write(f'Warning: Failed to seed canonical document sources: {e}')
+
             WorkflowType.objects.all().update(created_by=final_admin) 
             PlaceholderDefinition.objects.all().update(created_by=final_admin)
             BackupConfiguration.objects.all().update(created_by=final_admin)

@@ -131,6 +131,7 @@ These insights focus on patterns that prevent common development pitfalls and im
 - **Multiple API call debugging**: When frontend components make multiple API calls (list + detail), ensure both endpoints return consistent data - detail endpoints overwriting good list data is a common integration failure pattern
 - **Debug logging strategic placement**: Add detailed debug logging in frontend components to trace data flow between API calls, especially when components switch between different endpoints
 - **Content-Disposition header authority**: Frontend should extract filenames from server's `Content-Disposition` header instead of constructing them client-side - server determines correct filename and extension, especially important for ZIP packages vs single files
+- **Paginated response handling**: DRF often returns `{count, next, previous, results: [...]}` not direct arrays - use `Array.isArray(data) ? data : (data.results || [])` to handle both formats gracefully
 
 ### Performance Optimization Patterns
 - **Event-driven over polling**: Replace regular HTTP polling with event-triggered updates plus minimal backup polling (5-minute safety net vs 15-60 second intervals) for 95% server load reduction
@@ -230,6 +231,8 @@ These insights focus on patterns that prevent common development pitfalls and im
 - **Endpoint mismatch patterns**: Frontend components using different endpoint paths than backend provides (`/auth/users/` vs `/users/users/`) is a common integration failure point
 - **Authentication endpoint alignment**: When API calls fail, verify both authentication AND endpoint path correctness before debugging component logic
 - **Service method parameter validation**: Backend API parameter expectations may not match frontend service method implementations - always verify actual API requirements
+- **ViewSet lookup_field alignment**: When Django REST Framework ViewSets use UUID but routes still expect 'id', add `lookup_field = 'uuid'` to ViewSet class AND update action method parameters from `pk=None` to `uuid=None` - both changes are required
+- **404 to 500 progression**: If fixing 404 errors leads to 500 errors, check that action method signatures match the lookup_field (e.g., `def action(self, request, uuid=None)` not `pk=None`)
 
 ### Management Command Debugging
 - **Missing dependencies pattern**: Management commands failing due to undefined variables (categories, models) should be debugged by checking all referenced objects exist in scope
@@ -271,6 +274,13 @@ These insights focus on patterns that prevent common development pitfalls and im
 - **Working foundation identification**: Always identify and preserve working components (backup creation, validation, tracking) before attempting complex enhancements
 - **Scope boundary enforcement**: When asked to "complete" functionality, clarify if the working validation/tracking system meets the core requirement before adding restoration complexity
 
+### Comprehensive Module Analysis Pattern
+- **Tab-by-tab systematic review**: When analyzing complex modules, examine each tab/section individually for redundancies, missing features, and phasing issues
+- **Redundancy identification**: Look for duplicate functionality across different UI sections (e.g., restore dropdown vs table button) - consolidate to single source of truth
+- **Incremental implementation phases**: Break large feature additions into phases (Quick Wins → CRUD → Search/Filter) for manageable progress and testing
+- **Quick wins first**: Start with simple high-impact changes (removing hardcoded checks, eliminating duplicates) before tackling complex CRUD operations
+- **Document as you go**: Create comprehensive analysis documents with line numbers, recommendations, and impact metrics to guide implementation
+
 ### Database Integrity vs Business Requirements
 - **Constraint interpretation**: When database operations "fail" due to FK constraints, first assess if the constraint is protecting critical data integrity rather than assuming it needs to be bypassed
 - **Architectural success redefinition**: System operations that preserve critical infrastructure while achieving core business goals (data cleanup) should be considered successful, even if not achieving 100% deletion targets
@@ -285,3 +295,29 @@ These insights focus on patterns that prevent common development pitfalls and im
 - **Parameter name validation**: Always check actual method signatures before implementing calls - parameter names like `details` vs `additional_data` can cause runtime failures
 - **Service inspection pattern**: Use `inspect.signature()` and `dir()` to verify available methods and parameters before implementation
 - **Consistent parameter mapping**: When methods expect specific parameter formats, create helper functions to ensure consistent parameter transformation
+
+## Backup & Restore System Patterns
+
+### Natural Key Resolution for Data Portability
+- **Critical insight**: When implementing backup/restore systems, missing natural key handlers cause silent FK resolution failures - the object creates with None instead of the resolved reference
+- **Diagnostic pattern**: When restored objects count as "created" but don't show up or have missing relationships, check if natural key handlers exist for ALL models with FKs
+- **Complete handler coverage**: For each model with FK fields, verify there's a corresponding `_resolve_<modelname>_natural_key()` handler - missing even one (like Document) breaks the entire chain
+- **Testing strategy**: Always test FK resolution explicitly in isolation before running full restoration - it's easier to debug `None` returns in unit tests than in complex restoration flows
+
+### Timestamp Preservation in ORM Operations
+- **Django auto_now issue**: `auto_now=True` and `auto_now_add=True` fields ALWAYS override provided values during `.create()` - this causes historical timestamps to be lost during restoration
+- **Solution pattern**: Temporarily disable these flags before object creation: `field.auto_now = False`, create object, then re-enable: `field.auto_now = True`
+- **Scope correctly**: Use try/finally blocks to ensure flags are always re-enabled, even if creation fails - prevents corrupting normal operation
+- **Apply to all creation paths**: Don't forget fallback/progressive creation paths - they need the same timestamp preservation logic
+
+### Debugging Complex Restoration Failures
+- **Start with isolation**: When complete restoration shows "0 objects restored", test individual record restoration in isolation first - it's faster to debug one object than a full migration package
+- **Check actual data flow**: Use manual FK resolution tests to verify each natural key resolves correctly before assuming the restoration logic is wrong
+- **Transaction boundaries matter**: Understand where transaction.atomic() blocks are - objects may be created successfully but rolled back if anything fails later in the same transaction
+- **Count vs. existence verification**: Just because an object returns from .create() doesn't mean it's in the database - always verify with a fresh query after transaction completes
+
+### API Preprocessing Conflicts
+- **Avoid dual processing**: When using specialized processors (like EnhancedRestoreProcessor), don't add preprocessing in the API layer that modifies the data format
+- **Natural key integrity**: If backup data has natural keys (arrays), don't convert them to IDs before passing to a processor that expects natural keys - this corrupts the data
+- **Simple pass-through**: The best API design for complex operations is often the simplest - extract package, pass raw data to processor, return results
+- **Processor responsibility**: Let the processor handle ALL data transformation - that's its job, and it has the context to do it correctly

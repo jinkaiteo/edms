@@ -60,12 +60,16 @@ class DocumentTypeViewSet(viewsets.ModelViewSet):
     ordering = ['name']
     
     def get_queryset(self):
-        """Filter queryset based on user permissions."""
+        """Filter queryset based on user permissions and validity of types."""
+        qs = super().get_queryset()
+        # Only include valid types: non-empty name and valid uppercase code
+        qs = qs.filter(code__regex=r'^[A-Z0-9_]+$', name__regex=r'.*\S.*')
+        # Optionally exclude awkward placeholders like trailing parentheses with nothing inside
+        qs = qs.exclude(name__regex=r'.*\(\)\s*$')
         if self.request.user.is_superuser:
-            return super().get_queryset()
-        
-        # Regular users see only active document types
-        return super().get_queryset().filter(is_active=True)
+            return qs
+        # Regular users see only active valid types
+        return qs.filter(is_active=True)
 
 
 class DocumentSourceViewSet(viewsets.ModelViewSet):

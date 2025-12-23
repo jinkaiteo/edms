@@ -5,6 +5,7 @@ import UserManagement from '../components/users/UserManagement.tsx';
 import PlaceholderManagement from '../components/placeholders/PlaceholderManagement.tsx';
 import SystemSettings from '../components/settings/SystemSettings.tsx';
 import AuditTrailViewer from '../components/audit/AuditTrailViewer.tsx';
+import Reports from '../components/reports/Reports.tsx';
 import LoadingSpinner from '../components/common/LoadingSpinner.tsx';
 import SchedulerStatusWidget from '../components/scheduler/SchedulerStatusWidget.tsx';
 import BackupManagement from '../components/backup/BackupManagement.tsx';
@@ -122,81 +123,6 @@ const AdminDashboard: React.FC = () => {
   ];
 
 
-  const renderReportsInline = () => (
-    <div className="space-y-6">
-      <div className="flex justify-between items-start">
-        <div>
-          <h2 className="text-2xl font-bold text-gray-900">Reports</h2>
-          <p className="text-gray-600 mt-1">
-            Generate and manage compliance reports for regulatory submissions
-          </p>
-        </div>
-      </div>
-      
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-        {[
-          { name: '21 CFR Part 11', icon: '📋', color: 'bg-blue-500' },
-          { name: 'User Activity', icon: '👥', color: 'bg-green-500' },
-          { name: 'Document Lifecycle', icon: '📄', color: 'bg-purple-500' },
-          { name: 'Audit Trail', icon: '🔍', color: 'bg-red-500' }
-        ].map((report) => (
-          <div key={report.name} className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
-            <div className="flex items-center">
-              <div className={`w-10 h-10 ${report.color} rounded-lg flex items-center justify-center text-white text-lg`}>
-                {report.icon}
-              </div>
-              <div className="ml-4 flex-1 min-w-0">
-                <p className="text-sm font-medium text-gray-900 truncate">
-                  {report.name}
-                </p>
-                <p className="text-xs text-gray-500">
-                  Ready to generate
-                </p>
-              </div>
-            </div>
-          </div>
-        ))}
-      </div>
-      
-      <div className="bg-white shadow rounded-lg">
-        <div className="px-6 py-4 border-b border-gray-200">
-          <h3 className="text-lg font-medium text-gray-900">Compliance Reporting System</h3>
-          <p className="text-sm text-gray-600 mt-1">
-            Professional reporting interface for regulatory compliance
-          </p>
-        </div>
-        
-        <div className="p-8 text-center">
-          <div className="text-6xl mb-4">📊</div>
-          <h3 className="text-lg font-medium text-gray-900 mb-2">
-            Reports Module Implemented
-          </h3>
-          <p className="text-gray-500 mb-6">
-            The compliance reporting system includes 8 report types for complete regulatory coverage including 21 CFR Part 11, user activity tracking, document lifecycle management, and audit trail generation.
-          </p>
-          
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <div className="bg-blue-50 p-3 rounded-lg">
-              <div className="text-lg font-bold text-blue-600">8</div>
-              <div className="text-xs text-blue-600">Report Types</div>
-            </div>
-            <div className="bg-green-50 p-3 rounded-lg">
-              <div className="text-lg font-bold text-green-600">✓</div>
-              <div className="text-xs text-green-600">21 CFR Part 11</div>
-            </div>
-            <div className="bg-purple-50 p-3 rounded-lg">
-              <div className="text-lg font-bold text-purple-600">PDF</div>
-              <div className="text-xs text-purple-600">Export Ready</div>
-            </div>
-            <div className="bg-orange-50 p-3 rounded-lg">
-              <div className="text-lg font-bold text-orange-600">AUTO</div>
-              <div className="text-xs text-orange-600">Generation</div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
 
   const renderOverview = () => {
     if (isLoading) {
@@ -430,7 +356,7 @@ const AdminDashboard: React.FC = () => {
       case 'audit':
         return <AuditTrailViewer />;
       case 'reports':
-        return renderReportsInline();
+        return <Reports />;
       case 'scheduler':
         return <SchedulerStatusWidget showDetails={true} />;
       case 'backup':
@@ -443,27 +369,6 @@ const AdminDashboard: React.FC = () => {
   return (
     <Layout>
       <div className="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
-        {/* Navigation Tabs */}
-        <div className="mb-8">
-          <div className="border-b border-gray-200">
-            <nav className="flex space-x-8" aria-label="Tabs">
-              {adminSections.map((section) => (
-                <button
-                  key={section.key}
-                  onClick={() => setActiveSection(section.key)}
-                  className={`py-2 px-1 border-b-2 font-medium text-sm whitespace-nowrap ${
-                    activeSection === section.key
-                      ? 'border-blue-500 text-blue-600'
-                      : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                  }`}
-                >
-                  <span className="mr-2">{section.icon}</span>
-                  {section.title}
-                </button>
-              ))}
-            </nav>
-          </div>
-        </div>
 
         {/* Active Section Content */}
         {renderActiveSection()}

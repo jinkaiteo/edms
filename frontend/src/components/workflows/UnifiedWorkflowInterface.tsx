@@ -63,8 +63,8 @@ const UnifiedWorkflowInterface: React.FC<UnifiedWorkflowInterfaceProps> = ({
 
       console.log('🔍 Fetching real workflow history for document:', document.uuid);
       
-      // Fetch actual workflow history from backend
-      const response = await fetch(`/api/v1/documents/documents/${document.uuid}/workflow/history/`, {
+      // Fetch actual workflow history from backend (standard workflows endpoint)
+      const response = await fetch(`/api/v1/workflows/documents/${document.uuid}/history/`, {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json',
@@ -78,8 +78,9 @@ const UnifiedWorkflowInterface: React.FC<UnifiedWorkflowInterfaceProps> = ({
         // Transform workflow history into comment format
         const comments: any[] = [];
         
-        if (historyData.workflow_history && Array.isArray(historyData.workflow_history)) {
-          historyData.workflow_history.forEach((transition: any) => {
+        const transitionsArr = Array.isArray(historyData.transitions) ? historyData.transitions : (historyData.workflow_history || []);
+        if (transitionsArr && transitionsArr.length > 0) {
+          transitionsArr.forEach((transition: any) => {
             comments.push({
               id: `transition-${transition.transitioned_at}`,
               author: transition.transitioned_by || 'Unknown User',

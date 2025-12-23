@@ -29,4 +29,65 @@ test('create draft document', async ({ page }) => {
   await page.getByLabel('Document Type *').selectOption('4');
   await page.getByLabel('Document Source *').selectOption('1');
   await page.getByRole('button', { name: 'Create Document', exact: true }).click();
+  
+  //create SOP
+  await page.getByRole('link', { name: 'My Tasks' }).click();
+  await page.getByRole('button', { name: '📝 Create Document' }).click();
+  await page.getByRole('button', { name: 'Click to upload' }).click();
+  
+  // Define the path to the file you want to upload
+  // const filePath = path.join(__dirname, 'edms_template.docx'); // Assuming 'edms_template.docx' is in the same directory
+  await page.getByRole('button', { name: 'Click to upload' }).click();
+  // Locate the file input element and set the file
+  await page.locator('input[type="file"]').setInputFiles(filePath);
+  // await page.getByRole('button', { name: 'Click to upload' }).setInputFiles(filePath);
+  
+  await page.getByRole('textbox', { name: 'Document Title *' }).dblclick();
+  await page.getByRole('textbox', { name: 'Document Title *' }).fill('SOP_01');
+  await page.getByRole('textbox', { name: 'Description *' }).click();
+  await page.getByRole('textbox', { name: 'Description *' }).fill('This is the first SOP.');
+  await page.getByLabel('Document Type *').selectOption('1');
+  await page.getByLabel('Document Source *').selectOption('1');
+  await page.getByRole('button', { name: 'Create Document', exact: true }).click();
+  
+  //create PROC
+  await page.getByRole('link', { name: 'My Tasks' }).click();
+  await page.getByRole('button', { name: '📝 Create Document' }).click();
+  await page.getByRole('button', { name: 'Click to upload' }).click();
+  
+  // Define the path to the file you want to upload
+  // const filePath = path.join(__dirname, 'edms_template.docx'); // Assuming 'edms_template.docx' is in the same directory
+  await page.getByRole('button', { name: 'Click to upload' }).click();
+  // Locate the file input element and set the file
+  await page.locator('input[type="file"]').setInputFiles(filePath);
+  // await page.getByRole('button', { name: 'Click to upload' }).setInputFiles(filePath);
+  
+  await page.getByRole('textbox', { name: 'Document Title *' }).dblclick();
+  await page.getByRole('textbox', { name: 'Document Title *' }).fill('Procedure_01');
+  await page.getByRole('textbox', { name: 'Description *' }).click();
+  await page.getByRole('textbox', { name: 'Description *' }).fill('This is the first PROC.');
+  await page.getByLabel('Document Type *').selectOption('9');
+  await page.getByLabel('Document Source *').selectOption('1');
+  await page.getByRole('button', { name: 'Create Document', exact: true }).click();
+  
+  //create PROC
+  await page.getByRole('link', { name: 'My Tasks' }).click();
+  await page.getByRole('button', { name: '📝 Create Document' }).click();
+  await page.getByRole('button', { name: 'Click to upload' }).click();
+  
+  // Define the path to the file you want to upload
+  // const filePath = path.join(__dirname, 'edms_template.docx'); // Assuming 'edms_template.docx' is in the same directory
+  await page.getByRole('button', { name: 'Click to upload' }).click();
+  // Locate the file input element and set the file
+  await page.locator('input[type="file"]').setInputFiles(filePath);
+  // await page.getByRole('button', { name: 'Click to upload' }).setInputFiles(filePath);
+  
+  await page.getByRole('textbox', { name: 'Document Title *' }).dblclick();
+  await page.getByRole('textbox', { name: 'Document Title *' }).fill('Record_01');
+  await page.getByRole('textbox', { name: 'Description *' }).click();
+  await page.getByRole('textbox', { name: 'Description *' }).fill('This is the first REC.');
+  await page.getByLabel('Document Type *').selectOption('10');
+  await page.getByLabel('Document Source *').selectOption('1');
+  await page.getByRole('button', { name: 'Create Document', exact: true }).click();
+  
 });

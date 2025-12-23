@@ -475,3 +475,362 @@ class AuditService:
 
 # Global audit service instance
 audit_service = AuditService()
+
+# ============================================================================
+# Compliance Report Generation Services
+# ============================================================================
+
+from django.conf import settings
+from datetime import timedelta
+import os
+
+
+def generate_compliance_report_sync(user, report_type, name, description, date_from, date_to, filters=None):
+    """
+    Synchronously generate a compliance report
+    
+    Args:
+        user: User generating the report
+        report_type: Type of report (CFR_PART_11, USER_ACTIVITY, etc.)
+        name: Report name
+        description: Report description
+        date_from: Start date (string or datetime)
+        date_to: End date (string or datetime)
+        filters: Additional filters (dict)
+    
+    Returns:
+        ComplianceReport instance
+    """
+    from .models import ComplianceReport
+    from django.db import models
+    
+    # Parse dates
+    if isinstance(date_from, str):
+        date_from = datetime.fromisoformat(date_from.replace('Z', '+00:00'))
+    if isinstance(date_to, str):
+        date_to = datetime.fromisoformat(date_to.replace('Z', '+00:00'))
+    
+    # Create the report record
+    report = ComplianceReport.objects.create(
+        name=name,
+        report_type=report_type,
+        description=description,
+        date_from=date_from,
+        date_to=date_to,
+        filters=filters or {},
+        generated_by=user,
+        status='GENERATING'
+    )
+    
+    try:
+        # Generate report metrics
+        metrics = _gather_report_metrics(report_type, date_from, date_to, filters)
+        
+        # Store metrics in report_data
+        report.report_data = metrics
+        report.summary_stats = _extract_summary_stats(metrics)
+        
+        # Generate PDF file
+        file_path = _generate_pdf_report(report, metrics)
+        
+        # Update report with file info
+        if file_path and os.path.exists(file_path):
+            report.file_path = file_path
+            report.file_size = os.path.getsize(file_path)
+            report.report_checksum = _calculate_file_checksum(file_path)
+            report.status = 'COMPLETED'
+        else:
+            report.status = 'FAILED'
+            report.metadata = {'error': 'Failed to generate PDF file'}
+        
+        report.save()
+        return report
+        
+    except Exception as e:
+        # Mark report as failed
+        report.status = 'FAILED'
+        report.metadata = {'error': str(e)}
+        report.save()
+        raise
+
+
+def _gather_report_metrics(report_type, date_from, date_to, filters):
+    """Gather metrics based on report type"""
+    
+    metrics = {
+        'report_period': {
+            'start': date_from.isoformat(),
+            'end': date_to.isoformat(),
+        },
+        'generated_at': timezone.now().isoformat(),
+    }
+    
+    if report_type == 'CFR_PART_11':
+        metrics.update(_gather_cfr_part_11_metrics(date_from, date_to))
+    elif report_type == 'USER_ACTIVITY':
+        metrics.update(_gather_user_activity_metrics(date_from, date_to))
+    elif report_type == 'DOCUMENT_LIFECYCLE':
+        metrics.update(_gather_document_lifecycle_metrics(date_from, date_to))
+    elif report_type == 'ACCESS_CONTROL':
+        metrics.update(_gather_access_control_metrics(date_from, date_to))
+    elif report_type == 'SECURITY_EVENTS':
+        metrics.update(_gather_security_events_metrics(date_from, date_to))
+    elif report_type == 'SYSTEM_CHANGES':
+        metrics.update(_gather_system_changes_metrics(date_from, date_to))
+    elif report_type == 'SIGNATURE_VERIFICATION':
+        metrics.update(_gather_signature_verification_metrics(date_from, date_to))
+    elif report_type == 'DATA_INTEGRITY':
+        metrics.update(_gather_data_integrity_metrics(date_from, date_to))
+    else:
+        metrics.update(_gather_general_metrics(date_from, date_to))
+    
+    return metrics
+
+
+def _gather_cfr_part_11_metrics(date_from, date_to):
+    """Gather 21 CFR Part 11 compliance metrics"""
+    return {
+        'audit_statistics': {
+            'total_audit_entries': AuditTrail.objects.filter(
+                timestamp__range=[date_from, date_to]
+            ).count(),
+            'user_actions': AuditTrail.objects.filter(
+                timestamp__range=[date_from, date_to],
+                user__isnull=False
+            ).count(),
+            'system_events': SystemEvent.objects.filter(
+                timestamp__range=[date_from, date_to]
+            ).count(),
+        },
+        'authentication': {
+            'total_login_attempts': LoginAudit.objects.filter(
+                timestamp__range=[date_from, date_to]
+            ).count(),
+            'successful_logins': LoginAudit.objects.filter(
+                timestamp__range=[date_from, date_to],
+                success=True
+            ).count(),
+            'failed_logins': LoginAudit.objects.filter(
+                timestamp__range=[date_from, date_to],
+                success=False
+            ).count(),
+        },
+        'document_activities': {
+            'documents_created': AuditTrail.objects.filter(
+                timestamp__range=[date_from, date_to],
+                action='CREATE'
+            ).count(),
+            'documents_modified': AuditTrail.objects.filter(
+                timestamp__range=[date_from, date_to],
+                action='UPDATE'
+            ).count(),
+            'electronic_signatures': AuditTrail.objects.filter(
+                timestamp__range=[date_from, date_to],
+                action='SIGNATURE_APPLIED'
+            ).count(),
+        },
+        'compliance_score': _calculate_compliance_score(date_from, date_to),
+    }
+
+
+def _gather_user_activity_metrics(date_from, date_to):
+    """Gather user activity metrics"""
+    from django.db import models
+    
+    active_users = AuditTrail.objects.filter(
+        timestamp__range=[date_from, date_to],
+        user__isnull=False
+    ).values('user').distinct().count()
+    
+    return {
+        'user_statistics': {
+            'total_users': User.objects.filter(is_active=True).count(),
+            'active_users_in_period': active_users,
+            'total_actions': AuditTrail.objects.filter(
+                timestamp__range=[date_from, date_to]
+            ).count(),
+        },
+        'top_users': list(AuditTrail.objects.filter(
+            timestamp__range=[date_from, date_to],
+            user__isnull=False
+        ).values('user__username').annotate(
+            action_count=models.Count('id')
+        ).order_by('-action_count')[:10]),
+    }
+
+
+def _gather_document_lifecycle_metrics(date_from, date_to):
+    """Gather document lifecycle metrics"""
+    return {
+        'document_statistics': {
+            'created': AuditTrail.objects.filter(
+                timestamp__range=[date_from, date_to],
+                action='CREATE'
+            ).count(),
+            'updated': AuditTrail.objects.filter(
+                timestamp__range=[date_from, date_to],
+                action='UPDATE'
+            ).count(),
+            'deleted': AuditTrail.objects.filter(
+                timestamp__range=[date_from, date_to],
+                action='DELETE'
+            ).count(),
+        }
+    }
+
+
+def _gather_access_control_metrics(date_from, date_to):
+    """Gather access control metrics"""
+    return {
+        'access_statistics': {
+            'access_granted': AuditTrail.objects.filter(
+                timestamp__range=[date_from, date_to],
+                action='ACCESS_GRANTED'
+            ).count(),
+            'access_denied': AuditTrail.objects.filter(
+                timestamp__range=[date_from, date_to],
+                action='ACCESS_DENIED'
+            ).count(),
+        }
+    }
+
+
+def _gather_security_events_metrics(date_from, date_to):
+    """Gather security events metrics"""
+    return {
+        'security_statistics': {
+            'total_security_events': AuditTrail.objects.filter(
+                timestamp__range=[date_from, date_to],
+                action='SECURITY_EVENT'
+            ).count(),
+            'failed_logins': LoginAudit.objects.filter(
+                timestamp__range=[date_from, date_to],
+                success=False
+            ).count(),
+        }
+    }
+
+
+def _gather_system_changes_metrics(date_from, date_to):
+    """Gather system changes metrics"""
+    return {
+        'system_changes': {
+            'configuration_changes': AuditTrail.objects.filter(
+                timestamp__range=[date_from, date_to],
+                action='CONFIGURATION_CHANGED'
+            ).count(),
+            'role_changes': AuditTrail.objects.filter(
+                timestamp__range=[date_from, date_to],
+                action__in=['ROLE_ASSIGNED', 'ROLE_REMOVED']
+            ).count(),
+        }
+    }
+
+
+def _gather_signature_verification_metrics(date_from, date_to):
+    """Gather signature verification metrics"""
+    return {
+        'signature_statistics': {
+            'signatures_applied': AuditTrail.objects.filter(
+                timestamp__range=[date_from, date_to],
+                action='SIGNATURE_APPLIED'
+            ).count(),
+            'signatures_verified': AuditTrail.objects.filter(
+                timestamp__range=[date_from, date_to],
+                action='SIGNATURE_VERIFIED'
+            ).count(),
+        }
+    }
+
+
+def _gather_data_integrity_metrics(date_from, date_to):
+    """Gather data integrity metrics"""
+    return {
+        'integrity_statistics': {
+            'total_audit_entries': AuditTrail.objects.filter(
+                timestamp__range=[date_from, date_to]
+            ).count(),
+            'verified_entries': AuditTrail.objects.filter(
+                timestamp__range=[date_from, date_to],
+                is_tampered=False
+            ).count(),
+        }
+    }
+
+
+def _gather_general_metrics(date_from, date_to):
+    """Gather general metrics for custom reports"""
+    return {
+        'general_statistics': {
+            'total_audit_entries': AuditTrail.objects.filter(
+                timestamp__range=[date_from, date_to]
+            ).count(),
+            'total_logins': LoginAudit.objects.filter(
+                timestamp__range=[date_from, date_to]
+            ).count(),
+        }
+    }
+
+
+def _extract_summary_stats(metrics):
+    """Extract high-level summary statistics from metrics"""
+    summary = {}
+    
+    if 'audit_statistics' in metrics:
+        summary['total_audit_entries'] = metrics['audit_statistics'].get('total_audit_entries', 0)
+    
+    if 'authentication' in metrics:
+        summary['total_logins'] = metrics['authentication'].get('total_login_attempts', 0)
+        summary['successful_logins'] = metrics['authentication'].get('successful_logins', 0)
+    
+    if 'document_activities' in metrics:
+        summary['documents_created'] = metrics['document_activities'].get('documents_created', 0)
+    
+    if 'compliance_score' in metrics:
+        summary['compliance_score'] = metrics['compliance_score']
+    
+    return summary
+
+
+def _calculate_compliance_score(date_from, date_to):
+    """Calculate overall compliance score (0-100)"""
+    total_actions = AuditTrail.objects.filter(
+        timestamp__range=[date_from, date_to]
+    ).count()
+    
+    has_audit_trail = total_actions > 0
+    has_login_tracking = LoginAudit.objects.filter(
+        timestamp__range=[date_from, date_to]
+    ).count() > 0
+    
+    score = 50
+    if has_audit_trail:
+        score += 25
+    if has_login_tracking:
+        score += 25
+    
+    return min(score, 100)
+
+
+def _generate_pdf_report(report, metrics):
+    """Generate PDF report from metrics"""
+    from .pdf_generator import generate_compliance_pdf
+    
+    reports_dir = os.path.join(settings.MEDIA_ROOT, 'compliance_reports')
+    os.makedirs(reports_dir, exist_ok=True)
+    
+    filename = f"report_{report.uuid}.pdf"
+    file_path = os.path.join(reports_dir, filename)
+    
+    generate_compliance_pdf(report, metrics, file_path)
+    
+    return file_path
+
+
+def _calculate_file_checksum(file_path):
+    """Calculate SHA-256 checksum of a file"""
+    sha256_hash = hashlib.sha256()
+    with open(file_path, "rb") as f:
+        for byte_block in iter(lambda: f.read(4096), b""):
+            sha256_hash.update(byte_block)
+    return sha256_hash.hexdigest()

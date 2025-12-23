@@ -105,13 +105,15 @@ export interface Document {
 
 export interface DocumentType {
   id: number;
+  code?: string;              // backend returns code
   name: string;
-  description: string;
-  prefix: string;
+  description?: string;
+  prefix?: string;            // legacy field; prefer code/numbering_prefix
+  numbering_prefix?: string;  // backend document type numbering prefix
   is_active: boolean;
-  workflow_required: boolean;
-  retention_period: number | null;
-  template: string | null;
+  workflow_required?: boolean;
+  retention_period?: number | null;
+  template?: string | null;
 }
 
 export type DocumentStatus = 

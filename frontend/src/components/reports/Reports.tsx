@@ -1,7 +1,7 @@
 import React, { useState, useCallback, useEffect } from 'react';
-import { useAuth } from '../../contexts/AuthContext';
-import apiService from '../../services/api';
-import LoadingSpinner from '../common/LoadingSpinner';
+import { useAuth } from '../../contexts/AuthContext.tsx';
+import { apiService } from '../../services/api.ts';
+import LoadingSpinner from '../common/LoadingSpinner.tsx';
 
 interface ComplianceReport {
   id: string;
@@ -40,6 +40,8 @@ const Reports: React.FC<ReportsProps> = ({ className = '' }) => {
   const [error, setError] = useState<string | null>(null);
   const [showGenerateModal, setShowGenerateModal] = useState(false);
   const [selectedReportType, setSelectedReportType] = useState<string>('');
+  const [showPreviewModal, setShowPreviewModal] = useState(false);
+  const [previewReport, setPreviewReport] = useState<ComplianceReport | null>(null);
   const [reportFilters, setReportFilters] = useState<ReportFilters>({
     date_from: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
     date_to: new Date().toISOString().split('T')[0],
@@ -118,41 +120,17 @@ const Reports: React.FC<ReportsProps> = ({ className = '' }) => {
         setLoading(true);
         setError(null);
         
-        try {
-          // Try to load from API
-          const reportsData = await apiService.get('/audit/reports/');
-          setReports(reportsData);
-        } catch (apiError) {
-          
-          // Fallback to mock data
-          const mockReports: ComplianceReport[] = [
-            {
-              id: '1',
-              uuid: 'report-uuid-1',
-              name: 'Monthly 21 CFR Part 11 Compliance Report',
-              report_type: 'CFR_PART_11',
-              description: 'Comprehensive compliance assessment for November 2024',
-              date_from: '2024-11-01',
-              date_to: '2024-11-30',
-              generated_at: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
-              generated_by: 1,
-              status: 'COMPLETED',
-              file_size: 2048576, // 2MB
-              report_checksum: 'sha256:abcd1234...',
-              summary_stats: {
-                total_users: 10,
-                total_documents: 11,
-                audit_records: 38,
-                compliance_score: 98
-              }
-            }
-          ];
-          
-          setReports(mockReports);
-        }
+        // Use correct API endpoint (apiService already has /api/v1 in baseURL)
+        const response = await apiService.get('/audit/compliance/');
+        // Handle both paginated and non-paginated responses
+        const reportsData = Array.isArray(response) ? response : (response.results || []);
+        setReports(reportsData);
       } catch (err: any) {
         console.error('Error loading reports:', err);
-        setError('Failed to load reports');
+        const errorMessage = err.response?.data?.detail || err.message || 'Failed to load compliance reports from server';
+        setError(errorMessage);
+        // No mock data fallback - show empty state with informative message
+        setReports([]);
       } finally {
         setLoading(false);
       }
@@ -168,84 +146,62 @@ const Reports: React.FC<ReportsProps> = ({ className = '' }) => {
     setError(null);
     
     try {
-      // Create new report
-      const newReport: ComplianceReport = {
-        id: `report-${Date.now()}`,
-        uuid: `uuid-${Date.now()}`,
-        name: `${reportTypes.find(rt => rt.value === selectedReportType)?.label} - ${new Date().toLocaleDateString()}`,
-        report_type: selectedReportType as any,
+      // Generate report name
+      const reportName = `${reportTypes.find(rt => rt.value === selectedReportType)?.label} - ${new Date().toLocaleDateString()}`;
+      
+      // Call backend API to generate report (apiService already has /api/v1 in baseURL)
+      const response = await apiService.post('/audit/compliance/', {
+        report_type: selectedReportType,
+        name: reportName,
         description: `Generated report for ${reportFilters.date_from} to ${reportFilters.date_to}`,
         date_from: reportFilters.date_from,
         date_to: reportFilters.date_to,
-        generated_at: new Date().toISOString(),
-        generated_by: user?.id || 1,
-        status: 'GENERATING',
-        file_size: 0,
-        report_checksum: '',
-        summary_stats: {}
-      };
+        filters: {
+          include_user_activity: reportFilters.include_user_activity,
+          include_document_changes: reportFilters.include_document_changes,
+          include_security_events: reportFilters.include_security_events,
+          include_compliance_checks: reportFilters.include_compliance_checks,
+        }
+      });
       
-      // Add to reports list
-      setReports(prevReports => [newReport, ...prevReports]);
+      // Add the newly generated report to the list
+      setReports(prevReports => [response, ...prevReports]);
       
-      // Simulate report generation
-      setTimeout(() => {
-        setReports(prevReports => 
-          prevReports.map(report => 
-            report.id === newReport.id 
-              ? { 
-                  ...report, 
-                  status: 'COMPLETED' as const,
-                  file_size: Math.floor(Math.random() * 5000000) + 500000, // Random size between 0.5-5MB
-                  report_checksum: `sha256:${Math.random().toString(36).substring(2, 15)}`,
-                  summary_stats: generateMockStats(selectedReportType)
-                }
-              : report
-          )
-        );
-        setGenerating(false);
-        setShowGenerateModal(false);
-        setSelectedReportType('');
-      }, 3000);
+      setGenerating(false);
+      setShowGenerateModal(false);
+      setSelectedReportType('');
+      
+      // Show success message
+      console.log('✅ Report generated successfully:', response.name);
       
     } catch (err: any) {
-      setError('Failed to generate report');
+      console.error('❌ Failed to generate report:', err);
+      console.error('Error details:', {
+        message: err.message,
+        response: err.response?.data,
+        status: err.response?.status,
+        error: err.error,
+        fullError: err
+      });
+      
+      // Handle ApiService error format: { error: { code, message, timestamp } }
+      let errorMessage = 'Failed to generate report';
+      
+      if (err.error?.message) {
+        errorMessage = err.error.message;
+      } else if (err.response?.data?.error) {
+        errorMessage = err.response.data.error;
+      } else if (err.response?.data?.detail) {
+        errorMessage = err.response.data.detail;
+      } else if (err.message) {
+        errorMessage = err.message;
+      }
+      
+      setError(errorMessage);
       setGenerating(false);
     }
   }, [selectedReportType, reportFilters, user]);
 
-  const generateMockStats = (reportType: string) => {
-    switch (reportType) {
-      case 'CFR_PART_11':
-        return {
-          total_users: 10,
-          total_documents: 11,
-          audit_records: 38,
-          compliance_score: 98,
-          violations: 0
-        };
-      case 'USER_ACTIVITY':
-        return {
-          total_logins: 156,
-          unique_users: 8,
-          failed_attempts: 2,
-          average_session_duration: '2h 15m'
-        };
-      case 'DOCUMENT_LIFECYCLE':
-        return {
-          documents_created: 5,
-          documents_approved: 3,
-          documents_obsoleted: 1,
-          average_approval_time: '4.2 days'
-        };
-      default:
-        return {
-          records_analyzed: Math.floor(Math.random() * 1000) + 100,
-          issues_found: Math.floor(Math.random() * 5),
-          recommendations: Math.floor(Math.random() * 10) + 1
-        };
-    }
-  };
 
   const formatFileSize = (bytes: number) => {
     if (bytes === 0) return '0 Bytes';
@@ -277,16 +233,46 @@ const Reports: React.FC<ReportsProps> = ({ className = '' }) => {
 
   const handleDownloadReport = useCallback(async (report: ComplianceReport) => {
     try {
-      // Simulate download
-      const link = document.createElement('a');
-      link.href = '#'; // In production, this would be the actual file URL
-      link.download = `${report.name.replace(/\s+/g, '_')}.pdf`;
-      link.click();
+      // Check if report is completed
+      if (report.status !== 'COMPLETED') {
+        setError('Report is not yet completed');
+        return;
+      }
       
-      // Show success message
-      alert(`Downloaded: ${report.name}`);
-    } catch (err) {
-      setError('Failed to download report');
+      // Get base URL and token
+      const baseURL = apiService.getBaseURL();
+      const token = localStorage.getItem('accessToken');
+      
+      // Call backend download endpoint
+      const response = await fetch(`${baseURL}/audit/compliance/${report.id}/download/`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || 'Failed to download report');
+      }
+      
+      // Get the blob from response
+      const blob = await response.blob();
+      
+      // Create download link
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `${report.name.replace(/\s+/g, '_')}.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+      
+      console.log('✅ Report downloaded successfully:', report.name);
+    } catch (err: any) {
+      console.error('❌ Failed to download report:', err);
+      setError(err.message || 'Failed to download report');
     }
   }, []);
 
@@ -374,18 +360,40 @@ const Reports: React.FC<ReportsProps> = ({ className = '' }) => {
         {reports.length === 0 ? (
           <div className="p-8 text-center">
             <div className="text-6xl mb-4">📊</div>
-            <h3 className="text-lg font-medium text-gray-900 mb-2">
-              No reports generated yet
-            </h3>
-            <p className="text-gray-500 mb-4">
-              Generate your first compliance report to get started.
-            </p>
-            <button
-              onClick={() => setShowGenerateModal(true)}
-              className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-            >
-              Generate Report
-            </button>
+            {error ? (
+              <div>
+                <h3 className="text-lg font-medium text-red-600 mb-2">
+                  Unable to Load Reports
+                </h3>
+                <p className="text-gray-600 mb-3">{error}</p>
+                <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mt-4 text-left">
+                  <p className="text-sm text-yellow-800 font-medium mb-2">Troubleshooting:</p>
+                  <ul className="text-xs text-yellow-700 space-y-1 list-disc list-inside">
+                    <li>Verify the audit API is accessible at <code className="bg-yellow-100 px-1 rounded">/api/v1/audit/compliance/</code></li>
+                    <li>Check backend logs for authentication or permission errors</li>
+                    <li>Ensure your user account has admin/audit permissions</li>
+                  </ul>
+                </div>
+              </div>
+            ) : (
+              <div>
+                <h3 className="text-lg font-medium text-gray-900 mb-2">
+                  No Compliance Reports Generated Yet
+                </h3>
+                <p className="text-gray-600 mb-2">
+                  Generate your first compliance report to get started.
+                </p>
+                <p className="text-xs text-gray-500 mb-4">
+                  Reports help meet regulatory requirements including 21 CFR Part 11
+                </p>
+                <button
+                  onClick={() => setShowGenerateModal(true)}
+                  className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                >
+                  Generate Report
+                </button>
+              </div>
+            )}
           </div>
         ) : (
           <div className="divide-y divide-gray-200">
@@ -452,8 +460,8 @@ const Reports: React.FC<ReportsProps> = ({ className = '' }) => {
                           </button>
                           <button
                             onClick={() => {
-                              // Show report preview modal (future enhancement)
-                              alert('Report preview functionality will be implemented in future update');
+                              setPreviewReport(report);
+                              setShowPreviewModal(true);
                             }}
                             className="inline-flex items-center px-3 py-1.5 border border-gray-300 text-xs font-medium rounded text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500"
                           >
@@ -631,6 +639,143 @@ const Reports: React.FC<ReportsProps> = ({ className = '' }) => {
                 >
                   {generating ? 'Generating...' : 'Generate Report'}
                 </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Preview Modal */}
+      {showPreviewModal && previewReport && (
+        <div className="fixed z-10 inset-0 overflow-y-auto" aria-labelledby="modal-title" role="dialog" aria-modal="true">
+          <div className="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
+            <div className="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" aria-hidden="true" onClick={() => setShowPreviewModal(false)}></div>
+            <span className="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
+            
+            <div className="inline-block align-bottom bg-white rounded-lg px-4 pt-5 pb-4 text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-4xl sm:w-full sm:p-6">
+              <div className="absolute top-0 right-0 pt-4 pr-4">
+                <button
+                  type="button"
+                  className="bg-white rounded-md text-gray-400 hover:text-gray-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                  onClick={() => setShowPreviewModal(false)}
+                >
+                  <span className="sr-only">Close</span>
+                  <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+
+              <div className="sm:flex sm:items-start">
+                <div className="mt-3 text-center sm:mt-0 sm:text-left w-full">
+                  <h3 className="text-2xl leading-6 font-bold text-gray-900 mb-4" id="modal-title">
+                    Report Preview
+                  </h3>
+                  
+                  {/* Report Header */}
+                  <div className="bg-blue-50 rounded-lg p-4 mb-6">
+                    <div className="flex items-center justify-between mb-2">
+                      <h4 className="text-lg font-semibold text-gray-900">{previewReport.name}</h4>
+                      <span className={`px-3 py-1 rounded-full text-xs font-medium ${
+                        previewReport.status === 'COMPLETED' ? 'bg-green-100 text-green-800' :
+                        previewReport.status === 'GENERATING' ? 'bg-yellow-100 text-yellow-800' :
+                        previewReport.status === 'FAILED' ? 'bg-red-100 text-red-800' :
+                        'bg-gray-100 text-gray-800'
+                      }`}>
+                        {previewReport.status}
+                      </span>
+                    </div>
+                    <p className="text-sm text-gray-600">{previewReport.description}</p>
+                  </div>
+
+                  {/* Report Metadata */}
+                  <div className="grid grid-cols-2 gap-4 mb-6">
+                    <div className="bg-white border border-gray-200 rounded-lg p-4">
+                      <dt className="text-sm font-medium text-gray-500 mb-1">Report Type</dt>
+                      <dd className="text-lg font-semibold text-gray-900">
+                        {reportTypes.find(rt => rt.value === previewReport.report_type)?.label || previewReport.report_type}
+                      </dd>
+                    </div>
+                    
+                    <div className="bg-white border border-gray-200 rounded-lg p-4">
+                      <dt className="text-sm font-medium text-gray-500 mb-1">Report Period</dt>
+                      <dd className="text-sm text-gray-900">
+                        {new Date(previewReport.date_from).toLocaleDateString()} - {new Date(previewReport.date_to).toLocaleDateString()}
+                      </dd>
+                    </div>
+                    
+                    <div className="bg-white border border-gray-200 rounded-lg p-4">
+                      <dt className="text-sm font-medium text-gray-500 mb-1">Generated At</dt>
+                      <dd className="text-sm text-gray-900">
+                        {new Date(previewReport.generated_at).toLocaleString()}
+                      </dd>
+                    </div>
+                    
+                    <div className="bg-white border border-gray-200 rounded-lg p-4">
+                      <dt className="text-sm font-medium text-gray-500 mb-1">File Size</dt>
+                      <dd className="text-sm text-gray-900">
+                        {(previewReport.file_size / 1024).toFixed(2)} KB
+                      </dd>
+                    </div>
+                  </div>
+
+                  {/* Summary Statistics */}
+                  {previewReport.summary_stats && Object.keys(previewReport.summary_stats).length > 0 && (
+                    <div className="mb-6">
+                      <h5 className="text-lg font-semibold text-gray-900 mb-3">Summary Statistics</h5>
+                      <div className="bg-gray-50 rounded-lg p-4">
+                        <dl className="grid grid-cols-2 gap-4">
+                          {Object.entries(previewReport.summary_stats).map(([key, value]) => (
+                            <div key={key} className="border-b border-gray-200 pb-2">
+                              <dt className="text-sm font-medium text-gray-600 capitalize">
+                                {key.replace(/_/g, ' ')}
+                              </dt>
+                              <dd className="text-2xl font-bold text-blue-600 mt-1">
+                                {typeof value === 'number' ? value.toLocaleString() : String(value)}
+                              </dd>
+                            </div>
+                          ))}
+                        </dl>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Report Checksum */}
+                  <div className="bg-gray-50 rounded-lg p-4 mb-6">
+                    <h5 className="text-sm font-medium text-gray-700 mb-2">Report Integrity</h5>
+                    <div className="flex items-center space-x-2">
+                      <svg className="h-5 w-5 text-green-500" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                      </svg>
+                      <span className="text-xs text-gray-600 font-mono">
+                        UUID: {previewReport.uuid}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Action Buttons */}
+                  <div className="mt-5 sm:mt-6 sm:grid sm:grid-cols-2 sm:gap-3 sm:grid-flow-row-dense">
+                    {previewReport.status === 'COMPLETED' && (
+                      <button
+                        type="button"
+                        className="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-blue-600 text-base font-medium text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 sm:col-start-2 sm:text-sm"
+                        onClick={() => {
+                          handleDownloadReport(previewReport);
+                          setShowPreviewModal(false);
+                        }}
+                      >
+                        Download PDF
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      className="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 sm:mt-0 sm:col-start-1 sm:text-sm"
+                      onClick={() => setShowPreviewModal(false)}
+                    >
+                      Close
+                    </button>
+                  </div>
+                </div>
               </div>
             </div>
           </div>

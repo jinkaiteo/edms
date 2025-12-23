@@ -42,12 +42,14 @@ class ComplianceReportSerializer(serializers.ModelSerializer):
     class Meta:
         model = ComplianceReport
         fields = [
-            'id', 'uuid', 'report_type', 'title', 'description',
+            'id', 'uuid', 'report_type', 'name', 'description',
             'date_from', 'date_to', 'generated_by', 'generated_by_display',
-            'generated_at', 'file_path', 'file_size', 'checksum',
+            'generated_at', 'status', 'report_data', 'summary_stats',
+            'file_path', 'file_size', 'report_checksum',
             'is_archived', 'archived_at'
         ]
-        read_only_fields = ['id', 'uuid', 'generated_at', 'file_size', 'checksum']
+        read_only_fields = ['id', 'uuid', 'generated_at', 'generated_by', 'status', 
+                           'file_size', 'report_checksum', 'report_data', 'summary_stats']
 
 
 class UserSessionSerializer(serializers.ModelSerializer):

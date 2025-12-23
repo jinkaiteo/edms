@@ -93,21 +93,14 @@ const UserManagement: React.FC<UserManagementProps> = ({ className = '' }) => {
         setLoading(true);
         setError(null);
         
-        try {
-          // Try to load from API first
-          const [usersData, rolesData] = await Promise.all([
-            apiService.getUsers(),
-            apiService.getRoles()
-          ]);
-          
-          setUsers(usersData);
-          setRoles(rolesData);
-        } catch (apiError) {
-          
-          // Fallback to mock data
-          setUsers(mockUsers);
-          setRoles(mockRoles);
-        }
+        // Load from API only - no mock data fallback
+        const [usersData, rolesData] = await Promise.all([
+          apiService.getUsers(),
+          apiService.getRoles()
+        ]);
+        
+        setUsers(usersData || []);
+        setRoles(rolesData || []);
       } catch (err: any) {
         console.error('Error loading data:', err);
         setError('Failed to load user data');
@@ -119,47 +112,6 @@ const UserManagement: React.FC<UserManagementProps> = ({ className = '' }) => {
     loadData();
   }, []);
 
-  // Mock data (fallback)
-  const mockUsers: UserWithRoles[] = [
-    {
-      id: 1,
-      username: 'docadmin',
-      email: 'admin@edms.local',
-      first_name: 'Document',
-      last_name: 'Admin',
-      is_active: true,
-      is_staff: true,
-      is_superuser: true,
-      date_joined: '2024-01-01T00:00:00Z',
-      last_login: '2024-11-23T10:30:00Z',
-      active_roles: [
-        { id: 1, name: 'Document Admin', module: 'O1', permission_level: 'admin' }
-      ]
-    },
-    {
-      id: 2,
-      username: 'author',
-      email: 'author@edms.local',
-      first_name: 'Jane',
-      last_name: 'Author',
-      is_active: true,
-      is_staff: false,
-      is_superuser: false,
-      date_joined: '2024-01-02T00:00:00Z',
-      last_login: '2024-11-23T09:15:00Z',
-      active_roles: [
-        { id: 2, name: 'Document Author', module: 'O1', permission_level: 'write' }
-      ]
-    }
-  ];
-
-  const mockRoles: Role[] = [
-    { id: 1, name: 'Document Viewer', module: 'O1', permission_level: 'read', is_active: true },
-    { id: 2, name: 'Document Author', module: 'O1', permission_level: 'write', is_active: true },
-    { id: 3, name: 'Document Reviewer', module: 'O1', permission_level: 'review', is_active: true },
-    { id: 4, name: 'Document Approver', module: 'O1', permission_level: 'approve', is_active: true },
-    { id: 5, name: 'Document Admin', module: 'O1', permission_level: 'admin', is_active: true }
-  ];
 
   // Handler functions
   const handleCreateUser = async (e: React.FormEvent) => {

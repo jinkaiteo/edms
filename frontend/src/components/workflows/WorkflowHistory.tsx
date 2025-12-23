@@ -56,9 +56,10 @@ const WorkflowHistory: React.FC<WorkflowHistoryProps> = ({ document }) => {
         const historyData = await historyResponse.json();
         console.log('✅ WorkflowHistory: Received API response:', historyData);
         
-        if (historyData.workflow_history && Array.isArray(historyData.workflow_history)) {
+        const transitionsArr = Array.isArray(historyData.transitions) ? historyData.transitions : (historyData.workflow_history || []);
+        if (transitionsArr && transitionsArr.length > 0) {
           // Transform API response to match component interface
-          const transformedTransitions = historyData.workflow_history.map((transition: any, index: number) => ({
+          const transformedTransitions = transitionsArr.map((transition: any, index: number) => ({
             id: index + 1,
             transitioned_at: transition.transitioned_at,
             transitioned_by: {
@@ -82,66 +83,17 @@ const WorkflowHistory: React.FC<WorkflowHistoryProps> = ({ document }) => {
           console.log('✅ WorkflowHistory: Transformed transitions:', transformedTransitions);
           setTransitions(transformedTransitions);
           return;
+        } else {
+          // Explicitly avoid synthesized fallback: show a clear message
+          setTransitions([]);
+          setError('No workflow history restored for this document.');
+          return;
         }
+      } else {
+        setError(`Failed to load workflow history (HTTP ${historyResponse.status}).`);
+        setTransitions([]);
+        return;
       }
-
-      // Fallback: Create meaningful history from document data
-      console.log('Using document data fallback for history display');
-      
-      const basicHistory: WorkflowTransition[] = [
-        {
-          id: 1,
-          transitioned_at: document.created_at,
-          transitioned_by: {
-            id: 1,
-            username: document.author?.username || 'author',
-            first_name: document.author?.first_name || 'Document',
-            last_name: document.author?.last_name || 'Author',
-            full_name: document.author?.full_name || document.created_by?.full_name || 'Document Author'
-          },
-          from_state: { code: 'INITIAL', name: 'Initial' },
-          to_state: { code: 'DRAFT', name: 'Draft' },
-          comment: 'Document created'
-        }
-      ];
-
-      // Add status change if document is not in draft
-      if (document.status && document.status !== 'DRAFT') {
-        basicHistory.push({
-          id: 2,
-          transitioned_at: document.updated_at || document.created_at,
-          transitioned_by: {
-            id: 2,
-            username: 'workflow',
-            first_name: 'Workflow',
-            last_name: 'System',
-            full_name: 'Workflow System'
-          },
-          from_state: { code: 'DRAFT', name: 'Draft' },
-          to_state: { code: document.status, name: document.status_display || document.status },
-          comment: `Document status changed to ${document.status_display || document.status}`
-        });
-      }
-
-      // Add final effective status if approved
-      if (document.status === 'EFFECTIVE') {
-        basicHistory.push({
-          id: 3,
-          transitioned_at: document.updated_at || document.created_at,
-          transitioned_by: {
-            id: 3,
-            username: document.approver?.username || 'approver',
-            first_name: document.approver?.first_name || 'Document',
-            last_name: document.approver?.last_name || 'Approver',
-            full_name: document.approver?.full_name || 'Document Approver'
-          },
-          from_state: { code: 'PENDING_APPROVAL', name: 'Pending Approval' },
-          to_state: { code: 'EFFECTIVE', name: 'Effective' },
-          comment: 'Document approved and made effective'
-        });
-      }
-
-      setTransitions(basicHistory);
       
     } catch (error: any) {
       console.error('Error loading workflow history:', error);

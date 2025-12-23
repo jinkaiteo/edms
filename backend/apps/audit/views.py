@@ -127,9 +127,9 @@ class LoginAuditViewSet(viewsets.ReadOnlyModelViewSet):
         })
 
 
-class ComplianceReportViewSet(viewsets.ReadOnlyModelViewSet):
+class ComplianceReportViewSet(viewsets.ModelViewSet):
     """
-    ViewSet for ComplianceReport model - Read only
+    ViewSet for ComplianceReport model - Supports generation and download
     """
     queryset = ComplianceReport.objects.all().select_related('generated_by').order_by('-generated_at')
     serializer_class = ComplianceReportSerializer
@@ -142,11 +142,97 @@ class ComplianceReportViewSet(viewsets.ReadOnlyModelViewSet):
         'generated_by__username': ['exact', 'icontains'],
         'generated_at': ['gte', 'lte', 'exact'],
         'is_archived': ['exact'],
+        'status': ['exact'],
     }
     
-    search_fields = ['title', 'description', 'report_type']
-    ordering_fields = ['generated_at', 'title', 'report_type']
+    search_fields = ['name', 'description', 'report_type']
+    ordering_fields = ['generated_at', 'name', 'report_type']
     ordering = ['-generated_at']
+    
+    def create(self, request, *args, **kwargs):
+        """Generate a new compliance report"""
+        from .services import generate_compliance_report_sync
+        
+        # Extract parameters
+        report_type = request.data.get('report_type')
+        name = request.data.get('name')
+        description = request.data.get('description', '')
+        date_from = request.data.get('date_from')
+        date_to = request.data.get('date_to')
+        filters = request.data.get('filters', {})
+        
+        # Validate required fields
+        if not report_type:
+            return Response(
+                {'error': 'report_type is required'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        if not name:
+            return Response(
+                {'error': 'name is required'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        if not date_from or not date_to:
+            return Response(
+                {'error': 'date_from and date_to are required'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        try:
+            # Generate the report
+            report = generate_compliance_report_sync(
+                user=request.user,
+                report_type=report_type,
+                name=name,
+                description=description,
+                date_from=date_from,
+                date_to=date_to,
+                filters=filters
+            )
+            
+            serializer = self.get_serializer(report)
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+            
+        except Exception as e:
+            return Response(
+                {'error': str(e)},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+    
+    @action(detail=True, methods=['get'])
+    def download(self, request, pk=None):
+        """Download a generated report as PDF"""
+        from django.http import FileResponse, HttpResponse
+        import os
+        
+        report = self.get_object()
+        
+        # Check if report is completed
+        if report.status != 'COMPLETED':
+            return Response(
+                {'error': 'Report is not yet completed'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # Check if file exists
+        if not report.file_path or not os.path.exists(report.file_path):
+            return Response(
+                {'error': 'Report file not found'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+        
+        # Return the file
+        try:
+            file_handle = open(report.file_path, 'rb')
+            response = FileResponse(file_handle, content_type='application/pdf')
+            response['Content-Disposition'] = f'attachment; filename="{report.name}.pdf"'
+            response['Content-Length'] = report.file_size
+            return response
+        except Exception as e:
+            return Response(
+                {'error': f'Failed to download report: {str(e)}'},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
 
 
 class UserSessionViewSet(viewsets.ReadOnlyModelViewSet):

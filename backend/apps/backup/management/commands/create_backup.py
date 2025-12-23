@@ -34,6 +34,10 @@ class Command(BaseCommand):
 
     def add_arguments(self, parser):
         parser.add_argument(
+            '--require-workflow-history', action='store_true', dest='require_workflow_history',
+            help='Fail export if workflow instances/transitions are missing (default: warn only)'
+        )
+        parser.add_argument(
             '--type',
             choices=['full', 'database', 'files', 'export', 'incremental'],
             default='full',
@@ -292,6 +296,51 @@ class Command(BaseCommand):
             metadata_file = db_dir / 'backup_metadata.json'
             with open(metadata_file, 'w') as f:
                 json.dump(metadata, f, indent=2, default=str)
+
+            # Export-time completeness checks (fail fast)
+            required_models = ['documents.documenttype', 'documents.documentsource']
+            missing_required = [m for m in required_models if metadata['model_counts'].get(m, 0) == 0]
+            if missing_required:
+                raise CommandError(
+                    f"Export completeness check failed: missing models {missing_required}. "
+                    f"Ensure DocumentType and DocumentSource exist before export."
+                )
+            # Every document must have type and source fields present
+            doc_count = metadata['model_counts'].get('documents.document', 0)
+            if doc_count:
+                missing_type = 0
+                missing_source = 0
+                for rec in backup_data:
+                    if rec.get('model') == 'documents.document':
+                        flds = rec.get('fields', {})
+                        dt = flds.get('document_type')
+                        ds = flds.get('document_source')
+                        # Expect lists from natural keys e.g., ['POL']
+                        if not (isinstance(dt, list) and dt and dt[0]):
+                            missing_type += 1
+                        if not (isinstance(ds, list) and ds and ds[0]):
+                            missing_source += 1
+                if missing_type or missing_source:
+                    raise CommandError(
+                        f"Export completeness check failed: documents missing type={missing_type}, source={missing_source}. "
+                        f"All documents must reference a valid DocumentType and DocumentSource."
+                    )
+
+                # Workflow history presence check: warn by default, fail if flag provided
+                wf_count = metadata['model_counts'].get('workflows.documentworkflow', 0)
+                tr_count = metadata['model_counts'].get('workflows.documenttransition', 0)
+                require_wf = getattr(self, 'require_workflow_history', False)
+                if (wf_count == 0 or tr_count == 0):
+                    msg = (
+                        f"Warning: Export contains {doc_count} documents but workflow history is empty "
+                        f"(workflows={wf_count}, transitions={tr_count})."
+                    )
+                    if require_wf:
+                        raise CommandError(
+                            msg + " Use actual source data with workflows or disable --require-workflow-history."
+                        )
+                    else:
+                        self.stdout.write(self.style.WARNING(msg))
                 
             self.stdout.write(f"✓ Exported {len(backup_data)} database records")
             self.stdout.write(f"✓ Backup includes {len(metadata['model_counts'])} model types")

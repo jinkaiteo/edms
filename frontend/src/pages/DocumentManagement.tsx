@@ -48,13 +48,8 @@ const DocumentManagement: React.FC<DocumentManagementProps> = ({
     };
   }, []);
 
-  // Mock document types for the upload component
-  const documentTypes: DocumentType[] = [
-    { id: 1, name: 'Policy', description: 'Company policies', prefix: 'POL', is_active: true, workflow_required: true, retention_period: null, template: null },
-    { id: 2, name: 'SOP', description: 'Standard Operating Procedures', prefix: 'SOP', is_active: true, workflow_required: true, retention_period: null, template: null },
-    { id: 3, name: 'Manual', description: 'User manuals', prefix: 'MAN', is_active: true, workflow_required: false, retention_period: null, template: null },
-    { id: 4, name: 'Form', description: 'Forms and templates', prefix: 'FORM', is_active: true, workflow_required: false, retention_period: null, template: null }
-  ];
+  // No mock document types; search and modals fetch from backend
+  const documentTypes: DocumentType[] = [];
 
   const handleDocumentSelect = useCallback((document: Document) => {
     setSelectedDocument(document);

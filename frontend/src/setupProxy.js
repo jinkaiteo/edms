@@ -35,6 +35,19 @@ module.exports = function (app) {
       }
     })
   );
+
+  // Proxy admin endpoints (system reinit etc.)
+  app.use(
+    "/admin",
+    createProxyMiddleware({
+      target: backendUrl,
+      changeOrigin: true,
+      logLevel: 'debug',
+      onError: (err, req, res) => {
+        console.error('❌ Admin proxy error:', err.message);
+      }
+    })
+  );
   
   // WebSocket proxy removed - HTTP polling used instead
 };

@@ -57,6 +57,11 @@ class Command(BaseCommand):
             action='store_true',
             help='Skip interactive confirmation (for API/automated calls)'
         )
+        parser.add_argument(
+            '--with-reinit',
+            action='store_true',
+            help='DANGER: Reinitialize (wipe) the system before restore for catastrophic recovery'
+        )
 
     def handle(self, *args, **options):
         package_path = options['package_path']
@@ -65,6 +70,7 @@ class Command(BaseCommand):
         confirm = options['confirm']
         backup_current = options['backup_current']
         skip_interactive = options['skip_interactive']
+        with_reinit = options.get('with_reinit', False)
 
         self.stdout.write(self.style.SUCCESS('🔄 EDMS System Restore'))
         self.stdout.write('=' * 50)
@@ -138,6 +144,18 @@ class Command(BaseCommand):
                 self.stdout.write('\nOperation cancelled.')
                 return
 
+        # Optional catastrophic recovery reinit step
+        if with_reinit:
+            self.stdout.write(self.style.WARNING("\n\u26a0\ufe0f  WITH-REINIT OPTION ENABLED"))
+            self.stdout.write(self.style.WARNING("This will perform a complete system reinitialization BEFORE restore."))
+            self.stdout.write(self.style.WARNING("All non-core data will be wiped. Proceeding..."))
+            from django.core.management import call_command
+            try:
+                call_command('system_reinit', confirm=True, skip_interactive=True)
+                self.stdout.write(self.style.SUCCESS("\u2705 System reinit completed successfully"))
+            except Exception as e:
+                raise CommandError(f"System reinit failed: {str(e)}")
+
         # Step 5: Execute restore
         self.stdout.write(f"🔄 Executing {restore_type} restore...")
         
@@ -202,6 +220,43 @@ class Command(BaseCommand):
                 self.stdout.write(f"Restore Job ID: {restore_job.uuid}")
                 self.stdout.write(f"Items restored: {restore_job.restored_items_count}")
                 self.stdout.write(f"Items failed: {restore_job.failed_items_count}")
+                
+                # Attempt to automatically import workflow history from the package
+                try:
+                    import tarfile
+                    import tempfile
+                    import json
+                    from django.core.management import call_command
+
+                    if package_path.endswith('.tar.gz') or package_path.endswith('.tgz'):
+                        self.stdout.write("📜 Scanning package for workflow history (database_backup.json)...")
+                        with tarfile.open(package_path, 'r:gz') as tar:
+                            member = None
+                            # Prefer .../database/database_backup.json; fallback to any database_backup.json
+                            for m in tar.getmembers():
+                                name_low = m.name.lower()
+                                if name_low.endswith('/database/database_backup.json') or name_low.endswith('database_backup.json'):
+                                    member = m
+                                    # Prefer the database/ path; break only if found preferred path
+                                    if '/database/' in name_low:
+                                        break
+                            if member is not None:
+                                with tempfile.NamedTemporaryFile(delete=False, suffix='.json') as tmpf:
+                                    extracted = tar.extractfile(member)
+                                    tmpf.write(extracted.read())
+                                    tmp_json_path = tmpf.name
+                                self.stdout.write(self.style.NOTICE(f"➡️  Importing workflow history from {member.name}"))
+                                # Run the dedicated importer which resolves natural keys reliably
+                                call_command('import_workflow_history', backup_json=tmp_json_path, verbose=True)
+                                # Optionally verify and print summary (non-fatal)
+                                self.stdout.write(self.style.NOTICE("🔎 Verifying workflow history after import..."))
+                                call_command('verify_workflow_history', backup_json=tmp_json_path, verbose=False)
+                            else:
+                                self.stdout.write(self.style.WARNING("⚠️  No database_backup.json found in package; skipping workflow history import."))
+                    else:
+                        self.stdout.write(self.style.WARNING("⚠️  Package is not a .tar.gz archive; skipping workflow history import."))
+                except Exception as e:
+                    self.stdout.write(self.style.WARNING(f"⚠️  Workflow history import/verification encountered an issue: {e}"))
                 
                 # Log audit event
                 audit_service.log_user_action(
