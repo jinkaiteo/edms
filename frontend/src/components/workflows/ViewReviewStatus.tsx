@@ -107,10 +107,8 @@ const ViewReviewStatus: React.FC<ViewReviewStatusProps> = ({
       
     } catch (err) {
       console.error('Error loading review status:', err);
-      setError('Failed to load review status. Please try again.');
-      
-      // Create fallback mock data
-      setReviewData(createMockReviewData());
+      setError('Failed to load review status from API. Please verify:\n- Backend service is running\n- Document workflow is configured\n- API endpoint is accessible');
+      setReviewData(null);
     } finally {
       setLoading(false);
     }
@@ -173,41 +171,6 @@ const ViewReviewStatus: React.FC<ViewReviewStatusProps> = ({
     };
   };
 
-  const createMockReviewData = (): ReviewStatusData => {
-    const now = new Date();
-    const createdAt = new Date(document.created_at);
-    const daysInReview = Math.floor((now.getTime() - createdAt.getTime()) / (1000 * 60 * 60 * 24));
-    
-    return {
-      workflow: null,
-      transitions: [],
-      currentReviewer: document.reviewer_display ? {
-        id: document.reviewer || 0,
-        name: document.reviewer_display,
-        email: '',
-        status: getReviewerStatus(document.status)
-      } : undefined,
-      currentApprover: document.approver_display ? {
-        id: document.approver || 0,
-        name: document.approver_display,
-        email: '',
-        status: getApproverStatus(document.status)
-      } : undefined,
-      timeline: [
-        {
-          date: document.created_at,
-          action: 'Document Created',
-          user: document.author_display || 'Unknown Author',
-          status: 'DRAFT',
-          comment: 'Document created and ready for content upload'
-        }
-      ],
-      statistics: {
-        daysInReview,
-        isOverdue: false
-      }
-    };
-  };
 
   const getActionLabel = (transitionName: string, toState: string): string => {
     const actionMap: Record<string, string> = {

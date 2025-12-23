@@ -68,24 +68,18 @@ const PlaceholderManagement: React.FC<PlaceholderManagementProps> = ({ className
         setPlaceholders(data);
       } else {
         console.error(`❌ Failed to fetch placeholders: ${response.status} ${response.statusText}`);
-        setPlaceholders(mockPlaceholders);
+        setPlaceholders([]);
+        setError(`Failed to load placeholders from server (HTTP ${response.status}). Please check backend API is running and accessible.`);
       }
     } catch (error) {
       console.error('❌ Error fetching placeholders:', error);
-      setPlaceholders(mockPlaceholders);
+      setPlaceholders([]);
+      setError('Unable to connect to placeholder API. Please verify:\n- Backend service is running\n- API endpoint /api/v1/placeholders/ is accessible\n- Network connectivity');
     } finally {
       setLoading(false);
     }
   };
 
-  // Mock data fallback
-  const mockPlaceholders: PlaceholderDefinition[] = [
-    { id: 1, name: 'DOC_NUMBER', display_name: 'Document Number', description: 'Unique document identifier', placeholder_type: 'DOCUMENT', data_source: 'DOCUMENT_MODEL', default_value: '', is_active: true },
-    { id: 2, name: 'DOC_TITLE', display_name: 'Document Title', description: 'Document title or name', placeholder_type: 'DOCUMENT', data_source: 'DOCUMENT_MODEL', default_value: '', is_active: true },
-    { id: 3, name: 'AUTHOR_NAME', display_name: 'Author Name', description: 'Document author full name', placeholder_type: 'USER', data_source: 'USER_MODEL', default_value: '', is_active: true },
-    { id: 4, name: 'APPROVAL_DATE', display_name: 'Approval Date', description: 'Document approval date', placeholder_type: 'DATE', data_source: 'DOCUMENT_MODEL', default_value: '', is_active: true },
-    { id: 5, name: 'COMPANY_NAME', display_name: 'Company Name', description: 'Organization name', placeholder_type: 'SYSTEM', data_source: 'SYSTEM_CONFIG', default_value: '', is_active: true }
-  ];
 
   // Validate template file
   const validateTemplate = useCallback(async (file: File) => {
@@ -106,7 +100,7 @@ const PlaceholderManagement: React.FC<PlaceholderManagementProps> = ({ className
       const formData = new FormData();
       formData.append('file', file);
 
-      // Create a mock document for validation
+      // Validate template file with backend API
       const response = await fetch('/api/v1/documents/documents/validate-template/', {
         method: 'POST',
         headers: {

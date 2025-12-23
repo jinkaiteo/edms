@@ -16,64 +16,6 @@ const WorkflowConfiguration: React.FC<WorkflowConfigurationProps> = ({ className
   const [showCreateWorkflow, setShowCreateWorkflow] = useState(false);
   const [showEditWorkflow, setShowEditWorkflow] = useState(false);
   const { authenticated } = useAuth();
-
-  // Mock workflow data
-  const mockWorkflows: WorkflowType[] = [
-    {
-      id: 1,
-      uuid: 'wf-review-001',
-      name: 'Document Review Workflow',
-      workflow_type: 'REVIEW',
-      description: 'Standard document review process for all document types',
-      is_active: true,
-      requires_approval: true,
-      timeout_days: 7,
-      reminder_days: 2
-    },
-    {
-      id: 2,
-      uuid: 'wf-approval-001',
-      name: 'Document Approval Workflow',
-      workflow_type: 'APPROVAL',
-      description: 'Final approval workflow for critical documents',
-      is_active: true,
-      requires_approval: true,
-      timeout_days: 5,
-      reminder_days: 1
-    },
-    {
-      id: 3,
-      uuid: 'wf-version-001',
-      name: 'Document Version Update',
-      workflow_type: 'UP_VERSION',
-      description: 'Workflow for updating document versions',
-      is_active: true,
-      requires_approval: false,
-      timeout_days: 3,
-      reminder_days: 1
-    },
-    {
-      id: 4,
-      uuid: 'wf-obsolete-001',
-      name: 'Document Obsolescence',
-      workflow_type: 'OBSOLETE',
-      description: 'Process for marking documents as obsolete',
-      is_active: true,
-      requires_approval: true,
-      timeout_days: 14,
-      reminder_days: 3
-    },
-    {
-      id: 5,
-      uuid: 'wf-terminate-001',
-      name: 'Document Termination',
-      workflow_type: 'TERMINATE',
-      description: 'Emergency termination of documents',
-      is_active: false,
-      requires_approval: true,
-      timeout_days: 1,
-      reminder_days: 0
-    }
   ];
 
   // Load workflows from API
@@ -97,10 +39,8 @@ const WorkflowConfiguration: React.FC<WorkflowConfigurationProps> = ({ className
         
       } catch (err: any) {
         console.error('❌ Error loading workflows:', err);
-        setError(`Failed to load live workflow data: ${err.message}. Using fallback configuration.`);
-        
-        // Fallback to mock data on error with clear indication
-        setWorkflows(mockWorkflows);
+        setError(`Failed to load workflow configuration from API: ${err.message}\n\nPlease verify:\n- Backend service is running\n- Workflow API endpoint /api/v1/workflows/types/ is accessible\n- Workflows are configured in database`);
+        setWorkflows([]);
       } finally {
         setLoading(false);
       }
