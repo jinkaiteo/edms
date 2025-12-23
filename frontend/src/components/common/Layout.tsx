@@ -8,12 +8,10 @@
 import React, { useState, useEffect } from 'react';
 import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
 import {
-  HomeIcon,
   DocumentTextIcon,
   Cog6ToothIcon,
   UserGroupIcon,
   ClipboardDocumentListIcon,
-  BellIcon,
   UserIcon,
   ArrowRightOnRectangleIcon,
   Bars3Icon,
@@ -82,7 +80,6 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
 
   // Document count state and refresh functionality
   const [documentCount, setDocumentCount] = useState<number>(0);
-  const [lastRefreshTime, setLastRefreshTime] = useState<number>(0);
 
   // Smart badge refresh function  
   const refreshBadge = async () => {
@@ -98,7 +95,6 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
       const count = documents.length;
       
       setDocumentCount(count);
-      setLastRefreshTime(Date.now());
       console.log(`✅ Badge refreshed successfully: ${count} documents`);
       
       return count;

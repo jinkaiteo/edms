@@ -7,7 +7,6 @@ import DocumentCreateModal from '../components/documents/DocumentCreateModal.tsx
 import DocumentList from '../components/documents/DocumentList.tsx';
 import DocumentViewer from '../components/documents/DocumentViewer.tsx';
 import DocumentSearch from '../components/documents/DocumentSearch.tsx';
-import DocumentUploadNewModal from '../components/documents/DocumentUploadNewModal';
 import { triggerBadgeRefresh } from '../utils/badgeRefresh.ts';
 
 interface DocumentManagementProps {

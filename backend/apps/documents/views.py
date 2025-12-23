@@ -947,10 +947,13 @@ class DocumentViewSet(viewsets.ModelViewSet):
         from difflib import SequenceMatcher
         
         # Pattern recognition for various placeholder formats
+        # IMPORTANT: Order matters! Check standard format first to avoid false positives
         patterns = [
+            # Standard format (correct) - must be checked first
             {'regex': r'\{\{([A-Z_][A-Z0-9_]*)\}\}', 'name': 'Standard {{PLACEHOLDER}}'},
-            {'regex': r'\{([A-Z_][A-Z0-9_]*)\}', 'name': 'Single braces {PLACEHOLDER}'},
-            {'regex': r'\{\{\s*([A-Z_][A-Z0-9_]*)\s*\}\}', 'name': 'Spaced {{ PLACEHOLDER }}'},
+            # Wrong formats - use negative lookahead/lookbehind to avoid matching standard format
+            {'regex': r'(?<!\{)\{([A-Z_][A-Z0-9_]*)\}(?!\})', 'name': 'Single braces {PLACEHOLDER}'},
+            {'regex': r'\{\{\s+([A-Z_][A-Z0-9_]*)\s*\}\}|\{\{\s*([A-Z_][A-Z0-9_]*)\s+\}\}', 'name': 'Spaced {{ PLACEHOLDER }}'},
             {'regex': r'<<([A-Z_][A-Z0-9_]*)>>', 'name': 'Angle brackets <<PLACEHOLDER>>'},
             {'regex': r'\[([A-Z_][A-Z0-9_]*)\]', 'name': 'Square brackets [PLACEHOLDER]'},
             {'regex': r'%([A-Z_][A-Z0-9_]*)%', 'name': 'Percent signs %PLACEHOLDER%'},
@@ -963,14 +966,18 @@ class DocumentViewSet(viewsets.ModelViewSet):
         unmatched_patterns = []
         
         # Process each pattern
+        processed_standard = set()  # Track standard placeholders to avoid double-processing
+        
         for pattern_info in patterns:
             regex = pattern_info['regex']
             pattern_name = pattern_info['name']
             
-            matches = re.findall(regex, text_content)
-            for match in matches:
-                placeholder_name = match
-                full_match = re.search(regex, text_content).group(0) if re.search(regex, text_content) else match
+            # Use finditer to get both the match and its position
+            for match_obj in re.finditer(regex, text_content):
+                # Handle tuple results from regex groups (for spaced pattern)
+                match_groups = match_obj.groups()
+                placeholder_name = next((g for g in match_groups if g), '')
+                full_match = match_obj.group(0)
                 
                 if pattern_name == 'Standard {{PLACEHOLDER}}':
                     # Check if it's a valid placeholder

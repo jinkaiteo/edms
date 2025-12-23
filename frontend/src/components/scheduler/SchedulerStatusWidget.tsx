@@ -38,6 +38,11 @@ interface SchedulerStatus {
     documents_scheduled_obsolescence: number;
     active_workflows: number;
     overdue_workflows: number;
+    backup_jobs_last_24h?: number;
+    backup_jobs_failed_24h?: number;
+    backup_jobs_completed_24h?: number;
+    enabled_backup_configs?: number;
+    last_successful_backup_hours_ago?: number | null;
   };
   alerts: Array<{
     level: 'CRITICAL' | 'WARNING' | 'INFO';
@@ -225,6 +230,45 @@ const SchedulerStatusWidget: React.FC<SchedulerStatusWidgetProps> = ({
           <div className="text-xs text-gray-500">Overdue Workflows</div>
         </div>
       </div>
+
+      {/* Backup Statistics */}
+      {status.task_statistics.backup_jobs_last_24h !== undefined && (
+        <div className="border-t border-gray-200 pt-4 mb-4">
+          <h4 className="text-sm font-medium text-gray-700 mb-3">Backup System (24h)</h4>
+          <div className="grid grid-cols-3 gap-3 text-center">
+            <div>
+              <div className="text-xl font-bold text-blue-600">
+                {status.task_statistics.backup_jobs_completed_24h || 0}
+              </div>
+              <div className="text-xs text-gray-500">Completed</div>
+            </div>
+            <div>
+              <div className={`text-xl font-bold ${
+                (status.task_statistics.backup_jobs_failed_24h || 0) > 0 ? 'text-red-600' : 'text-green-600'
+              }`}>
+                {status.task_statistics.backup_jobs_failed_24h || 0}
+              </div>
+              <div className="text-xs text-gray-500">Failed</div>
+            </div>
+            <div>
+              <div className="text-xl font-bold text-gray-600">
+                {status.task_statistics.enabled_backup_configs || 0}
+              </div>
+              <div className="text-xs text-gray-500">Active Configs</div>
+            </div>
+          </div>
+          {status.task_statistics.last_successful_backup_hours_ago !== null && 
+           status.task_statistics.last_successful_backup_hours_ago !== undefined && (
+            <div className={`mt-2 text-xs text-center ${
+              status.task_statistics.last_successful_backup_hours_ago > 48 ? 'text-red-600 font-semibold' :
+              status.task_statistics.last_successful_backup_hours_ago > 30 ? 'text-orange-600' :
+              'text-green-600'
+            }`}>
+              Last backup: {status.task_statistics.last_successful_backup_hours_ago.toFixed(1)}h ago
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Alerts */}
       {status.alerts.length > 0 && (

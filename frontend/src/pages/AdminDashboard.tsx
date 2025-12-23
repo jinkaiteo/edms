@@ -52,7 +52,6 @@ const AdminDashboard: React.FC = () => {
     dashboardStats,
     isLoading,
     error,
-    connectionState,
     refreshNow,
     autoRefreshConfig
   } = useDashboardUpdates({

@@ -10,10 +10,26 @@ import ViewReviewStatus from '../workflows/ViewReviewStatus.tsx';
 import TerminateDocumentModal from './TerminateDocumentModal.tsx';
 import DownloadActionMenu from './DownloadActionMenu.tsx';
 import DocumentCreateModal from './DocumentCreateModal.tsx';
-import MyDraftDocuments from './MyDraftDocuments.tsx';
 import WorkflowHistory from '../workflows/WorkflowHistory.tsx';
 import { useAuth } from '../../contexts/AuthContext.tsx';
 import apiService from '../../services/api.ts';
+
+// Helper function to format dates
+const formatDate = (dateString: string | null | undefined): string => {
+  if (!dateString) return 'N/A';
+  try {
+    const date = new Date(dateString);
+    return date.toLocaleDateString('en-US', { 
+      year: 'numeric', 
+      month: 'short', 
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+  } catch (error) {
+    return 'Invalid Date';
+  }
+};
 
 interface DocumentViewerProps {
   document: Document | null;
@@ -37,8 +53,6 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({
   const [activeTab, setActiveTab] = useState<'details' | 'workflow' | 'signatures' | 'history'>('details');
   const [workflowStatus, setWorkflowStatus] = useState<WorkflowInstance | null>(null);
   const [signatures, setSignatures] = useState<ElectronicSignature[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [completeDocument, setCompleteDocument] = useState<Document | null>(null);
   const [showUnifiedWorkflowInterface, setShowUnifiedWorkflowInterface] = useState(false);
   const [workflowMode, setWorkflowMode] = useState<'review' | 'approval'>('review');
@@ -68,8 +82,6 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({
 
   const loadDocumentData = async () => {
     if (!document) return;
-
-    setLoading(true);
     try {
       // CRITICAL FIX: Fetch complete document data first to ensure we have description and all fields
       // List endpoint doesn't include description, but detail endpoint does
@@ -160,8 +172,6 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({
       console.error('Failed to load document data:', error);
       setWorkflowStatus(null);
       setSignatures([]);
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -193,11 +203,6 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({
         // EDMS Review Process: Open unified workflow interface for review
         setWorkflowMode('review');
         setShowUnifiedWorkflowInterface(true);
-        return;
-        
-      case 'route_for_approval':
-        // EDMS Approval Routing: Open route for approval modal
-        setShowRouteForApprovalModal(true);
         return;
         
       case 'open_approver_interface':
@@ -256,10 +261,7 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({
     await forceRefreshDocumentState();
   };
 
-  const handleEffectiveDateSet = async () => {
-    // setShowSetEffectiveDateModal removed - no longer needed in simplified workflow
-    await forceRefreshDocumentState();
-  };
+  // Removed unused handleEffectiveDateSet function
 
   const handleVersionCreated = async (newDocument: any) => {
     setShowCreateNewVersionModal(false);
@@ -278,9 +280,7 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({
     setShowViewReviewStatus(false);
   };
 
-  const handleTerminateClick = () => {
-    setShowTerminateModal(true);
-  };
+  // Removed unused handleTerminateClick function
 
   const handleTerminateConfirm = async (reason: string) => {
     if (!document) return;
@@ -427,8 +427,7 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({
       await loadDocumentData();
       
       // 3. Force re-render of action buttons
-      setLoading(true);
-      setTimeout(() => setLoading(false), 100);
+      // Loading state removed - not needed for UI refresh
       
     } catch (error) {
       console.error('Error force refreshing document state:', error);
@@ -439,8 +438,6 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({
     // Fetch complete document data for editing (not just the summary from props)
     if (document) {
       try {
-        setLoading(true);
-        
         // Fetch full document details using the document UUID
         const response = await fetch(`/api/v1/documents/documents/${document.uuid}/`, {
           headers: {
@@ -467,33 +464,14 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({
         // Fallback to existing document data
         setEditingDocument(document);
         setShowCreateModal(true);
-      } finally {
-        setLoading(false);
       }
     }
   };
 
-  const handleFileUpload = () => {
-    // Handle file upload for documents in DRAFT status without files
-    if (!document) return;
-    
-    // Create a file input element
-    const input = window.document.createElement('input');
-    input.type = 'file';
-    input.accept = '.pdf,.doc,.docx,.txt';
-    input.onchange = async (e) => {
-      const file = (e.target as HTMLInputElement).files?.[0];
-      if (file && document) {
-        await uploadFileForDocument(file, document);
-      }
-    };
-    input.click();
-  };
+  // Removed unused handleFileUpload function
 
   const uploadFileForDocument = async (file: File, doc: Document) => {
     try {
-      setLoading(true);
-      
       // Create FormData for file upload
       const formData = new FormData();
       formData.append('file', file);
@@ -515,8 +493,6 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({
     } catch (error) {
       console.error('Error uploading file:', error);
       alert('Error uploading file. Please check your connection and try again.');
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -621,7 +597,6 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({
     const userHasApprovalRole = user.roles?.some(role => role.permission_level === 'approve') || user.permissions?.includes('approve');
     
     const hasWritePermission = userHasWriteRole || user.is_staff || isDocumentAuthor;
-    const hasReviewPermission = userHasReviewRole || user.is_staff || isAssignedReviewer;
     const hasApprovalPermission = userHasApprovalRole || user.is_staff || isAssignedApprover;
     
 
@@ -830,45 +805,13 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({
           });
         }
         break;
-        
-      case 'EFFECTIVE':
-        // EDMS lines 21-26: Up-versioning and obsolescence workflows
-        // Allow all authenticated users to initiate up-versioning (approval required anyway)
-        actions.push({ 
-          key: 'create_revision', 
-          label: '📝 Create New Version', 
-          color: 'blue',
-          description: 'Start up-versioning workflow'
-        });
-        
-        // Mark Obsolete - only show to authorized users (approvers/admins)
-        // Match backend authorization: user == document.approver || user.is_staff || user.is_superuser
-        const canObsoleteEffective = (
-          isAssignedApprover || // Document approver
-          user.is_staff ||      // System admin
-          user.is_superuser     // Superuser
-        );
-        
-        if (canObsoleteEffective) {
-          actions.push({ 
-            key: 'mark_obsolete', 
-            label: '🗑️ Mark Obsolete', 
-            color: 'red',
-            description: 'Start obsolescence workflow'
-          });
-        }
-        break;
     }
 
 
     return actions;
   };
 
-  // Helper function to check document dependencies (EDMS lines 28-30)
-  const hasDocumentDependencies = () => {
-    // In real implementation, check if other documents depend on this one
-    return false; // Simplified for now
-  };
+  // Removed unused hasDocumentDependencies function
 
   if (!document) {
     return (

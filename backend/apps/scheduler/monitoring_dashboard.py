@@ -81,6 +81,23 @@ class SchedulerMonitoringService:
                 'priority': 'LOW',
                 'icon': '🧹',
                 'celery_task': cleanup_workflow_tasks
+            },
+            # Backup System Tasks (S4 Module)
+            'run_scheduled_backup': {
+                'name': 'Scheduled Backup Execution',
+                'description': 'Execute scheduled database and file backups (daily/weekly/monthly)',
+                'category': 'Backup & Recovery',
+                'priority': 'CRITICAL',
+                'icon': '💾',
+                'celery_task': None  # Will be imported dynamically
+            },
+            'cleanup_old_backups': {
+                'name': 'Backup Retention Management',
+                'description': 'Remove old backups based on configured retention policies',
+                'category': 'Backup & Recovery',
+                'priority': 'MEDIUM',
+                'icon': '🗑️',
+                'celery_task': None  # Will be imported dynamically
             }
         }
     
@@ -287,10 +304,11 @@ class SchedulerMonitoringService:
             }
     
     def _get_task_statistics(self):
-        """Get statistics about document processing tasks."""
+        """Get statistics about document processing tasks and backup jobs."""
         try:
             now = timezone.now()
             today = now.date()
+            recent_24h = now - timezone.timedelta(hours=24)
             
             stats = {
                 'documents_pending_effective': Document.objects.filter(
@@ -313,6 +331,47 @@ class SchedulerMonitoringService:
                     timestamp__date=today
                 ).count()
             }
+            
+            # Add backup statistics
+            try:
+                from apps.backup.models import BackupJob, BackupConfiguration
+                
+                stats['backup_jobs_last_24h'] = BackupJob.objects.filter(
+                    created_at__gte=recent_24h
+                ).count()
+                
+                stats['backup_jobs_failed_24h'] = BackupJob.objects.filter(
+                    created_at__gte=recent_24h,
+                    status='FAILED'
+                ).count()
+                
+                stats['backup_jobs_completed_24h'] = BackupJob.objects.filter(
+                    created_at__gte=recent_24h,
+                    status='COMPLETED'
+                ).count()
+                
+                stats['enabled_backup_configs'] = BackupConfiguration.objects.filter(
+                    is_enabled=True,
+                    status='ACTIVE'
+                ).count()
+                
+                last_successful = BackupJob.objects.filter(
+                    status='COMPLETED'
+                ).order_by('-completed_at').first()
+                
+                if last_successful:
+                    hours_since = (now - last_successful.completed_at).total_seconds() / 3600
+                    stats['last_successful_backup_hours_ago'] = round(hours_since, 1)
+                else:
+                    stats['last_successful_backup_hours_ago'] = None
+                    
+            except Exception as backup_error:
+                logger.warning(f"Could not fetch backup statistics: {str(backup_error)}")
+                stats['backup_jobs_last_24h'] = 0
+                stats['backup_jobs_failed_24h'] = 0
+                stats['backup_jobs_completed_24h'] = 0
+                stats['enabled_backup_configs'] = 0
+                stats['last_successful_backup_hours_ago'] = None
             
             return stats
             
@@ -580,6 +639,37 @@ class SchedulerMonitoringService:
                 'level': 'WARNING',
                 'message': f'{overdue_workflows} workflows are overdue',
                 'action': 'Review overdue workflows and consider escalation'
+            })
+        
+        # Backup system alerts
+        failed_backups = task_stats.get('backup_jobs_failed_24h', 0)
+        if failed_backups > 0:
+            alerts.append({
+                'level': 'CRITICAL',
+                'message': f'{failed_backups} backup job(s) failed in the last 24 hours',
+                'action': 'Check backup logs and verify storage availability'
+            })
+        
+        last_backup_hours = task_stats.get('last_successful_backup_hours_ago')
+        if last_backup_hours is not None and last_backup_hours > 48:
+            alerts.append({
+                'level': 'CRITICAL',
+                'message': f'No successful backup in {last_backup_hours:.1f} hours',
+                'action': 'Verify backup system is running and investigate failures'
+            })
+        elif last_backup_hours is not None and last_backup_hours > 30:
+            alerts.append({
+                'level': 'WARNING',
+                'message': f'Last successful backup was {last_backup_hours:.1f} hours ago',
+                'action': 'Monitor backup system - may need attention soon'
+            })
+        
+        enabled_backups = task_stats.get('enabled_backup_configs', 0)
+        if enabled_backups == 0:
+            alerts.append({
+                'level': 'WARNING',
+                'message': 'No backup configurations are enabled',
+                'action': 'Enable backup configurations to ensure data protection'
             })
         
         return alerts

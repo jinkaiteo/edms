@@ -1,10 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContext.tsx';
-import { backupApiService } from '../../services/backupApi';
 import { useToast } from '../../contexts/ToastContext.tsx';
-import { AuthHelpers } from '../../utils/authHelpers';
 import PasswordInput from '../common/PasswordInput.tsx';
-import { apiService } from '../../services/api.ts';
 
 // Time formatting helpers
 const formatDateTime = (iso?: string) => {
@@ -79,7 +76,6 @@ const BackupManagement: React.FC = () => {
   const [isRestoring, setIsRestoring] = useState(false);
   const [systemData, setSystemData] = useState<any>(null);
   const [restoreJobId, setRestoreJobId] = useState<string | null>(null);
-  const [restoreJobs, setRestoreJobs] = useState<any[]>([]);
   
   // Configuration CRUD states
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -787,17 +783,7 @@ const BackupManagement: React.FC = () => {
     }
   };
 
-  const executeBackup = async (configId: string) => {
-    try {
-      // Simulate backup execution
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      alert('✅ Backup started successfully!\n\nTo run actual backups, use the CLI:\ndocker exec edms_backend python manage.py backup_scheduler --run-scheduled');
-      fetchBackupJobs();
-    } catch (error) {
-      console.error('Failed to execute backup:', error);
-      alert('Failed to start backup');
-    }
-  };
+  // Removed unused executeBackup function
 
   const downloadBackup = async (jobId: string) => {
     try {

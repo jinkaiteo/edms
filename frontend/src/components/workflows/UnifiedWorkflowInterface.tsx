@@ -19,7 +19,7 @@ const UnifiedWorkflowInterface: React.FC<UnifiedWorkflowInterfaceProps> = ({
   mode,
   onComplete
 }) => {
-  const { user } = useAuth();
+  const { user: _user } = useAuth(); // Prefixed with _ to indicate intentionally unused
   
   // State management
   const [decision, setDecision] = useState<'approve' | 'reject'>('approve');

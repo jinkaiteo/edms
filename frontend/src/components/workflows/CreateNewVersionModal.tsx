@@ -148,12 +148,13 @@ const CreateNewVersionModal: React.FC<CreateNewVersionModalProps> = ({
 
       // Check if a new document was created or if we get the new document data
       let newDocument = null;
-      if (workflowResponse.new_document) {
-        newDocument = workflowResponse.new_document;
-      } else if (workflowResponse.document) {
-        newDocument = workflowResponse.document;
-      }
-
+      // Extract new document from response (not currently used)
+      // let newDocument;
+      // if (workflowResponse.new_document) {
+      //   newDocument = workflowResponse.new_document;
+      // } else if (workflowResponse.document) {
+      //   newDocument = workflowResponse.document;
+      // }
 
       if (workflowResponse.success) {
         onVersionCreated({

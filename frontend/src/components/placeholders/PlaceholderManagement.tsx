@@ -45,7 +45,6 @@ const PlaceholderManagement: React.FC<PlaceholderManagementProps> = ({ className
   const [showTemplateValidator, setShowTemplateValidator] = useState(false);
   const [templateValidation, setTemplateValidation] = useState<TemplateValidation | null>(null);
   const [validating, setValidating] = useState(false);
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
 
   // Load placeholders from API
   React.useEffect(() => {
@@ -111,14 +110,18 @@ const PlaceholderManagement: React.FC<PlaceholderManagementProps> = ({ className
 
       if (response.ok) {
         const result = await response.json();
+        // Backend returns new format with enhanced analysis
         setTemplateValidation({
-          fileName: file.name,
-          isValid: result.is_valid,
-          placeholdersFound: result.placeholders_found || [],
-          placeholdersValid: result.placeholders_found?.filter((p: string) => 
-            placeholders.some(ph => ph.name === p)
-          ) || [],
-          placeholdersInvalid: result.placeholders_missing || [],
+          fileName: result.fileName || file.name,
+          isValid: result.isValid,
+          identifiedPlaceholders: result.identifiedPlaceholders || [],
+          misformattedPlaceholders: result.misformattedPlaceholders || [],
+          unknownPlaceholders: result.unknownPlaceholders || [],
+          unmatchedPatterns: result.unmatchedPatterns || [],
+          unusedPlaceholders: result.unusedPlaceholders || {},
+          totalPatternsFound: result.totalPatternsFound || 0,
+          totalIssues: result.totalIssues || 0,
+          total_placeholders_available: result.total_placeholders_available || 0,
           errors: result.errors || []
         });
       } else {
@@ -308,7 +311,6 @@ const PlaceholderManagement: React.FC<PlaceholderManagementProps> = ({ className
   const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
-      setSelectedFile(file);
       validateTemplate(file);
     }
   };
@@ -650,6 +652,38 @@ const PlaceholderManagement: React.FC<PlaceholderManagementProps> = ({ className
                             {placeholder.display_name}
                           </span>
                         </div>
+                        {/* Show aliases if this placeholder has common variants */}
+                        {(() => {
+                          const aliases = [];
+                          // People aliases
+                          if (placeholder.name === 'AUTHOR') aliases.push('AUTHOR_NAME');
+                          if (placeholder.name === 'REVIEWER') aliases.push('REVIEWER_NAME');
+                          if (placeholder.name === 'APPROVER') aliases.push('APPROVER_NAME');
+                          // Document aliases
+                          if (placeholder.name === 'DOCUMENT_NUMBER') aliases.push('DOC_NUMBER', 'NUMBER');
+                          if (placeholder.name === 'DOCUMENT_TITLE') aliases.push('DOC_TITLE', 'TITLE');
+                          if (placeholder.name === 'DOCUMENT_TYPE') aliases.push('DOC_TYPE');
+                          if (placeholder.name === 'DOCUMENT_SOURCE') aliases.push('DOC_SOURCE');
+                          if (placeholder.name === 'DOCUMENT_STATUS') aliases.push('DOC_STATUS', 'STATUS');
+                          // Date aliases
+                          if (placeholder.name === 'CREATION_DATE') aliases.push('CREATED_DATE');
+                          if (placeholder.name === 'LAST_MODIFIED') aliases.push('UPDATED_DATE', 'MODIFIED_DATE');
+                          if (placeholder.name === 'ORGANIZATION') aliases.push('COMPANY');
+                          
+                          return aliases.length > 0 ? (
+                            <div className="mt-1 text-xs text-gray-500">
+                              <span className="text-gray-400">Also available as: </span>
+                              {aliases.map((alias, i) => (
+                                <span key={alias}>
+                                  <code className="px-1 bg-blue-50 text-blue-700 rounded font-mono">
+                                    {`{{${alias}}}`}
+                                  </code>
+                                  {i < aliases.length - 1 ? ', ' : ''}
+                                </span>
+                              ))}
+                            </div>
+                          ) : null;
+                        })()}
                         <p className="text-gray-600 mt-1">{placeholder.description}</p>
                         <div className="flex items-center space-x-4 mt-2 text-sm text-gray-500">
                           <span>Source: {placeholder.data_source}</span>

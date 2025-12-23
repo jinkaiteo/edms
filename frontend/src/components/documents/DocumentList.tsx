@@ -43,7 +43,8 @@ const DocumentList: React.FC<DocumentListProps> = ({
   const [sortBy, setSortBy] = useState<'title' | 'created_at' | 'status' | 'document_type'>('created_at');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
-  const [showInactive, setShowInactive] = useState(false);
+  // Smart default: show inactive documents by default on Obsolete Documents page
+  const [showInactive, setShowInactive] = useState(filterType === 'obsolete');
 
   // Helper function to extract base document number (remove version suffix)
   const getBaseDocumentNumber = (documentNumber: string): string => {
@@ -321,7 +322,10 @@ const DocumentList: React.FC<DocumentListProps> = ({
                   className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 focus:ring-2"
                 />
                 <span className="text-sm font-medium text-gray-700">
-                  Show Inactive ({documents.filter(doc => doc.status === 'OBSOLETE' || doc.status === 'TERMINATED').length})
+                  {filterType === 'obsolete' 
+                    ? `Hide Obsolete (${documents.filter(doc => doc.status === 'OBSOLETE' || doc.status === 'TERMINATED').length})`
+                    : `Show Inactive (${documents.filter(doc => doc.status === 'OBSOLETE' || doc.status === 'TERMINATED').length})`
+                  }
                 </span>
               </label>
               
@@ -365,7 +369,10 @@ const DocumentList: React.FC<DocumentListProps> = ({
 
         {filteredDocuments.length === 0 ? (
           <div className="text-center py-8 text-gray-500">
-            {showInactive ? 'No documents found.' : 'No active documents found. Toggle "Show Inactive" to see obsolete and terminated documents.'}
+            {filterType === 'obsolete' 
+              ? (showInactive ? 'No obsolete documents found.' : 'No scheduled documents found. Toggle "Hide Obsolete" to see all obsolete documents.')
+              : (showInactive ? 'No documents found.' : 'No active documents found. Toggle "Show Inactive" to see obsolete and terminated documents.')
+            }
           </div>
         ) : viewMode === 'list' ? (
           // Grouped list view with version history

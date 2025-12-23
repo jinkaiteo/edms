@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState, useCallback } from 'react';
 import apiService from '../../services/api.ts';
 import { AuditTrail } from '../../types/api';
 

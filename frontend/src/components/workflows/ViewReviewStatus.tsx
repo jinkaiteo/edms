@@ -71,7 +71,7 @@ const ViewReviewStatus: React.FC<ViewReviewStatusProps> = ({
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'overview' | 'timeline' | 'comments' | 'assignments'>('overview');
   
-  const { user } = useAuth();
+  const { user: _user } = useAuth(); // Prefixed with _ to indicate intentionally unused
 
   useEffect(() => {
     loadReviewStatus();
@@ -180,7 +180,6 @@ const ViewReviewStatus: React.FC<ViewReviewStatusProps> = ({
       'reject_review': 'Review Rejected',
       'route_for_approval': 'Routed for Approval',
       'start_approval': 'Approval Started',
-      'approve_document': 'Document Approved',
       'approve_document': 'Document Approved',
       'activate_document': 'Document Activated'
     };

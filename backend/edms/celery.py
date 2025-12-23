@@ -111,6 +111,49 @@ app.conf.beat_schedule = {
             'priority': 5,    # Lower priority for weekly maintenance
         }
     },
+    
+    # S4 Backup System - Daily Full Backup - runs daily at 2 AM
+    'backup-daily-full': {
+        'task': 'apps.backup.tasks.run_scheduled_backup',
+        'schedule': crontab(minute=0, hour=2),  # Daily at 02:00
+        'kwargs': {'backup_name': 'backup-daily-full'},
+        'options': {
+            'expires': 3600,  # Task expires after 1 hour
+            'priority': 9,    # Highest priority - critical infrastructure
+        }
+    },
+    
+    # S4 Backup System - Weekly Export - runs Sundays at 3 AM
+    'backup-weekly-export': {
+        'task': 'apps.backup.tasks.run_scheduled_backup',
+        'schedule': crontab(minute=0, hour=3, day_of_week=0),  # Sunday 03:00
+        'kwargs': {'backup_name': 'backup-weekly-export'},
+        'options': {
+            'expires': 7200,  # Task expires after 2 hours
+            'priority': 8,    # High priority
+        }
+    },
+    
+    # S4 Backup System - Monthly Archive - runs 1st of month at 4 AM
+    'backup-monthly-archive': {
+        'task': 'apps.backup.tasks.run_scheduled_backup',
+        'schedule': crontab(minute=0, hour=4, day_of_month=1),  # 1st of month at 04:00
+        'kwargs': {'backup_name': 'backup-monthly-archive'},
+        'options': {
+            'expires': 10800,  # Task expires after 3 hours
+            'priority': 7,     # High priority
+        }
+    },
+    
+    # S4 Backup System - Cleanup Old Backups - runs daily at 5 AM
+    'backup-cleanup': {
+        'task': 'apps.backup.tasks.cleanup_old_backups',
+        'schedule': crontab(minute=0, hour=5),  # Daily at 05:00
+        'options': {
+            'expires': 3600,  # Task expires after 1 hour
+            'priority': 5,    # Medium priority
+        }
+    },
 }
 
 # Task routing configuration
