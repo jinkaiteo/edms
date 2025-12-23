@@ -229,7 +229,7 @@ const BackupManagement: React.FC = () => {
   const fetchSystemStatus = async () => {
     setIsLoading(true);
     try {
-      // Try to fetch real data first, fall back to informative mock data
+      // Fetch real system status from API
       console.log('🔍 Fetching backup system status...');
       
       try {
@@ -257,53 +257,16 @@ const BackupManagement: React.FC = () => {
           setSystemStatus(realData);
           return;
         } else {
-          console.log(`⚠️ API not available (${response.status}), using mock data with real system info`);
+          console.log(`⚠️ API not available (${response.status})`);
         }
       } catch (apiError) {
-        console.log('⚠️ API call failed, showing system status with mock data:', apiError);
+        console.log('⚠️ API call failed:', apiError);
       }
       
-      // Show an error state when system status cannot be loaded (no mock data)
-      const mockSystemStatus = {
-        status: 'healthy',
-        statistics: {
-          total_backups: 1, // We know there's 1 backup in database
-          successful_backups: 0,
-          failed_backups: 1, // The failed backup we found
-          success_rate: 0
-        },
-        recent_backups: [
-          {
-            uuid: 'real-backup-1',
-            job_name: 'hourly_incremental_20251204_010745',
-            backup_type: 'INCREMENTAL',
-            status: 'FAILED',
-            created_at: '2025-12-04T01:07:45.939979Z',
-            file_size_human: 'Unknown',
-            duration_human: 'Unknown',
-            configuration_name: 'hourly_incremental'
-          },
-          {
-            uuid: 'cli-backup-1', 
-            job_name: 'CLI Storage Backup (761KB)',
-            backup_type: 'STORAGE',
-            status: 'COMPLETED',
-            created_at: new Date().toISOString(),
-            file_size_human: '761 KB',
-            duration_human: '~30s',
-            configuration_name: 'CLI Command'
-          }
-        ]
-      };
+      // Show error state when system status cannot be loaded
       setSystemStatus(null);
       showError('Failed to load backup system status. Please try again.');
       return;
-      
-      // Show helpful message about CLI backups
-      // Removed mock data fallback per robustness guidelines
-      // Removed mock status assignment
-      // Removed mock recent backups logs
-      // Removed mock recent backups logs length
       
     } catch (error) {
       console.error('Failed to fetch system status:', error);
@@ -332,7 +295,6 @@ const BackupManagement: React.FC = () => {
       const jobsArray = Array.isArray(jobs) ? jobs : (jobs.results || []);
       console.log('📋 Setting backupJobs state to:', jobsArray);
       setBackupJobs(jobsArray);
-      // setBackupJobs(mockBackupJobs);
     } catch (error) {
       console.error('❌ Failed to fetch backup jobs:', error);
     }
@@ -717,7 +679,6 @@ const BackupManagement: React.FC = () => {
       
     } catch (error) {
       console.error('❌ Failed to fetch system data:', error);
-      // Set error state instead of mock data
       setSystemData({
         error: true,
         errorMessage: error instanceof Error ? error.message : 'Unknown error retrieving system data',
