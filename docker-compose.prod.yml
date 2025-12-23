@@ -17,7 +17,7 @@ services:
       - postgres_prod_data:/var/lib/postgresql/data
       - ./logs/db:/var/log/postgresql
     ports:
-      - "5433:5432"  # Different port to avoid conflicts
+      - "${POSTGRES_PORT:-5433}:5432"  # Configurable port for external access
     networks:
       - edms_prod_network
     restart: unless-stopped
@@ -43,7 +43,7 @@ services:
       - redis_prod_data:/data
       - ./logs/redis:/var/log/redis
     ports:
-      - "6380:6379"  # Different port to avoid conflicts
+      - "${REDIS_PORT:-6380}:6379"  # Configurable port for external access
     networks:
       - edms_prod_network
     restart: unless-stopped
@@ -65,7 +65,7 @@ services:
       - ./logs:/app/logs:rw
       - static_files:/app/staticfiles:rw
     ports:
-      - "8001:8000"  # Different port for production
+      - "${BACKEND_PORT:-8001}:8000"  # Configurable port for HAProxy routing
     environment:
       - DEBUG=False
       - DJANGO_SETTINGS_MODULE=edms.settings.production
@@ -190,7 +190,7 @@ services:
       target: production
     container_name: edms_prod_frontend
     ports:
-      - "3001:80"  # Different port for production (nginx serves on 80)
+      - "${FRONTEND_PORT:-3001}:80"  # Configurable port for HAProxy routing
     environment:
       - REACT_APP_API_URL=http://localhost:8001/api/v1
       - NODE_ENV=production
