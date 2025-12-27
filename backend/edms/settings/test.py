@@ -49,6 +49,9 @@ LOCAL_APPS = [
     'apps.scheduler',
     'apps.backup',
     'apps.settings',
+    'apps.admin_pages',
+    'apps.api',
+    'apps.search',
 ]
 
 INSTALLED_APPS = DJANGO_APPS + THIRD_PARTY_APPS + LOCAL_APPS
