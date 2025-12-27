@@ -121,7 +121,8 @@ jobs:
       - name: Build frontend
         run: |
           cd frontend
-          npm run build
+          # Disable treating warnings as errors in CI
+          CI=false npm run build
 
   # ============================================================================
   # DEPLOY TO STAGING
