@@ -36,6 +36,12 @@ DJANGO_APPS = [
 
 THIRD_PARTY_APPS = [
     'rest_framework',
+    'rest_framework_simplejwt',
+    'corsheaders',
+    'django_filters',
+    'drf_spectacular',
+    'django_redis',
+    'django_celery_beat',
     'django_extensions',
 ]
 
