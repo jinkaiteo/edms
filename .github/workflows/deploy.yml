@@ -1,0 +1,374 @@
+name: EDMS Deployment Pipeline
+
+on:
+  push:
+    branches:
+      - main
+      - develop
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Deployment environment'
+        required: true
+        default: 'staging'
+        type: choice
+        options:
+          - staging
+          - production
+
+env:
+  DOCKER_BUILDKIT: 1
+  COMPOSE_DOCKER_CLI_BUILD: 1
+
+jobs:
+  # ============================================================================
+  # PRE-DEPLOYMENT CHECKS
+  # ============================================================================
+  pre-deployment-checks:
+    name: Pre-Deployment Verification
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+      
+      - name: Create deployment package
+        run: |
+          chmod +x scripts/create-production-package.sh
+          ./scripts/create-production-package.sh
+      
+      - name: Run pre-deployment checks
+        run: |
+          chmod +x scripts/pre-deploy-check.sh
+          ./scripts/pre-deploy-check.sh edms-production-*/
+      
+      - name: Upload package
+        uses: actions/upload-artifact@v4
+        with:
+          name: deployment-package
+          path: edms-production-*.tar.gz
+          retention-days: 7
+      
+      - name: Upload pre-deployment report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: pre-deployment-report
+          path: edms-production-*/pre-deployment-report-*.txt
+          retention-days: 30
+
+  # ============================================================================
+  # BUILD AND TEST
+  # ============================================================================
+  build-and-test:
+    name: Build and Test
+    runs-on: ubuntu-latest
+    needs: pre-deployment-checks
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+      
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+      
+      - name: Install backend dependencies
+        run: |
+          cd backend
+          pip install -r requirements/test.txt
+      
+      - name: Install frontend dependencies
+        run: |
+          cd frontend
+          npm ci
+      
+      - name: Run backend tests
+        run: |
+          cd backend
+          python manage.py test
+      
+      - name: Run frontend tests
+        run: |
+          cd frontend
+          npm test -- --watchAll=false
+      
+      - name: Build frontend
+        run: |
+          cd frontend
+          npm run build
+
+  # ============================================================================
+  # DEPLOY TO STAGING
+  # ============================================================================
+  deploy-staging:
+    name: Deploy to Staging
+    runs-on: ubuntu-latest
+    needs: build-and-test
+    if: github.ref == 'refs/heads/develop' || github.event_name == 'workflow_dispatch'
+    environment:
+      name: staging
+      url: https://staging.edms.example.com
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Download deployment package
+        uses: actions/download-artifact@v4
+        with:
+          name: deployment-package
+      
+      - name: Configure SSH
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.STAGING_SSH_KEY }}" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+          ssh-keyscan -H ${{ secrets.STAGING_HOST }} >> ~/.ssh/known_hosts
+      
+      - name: Deploy to staging server
+        run: |
+          chmod +x scripts/deploy-to-remote.sh
+          ./scripts/deploy-to-remote.sh \
+            ${{ secrets.STAGING_USER }}@${{ secrets.STAGING_HOST }} \
+            --key ~/.ssh/id_rsa \
+            --path /opt/edms \
+            --verbose
+      
+      - name: Run post-deployment validation
+        run: |
+          ssh -i ~/.ssh/id_rsa ${{ secrets.STAGING_USER }}@${{ secrets.STAGING_HOST }} \
+            'cd /opt/edms-production-* && ./scripts/post-deploy-check.sh'
+      
+      - name: Run health check
+        run: |
+          ssh -i ~/.ssh/id_rsa ${{ secrets.STAGING_USER }}@${{ secrets.STAGING_HOST }} \
+            'cd /opt/edms-production-* && ./scripts/health-check.sh --alert'
+      
+      - name: Download validation report
+        if: always()
+        run: |
+          scp -i ~/.ssh/id_rsa \
+            ${{ secrets.STAGING_USER }}@${{ secrets.STAGING_HOST }}:/opt/edms-production-*/post-deployment-report-*.txt \
+            ./staging-validation-report.txt || true
+      
+      - name: Upload validation report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: staging-validation-report
+          path: staging-validation-report.txt
+          retention-days: 30
+      
+      - name: Notify deployment success
+        if: success()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: '✅ Successfully deployed to staging environment!'
+            })
+
+  # ============================================================================
+  # DEPLOY TO PRODUCTION
+  # ============================================================================
+  deploy-production:
+    name: Deploy to Production
+    runs-on: ubuntu-latest
+    needs: build-and-test
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    environment:
+      name: production
+      url: https://edms.example.com
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Download deployment package
+        uses: actions/download-artifact@v4
+        with:
+          name: deployment-package
+      
+      - name: Configure SSH
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.PRODUCTION_SSH_KEY }}" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+          ssh-keyscan -H ${{ secrets.PRODUCTION_HOST }} >> ~/.ssh/known_hosts
+      
+      - name: Create backup before deployment
+        run: |
+          ssh -i ~/.ssh/id_rsa ${{ secrets.PRODUCTION_USER }}@${{ secrets.PRODUCTION_HOST }} \
+            'cd /opt/edms-current && ./scripts/backup-system.sh' || echo "Backup creation failed"
+      
+      - name: Deploy to production server
+        run: |
+          chmod +x scripts/deploy-to-remote.sh
+          ./scripts/deploy-to-remote.sh \
+            ${{ secrets.PRODUCTION_USER }}@${{ secrets.PRODUCTION_HOST }} \
+            --key ~/.ssh/id_rsa \
+            --path /opt/edms \
+            --verbose
+      
+      - name: Run post-deployment validation
+        id: validation
+        run: |
+          ssh -i ~/.ssh/id_rsa ${{ secrets.PRODUCTION_USER }}@${{ secrets.PRODUCTION_HOST }} \
+            'cd /opt/edms-production-* && ./scripts/post-deploy-check.sh'
+      
+      - name: Run health check with alert
+        id: health_check
+        run: |
+          ssh -i ~/.ssh/id_rsa ${{ secrets.PRODUCTION_USER }}@${{ secrets.PRODUCTION_HOST }} \
+            'cd /opt/edms-production-* && ./scripts/health-check.sh --alert --report'
+      
+      - name: Download health report
+        if: always()
+        run: |
+          scp -i ~/.ssh/id_rsa \
+            ${{ secrets.PRODUCTION_USER }}@${{ secrets.PRODUCTION_HOST }}:/opt/edms-production-*/health-report-*.html \
+            ./production-health-report.html || true
+      
+      - name: Upload health report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: production-health-report
+          path: production-health-report.html
+          retention-days: 90
+      
+      - name: Rollback on failure
+        if: failure()
+        run: |
+          echo "Deployment validation or health check failed. Initiating rollback..."
+          ssh -i ~/.ssh/id_rsa ${{ secrets.PRODUCTION_USER }}@${{ secrets.PRODUCTION_HOST }} \
+            'cd /opt/edms-production-* && ./scripts/rollback.sh --previous --backup-first --force'
+      
+      - name: Verify rollback
+        if: failure()
+        run: |
+          ssh -i ~/.ssh/id_rsa ${{ secrets.PRODUCTION_USER }}@${{ secrets.PRODUCTION_HOST }} \
+            'cd /opt/edms-production-* && ./scripts/health-check.sh --alert'
+      
+      - name: Create GitHub Release
+        if: success()
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: v${{ github.run_number }}
+          release_name: Release v${{ github.run_number }}
+          body: |
+            ## Deployment Summary
+            
+            - **Environment**: Production
+            - **Commit**: ${{ github.sha }}
+            - **Deployed by**: ${{ github.actor }}
+            - **Timestamp**: ${{ github.event.head_commit.timestamp }}
+            
+            ### Changes
+            ${{ github.event.head_commit.message }}
+            
+            ### Validation
+            ✅ Post-deployment validation passed
+            ✅ Health check passed
+            ✅ All services operational
+          draft: false
+          prerelease: false
+      
+      - name: Notify deployment success
+        if: success()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: '🚀 Successfully deployed to production environment!\n\nView health report in artifacts.'
+            })
+      
+      - name: Notify deployment failure
+        if: failure()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: '❌ Production deployment failed and was rolled back.\n\nCheck the workflow logs for details.'
+            })
+
+  # ============================================================================
+  # CONTINUOUS HEALTH MONITORING (POST-DEPLOYMENT)
+  # ============================================================================
+  post-deployment-monitoring:
+    name: Post-Deployment Monitoring
+    runs-on: ubuntu-latest
+    needs: [deploy-staging, deploy-production]
+    if: always() && (needs.deploy-staging.result == 'success' || needs.deploy-production.result == 'success')
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Configure SSH
+        run: |
+          mkdir -p ~/.ssh
+          if [ "${{ github.ref }}" == "refs/heads/main" ]; then
+            echo "${{ secrets.PRODUCTION_SSH_KEY }}" > ~/.ssh/id_rsa
+            HOST="${{ secrets.PRODUCTION_HOST }}"
+            USER="${{ secrets.PRODUCTION_USER }}"
+          else
+            echo "${{ secrets.STAGING_SSH_KEY }}" > ~/.ssh/id_rsa
+            HOST="${{ secrets.STAGING_HOST }}"
+            USER="${{ secrets.STAGING_USER }}"
+          fi
+          chmod 600 ~/.ssh/id_rsa
+          ssh-keyscan -H $HOST >> ~/.ssh/known_hosts
+          echo "SSH_HOST=$HOST" >> $GITHUB_ENV
+          echo "SSH_USER=$USER" >> $GITHUB_ENV
+      
+      - name: Monitor system for 5 minutes
+        run: |
+          for i in {1..5}; do
+            echo "Health check $i/5..."
+            ssh -i ~/.ssh/id_rsa ${{ env.SSH_USER }}@${{ env.SSH_HOST }} \
+              'cd /opt/edms-production-* && ./scripts/health-check.sh --quick' || exit 1
+            if [ $i -lt 5 ]; then
+              sleep 60
+            fi
+          done
+          echo "✅ System stable after 5 minutes"
+      
+      - name: Generate final health report
+        if: always()
+        run: |
+          ssh -i ~/.ssh/id_rsa ${{ env.SSH_USER }}@${{ env.SSH_HOST }} \
+            'cd /opt/edms-production-* && ./scripts/health-check.sh --report'
+      
+      - name: Alert on monitoring failure
+        if: failure()
+        run: |
+          echo "⚠️ Post-deployment monitoring detected issues!"
+          exit 1
