@@ -250,7 +250,7 @@ jobs:
           retention-days: 30
       
       - name: Notify deployment success
-        if: success()
+        if: success() && github.event_name == 'pull_request'
         uses: actions/github-script@v7
         with:
           script: |
@@ -370,7 +370,7 @@ jobs:
           prerelease: false
       
       - name: Notify deployment success
-        if: success()
+        if: success() && github.event_name == 'pull_request'
         uses: actions/github-script@v7
         with:
           script: |
@@ -382,7 +382,7 @@ jobs:
             })
       
       - name: Notify deployment failure
-        if: failure()
+        if: failure() && github.event_name == 'pull_request'
         uses: actions/github-script@v7
         with:
           script: |
