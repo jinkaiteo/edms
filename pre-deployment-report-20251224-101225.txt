@@ -1,0 +1,30 @@
+EDMS Pre-Deployment Verification Report
+========================================
+Date: Wed Dec 24 10:12:25 AM +08 2025
+Package: .
+
+Summary:
+--------
+Total Checks: 14
+Passed: 11
+Warnings: 11
+Failed: 1
+
+Check Details:
+-------------
+  docker_compose: pass
+  disk_space: fail
+  backup: pass
+  docker_images: pass
+  package: pass
+  system_updates: info
+  memory: pass
+  network: pass
+  firewall: info
+  ssl: warning
+  ports: warning
+  docker: pass
+  env_file: warning
+  existing_deployment: warning
+
+Result: NOT READY - FIX FAILED CHECKS

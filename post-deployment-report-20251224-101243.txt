@@ -1,0 +1,44 @@
+EDMS Post-Deployment Validation Report
+=======================================
+Date: Wed Dec 24 10:12:43 AM +08 2025
+Deployment: /home/jinkaiteo/Documents/QMS/QMS_04
+
+Summary:
+--------
+Total Tests: 18
+Passed: 13
+Failed: 5
+Skipped: 1
+
+Test Details:
+------------
+  static_files: pass - All accessible
+  authentication: pass - 7 users
+  backend_health: pass - HTTP 200
+  documents: pass - Operational
+  backup_system: pass - Available
+  database: pass - Connected
+  frontend: fail - HTTP 000000
+  logs: pass - No critical errors
+  redis: pass - Connected
+  containers: pass - backend:running frontend:running db:running 
+  media: fail - Missing
+  celery: skip - Not configured
+  api_endpoints: fail - /api/v1/:404 /api/v1/auth/profile/:401 /api/v1/documents/:401 /api/v1/workflows/:401 
+  workflows: fail - Check failed
+  storage: pass - Writable
+  migrations: pass - All applied
+  admin: pass - HTTP 302
+  security_headers: pass - Configured
+
+Result: DEPLOYMENT VALIDATION FAILED
+Status: REQUIRES ATTENTION
+
+Container Status:
+NAME                 IMAGE                  COMMAND                   SERVICE         CREATED        STATUS        PORTS
+edms_backend         qms_04-backend         "sh -c 'sleep 10 &&\n…"   backend         10 hours ago   Up 9 hours    0.0.0.0:8000->8000/tcp, [::]:8000->8000/tcp
+edms_celery_beat     qms_04-celery_beat     "sh -c 'sleep 20 &&\n…"   celery_beat     10 hours ago   Up 10 hours   8000/tcp
+edms_celery_worker   qms_04-celery_worker   "sh -c 'sleep 15 &&\n…"   celery_worker   10 hours ago   Up 10 hours   8000/tcp
+edms_db              postgres:18            "docker-entrypoint.s…"    db              10 hours ago   Up 10 hours   0.0.0.0:5432->5432/tcp, [::]:5432->5432/tcp
+edms_frontend        qms_04-frontend        "docker-entrypoint.s…"    frontend        10 hours ago   Up 8 hours    0.0.0.0:3000->3000/tcp, [::]:3000->3000/tcp
+edms_redis           redis:7-alpine         "docker-entrypoint.s…"    redis           10 hours ago   Up 10 hours   0.0.0.0:6379->6379/tcp, [::]:6379->6379/tcp

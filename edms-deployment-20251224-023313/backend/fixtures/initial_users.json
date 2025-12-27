@@ -1,0 +1,77 @@
+[
+  {
+    "model": "auth.user",
+    "pk": 1,
+    "fields": {
+      "username": "admin",
+      "first_name": "System",
+      "last_name": "Administrator",
+      "email": "admin@edms.local",
+      "is_staff": true,
+      "is_active": true,
+      "is_superuser": true,
+      "password": "pbkdf2_sha256$600000$ZxK9Zv5zYh8i$yH8Cv8h9qNw4x/6vR7mS2Q8nT5xJ3vB7cF4kL9pD1wE=",
+      "date_joined": "2025-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "auth.user",
+    "pk": 2,
+    "fields": {
+      "username": "author",
+      "first_name": "Document",
+      "last_name": "Author",
+      "email": "author@edms.local",
+      "is_staff": false,
+      "is_active": true,
+      "is_superuser": false,
+      "password": "pbkdf2_sha256$600000$ZxK9Zv5zYh8j$xG7Bv8g9qNw4y/5uQ6lR1P7mS4wI2uA6bE3jK8oC0vD=",
+      "date_joined": "2025-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "auth.user",
+    "pk": 3,
+    "fields": {
+      "username": "reviewer",
+      "first_name": "Document",
+      "last_name": "Reviewer",
+      "email": "reviewer@edms.local",
+      "is_staff": false,
+      "is_active": true,
+      "is_superuser": false,
+      "password": "pbkdf2_sha256$600000$ZxK9Zv5zYh8k$wF6Av8f9qNw4z/4tP5kQ0O6lR3vH1tZ5aD2iJ7nB9uC=",
+      "date_joined": "2025-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "auth.user",
+    "pk": 4,
+    "fields": {
+      "username": "approver",
+      "first_name": "Document",
+      "last_name": "Approver",
+      "email": "approver@edms.local",
+      "is_staff": false,
+      "is_active": true,
+      "is_superuser": false,
+      "password": "pbkdf2_sha256$600000$ZxK9Zv5zYh8l$vE5Zu8e9qNw4a/3sO4jP9N5kQ2uG0sY4zC1hI6mA8tB=",
+      "date_joined": "2025-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "auth.user",
+    "pk": 5,
+    "fields": {
+      "username": "docadmin",
+      "first_name": "Document",
+      "last_name": "Administrator",
+      "email": "docadmin@edms.local",
+      "is_staff": true,
+      "is_active": true,
+      "is_superuser": false,
+      "password": "pbkdf2_sha256$600000$ZxK9Zv5zYh8m$uD4Yt8d9qNw4b/2rN3iO8M4jP1tF9rX3yB0gH5lZ7sA=",
+      "date_joined": "2025-01-01T00:00:00Z"
+    }
+  }
+]

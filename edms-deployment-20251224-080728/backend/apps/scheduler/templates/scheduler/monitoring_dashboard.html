@@ -1,0 +1,614 @@
+{% extends "admin/base_site.html" %}
+{% load static %}
+
+{% block title %}EDMS Scheduler Monitoring{% endblock %}
+
+{% block extrahead %}
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<style>
+    .monitoring-dashboard {
+        padding: 20px;
+        max-width: 1400px;
+        margin: 0 auto;
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    }
+    
+    .dashboard-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 30px;
+        padding-bottom: 15px;
+        border-bottom: 2px solid #e0e0e0;
+    }
+    
+    .status-indicator {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        font-size: 18px;
+        font-weight: bold;
+    }
+    
+    .status-excellent { color: #28a745; }
+    .status-good { color: #20c997; }
+    .status-warning { color: #ffc107; }
+    .status-critical { color: #fd7e14; }
+    .status-failure { color: #dc3545; }
+    
+    .health-score {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 15px 25px;
+        border-radius: 10px;
+        text-align: center;
+        min-width: 120px;
+    }
+    
+    .dashboard-grid {
+        display: grid;
+        grid-template-columns: 2fr 1fr;
+        gap: 25px;
+        margin-bottom: 30px;
+    }
+    
+    .main-content {
+        display: flex;
+        flex-direction: column;
+        gap: 20px;
+    }
+    
+    .sidebar {
+        display: flex;
+        flex-direction: column;
+        gap: 20px;
+    }
+    
+    .card {
+        background: white;
+        border-radius: 10px;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        padding: 20px;
+        border-left: 4px solid #007cba;
+    }
+    
+    .card-header {
+        display: flex;
+        justify-content: between;
+        align-items: center;
+        margin-bottom: 15px;
+        font-size: 18px;
+        font-weight: bold;
+        color: #333;
+    }
+    
+    .celery-status-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 15px;
+        margin: 15px 0;
+    }
+    
+    .status-item {
+        padding: 15px;
+        border-radius: 8px;
+        background: #f8f9fa;
+        text-align: center;
+    }
+    
+    .status-active { background: #d4edda; border-left: 4px solid #28a745; }
+    .status-inactive { background: #f8d7da; border-left: 4px solid #dc3545; }
+    .status-unknown { background: #fff3cd; border-left: 4px solid #ffc107; }
+    
+    .task-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+        gap: 15px;
+        margin-top: 20px;
+    }
+    
+    .task-card {
+        background: #f8f9fa;
+        border-radius: 8px;
+        padding: 15px;
+        border-left: 4px solid #007cba;
+        transition: transform 0.2s, box-shadow 0.2s;
+    }
+    
+    .task-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 15px rgba(0,0,0,0.15);
+    }
+    
+    .task-header {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        margin-bottom: 10px;
+    }
+    
+    .task-icon {
+        font-size: 24px;
+    }
+    
+    .task-name {
+        font-weight: bold;
+        color: #333;
+    }
+    
+    .task-category {
+        font-size: 12px;
+        background: #007cba;
+        color: white;
+        padding: 2px 8px;
+        border-radius: 12px;
+        margin-left: auto;
+    }
+    
+    .task-actions {
+        display: flex;
+        gap: 10px;
+        margin-top: 15px;
+    }
+    
+    .btn {
+        padding: 8px 16px;
+        border: none;
+        border-radius: 5px;
+        cursor: pointer;
+        font-size: 14px;
+        transition: background-color 0.2s;
+    }
+    
+    .btn-primary {
+        background: #007cba;
+        color: white;
+    }
+    
+    .btn-primary:hover {
+        background: #0056b3;
+    }
+    
+    .btn-secondary {
+        background: #6c757d;
+        color: white;
+    }
+    
+    .btn-secondary:hover {
+        background: #545b62;
+    }
+    
+    .btn-warning {
+        background: #ffc107;
+        color: #212529;
+    }
+    
+    .btn-warning:hover {
+        background: #e0a800;
+    }
+    
+    .statistics-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 15px;
+        margin-top: 15px;
+    }
+    
+    .stat-item {
+        text-align: center;
+        padding: 15px;
+        background: #f8f9fa;
+        border-radius: 8px;
+    }
+    
+    .stat-number {
+        font-size: 32px;
+        font-weight: bold;
+        color: #007cba;
+        display: block;
+    }
+    
+    .stat-label {
+        font-size: 14px;
+        color: #666;
+        margin-top: 5px;
+    }
+    
+    .alerts {
+        margin-top: 20px;
+    }
+    
+    .alert {
+        padding: 12px 16px;
+        border-radius: 6px;
+        margin-bottom: 10px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+    
+    .alert-critical {
+        background: #f8d7da;
+        border-left: 4px solid #dc3545;
+        color: #721c24;
+    }
+    
+    .alert-warning {
+        background: #fff3cd;
+        border-left: 4px solid #ffc107;
+        color: #856404;
+    }
+    
+    .alert-info {
+        background: #cce7ff;
+        border-left: 4px solid #007cba;
+        color: #004085;
+    }
+    
+    .execution-log {
+        max-height: 300px;
+        overflow-y: auto;
+        background: #f8f9fa;
+        border-radius: 6px;
+        padding: 15px;
+    }
+    
+    .execution-item {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 8px 0;
+        border-bottom: 1px solid #e0e0e0;
+    }
+    
+    .execution-item:last-child {
+        border-bottom: none;
+    }
+    
+    .execution-success {
+        color: #28a745;
+    }
+    
+    .execution-failure {
+        color: #dc3545;
+    }
+    
+    .auto-refresh {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        font-size: 14px;
+        color: #666;
+    }
+    
+    .loading {
+        display: none;
+        color: #007cba;
+    }
+    
+    @media (max-width: 768px) {
+        .dashboard-grid {
+            grid-template-columns: 1fr;
+        }
+        
+        .celery-status-grid {
+            grid-template-columns: 1fr;
+        }
+        
+        .task-grid {
+            grid-template-columns: 1fr;
+        }
+        
+        .statistics-grid {
+            grid-template-columns: repeat(2, 1fr);
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="monitoring-dashboard">
+    <!-- Dashboard Header -->
+    <div class="dashboard-header">
+        <div>
+            <h1>🖥️ EDMS Scheduler Monitoring Dashboard</h1>
+            <p>Real-time monitoring and control of automated document lifecycle tasks</p>
+        </div>
+        
+        <div class="status-indicator">
+            {% if status_data.overall_status %}
+                <span class="status-{{ status_data.overall_status|lower }}">
+                    {% if status_data.overall_status == 'EXCELLENT' %}✅ EXCELLENT
+                    {% elif status_data.overall_status == 'GOOD' %}👍 GOOD
+                    {% elif status_data.overall_status == 'WARNING' %}⚠️ WARNING
+                    {% elif status_data.overall_status == 'CRITICAL' %}🔴 CRITICAL
+                    {% else %}❌ FAILURE
+                    {% endif %}
+                </span>
+                
+                <div class="health-score">
+                    <div style="font-size: 24px;">{{ status_data.health_score }}%</div>
+                    <div style="font-size: 12px;">Health Score</div>
+                </div>
+            {% else %}
+                <span class="status-failure">❌ ERROR</span>
+            {% endif %}
+        </div>
+    </div>
+
+    {% if error %}
+    <!-- Error Display -->
+    <div class="alert alert-critical">
+        <strong>⚠️ Dashboard Error:</strong> {{ error }}
+    </div>
+    {% else %}
+    
+    <!-- Main Dashboard Grid -->
+    <div class="dashboard-grid">
+        <div class="main-content">
+            <!-- Celery Status -->
+            <div class="card">
+                <div class="card-header">
+                    🔧 Celery Infrastructure Status
+                </div>
+                
+                <div class="celery-status-grid">
+                    <div class="status-item {% if status_data.celery_status.workers_active %}status-active{% else %}status-inactive{% endif %}">
+                        <h3>{{ status_data.celery_status.worker_count }}</h3>
+                        <p>Active Workers</p>
+                    </div>
+                    
+                    <div class="status-item {% if status_data.celery_status.beat_status == 'RUNNING' %}status-active{% elif status_data.celery_status.beat_status == 'UNKNOWN' %}status-unknown{% else %}status-inactive{% endif %}">
+                        <h3>{{ status_data.celery_status.beat_status }}</h3>
+                        <p>Beat Scheduler</p>
+                    </div>
+                </div>
+                
+                {% if status_data.celery_status.active_workers %}
+                <div style="margin-top: 15px;">
+                    <strong>Active Workers:</strong>
+                    {% for worker in status_data.celery_status.active_workers %}
+                        <span style="background: #e3f2fd; padding: 4px 8px; border-radius: 12px; font-size: 12px; margin-right: 8px;">{{ worker }}</span>
+                    {% endfor %}
+                </div>
+                {% endif %}
+            </div>
+            
+            <!-- Available Tasks -->
+            <div class="card">
+                <div class="card-header">
+                    📋 Available Scheduler Tasks
+                    <div class="auto-refresh">
+                        <span class="loading" id="loading">🔄 Executing...</span>
+                        <button onclick="refreshDashboard()" class="btn btn-secondary" style="padding: 4px 8px; font-size: 12px;">🔄 Refresh</button>
+                    </div>
+                </div>
+                
+                <div class="task-grid">
+                    {% for task_name, task_info in status_data.available_tasks.items %}
+                    <div class="task-card">
+                        <div class="task-header">
+                            <span class="task-icon">{{ task_info.icon }}</span>
+                            <div>
+                                <div class="task-name">{{ task_info.name }}</div>
+                                <div class="task-category">{{ task_info.category }}</div>
+                            </div>
+                        </div>
+                        
+                        <p style="color: #666; font-size: 14px; margin: 10px 0;">{{ task_info.description }}</p>
+                        
+                        <div style="display: flex; align-items: center; gap: 10px; margin: 10px 0;">
+                            <span style="font-size: 12px; background: 
+                                {% if task_info.priority == 'HIGH' %}#dc3545
+                                {% elif task_info.priority == 'MEDIUM' %}#ffc107
+                                {% else %}#28a745{% endif %}; 
+                                color: white; padding: 2px 8px; border-radius: 10px;">
+                                {{ task_info.priority }}
+                            </span>
+                        </div>
+                        
+                        <div class="task-actions">
+                            <button onclick="executeTask('{{ task_name }}', false)" class="btn btn-primary">
+                                ▶️ Execute Now
+                            </button>
+                            {% if task_name == 'cleanup_workflow_tasks' %}
+                            <button onclick="executeTask('{{ task_name }}', true)" class="btn btn-warning">
+                                🧪 Dry Run
+                            </button>
+                            {% endif %}
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+        
+        <div class="sidebar">
+            <!-- System Statistics -->
+            <div class="card">
+                <div class="card-header">📊 System Statistics</div>
+                
+                <div class="statistics-grid">
+                    <div class="stat-item">
+                        <span class="stat-number">{{ status_data.task_statistics.documents_pending_effective|default:0 }}</span>
+                        <div class="stat-label">Pending Effective</div>
+                    </div>
+                    
+                    <div class="stat-item">
+                        <span class="stat-number">{{ status_data.task_statistics.documents_scheduled_obsolescence|default:0 }}</span>
+                        <div class="stat-label">Scheduled Obsolete</div>
+                    </div>
+                    
+                    <div class="stat-item">
+                        <span class="stat-number">{{ status_data.task_statistics.active_workflows|default:0 }}</span>
+                        <div class="stat-label">Active Workflows</div>
+                    </div>
+                    
+                    <div class="stat-item">
+                        <span class="stat-number">{{ status_data.task_statistics.overdue_workflows|default:0 }}</span>
+                        <div class="stat-label">Overdue Workflows</div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Alerts -->
+            {% if status_data.alerts %}
+            <div class="card">
+                <div class="card-header">🚨 Active Alerts</div>
+                
+                <div class="alerts">
+                    {% for alert in status_data.alerts %}
+                    <div class="alert alert-{{ alert.level|lower }}">
+                        <div>
+                            <strong>{{ alert.message }}</strong>
+                            <br><small>{{ alert.action }}</small>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+            {% endif %}
+            
+            <!-- Recent Executions -->
+            {% if status_data.recent_executions %}
+            <div class="card">
+                <div class="card-header">📝 Recent Executions</div>
+                
+                <div class="execution-log">
+                    {% for execution in status_data.recent_executions %}
+                    <div class="execution-item">
+                        <div>
+                            <div style="font-weight: bold; {% if execution.success %}color: #28a745;{% else %}color: #dc3545;{% endif %}">
+                                {% if execution.success %}✅{% else %}❌{% endif %}
+                                {{ execution.description|truncatechars:50 }}
+                            </div>
+                            <div style="font-size: 12px; color: #666;">
+                                {{ execution.timestamp|date:"M d, H:i" }} - {{ execution.user }}
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+    
+    <!-- Auto-refresh Footer -->
+    <div style="text-align: center; margin-top: 30px; padding: 20px; background: #f8f9fa; border-radius: 8px;">
+        <div class="auto-refresh">
+            🔄 Dashboard auto-refreshes every 5 minutes. Last updated: <span id="last-updated">{{ status_data.timestamp|date:"M d, Y H:i:s" }} UTC</span>
+        </div>
+    </div>
+    
+    {% endif %}
+</div>
+
+<script>
+// Manual task execution
+async function executeTask(taskName, dryRun = false) {
+    const loading = document.getElementById('loading');
+    const confirmMessage = dryRun ? 
+        `Execute ${taskName} in DRY RUN mode?\n\nThis will show what would be done without making changes.` :
+        `Execute ${taskName} task now?\n\nThis will immediately run the automated task.`;
+    
+    if (!confirm(confirmMessage)) {
+        return;
+    }
+    
+    loading.style.display = 'inline';
+    
+    try {
+        const response = await fetch('/admin/scheduler/monitoring/manual-trigger/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCookie('csrftoken')
+            },
+            body: JSON.stringify({
+                'task_name': taskName,
+                'dry_run': dryRun
+            })
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            alert(`✅ Task "${result.task_display_name}" executed successfully!\n\nDuration: ${result.duration_seconds.toFixed(2)}s\nExecuted by: ${result.executed_by}${dryRun ? ' (DRY RUN)' : ''}`);
+            
+            // Refresh dashboard after successful execution
+            setTimeout(() => {
+                window.location.reload();
+            }, 2000);
+        } else {
+            alert(`❌ Task execution failed:\n\n${result.error}`);
+        }
+        
+    } catch (error) {
+        alert(`❌ Error executing task:\n\n${error.message}`);
+    } finally {
+        loading.style.display = 'none';
+    }
+}
+
+// Dashboard refresh
+function refreshDashboard() {
+    window.location.reload();
+}
+
+// Get CSRF token
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
+
+// Auto-refresh timestamp
+function updateTimestamp() {
+    const now = new Date();
+    document.getElementById('last-updated').textContent = now.toISOString().slice(0, 19).replace('T', ' ') + ' UTC';
+}
+
+// Auto-refresh page every 5 minutes
+setInterval(() => {
+    window.location.reload();
+}, 5 * 60 * 1000);
+
+// Update timestamp every minute
+setInterval(updateTimestamp, 60000);
+
+// Status polling for real-time updates
+async function pollStatus() {
+    try {
+        // Add cache-busting parameter
+        const timestamp = new Date().getTime();
+        const response = await fetch(`/admin/scheduler/monitoring/status/?t=${timestamp}`);
+        const data = await response.json();
+        
+        // Update health score
+        const healthScore = document.querySelector('.health-score div');
+        if (healthScore) {
+            healthScore.textContent = data.health_score + '%';
+        }
+        
+        console.log('📊 Status polling successful:', data.overall_status, data.health_score + '%');
+        
+    } catch (error) {
+        console.error('❌ Status polling error:', error);
+    }
+}
+
+// Poll status every 30 seconds
+setInterval(pollStatus, 30000);
+</script>
+{% endblock %}

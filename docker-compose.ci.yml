@@ -1,0 +1,107 @@
+# Docker Compose CI/CD Configuration
+# For use with any CI/CD platform (GitHub Actions, GitLab CI, Jenkins, etc.)
+
+version: '3.8'
+
+services:
+  # ==========================================================================
+  # CI/CD RUNNER SERVICE
+  # ==========================================================================
+  ci-runner:
+    build:
+      context: .
+      dockerfile: infrastructure/containers/Dockerfile.ci
+    image: edms-ci-runner:latest
+    container_name: edms-ci-runner
+    volumes:
+      - .:/workspace
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ci-cache:/cache
+    environment:
+      - CI=true
+      - WORKSPACE=/workspace
+      - CACHE_DIR=/cache
+    working_dir: /workspace
+    command: /bin/bash
+
+  # ==========================================================================
+  # TEST DATABASE
+  # ==========================================================================
+  test-db:
+    image: postgres:15
+    container_name: edms-test-db
+    environment:
+      POSTGRES_DB: edms_test
+      POSTGRES_USER: edms_test
+      POSTGRES_PASSWORD: test_password_12345
+    ports:
+      - "5433:5432"
+    volumes:
+      - test-db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U edms_test"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ==========================================================================
+  # TEST REDIS
+  # ==========================================================================
+  test-redis:
+    image: redis:7-alpine
+    container_name: edms-test-redis
+    ports:
+      - "6380:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ==========================================================================
+  # DEPLOYMENT VALIDATOR
+  # ==========================================================================
+  deployment-validator:
+    build:
+      context: .
+      dockerfile: infrastructure/containers/Dockerfile.ci
+    image: edms-ci-runner:latest
+    container_name: edms-deployment-validator
+    volumes:
+      - .:/workspace
+    environment:
+      - VALIDATION_MODE=true
+    working_dir: /workspace
+    entrypoint: ["/workspace/scripts/pre-deploy-check.sh"]
+
+  # ==========================================================================
+  # HEALTH CHECK MONITOR
+  # ==========================================================================
+  health-monitor:
+    build:
+      context: .
+      dockerfile: infrastructure/containers/Dockerfile.ci
+    image: edms-ci-runner:latest
+    container_name: edms-health-monitor
+    volumes:
+      - .:/workspace
+    environment:
+      - BACKEND_URL=http://backend:8000
+      - FRONTEND_URL=http://frontend:3000
+    working_dir: /workspace
+    entrypoint: ["/workspace/scripts/health-check.sh", "--quick"]
+    depends_on:
+      - backend
+      - frontend
+      - db
+      - redis
+
+volumes:
+  ci-cache:
+    name: edms-ci-cache
+  test-db-data:
+    name: edms-test-db-data
+
+networks:
+  default:
+    name: edms-ci-network
