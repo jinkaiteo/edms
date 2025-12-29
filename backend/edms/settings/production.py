@@ -57,23 +57,36 @@ if SENTRY_DSN:
     )
 
 # Logging configuration for production
-# Use /app/logs instead of /var/log/edms (which requires root)
-import os
-LOG_DIR = '/app/logs'
-os.makedirs(LOG_DIR, exist_ok=True)
+# Use console logging only - simpler and works with Docker logs
+# Docker captures stdout/stderr automatically, no file permissions needed
 
-# Ensure the 'file' handler exists before configuring it
-if 'file' not in LOGGING.get('handlers', {}):
-    LOGGING.setdefault('handlers', {})['file'] = {
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'formatters': {
+        'verbose': {
+            'format': '{levelname} {asctime} {module} {message}',
+            'style': '{',
+        },
+    },
+    'handlers': {
+        'console': {
+            'class': 'logging.StreamHandler',
+            'formatter': 'verbose',
+        },
+    },
+    'root': {
+        'handlers': ['console'],
         'level': 'INFO',
-        'class': 'logging.handlers.RotatingFileHandler',
-        'filename': os.path.join(LOG_DIR, 'edms.log'),
-        'maxBytes': 1024 * 1024 * 15,  # 15MB
-        'backupCount': 10,
-        'formatter': 'verbose',
-    }
-else:
-    LOGGING['handlers']['file']['filename'] = os.path.join(LOG_DIR, 'edms.log')
+    },
+    'loggers': {
+        'django': {
+            'handlers': ['console'],
+            'level': 'INFO',
+            'propagate': False,
+        },
+    },
+}
 LOGGING['handlers']['file']['level'] = 'WARNING'
 LOGGING['handlers']['console']['level'] = 'ERROR'
 
