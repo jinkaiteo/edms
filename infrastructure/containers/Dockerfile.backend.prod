@@ -59,8 +59,9 @@ RUN pip install gunicorn==21.2.0
 # Copy application code
 COPY . .
 
-# Create necessary directories
-RUN mkdir -p /app/logs /app/staticfiles /app/storage \
+# Create necessary directories with proper permissions
+RUN mkdir -p /app/logs /app/staticfiles /app/storage && \
+    chown -R edms:edms /app/logs /app/staticfiles /app/storage \
     && chown -R edms:edms /app
 
 # Collect static files
