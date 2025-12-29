@@ -57,7 +57,7 @@ services:
   backend:
     build:
       context: ./backend
-      dockerfile: ../infrastructure/containers/Dockerfile.backend
+      dockerfile: ../infrastructure/containers/Dockerfile.backend.prod
       target: production
     container_name: edms_prod_backend
     volumes:
@@ -114,7 +114,7 @@ services:
   celery_worker:
     build:
       context: ./backend
-      dockerfile: ../infrastructure/containers/Dockerfile.backend
+      dockerfile: ../infrastructure/containers/Dockerfile.backend.prod
       target: production
     container_name: edms_prod_celery_worker
     volumes:
@@ -151,7 +151,7 @@ services:
   celery_beat:
     build:
       context: ./backend
-      dockerfile: ../infrastructure/containers/Dockerfile.backend
+      dockerfile: ../infrastructure/containers/Dockerfile.backend.prod
       target: production
     container_name: edms_prod_celery_beat
     volumes:
