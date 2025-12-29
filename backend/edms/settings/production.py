@@ -57,18 +57,23 @@ if SENTRY_DSN:
     )
 
 # Logging configuration for production
+# Use /app/logs instead of /var/log/edms (which requires root)
+import os
+LOG_DIR = '/app/logs'
+os.makedirs(LOG_DIR, exist_ok=True)
+
 # Ensure the 'file' handler exists before configuring it
 if 'file' not in LOGGING.get('handlers', {}):
     LOGGING.setdefault('handlers', {})['file'] = {
         'level': 'INFO',
         'class': 'logging.handlers.RotatingFileHandler',
-        'filename': '/var/log/edms/edms.log',
+        'filename': os.path.join(LOG_DIR, 'edms.log'),
         'maxBytes': 1024 * 1024 * 15,  # 15MB
         'backupCount': 10,
         'formatter': 'verbose',
     }
 else:
-    LOGGING['handlers']['file']['filename'] = '/var/log/edms/edms.log'
+    LOGGING['handlers']['file']['filename'] = os.path.join(LOG_DIR, 'edms.log')
 LOGGING['handlers']['file']['level'] = 'WARNING'
 LOGGING['handlers']['console']['level'] = 'ERROR'
 
