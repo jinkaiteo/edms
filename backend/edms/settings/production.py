@@ -57,7 +57,18 @@ if SENTRY_DSN:
     )
 
 # Logging configuration for production
-LOGGING['handlers']['file']['filename'] = '/var/log/edms/edms.log'
+# Ensure the 'file' handler exists before configuring it
+if 'file' not in LOGGING.get('handlers', {}):
+    LOGGING.setdefault('handlers', {})['file'] = {
+        'level': 'INFO',
+        'class': 'logging.handlers.RotatingFileHandler',
+        'filename': '/var/log/edms/edms.log',
+        'maxBytes': 1024 * 1024 * 15,  # 15MB
+        'backupCount': 10,
+        'formatter': 'verbose',
+    }
+else:
+    LOGGING['handlers']['file']['filename'] = '/var/log/edms/edms.log'
 LOGGING['handlers']['file']['level'] = 'WARNING'
 LOGGING['handlers']['console']['level'] = 'ERROR'
 
