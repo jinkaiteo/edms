@@ -185,8 +185,8 @@ services:
   # React Frontend - Production Configuration
   frontend:
     build:
-      context: ./frontend
-      dockerfile: ../infrastructure/containers/Dockerfile.frontend.prod
+      context: .
+      dockerfile: infrastructure/containers/Dockerfile.frontend.prod
       target: production
     container_name: edms_prod_frontend
     ports:
