@@ -4,15 +4,15 @@ FROM node:18-alpine as base
 # Set working directory
 WORKDIR /app
 
-# Install dependencies
-COPY package*.json ./
+# Install dependencies (copy from frontend dir since context is repo root)
+COPY frontend/package*.json ./
 RUN npm ci --only=production && npm cache clean --force
 
 # Development stage
 FROM base as development
 ENV NODE_ENV=development
 RUN npm ci
-COPY . .
+COPY frontend/ .
 EXPOSE 3000
 CMD ["npm", "start"]
 
@@ -20,8 +20,8 @@ CMD ["npm", "start"]
 FROM base as builder
 ENV NODE_ENV=production
 
-# Copy source code
-COPY . .
+# Copy source code (from frontend dir)
+COPY frontend/ .
 
 # Install all dependencies (including dev for build)
 RUN npm ci
