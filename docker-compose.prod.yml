@@ -186,7 +186,7 @@ services:
   frontend:
     build:
       context: ./frontend
-      dockerfile: ../infrastructure/containers/Dockerfile.frontend
+      dockerfile: ../infrastructure/containers/Dockerfile.frontend.prod
       target: production
     container_name: edms_prod_frontend
     ports:
