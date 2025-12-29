@@ -73,6 +73,7 @@ LOGGING = {
         'console': {
             'class': 'logging.StreamHandler',
             'formatter': 'verbose',
+            'level': 'INFO',
         },
     },
     'root': {
@@ -87,8 +88,6 @@ LOGGING = {
         },
     },
 }
-LOGGING['handlers']['file']['level'] = 'WARNING'
-LOGGING['handlers']['console']['level'] = 'ERROR'
 
 # Additional production optimizations
 SESSION_COOKIE_AGE = 3600  # 1 hour for production
