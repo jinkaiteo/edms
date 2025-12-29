@@ -17,14 +17,19 @@ EXPOSE 3000
 CMD ["npm", "start"]
 
 # Build stage for production
-FROM base as builder
+FROM node:18-alpine as builder
 ENV NODE_ENV=production
+
+WORKDIR /app
+
+# Copy package files
+COPY frontend/package*.json ./
+
+# Install ALL dependencies (including dev for build)
+RUN npm ci
 
 # Copy source code (from frontend dir)
 COPY frontend/ .
-
-# Install all dependencies (including dev for build)
-RUN npm ci
 
 # Build the application
 RUN npm run build
