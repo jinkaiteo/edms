@@ -14,7 +14,7 @@ services:
       POSTGRES_PASSWORD: ${DB_PASSWORD:-change_me_in_production}
       POSTGRES_INITDB_ARGS: "--auth-host=scram-sha-256"
     volumes:
-      - postgres_prod_data:/var/lib/postgresql/data
+      - postgres_prod_data:/var/lib/postgresql
       - ./logs/db:/var/log/postgresql
     ports:
       - "${POSTGRES_PORT:-5433}:5432"  # Configurable port for external access
