@@ -80,6 +80,7 @@ services:
       - ALLOWED_HOSTS=${ALLOWED_HOSTS:-localhost,127.0.0.1,edms_prod_backend}
       - CORS_ALLOWED_ORIGINS=${CORS_ALLOWED_ORIGINS:-http://localhost:3001}
       - ENVIRONMENT=production
+      - EDMS_MASTER_KEY=${EDMS_MASTER_KEY:-generate_a_secure_master_key_here}
     depends_on:
       db:
         condition: service_healthy
