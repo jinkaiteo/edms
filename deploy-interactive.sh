@@ -499,7 +499,6 @@ EMAIL_BACKEND=django.core.mail.backends.console.EmailBackend
 # ==============================================================================
 
 LOG_LEVEL=WARNING
-$([ -n "$SENTRY_DSN" ] && echo "SENTRY_DSN=$SENTRY_DSN" || echo "# SENTRY_DSN=")
 
 # ==============================================================================
 # JWT AUTHENTICATION
@@ -528,6 +527,13 @@ LANGUAGE_CODE=en-us
 # END OF CONFIGURATION
 # ==============================================================================
 EOF
+
+    # Add Sentry DSN if configured
+    if [ -n "$SENTRY_DSN" ]; then
+        echo "SENTRY_DSN=$SENTRY_DSN" >> "$ENV_FILE"
+    else
+        echo "# SENTRY_DSN=" >> "$ENV_FILE"
+    fi
 
     chmod 600 "$ENV_FILE"
     print_success ".env file created successfully"
