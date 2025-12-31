@@ -138,7 +138,6 @@ services:
       --loglevel=warning
       --concurrency=4
       --max-tasks-per-child=1000
-      --logfile=/app/logs/celery_worker.log
 
   # Celery Beat - Production Configuration
   celery_beat:
@@ -174,7 +173,6 @@ services:
     command: >
       celery -A edms beat
       --loglevel=warning
-      --logfile=/app/logs/celery_beat.log
 
   # React Frontend - Production Configuration
   frontend:
