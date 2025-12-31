@@ -5,6 +5,20 @@ import sentry_sdk
 from sentry_sdk.integrations.django import DjangoIntegration
 from sentry_sdk.integrations.celery import CeleryIntegration
 
+# Add JWT session fix middleware for API endpoints
+MIDDLEWARE = [
+    'django.middleware.security.SecurityMiddleware',
+    'corsheaders.middleware.CorsMiddleware',
+    'django.middleware.common.CommonMiddleware',
+    'apps.api.middleware_jwt_session_fix.DisableSessionForAPIMiddleware',  # Add BEFORE session middleware
+    'django.contrib.sessions.middleware.SessionMiddleware',
+    'django.middleware.csrf.CsrfViewMiddleware',
+    'django.contrib.auth.middleware.AuthenticationMiddleware',
+    'django.contrib.messages.middleware.MessageMiddleware',
+    'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    'apps.audit.middleware_api_fix.ComprehensiveAuditMiddleware',
+]
+
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = False
 
