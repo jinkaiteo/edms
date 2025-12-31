@@ -79,7 +79,14 @@ class EnhancedAuditMiddleware(MiddlewareMixin):
         if request.path.startswith('/api/'):
             # Use Authorization header or user info to create consistent session ID
             auth_header = request.META.get('HTTP_AUTHORIZATION', '')
-            user_id = str(request.user.id) if hasattr(request, 'user') and request.user.is_authenticated else 'anonymous'
+            # Safely get user_id - user may not be available yet (before JWT auth)
+            user_id = 'anonymous'
+            if hasattr(request, 'user'):
+                try:
+                    if hasattr(request.user, 'is_authenticated') and request.user.is_authenticated:
+                        user_id = str(request.user.id)
+                except Exception:
+                    pass
             ip_address = request.META.get('REMOTE_ADDR', 'unknown')
             
             # Create a deterministic session ID for API requests
