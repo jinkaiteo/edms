@@ -300,6 +300,12 @@ collect_configuration() {
     print_success "SECRET_KEY generated (50 characters)"
     
     echo ""
+    print_info "Generating EDMS_MASTER_KEY (for encryption)..."
+    EDMS_MASTER_KEY=$(python3 -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())")
+    print_success "EDMS_MASTER_KEY generated (44 characters)"
+    print_warning "⚠️  CRITICAL: This key will be saved to .env - back it up securely!"
+    
+    echo ""
     SESSION_TIMEOUT=$(prompt_input "Session timeout (seconds)" "3600")
     
     echo ""
@@ -365,6 +371,7 @@ show_configuration_summary() {
     
     echo -e "${BOLD}Security:${NC}"
     echo "  SECRET_KEY:       ${SECRET_KEY:0:20}... (50 chars)"
+    echo "  EDMS_MASTER_KEY:  ${EDMS_MASTER_KEY:0:20}... (44 chars)"
     echo "  Session Timeout:  $SESSION_TIMEOUT seconds"
     echo ""
     
@@ -462,6 +469,12 @@ REDIS_PASSWORD=
 CELERY_BROKER_URL=redis://redis:6379/0
 CELERY_RESULT_BACKEND=redis://redis:6379/0
 CELERY_ALWAYS_EAGER=False
+
+# ==============================================================================
+# ENCRYPTION
+# ==============================================================================
+
+EDMS_MASTER_KEY=$EDMS_MASTER_KEY
 
 # ==============================================================================
 # CORS & SECURITY
