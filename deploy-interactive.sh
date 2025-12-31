@@ -33,7 +33,7 @@ BOLD='\033[1m'
 # Script directory
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 BACKEND_DIR="$SCRIPT_DIR/backend"
-ENV_FILE="$BACKEND_DIR/.env"
+ENV_FILE="$SCRIPT_DIR/.env"
 
 ################################################################################
 # Helper Functions
