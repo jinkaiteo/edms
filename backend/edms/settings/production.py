@@ -89,6 +89,9 @@ LOGGING = {
     },
 }
 
+# Encryption settings
+EDMS_MASTER_KEY = config('EDMS_MASTER_KEY', default=None)
+
 # Additional production optimizations
 SESSION_COOKIE_AGE = 3600  # 1 hour for production
 CONN_MAX_AGE = 60
