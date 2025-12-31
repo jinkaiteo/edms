@@ -26,7 +26,8 @@ SECURE_HSTS_PRELOAD = True
 DATABASES['default'].update({
     'CONN_MAX_AGE': 60,
     'OPTIONS': {
-        'MAX_CONNS': 20,
+        'connect_timeout': 10,
+        'options': '-c statement_timeout=30000',
         # SSL mode disabled for internal Docker network deployment
         # 'sslmode': 'require',  # Enable for external database
     }
