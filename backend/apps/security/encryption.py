@@ -235,14 +235,16 @@ class DigitalSignature:
         if private_key_path and public_key_path:
             self._load_keys(private_key_path, public_key_path)
         else:
-            if settings.DEBUG:
-                print("⚠️  Generating temporary RSA keys for development")
-                print("⚠️  Use proper key management in production!")
-                self._generate_keys()
+            # Generate temporary keys if paths not configured
+            # NOTE: In production, these keys are ephemeral and will be regenerated on restart
+            # For persistent keys, configure EDMS_PRIVATE_KEY_PATH and EDMS_PUBLIC_KEY_PATH
+            if not settings.DEBUG:
+                print("⚠️  Generating temporary RSA keys (production mode)")
+                print("⚠️  Keys will be lost on container restart!")
+                print("⚠️  Configure EDMS_PRIVATE_KEY_PATH and EDMS_PUBLIC_KEY_PATH for persistent keys")
             else:
-                raise ImproperlyConfigured(
-                    "RSA key paths must be configured in production"
-                )
+                print("⚠️  Generating temporary RSA keys for development")
+            self._generate_keys()
     
     def _generate_keys(self):
         """Generate new RSA key pair."""
