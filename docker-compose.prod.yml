@@ -122,6 +122,7 @@ services:
       - DB_PASSWORD=${DB_PASSWORD:-change_me_in_production}
       - REDIS_URL=redis://:${REDIS_PASSWORD:-change_me_redis_password}@redis:6379/1
       - CELERY_BROKER_URL=redis://:${REDIS_PASSWORD:-change_me_redis_password}@redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://:${REDIS_PASSWORD:-change_me_redis_password}@redis:6379/0
       - EDMS_MASTER_KEY=${EDMS_MASTER_KEY:-generate_a_secure_master_key_here}
     depends_on:
       db:
@@ -160,6 +161,7 @@ services:
       - REDIS_URL=redis://:${REDIS_PASSWORD:-change_me_redis_password}@redis:6379/1
       - EDMS_MASTER_KEY=${EDMS_MASTER_KEY:-generate_a_secure_master_key_here}
       - CELERY_BROKER_URL=redis://:${REDIS_PASSWORD:-change_me_redis_password}@redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://:${REDIS_PASSWORD:-change_me_redis_password}@redis:6379/0
     depends_on:
       db:
         condition: service_healthy
