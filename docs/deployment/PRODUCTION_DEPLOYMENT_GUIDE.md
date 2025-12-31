@@ -37,6 +37,10 @@ DB_PASSWORD=your_very_secure_database_password_123!
 REDIS_PASSWORD=your_very_secure_redis_password_456!
 SECRET_KEY=your_django_secret_key_must_be_50_chars_minimum_789!
 
+# Encryption Master Key (REQUIRED for document encryption/backup)
+# Generate with: python3 -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
+EDMS_MASTER_KEY=your_generated_master_key_here
+
 # Domain settings
 ALLOWED_HOSTS=localhost,127.0.0.1,your-production-domain.com
 CORS_ALLOWED_ORIGINS=https://your-production-domain.com
@@ -46,6 +50,12 @@ EMAIL_HOST=smtp.your-email-provider.com
 EMAIL_HOST_USER=noreply@your-domain.com
 EMAIL_HOST_PASSWORD=your-email-password
 ```
+
+**⚠️ CRITICAL: EDMS_MASTER_KEY**
+- This key is **required** for the encryption service and backup/restore system
+- Generate it once and store it securely - never regenerate after initial deployment
+- Without this key, you cannot decrypt encrypted documents or restore backups
+- Use a password manager or secure secrets vault to store this key
 
 ### 4. Create Required Directories
 ```bash
