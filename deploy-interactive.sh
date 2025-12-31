@@ -125,7 +125,8 @@ prompt_password() {
         read -s -p "$(echo -e "${CYAN}?${NC} Confirm password: ")" password_confirm
         echo ""
         if [ "$password" = "$password_confirm" ]; then
-            echo "$password"
+            # Remove any newlines from password
+            echo "$password" | tr -d '\n'
             break
         else
             echo "Passwords do not match. Please try again."
@@ -134,8 +135,8 @@ prompt_password() {
 }
 
 generate_secret_key() {
-    python3 -c "from django.core.management.utils import get_random_secret_key; print(get_random_secret_key())" 2>/dev/null || \
-    openssl rand -base64 50 | tr -d "=+/" | cut -c1-50
+    python3 -c "from django.core.management.utils import get_random_secret_key; print(get_random_secret_key(), end='')" 2>/dev/null || \
+    openssl rand -base64 50 | tr -d "=+/\n" | cut -c1-50
 }
 
 check_command() {
@@ -301,7 +302,7 @@ collect_configuration() {
     
     echo ""
     print_info "Generating EDMS_MASTER_KEY (for encryption)..."
-    EDMS_MASTER_KEY=$(python3 -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())")
+    EDMS_MASTER_KEY=$(python3 -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode(), end='')")
     print_success "EDMS_MASTER_KEY generated (44 characters)"
     print_warning "⚠️  CRITICAL: This key will be saved to .env - back it up securely!"
     
