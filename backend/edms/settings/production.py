@@ -16,7 +16,7 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
-    'apps.audit.middleware_api_fix.ComprehensiveAuditMiddleware',
+    'apps.audit.middleware_api_fix.EnhancedAuditMiddleware',
 ]
 
 # SECURITY WARNING: don't run with debug turned on in production!
