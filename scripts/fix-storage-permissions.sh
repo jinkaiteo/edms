@@ -83,14 +83,18 @@ else
     sudo chmod -R 755 logs/
 fi
 
-# CRITICAL: Make storage/media writable so Django can create subdirectories
-log "Making storage/media fully writable for Django..."
+# CRITICAL: Make storage directories writable so Django/app can write files
+log "Making storage directories fully writable..."
 chmod 777 storage/media 2>/dev/null || sudo chmod 777 storage/media
+chmod 777 storage/documents 2>/dev/null || sudo chmod 777 storage/documents
+chmod 777 storage/temp 2>/dev/null || sudo chmod 777 storage/temp
 log "✓ storage/media set to 777 (allows Django to create subdirectories)"
+log "✓ storage/documents set to 777 (allows document file uploads)"
+log "✓ storage/temp set to 777 (allows temporary file processing)"
 
 log "✓ Ownership set to $CURRENT_USER"
 log "✓ Base permissions set to 755"
-log "✓ Media directory set to 777 (required for file uploads)"
+log "✓ Upload directories set to 777 (required for file uploads)"
 echo
 
 # Alternative: If you know the specific UID the container uses, set ownership
