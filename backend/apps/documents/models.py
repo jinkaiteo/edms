@@ -1146,7 +1146,7 @@ class DocumentAccessLog(models.Model):
     # Context information
     ip_address = models.GenericIPAddressField(null=True, blank=True)
     user_agent = models.TextField(blank=True)
-    session_id = models.CharField(max_length=40, blank=True)
+    session_id = models.CharField(max_length=40, blank=True, null=True)
     
     # Access result
     success = models.BooleanField(default=True)
