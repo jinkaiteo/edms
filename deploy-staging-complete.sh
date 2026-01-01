@@ -335,10 +335,10 @@ docker compose -f "$COMPOSE_FILE" exec -T backend python manage.py shell << 'PYT
 from apps.users.models import User, Role
 from django.contrib.auth.models import Group
 
-# Get roles
-author_role = Role.objects.filter(code='AUTHOR').first()
-reviewer_role = Role.objects.filter(code='REVIEWER').first()
-approver_role = Role.objects.filter(code='APPROVER').first()
+# Get roles (filter by name, not code)
+author_role = Role.objects.filter(name='Author').first()
+reviewer_role = Role.objects.filter(name='Reviewer').first()
+approver_role = Role.objects.filter(name='Approver').first()
 
 # Create author01
 if not User.objects.filter(username='author01').exists():
