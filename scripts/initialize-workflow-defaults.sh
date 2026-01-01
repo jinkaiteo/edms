@@ -85,7 +85,7 @@ states = [
     ('PENDING_APPROVAL', 'Pending Approval'),
     ('UNDER_APPROVAL', 'Under Approval'),
     ('APPROVED_PENDING_EFFECTIVE', 'Approved - Pending Effective'),
-    ('APPROVED_AND_EFFECTIVE', 'Approved and Effective'),
+    ('EFFECTIVE', 'Effective'),
     ('SUPERSEDED', 'Superseded'),
     ('PENDING_OBSOLETE', 'Pending Obsolete'),
     ('OBSOLETE', 'Obsolete'),

@@ -407,7 +407,7 @@ const DocumentList: React.FC<DocumentListProps> = ({
                                (currentVersion.document_type && typeof currentVersion.document_type === 'object' 
                                  ? currentVersion.document_type.name 
                                  : currentVersion.document_type) || 'Unknown Type'}
-                              {(currentVersion.status === 'EFFECTIVE' || currentVersion.status === 'APPROVED_AND_EFFECTIVE') && (
+                              {(currentVersion.status === 'EFFECTIVE') && (
                                 <span className="ml-2 inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
                                   Current Version
                                 </span>

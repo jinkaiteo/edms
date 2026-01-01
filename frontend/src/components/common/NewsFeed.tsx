@@ -87,7 +87,7 @@ const NewsFeed: React.FC<NewsFeedProps> = ({ className = '', maxItems = 10 }) =>
 
         // Recently effective documents
         const recentEffective = docs.filter((doc: any) => {
-          if (doc.status !== 'EFFECTIVE' && doc.status !== 'APPROVED_AND_EFFECTIVE') return false;
+          if (doc.status !== 'EFFECTIVE') return false;
           const effectiveDate = new Date(doc.effective_date);
           const weekAgo = new Date();
           weekAgo.setDate(weekAgo.getDate() - 7);

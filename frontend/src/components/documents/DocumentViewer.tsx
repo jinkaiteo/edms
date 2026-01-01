@@ -781,7 +781,6 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({
         break;
 
       case 'EFFECTIVE':
-      case 'APPROVED_AND_EFFECTIVE':
         // Document is approved and currently effective
         // Allow all authenticated users to initiate up-versioning (approval required anyway)
         actions.push({
@@ -1414,7 +1413,7 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({
             <div>
               <h3 className="text-lg font-medium text-gray-900 mb-4">Digital Signatures</h3>
               {/* Electronic Signature Section */}
-              {(document.status === 'EFFECTIVE' || document.status === 'APPROVED_AND_EFFECTIVE') && (
+              {(document.status === 'EFFECTIVE') && (
                 <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
                   <p className="text-sm text-gray-600 mb-4">
                     This document is approved and effective. Electronic signatures can be applied.

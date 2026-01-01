@@ -203,7 +203,6 @@ const ViewReviewStatus: React.FC<ViewReviewStatusProps> = ({
       case 'UNDER_APPROVAL': return 'IN_PROGRESS';
       case 'APPROVED':
       case 'EFFECTIVE': return 'COMPLETED';
-      case 'APPROVED_AND_EFFECTIVE': return 'COMPLETED';
       default: return 'NOT_ASSIGNED';
     }
   };
@@ -315,11 +314,10 @@ const ViewReviewStatus: React.FC<ViewReviewStatusProps> = ({
                 { key: 'UNDER_REVIEW', label: 'Under Review', icon: '👁️' },
                 { key: 'PENDING_APPROVAL', label: 'Pending Approval', icon: '⏳' },
                 { key: 'EFFECTIVE', label: 'Effective', icon: '✅' },
-                { key: 'APPROVED_AND_EFFECTIVE', label: 'Approved and Effective', icon: '✅' }
               ].map((step, index) => {
                 const isActive = document.status.toUpperCase() === step.key;
                 const isPassed = ['DRAFT', 'PENDING_REVIEW', 'UNDER_REVIEW', 'PENDING_APPROVAL'].slice(0, index).some(s => 
-                  ['UNDER_REVIEW', 'PENDING_APPROVAL', 'EFFECTIVE', 'APPROVED_AND_EFFECTIVE'].includes(document.status.toUpperCase())
+                  ['UNDER_REVIEW', 'PENDING_APPROVAL', 'EFFECTIVE'].includes(document.status.toUpperCase())
                 );
                 
                 return (

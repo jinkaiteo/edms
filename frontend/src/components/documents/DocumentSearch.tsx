@@ -69,7 +69,6 @@ const DocumentSearch: React.FC<DocumentSearchProps> = ({
     { value: 'APPROVED', label: 'Approved' },
     { value: 'APPROVED_PENDING_EFFECTIVE', label: 'Approved (Pending Effective)' },
     { value: 'EFFECTIVE', label: 'Effective' },
-    { value: 'APPROVED_AND_EFFECTIVE', label: 'Approved and Effective' },
     { value: 'SCHEDULED_FOR_OBSOLESCENCE', label: 'Scheduled for Obsolescence' },
     { value: 'SUPERSEDED', label: 'Superseded' },
     { value: 'OBSOLETE', label: 'Obsolete' },
@@ -174,7 +173,7 @@ const DocumentSearch: React.FC<DocumentSearchProps> = ({
     switch (filterContext) {
       case 'library':
         return [
-          { label: 'Effective Documents', onClick: () => updateFilter('status', ['EFFECTIVE', 'APPROVED_AND_EFFECTIVE']), color: 'green' },
+          { label: 'Effective Documents', onClick: () => updateFilter('status', ['EFFECTIVE']), color: 'green' },
           { label: 'Drafts', onClick: () => updateFilter('status', ['DRAFT']), color: 'gray' },
           { label: 'Pending Actions', onClick: () => updateFilter('status', ['PENDING_REVIEW', 'PENDING_APPROVAL']), color: 'yellow' },
           { label: 'Pending Effective', onClick: () => updateFilter('status', ['APPROVED_PENDING_EFFECTIVE']), color: 'blue' },
