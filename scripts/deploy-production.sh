@@ -107,10 +107,34 @@ build_images() {
     log "Images built successfully"
 }
 
+setup_storage() {
+    log "Setting up storage directories..."
+    
+    cd "$PROJECT_DIR"
+    
+    # Create required directories
+    mkdir -p storage/documents
+    mkdir -p storage/backups
+    mkdir -p storage/temp
+    mkdir -p logs/backend
+    mkdir -p logs/db
+    mkdir -p logs/redis
+    mkdir -p logs/nginx
+    
+    # Set proper permissions (755 = owner can write, others can read/execute)
+    chmod -R 755 storage/
+    chmod -R 755 logs/
+    
+    log "✓ Storage directories configured with proper permissions"
+}
+
 deploy() {
     log "Deploying EDMS production environment..."
     
     cd "$PROJECT_DIR"
+    
+    # Setup storage directories BEFORE starting containers
+    setup_storage
     
     # Load environment variables
     export $(grep -v '^#' "$ENV_FILE" | xargs)
@@ -271,6 +295,52 @@ EOF
     log "Production tests passed"
 }
 
+initialize_defaults() {
+    log "Initializing system defaults..."
+    
+    cd "$PROJECT_DIR"
+    
+    # Check if superuser exists
+    log "Checking for superuser..."
+    if ! docker-compose -f "$COMPOSE_FILE" --env-file "$ENV_FILE" exec -T backend python manage.py shell -c "from apps.users.models import User; print(User.objects.filter(is_superuser=True).exists())" 2>/dev/null | grep -q "True"; then
+        warn "No superuser found. Creating default admin user..."
+        docker-compose -f "$COMPOSE_FILE" --env-file "$ENV_FILE" exec -T backend python manage.py shell << 'EOF'
+from apps.users.models import User
+if not User.objects.filter(username='admin').exists():
+    User.objects.create_superuser(
+        username='admin',
+        email='admin@edms-project.com',
+        password='test123',
+        first_name='System',
+        last_name='Administrator'
+    )
+    print("✓ Admin user created: admin / test123")
+else:
+    print("✓ Admin user already exists")
+EOF
+    else
+        log "✓ Superuser exists"
+    fi
+    
+    # Run default roles creation
+    log "Creating default roles..."
+    docker-compose -f "$COMPOSE_FILE" --env-file "$ENV_FILE" exec -T backend python manage.py create_default_roles
+    
+    # Run default groups creation
+    log "Creating default Django groups..."
+    docker-compose -f "$COMPOSE_FILE" --env-file "$ENV_FILE" exec -T backend python manage.py create_default_groups
+    
+    # Run default document types creation
+    log "Creating default document types..."
+    docker-compose -f "$COMPOSE_FILE" --env-file "$ENV_FILE" exec -T backend python manage.py create_default_document_types
+    
+    # Run default document sources creation
+    log "Creating default document sources..."
+    docker-compose -f "$COMPOSE_FILE" --env-file "$ENV_FILE" exec -T backend python manage.py create_default_document_sources
+    
+    log "System defaults initialized successfully"
+}
+
 show_info() {
     log "Production deployment completed successfully!"
     echo
@@ -284,6 +354,12 @@ show_info() {
     echo -e "  Database: edms_prod_db"
     echo -e "  User: edms_prod_user"
     echo
+    echo -e "${BLUE}Initialized System Defaults:${NC}"
+    echo -e "  ✓ 7 User Roles (Document Admin, Approver, Reviewer, Author, Viewer, User Admin, Placeholder Admin)"
+    echo -e "  ✓ 6 Django Groups (Document Admins, Reviewers, Approvers, etc.)"
+    echo -e "  ✓ 6 Document Types (POL, SOP, WI, MAN, FRM, REC)"
+    echo -e "  ✓ 3 Document Sources (Original Digital Draft, Scanned Original, Scanned Copy)"
+    echo
     echo -e "${BLUE}Management Commands:${NC}"
     echo -e "  View logs:     docker-compose -f $COMPOSE_FILE logs -f"
     echo -e "  Stop services: docker-compose -f $COMPOSE_FILE down"
@@ -294,6 +370,11 @@ show_info() {
     echo -e "  Service status: docker-compose -f $COMPOSE_FILE ps"
     echo
     echo -e "${GREEN}Backup location: $BACKUP_DIR${NC}"
+    echo
+    echo -e "${YELLOW}⚠️  Default Credentials:${NC}"
+    echo -e "  Username: admin"
+    echo -e "  Password: test123"
+    echo -e "  ${RED}CHANGE THESE IMMEDIATELY IN PRODUCTION!${NC}"
 }
 
 # Main execution
@@ -306,6 +387,7 @@ main() {
     backup_existing
     build_images
     deploy
+    initialize_defaults
     run_tests
     show_info
     
