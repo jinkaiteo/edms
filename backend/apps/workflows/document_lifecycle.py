@@ -390,7 +390,7 @@ class DocumentLifecycleService:
         today = timezone.now().date()
         if effective_date <= today:
             # Effective today or in the past = immediately effective
-            target_state = 'EFFECTIVE'
+            target_state = 'APPROVED_AND_EFFECTIVE'
             comment_suffix = f' - Effective immediately ({effective_date})'
         else:
             # Effective in the future = pending effective
@@ -541,10 +541,10 @@ class DocumentLifecycleService:
                 with transaction.atomic():
                     workflow = self._get_active_workflow(document)
                     if workflow and workflow.current_state.code == 'APPROVED_PENDING_EFFECTIVE':
-                        # Transition to EFFECTIVE
+                        # Transition to APPROVED_AND_EFFECTIVE
                         success = self._transition_workflow(
                             workflow=workflow,
-                            to_state_code='EFFECTIVE',
+                            to_state_code='APPROVED_AND_EFFECTIVE',
                             user=user,
                             comment=f'Document automatically activated on scheduled effective date: {document.effective_date}',
                             assignee=None
@@ -582,8 +582,8 @@ class DocumentLifecycleService:
         """
         with transaction.atomic():
             # Validate existing document
-            if existing_document.status != 'EFFECTIVE':
-                raise ValidationError("Can only version EFFECTIVE documents")
+            if existing_document.status != 'APPROVED_AND_EFFECTIVE':
+                raise ValidationError("Can only version APPROVED_AND_EFFECTIVE documents")
             
             # Create new version
             major, minor = existing_document.get_next_version(
@@ -685,8 +685,8 @@ class DocumentLifecycleService:
         if not new_document.supersedes:
             return True  # Nothing to supersede
         
-        if new_document.status != 'EFFECTIVE':
-            raise ValidationError("New document must be EFFECTIVE to supersede old version")
+        if new_document.status != 'APPROVED_AND_EFFECTIVE':
+            raise ValidationError("New document must be APPROVED_AND_EFFECTIVE to supersede old version")
         
         with transaction.atomic():
             old_document = new_document.supersedes
@@ -727,8 +727,8 @@ class DocumentLifecycleService:
         """
         with transaction.atomic():
             # Validate document can be obsoleted
-            if document.status != 'EFFECTIVE':
-                raise ValidationError("Can only obsolete EFFECTIVE documents")
+            if document.status != 'APPROVED_AND_EFFECTIVE':
+                raise ValidationError("Can only obsolete APPROVED_AND_EFFECTIVE documents")
             
             if not reason:
                 raise ValidationError("Reason for obsolescence is required")
@@ -807,8 +807,8 @@ class DocumentLifecycleService:
                 raise ValidationError(f"Document is already scheduled for obsolescence on {document.obsolescence_date}. Cancel the existing schedule first if you need to change it.")
             elif document.status in ['OBSOLETE', 'SUPERSEDED', 'TERMINATED']:
                 raise ValidationError(f"Cannot obsolete document with status: {document.status}")
-            elif document.status != 'EFFECTIVE':
-                raise ValidationError(f"Can only obsolete EFFECTIVE documents. Current status: {document.status}")
+            elif document.status != 'APPROVED_AND_EFFECTIVE':
+                raise ValidationError(f"Can only obsolete APPROVED_AND_EFFECTIVE documents. Current status: {document.status}")
             
             if not reason:
                 raise ValidationError("Reason for obsolescence is required")
@@ -894,7 +894,7 @@ class DocumentLifecycleService:
             document=document,
             workflow_type__in=['REVIEW', 'UP_VERSION'],
             is_terminated=False  # Only consider non-terminated workflows as active
-        ).exclude(current_state__code__in=['TERMINATED', 'COMPLETED', 'OBSOLETE', 'EFFECTIVE'])
+        ).exclude(current_state__code__in=['TERMINATED', 'COMPLETED', 'OBSOLETE', 'APPROVED_AND_EFFECTIVE'])
         
         if active_workflows.exists():
             workflow_types = [w.workflow_type for w in active_workflows]
@@ -1721,8 +1721,8 @@ Document Details:
         # Look for last non-workflow state or default to DRAFT
         if hasattr(document, 'approval_date') and document.approval_date:
             return 'APPROVED'
-        elif document.status in ['EFFECTIVE']:
-            return 'EFFECTIVE'
+        elif document.status in ['APPROVED_AND_EFFECTIVE']:
+            return 'APPROVED_AND_EFFECTIVE'
         else:
             return 'DRAFT'
     
@@ -1732,7 +1732,7 @@ Document Details:
         if not workflow:
             if document.status == 'DRAFT':
                 return ['start_review_workflow', 'start_version_workflow']
-            elif document.status == 'EFFECTIVE':
+            elif document.status == 'APPROVED_AND_EFFECTIVE':
                 return ['start_version_workflow', 'start_obsolete_workflow']
             return []
         
@@ -1756,7 +1756,7 @@ Document Details:
             actions.append('make_effective')
         
         # Termination is always available for workflows not in terminal states
-        if workflow and state not in ['EFFECTIVE', 'SUPERSEDED', 'OBSOLETE', 'TERMINATED']:
+        if workflow and state not in ['APPROVED_AND_EFFECTIVE', 'SUPERSEDED', 'OBSOLETE', 'TERMINATED']:
             actions.append('terminate_workflow')
         
         return actions
