@@ -7,6 +7,11 @@ echo "Checking admin user roles and permissions..."
 echo ""
 
 docker compose -f docker-compose.prod.yml exec -T backend python -c "
+import django
+import os
+os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'edms.settings.production')
+django.setup()
+
 from apps.users.models import User, Role, UserRole
 
 # Get admin user
