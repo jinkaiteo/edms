@@ -168,12 +168,10 @@ services:
       - EDMS_MASTER_KEY=${EDMS_MASTER_KEY:-generate_a_secure_master_key_here}
       - CELERY_BROKER_URL=redis://:${REDIS_PASSWORD:-change_me_redis_password}@redis:6379/0
       - CELERY_RESULT_BACKEND=redis://:${REDIS_PASSWORD:-change_me_redis_password}@redis:6379/0
+    # Health check disabled - Beat is a scheduler, doesn't respond to ping
+    # Check logs for "Scheduler: Sending" to verify it's working
     healthcheck:
-      test: ["CMD-SHELL", "celery -A edms inspect ping -d celery@$$HOSTNAME || exit 0"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 40s
+      disable: true
     depends_on:
       db:
         condition: service_healthy
