@@ -58,27 +58,27 @@ print("="*60)
 
 # Create DocumentStates
 states = [
-    ('DRAFT', 'Draft', 1),
-    ('PENDING_REVIEW', 'Pending Review', 2),
-    ('UNDER_REVIEW', 'Under Review', 3),
-    ('REVIEWED', 'Reviewed', 4),
-    ('PENDING_APPROVAL', 'Pending Approval', 5),
-    ('UNDER_APPROVAL', 'Under Approval', 6),
-    ('APPROVED_PENDING_EFFECTIVE', 'Approved - Pending Effective', 7),
-    ('EFFECTIVE', 'Effective', 8),
-    ('SCHEDULED_FOR_OBSOLESCENCE', 'Scheduled for Obsolescence', 9),
-    ('OBSOLETE', 'Obsolete', 10),
-    ('REJECTED_AT_REVIEW', 'Rejected at Review', 11),
-    ('REJECTED_AT_APPROVAL', 'Rejected at Approval', 12),
+    ('DRAFT', 'Draft'),
+    ('PENDING_REVIEW', 'Pending Review'),
+    ('UNDER_REVIEW', 'Under Review'),
+    ('REVIEWED', 'Reviewed'),
+    ('PENDING_APPROVAL', 'Pending Approval'),
+    ('UNDER_APPROVAL', 'Under Approval'),
+    ('APPROVED_PENDING_EFFECTIVE', 'Approved - Pending Effective'),
+    ('APPROVED_AND_EFFECTIVE', 'Approved and Effective'),
+    ('SUPERSEDED', 'Superseded'),
+    ('PENDING_OBSOLETE', 'Pending Obsolete'),
+    ('OBSOLETE', 'Obsolete'),
+    ('TERMINATED', 'Terminated'),
 ]
 
 created_count = 0
 existing_count = 0
 
-for code, name, order in states:
+for code, name in states:
     obj, created = DocumentState.objects.get_or_create(
         code=code,
-        defaults={'name': name, 'order': order}
+        defaults={'name': name}
     )
     if created:
         print(f"✓ Created DocumentState: {code} - {name}")
@@ -100,7 +100,8 @@ print("="*60)
 workflow_types = [
     ('REVIEW', 'Document Review', 'Standard document review process', True),
     ('APPROVAL', 'Document Approval', 'Standard document approval process', True),
-    ('REVISION', 'Document Revision', 'Document revision process', True),
+    ('UP_VERSION', 'Document Up-versioning', 'Document up-versioning process', True),
+    ('OBSOLETE', 'Document Obsolescence', 'Document obsolescence process', True),
 ]
 
 wf_created_count = 0
@@ -109,7 +110,14 @@ wf_existing_count = 0
 for wf_type, name, desc, active in workflow_types:
     obj, created = WorkflowType.objects.get_or_create(
         workflow_type=wf_type,
-        defaults={'name': name, 'description': desc, 'is_active': active}
+        defaults={
+            'name': name,
+            'description': desc,
+            'is_active': active,
+            'requires_approval': True,
+            'allows_parallel': False,
+            'auto_transition': False
+        }
     )
     if created:
         print(f"✓ Created WorkflowType: {wf_type} - {name}")
