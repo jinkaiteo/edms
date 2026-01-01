@@ -186,7 +186,7 @@ services:
     ports:
       - "${FRONTEND_PORT:-3001}:80"  # Configurable port for HAProxy routing
     environment:
-      - REACT_APP_API_URL=http://localhost:8001/api/v1
+      - REACT_APP_API_URL=/api/v1
       - NODE_ENV=production
     depends_on:
       backend:
