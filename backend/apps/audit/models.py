@@ -117,7 +117,7 @@ class AuditTrail(models.Model):
     # User and session information
     user = models.ForeignKey(User, on_delete=models.PROTECT, null=True, blank=True)
     user_display_name = models.CharField(max_length=200, blank=True)
-    session_id = models.CharField(max_length=40, blank=True, db_index=True)
+    session_id = models.CharField(max_length=40, blank=True, null=True, db_index=True)
     ip_address = models.GenericIPAddressField(null=True, blank=True)
     user_agent = models.TextField(blank=True)
     
