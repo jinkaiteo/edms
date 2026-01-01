@@ -1210,10 +1210,18 @@ class DocumentViewSet(viewsets.ModelViewSet):
         dependencies_data = []
         uploaded_file = request.FILES.get('file') if hasattr(request, 'FILES') else None
         
+        # DEBUG: Log all request data keys
+        print(f"🔍 DEBUG: All request.data keys: {list(request.data.keys())}")
+        print(f"🔍 DEBUG: request.data type: {type(request.data)}")
+        
         # Extract dependencies from form data
         for key, value in request.data.items():
+            print(f"🔍 DEBUG: Checking key: {key}, value: {value}, starts with 'dependencies[': {key.startswith('dependencies[')}")
             if key.startswith('dependencies[') and key.endswith(']'):
                 dependencies_data.append(value)
+                print(f"✅ DEBUG: Added dependency: {value}")
+        
+        print(f"🔍 DEBUG: Final dependencies_data: {dependencies_data}")
                 
         print(f"Debug: File upload detected: {uploaded_file.name if uploaded_file else 'None'}")
         print(f"Debug: File size: {uploaded_file.size if uploaded_file else 'None'}")
