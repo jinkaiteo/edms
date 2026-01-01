@@ -22,12 +22,15 @@ RUN apt-get update && apt-get install -y \
     libreoffice \
     libreoffice-writer \
     libreoffice-calc \
+    libreoffice-java-common \
     fonts-liberation \
     fonts-dejavu-core \
     && rm -rf /var/lib/apt/lists/*
 
-# Create non-root user
-RUN groupadd -r edms && useradd -r -g edms edms
+# Create non-root user and LibreOffice directories
+RUN groupadd -r edms && useradd -r -g edms -m -d /home/edms edms && \
+    mkdir -p /home/edms/.config/libreoffice /home/edms/.cache/dconf && \
+    chown -R edms:edms /home/edms
 
 # Set work directory
 WORKDIR /app
