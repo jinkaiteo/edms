@@ -10,9 +10,17 @@ class Command(BaseCommand):
     help = 'Create default EDMS document types'
 
     def handle(self, *args, **options):
+        from apps.users.models import User
+        
         self.stdout.write(self.style.SUCCESS('Creating default EDMS document types...'))
         self.stdout.write('Based on system_reinit.py canonical types')
         self.stdout.write('')
+        
+        # Get or create system user for created_by field
+        system_user = User.objects.filter(is_superuser=True).first()
+        if not system_user:
+            self.stdout.write(self.style.ERROR('No superuser found! Create a superuser first.'))
+            return
         
         # Define canonical document types from Dev_Docs and system_reinit.py
         canonical_types = [
@@ -97,6 +105,7 @@ class Command(BaseCommand):
                 defaults={
                     'name': name,
                     'numbering_prefix': numbering_prefix,
+                    'created_by': system_user,
                     **type_data
                 }
             )
