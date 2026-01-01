@@ -51,6 +51,26 @@ log "Initializing workflow defaults..."
 
 docker compose -f docker-compose.prod.yml exec -T backend python manage.py shell << 'PYTHON'
 from apps.workflows.models import DocumentState, WorkflowType
+from django.contrib.auth import get_user_model
+
+User = get_user_model()
+
+# Get system user (use first superuser or admin)
+try:
+    system_user = User.objects.filter(is_superuser=True).first()
+    if not system_user:
+        system_user = User.objects.filter(username='admin').first()
+    if not system_user:
+        system_user = User.objects.first()
+    
+    if not system_user:
+        print("✗ ERROR: No users found in database. Create a user first.")
+        exit(1)
+    
+    print(f"Using system user: {system_user.username}")
+except Exception as e:
+    print(f"✗ ERROR getting system user: {e}")
+    exit(1)
 
 print("\n" + "="*60)
 print("Creating DocumentStates...")
@@ -116,7 +136,8 @@ for wf_type, name, desc, active in workflow_types:
             'is_active': active,
             'requires_approval': True,
             'allows_parallel': False,
-            'auto_transition': False
+            'auto_transition': False,
+            'created_by': system_user
         }
     )
     if created:
