@@ -435,3 +435,133 @@ docker compose up -d
 ```
 
 **Lesson from session**: Full rebuild chosen for code-only changes; hot restart would have been sufficient and 3 minutes faster
+
+## React Environment Variables and Docker Build Process
+
+### Build-Time vs Runtime Environment Variables
+React environment variables (`REACT_APP_*`) must be available at **build time**, not runtime, as they get baked into the JavaScript bundle during `npm run build`.
+
+**Problem Pattern**: Setting `REACT_APP_API_URL` in `docker-compose.yml` environment without corresponding Dockerfile ARG/ENV declarations causes the build to use fallback values.
+
+**Solution Pattern**:
+```dockerfile
+# Dockerfile - Accept as build argument
+ARG REACT_APP_API_URL=/api/v1
+ENV REACT_APP_API_URL=${REACT_APP_API_URL}
+RUN npm run build  # Now uses the correct value
+```
+
+```yaml
+# docker-compose.yml - Pass as build argument
+frontend:
+  build:
+    args:
+      REACT_APP_API_URL: /api/v1  # Build-time
+  environment:
+    - REACT_APP_API_URL=/api/v1   # Runtime reference only
+```
+
+**Symptom**: Frontend rebuilt multiple times but still calling hardcoded URLs (e.g., `localhost:8000`) despite environment variable being set.
+
+**Root Cause**: React bundler uses environment variables at build time. If ARG not declared in Dockerfile, the variable isn't available during `npm run build`, so code falls back to hardcoded defaults.
+
+**Verification**: Check running container has correct env (`docker compose exec frontend env`) but JavaScript bundle still has old value - indicates build-time issue, not runtime.
+
+**Critical**: After fixing Dockerfile, must rebuild with `--no-cache` and users must clear browser cache or use incognito mode to load new JavaScript bundle.
+
+## HAProxy Health Check Configuration
+
+### Health Check Path Requirements
+**Issue Pattern**: HAProxy backend showing as DOWN despite service being healthy, causing 503 errors for all requests routed through HAProxy.
+
+**Root Cause**: Django URLs often require trailing slashes. Health check using `/health` fails while `/health/` succeeds.
+
+**Example**:
+```haproxy
+# Wrong - fails health check
+option httpchk GET /health HTTP/1.1\r\nHost:\ localhost
+
+# Correct - passes health check
+option httpchk GET /health/ HTTP/1.1\r\nHost:\ localhost
+```
+
+**Diagnostic Pattern**: 
+- Service responds to direct curl: `curl http://localhost:8001/health/` → 200 OK
+- HAProxy shows backend DOWN in stats page
+- All requests through HAProxy return 503
+- Check HAProxy health check configuration for missing trailing slash
+
+**Prevention**: Always test the exact health check path that HAProxy uses against the actual service before deploying.
+
+## Docker Container vs Service Health Checks
+
+### Service-Specific Health Check Patterns
+**Issue**: Using same health check for all containers in a multi-service docker-compose setup causes false "unhealthy" status for services that don't run web servers.
+
+**Example Problem**:
+```dockerfile
+# Dockerfile with HTTP health check
+HEALTHCHECK CMD curl -f http://localhost:8000/health/ || exit 1
+```
+
+This works for Django backend but fails for Celery worker/beat (no web server).
+
+**Solution Pattern**:
+```yaml
+# docker-compose.yml - Override per service
+celery_worker:
+  healthcheck:
+    test: ["CMD-SHELL", "celery -A edms inspect ping"]
+
+celery_beat:
+  healthcheck:
+    disable: true  # Beat doesn't respond to ping
+```
+
+**Key Insight**: Docker health check status ("unhealthy") ≠ Service functionality. Celery Beat can be actively scheduling tasks while showing "unhealthy" because it doesn't respond to ping commands by design.
+
+**Diagnostic Approach**: When health checks fail, verify actual functionality (check logs, test operations) before assuming service is broken.
+
+## Deployment Port Conflicts and Service Coordination
+
+### HAProxy and Container Port Binding Conflicts
+**Issue Pattern**: HAProxy fails to start with "Address already in use" on port 80 when Docker containers are already running.
+
+**Root Cause**: Standalone nginx container or other service binding to port 80 before HAProxy starts.
+
+**Solution Sequence**:
+1. Stop Docker services first: `docker compose down`
+2. Start HAProxy: `systemctl start haproxy`
+3. Start Docker services (internal ports only): `docker compose up -d`
+
+**Architecture Understanding**:
+```
+User → HAProxy (host port 80)
+         ↓
+         ├─ Frontend Container (internal: 3001 → maps to host: 3001)
+         └─ Backend Container (internal: 8001 → maps to host: 8001)
+```
+
+HAProxy on **host** connects to **host** ports (127.0.0.1:3001, 127.0.0.1:8001), not container internal ports.
+
+**Prevention**: When using HAProxy, don't expose container port 80 to host. Frontend container can run internal nginx on port 80, mapped to host port 3001, and HAProxy routes to that.
+
+## Management Command Deployment in Docker
+
+### New Management Commands Require Image Rebuild
+**Issue Pattern**: Added new Django management commands (e.g., `create_default_roles.py`) to repository, pulled code on server, but commands show as "Unknown command" when run.
+
+**Root Cause**: Django management commands are part of the Python codebase. Just pulling code updates files on host, but Docker container runs from an **image** (snapshot). The running container still has old code.
+
+**Solution**:
+```bash
+# Must rebuild Docker image, not just restart
+docker compose build backend
+docker compose up -d backend
+```
+
+**Symptom**: `git pull` succeeded, file exists on host at `backend/apps/users/management/commands/create_default_roles.py`, but `python manage.py create_default_roles` returns "Unknown command".
+
+**Prevention**: After adding new Python files (models, views, management commands), always rebuild the Docker image. Code changes to existing files can hot-reload, but new files require image rebuild.
+
+**Efficient Pattern**: Create a rebuild script that stops service → rebuilds image → restarts service → waits for health check.
