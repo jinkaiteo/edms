@@ -4,6 +4,10 @@ Focus: Simple email notifications for workflow tasks (future implementation)
 """
 from django.core.mail import send_mail
 from django.conf import settings
+from celery import shared_task
+import logging
+
+logger = logging.getLogger(__name__)
 
 class SimpleNotificationService:
     """Simplified notification service focusing on email delivery"""
@@ -122,3 +126,73 @@ class SimpleNotificationService:
 
 # Single instance for application use
 notification_service = SimpleNotificationService()
+
+
+# Celery Tasks
+# These are the tasks called by Celery Beat scheduler
+
+@shared_task(bind=True, max_retries=3)
+def process_notification_queue(self):
+    """
+    Process pending notifications in queue
+    Called every 5 minutes by Celery Beat
+    """
+    try:
+        logger.info("Processing notification queue...")
+        
+        # This is a placeholder for future notification queue processing
+        # For now, it just runs successfully without errors
+        
+        processed_count = 0
+        logger.info(f"Processed {processed_count} notifications from queue")
+        
+        return {
+            'status': 'success',
+            'processed': processed_count,
+            'timestamp': str(timezone.now())
+        }
+        
+    except Exception as e:
+        logger.error(f"Error processing notification queue: {e}")
+        # Retry the task
+        raise self.retry(exc=e, countdown=60)
+
+
+@shared_task(bind=True, max_retries=3)
+def send_daily_summary_notifications(self):
+    """
+    Send daily summary notifications to users
+    Called daily at 8 AM by Celery Beat
+    """
+    try:
+        from django.contrib.auth import get_user_model
+        from django.utils import timezone
+        
+        User = get_user_model()
+        logger.info("Sending daily summary notifications...")
+        
+        # This is a placeholder for future daily summary functionality
+        # For now, it just runs successfully without errors
+        
+        sent_count = 0
+        
+        # In the future, this would:
+        # - Get users who opted in for daily summaries
+        # - Collect their pending tasks
+        # - Send summary email
+        
+        logger.info(f"Sent {sent_count} daily summary notifications")
+        
+        return {
+            'status': 'success',
+            'sent': sent_count,
+            'timestamp': str(timezone.now())
+        }
+        
+    except Exception as e:
+        logger.error(f"Error sending daily summaries: {e}")
+        raise self.retry(exc=e, countdown=300)
+
+
+# Import timezone for tasks
+from django.utils import timezone
