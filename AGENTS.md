@@ -403,6 +403,78 @@ patterns = [
 
 **Verification**: Test with known valid input - should show 0 errors, not false positives
 
+## Database Constraint Fixing Pattern
+
+### Check All Related Tables When Fixing Constraints
+When encountering database constraints (like NOT NULL violations), don't fix them one at a time. Check all related tables that might have the same pattern.
+
+**Example from Session:**
+- Fixed `document_access_logs.session_id` to allow NULL
+- Later encountered same issue in `audit_trail.session_id`
+- Could have been fixed together if checked comprehensively
+
+**Better Approach:**
+```bash
+# Search for all similar patterns
+grep -r "session_id.*CharField" backend/apps/*/models.py
+# Fix all occurrences in one pass
+```
+
+**Why:** Database constraint errors often repeat across similar tables (audit logs, history tables, etc.). Fixing comprehensively saves multiple deploy cycles.
+
+---
+
+## Deployment Script Verification Pattern
+
+### Always Verify Script Results, Not Assumptions
+Deployment scripts may encounter existing data and behave differently than expected. Always verify what actually happened.
+
+**Issue from Session:**
+- Script checked if users existed
+- If they existed, skipped creation
+- But didn't verify/fix their role assignments
+- Result: Users had wrong roles despite "successful" deployment
+
+**Solution Pattern:**
+```python
+# Don't just check existence
+if not User.objects.filter(username='user01').exists():
+    create_user()
+    assign_roles()
+
+# ALSO verify configuration
+else:
+    user = User.objects.get(username='user01')
+    verify_and_fix_roles(user)  # Add this!
+```
+
+**Why:** Scripts often handle "fresh install" differently than "existing data" scenarios. Test both paths.
+
+---
+
+## Permission Debugging Chain
+
+### Follow Permission Chain Completely
+When debugging permission errors, check the entire chain, not just one level.
+
+**Complete Permission Chain:**
+1. User exists?
+2. UserRole relationship exists?
+3. UserRole.is_active = True?
+4. Role has correct module code?
+5. Role has correct permission_level?
+6. Permission check uses correct field names?
+
+**Example from Session:**
+- User had role assigned
+- Role existed
+- But role had wrong `permission_level` value
+- Had to check 5 levels deep to find root cause
+
+**Pattern:** Create a diagnostic script that checks ALL levels at once, not step-by-step.
+
+---
+
 ## Deployment Method Selection
 
 ### Hot Restart vs Full Rebuild Decision Tree
