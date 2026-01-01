@@ -26,8 +26,8 @@ except User.DoesNotExist:
     exit(1)
 
 print("Current roles:")
-for role in author.roles.all():
-    print(f"  - {role.name}: {role.module}/{role.permission_level}")
+for user_role in author.user_roles.all():
+    print(f"  - {user_role.role.name}: {user_role.role.module}/{user_role.role.permission_level} (active: {user_role.is_active})")
 
 # Check permission
 has_perm = author.user_roles.filter(
@@ -51,9 +51,23 @@ if not has_perm:
             print(f"  - {role.name}: {role.module}/{role.permission_level}")
         exit(1)
     
-    # Assign role
-    author.roles.add(doc_author_role)
-    print(f"✓ Assigned '{doc_author_role.name}' ({doc_author_role.module}/{doc_author_role.permission_level}) to author01")
+    # Check if already assigned but inactive
+    from apps.users.models import UserRole
+    existing = UserRole.objects.filter(user=author, role=doc_author_role).first()
+    
+    if existing:
+        existing.is_active = True
+        existing.save()
+        print(f"✓ Activated existing '{doc_author_role.name}' role for author01")
+    else:
+        # Create new UserRole assignment
+        UserRole.objects.create(
+            user=author,
+            role=doc_author_role,
+            is_active=True,
+            assigned_by=author  # Self-assigned for now
+        )
+        print(f"✓ Assigned '{doc_author_role.name}' ({doc_author_role.module}/{doc_author_role.permission_level}) to author01")
     
     # Verify
     has_perm_now = author.user_roles.filter(
@@ -75,8 +89,8 @@ else:
 
 print("\n=== Final Role Assignment ===\n")
 print("author01 roles:")
-for role in author.roles.all():
-    print(f"  - {role.name}: {role.module}/{role.permission_level}")
+for user_role in author.user_roles.all():
+    print(f"  - {user_role.role.name}: {user_role.role.module}/{user_role.role.permission_level} (active: {user_role.is_active})")
 PYTHON
 
 log "✅ Done! Try creating a document with author01"
