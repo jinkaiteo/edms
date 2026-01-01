@@ -116,6 +116,8 @@ setup_storage() {
     mkdir -p storage/documents
     mkdir -p storage/backups
     mkdir -p storage/temp
+    mkdir -p storage/media                    # CRITICAL: Django MEDIA_ROOT
+    mkdir -p storage/media/certificates       # For PDF signatures
     mkdir -p logs/backend
     mkdir -p logs/db
     mkdir -p logs/redis

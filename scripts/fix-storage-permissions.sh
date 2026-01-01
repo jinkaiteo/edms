@@ -40,6 +40,8 @@ if [ -w "." ]; then
     mkdir -p storage/documents
     mkdir -p storage/backups
     mkdir -p storage/temp
+    mkdir -p storage/media                    # CRITICAL: Django MEDIA_ROOT
+    mkdir -p storage/media/certificates       # For PDF signatures
     mkdir -p logs/backend
     mkdir -p logs/db
     mkdir -p logs/redis
@@ -51,6 +53,8 @@ else
     sudo mkdir -p storage/documents
     sudo mkdir -p storage/backups
     sudo mkdir -p storage/temp
+    sudo mkdir -p storage/media                    # CRITICAL: Django MEDIA_ROOT
+    sudo mkdir -p storage/media/certificates       # For PDF signatures
     sudo mkdir -p logs/backend
     sudo mkdir -p logs/db
     sudo mkdir -p logs/redis
