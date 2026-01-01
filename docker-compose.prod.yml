@@ -182,6 +182,8 @@ services:
       context: .
       dockerfile: infrastructure/containers/Dockerfile.frontend.prod
       target: production
+      args:
+        REACT_APP_API_URL: /api/v1
     container_name: edms_prod_frontend
     ports:
       - "${FRONTEND_PORT:-3001}:80"  # Configurable port for HAProxy routing
