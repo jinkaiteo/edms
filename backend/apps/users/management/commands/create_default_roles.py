@@ -11,106 +11,121 @@ class Command(BaseCommand):
     def handle(self, *args, **options):
         self.stdout.write(self.style.SUCCESS('Creating default EDMS roles...'))
         
-        # Define default roles
+        # Define default roles based on actual MODULE_CHOICES
+        # O1: Electronic Document Management
+        # S1: User Management
+        # S2: Audit Trail  
+        # S3: Scheduler
+        # S4: Backup and Health Check
+        # S5: Workflow Settings
+        # S6: Placeholder Management
+        # S7: App Settings
+        
         default_roles = [
-            # S1 Module - Security/User Management
+            # O1 Module - Electronic Document Management
             {
-                'name': 'S1 Admin',
-                'module': 'S1',
-                'permission_level': 'admin',
-                'description': 'Full administrative access to user management and security settings'
-            },
-            {
-                'name': 'S1 User',
-                'module': 'S1',
-                'permission_level': 'user',
-                'description': 'Standard user access to security features'
-            },
-            
-            # S2 Module - Document Management
-            {
-                'name': 'S2 Admin',
-                'module': 'S2',
+                'name': 'Document Admin',
+                'module': 'O1',
                 'permission_level': 'admin',
                 'description': 'Full administrative access to document management'
             },
             {
-                'name': 'S2 User',
-                'module': 'S2',
-                'permission_level': 'user',
-                'description': 'Standard user access to document management'
-            },
-            {
                 'name': 'Document Author',
-                'module': 'S2',
-                'permission_level': 'user',
+                'module': 'O1',
+                'permission_level': 'write',
                 'description': 'Can create and edit documents'
             },
             {
                 'name': 'Document Reviewer',
-                'module': 'S2',
-                'permission_level': 'user',
+                'module': 'O1',
+                'permission_level': 'review',
                 'description': 'Can review documents in workflow'
             },
             {
                 'name': 'Document Approver',
-                'module': 'S2',
-                'permission_level': 'user',
+                'module': 'O1',
+                'permission_level': 'approve',
                 'description': 'Can approve documents in workflow'
             },
-            
-            # S3 Module - Workflow Management
             {
-                'name': 'S3 Admin',
-                'module': 'S3',
-                'permission_level': 'admin',
-                'description': 'Full administrative access to workflow management'
-            },
-            {
-                'name': 'S3 User',
-                'module': 'S3',
-                'permission_level': 'user',
-                'description': 'Standard user access to workflow features'
-            },
-            {
-                'name': 'Workflow Manager',
-                'module': 'S3',
-                'permission_level': 'user',
-                'description': 'Can manage workflow configurations'
+                'name': 'Document Reader',
+                'module': 'O1',
+                'permission_level': 'read',
+                'description': 'Can view documents'
             },
             
-            # S4 Module - Audit & Compliance
+            # S1 Module - User Management
             {
-                'name': 'S4 Admin',
-                'module': 'S4',
+                'name': 'User Management Admin',
+                'module': 'S1',
                 'permission_level': 'admin',
-                'description': 'Full administrative access to audit and compliance features'
+                'description': 'Full administrative access to user management and security'
             },
             {
-                'name': 'S4 User',
-                'module': 'S4',
-                'permission_level': 'user',
-                'description': 'Standard user access to audit features'
+                'name': 'User Manager',
+                'module': 'S1',
+                'permission_level': 'write',
+                'description': 'Can create and manage users'
+            },
+            
+            # S2 Module - Audit Trail
+            {
+                'name': 'Audit Admin',
+                'module': 'S2',
+                'permission_level': 'admin',
+                'description': 'Full administrative access to audit trails'
             },
             {
                 'name': 'Auditor',
-                'module': 'S4',
-                'permission_level': 'user',
+                'module': 'S2',
+                'permission_level': 'read',
                 'description': 'Can view audit trails and compliance reports'
             },
             
-            # S5 Module - Scheduler & Automation
+            # S3 Module - Scheduler
             {
-                'name': 'S5 Admin',
+                'name': 'Scheduler Admin',
+                'module': 'S3',
+                'permission_level': 'admin',
+                'description': 'Full administrative access to scheduler'
+            },
+            
+            # S4 Module - Backup and Health Check
+            {
+                'name': 'Backup Admin',
+                'module': 'S4',
+                'permission_level': 'admin',
+                'description': 'Full administrative access to backup and health check'
+            },
+            
+            # S5 Module - Workflow Settings
+            {
+                'name': 'Workflow Admin',
                 'module': 'S5',
                 'permission_level': 'admin',
-                'description': 'Full administrative access to scheduler and automation'
+                'description': 'Full administrative access to workflow settings'
             },
             {
-                'name': 'S5 User',
+                'name': 'Workflow Manager',
                 'module': 'S5',
-                'permission_level': 'user',
-                'description': 'Standard user access to scheduler features'
+                'permission_level': 'write',
+                'description': 'Can manage workflow configurations'
+            },
+            
+            # S6 Module - Placeholder Management
+            {
+                'name': 'Placeholder Admin',
+                'module': 'S6',
+                'permission_level': 'admin',
+                'description': 'Full administrative access to placeholder management'
+            },
+            
+            # S7 Module - App Settings
+            {
+                'name': 'Settings Admin',
+                'module': 'S7',
+                'permission_level': 'admin',
+                'description': 'Full administrative access to application settings'
             },
         ]
         
