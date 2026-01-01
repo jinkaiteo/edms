@@ -280,7 +280,7 @@ class DocumentListSerializer(serializers.ModelSerializer):
         """Get active dependencies where target documents are approved/effective."""
         active_dependencies = obj.dependencies.filter(
             is_active=True,
-            depends_on__status__in=['APPROVED_PENDING_EFFECTIVE', 'EFFECTIVE', 'SCHEDULED_FOR_OBSOLESCENCE']
+            depends_on__status__in=['APPROVED_PENDING_EFFECTIVE', 'EFFECTIVE', 'APPROVED_AND_EFFECTIVE', 'SCHEDULED_FOR_OBSOLESCENCE']
         )
         return DocumentDependencySerializer(active_dependencies, many=True, context=self.context).data
     
@@ -288,7 +288,7 @@ class DocumentListSerializer(serializers.ModelSerializer):
         """Get active dependents where source documents are approved/effective."""
         active_dependents = obj.dependents.filter(
             is_active=True,
-            document__status__in=['APPROVED_PENDING_EFFECTIVE', 'EFFECTIVE', 'SCHEDULED_FOR_OBSOLESCENCE']
+            document__status__in=['APPROVED_PENDING_EFFECTIVE', 'EFFECTIVE', 'APPROVED_AND_EFFECTIVE', 'SCHEDULED_FOR_OBSOLESCENCE']
         )
         return DocumentDependencySerializer(active_dependents, many=True, context=self.context).data
 
@@ -367,7 +367,7 @@ class DocumentDetailSerializer(serializers.ModelSerializer):
         """Get only active dependencies where target documents are approved/effective."""
         active_dependencies = obj.dependencies.filter(
             is_active=True,
-            depends_on__status__in=['APPROVED_PENDING_EFFECTIVE', 'EFFECTIVE', 'SCHEDULED_FOR_OBSOLESCENCE']
+            depends_on__status__in=['APPROVED_PENDING_EFFECTIVE', 'EFFECTIVE', 'APPROVED_AND_EFFECTIVE', 'SCHEDULED_FOR_OBSOLESCENCE']
         )
         return DocumentDependencySerializer(active_dependencies, many=True, context=self.context).data
     
@@ -375,7 +375,7 @@ class DocumentDetailSerializer(serializers.ModelSerializer):
         """Get only active dependents where source documents are approved/effective."""
         active_dependents = obj.dependents.filter(
             is_active=True,
-            document__status__in=['APPROVED_PENDING_EFFECTIVE', 'EFFECTIVE', 'SCHEDULED_FOR_OBSOLESCENCE']
+            document__status__in=['APPROVED_PENDING_EFFECTIVE', 'EFFECTIVE', 'APPROVED_AND_EFFECTIVE', 'SCHEDULED_FOR_OBSOLESCENCE']
         )
         return DocumentDependencySerializer(active_dependents, many=True, context=self.context).data
     
