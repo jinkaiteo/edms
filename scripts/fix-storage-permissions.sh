@@ -33,25 +33,53 @@ fi
 
 # Create storage directories if they don't exist
 log "Creating storage directories..."
-mkdir -p storage/documents
-mkdir -p storage/backups
-mkdir -p storage/temp
-mkdir -p logs/backend
-mkdir -p logs/db
-mkdir -p logs/redis
-mkdir -p logs/nginx
 
-log "✓ Directories created"
+# Check if we need sudo
+if [ -w "." ]; then
+    # We have write permission, create directories directly
+    mkdir -p storage/documents
+    mkdir -p storage/backups
+    mkdir -p storage/temp
+    mkdir -p logs/backend
+    mkdir -p logs/db
+    mkdir -p logs/redis
+    mkdir -p logs/nginx
+    log "✓ Directories created"
+else
+    # Need sudo for directory creation
+    warn "Need sudo to create directories in current location"
+    sudo mkdir -p storage/documents
+    sudo mkdir -p storage/backups
+    sudo mkdir -p storage/temp
+    sudo mkdir -p logs/backend
+    sudo mkdir -p logs/db
+    sudo mkdir -p logs/redis
+    sudo mkdir -p logs/nginx
+    log "✓ Directories created with sudo"
+fi
+
 echo
 
 # Set proper permissions
 log "Setting directory permissions..."
 
-# For staging/development: Make directories writable by Docker container
-# The container typically runs as root or a specific user (UID 1000 is common)
-chmod -R 755 storage/
-chmod -R 755 logs/
+# Check current user and set ownership
+CURRENT_USER=$(whoami)
+log "Setting ownership to user: $CURRENT_USER"
 
+if [ -w "storage" ] 2>/dev/null; then
+    # We own it, just set permissions
+    chmod -R 755 storage/ 2>/dev/null || sudo chmod -R 755 storage/
+    chmod -R 755 logs/ 2>/dev/null || sudo chmod -R 755 logs/
+else
+    # Need sudo to change permissions
+    sudo chown -R "$CURRENT_USER":"$CURRENT_USER" storage/
+    sudo chown -R "$CURRENT_USER":"$CURRENT_USER" logs/
+    sudo chmod -R 755 storage/
+    sudo chmod -R 755 logs/
+fi
+
+log "✓ Ownership set to $CURRENT_USER"
 log "✓ Permissions set to 755 (readable/executable by all, writable by owner)"
 echo
 
