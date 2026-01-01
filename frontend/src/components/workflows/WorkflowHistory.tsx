@@ -136,7 +136,7 @@ const WorkflowHistory: React.FC<WorkflowHistoryProps> = ({ document }) => {
     if (comment.toLowerCase().includes('reject')) {
       return '❌'; // Rejection
     }
-    if (toState === 'EFFECTIVE') {
+    if (toState === 'EFFECTIVE' || toState === 'APPROVED_AND_EFFECTIVE') {
       return '✅'; // Final approval
     }
     if (toState === 'PENDING_REVIEW' || toState === 'PENDING_APPROVAL') {
@@ -159,7 +159,7 @@ const WorkflowHistory: React.FC<WorkflowHistoryProps> = ({ document }) => {
     if (comment.toLowerCase().includes('reject')) {
       return 'bg-red-500'; // Rejection - red
     }
-    if (toState === 'EFFECTIVE') {
+    if (toState === 'EFFECTIVE' || toState === 'APPROVED_AND_EFFECTIVE') {
       return 'bg-green-500'; // Final approval - green
     }
     if (toState === 'REVIEWED') {

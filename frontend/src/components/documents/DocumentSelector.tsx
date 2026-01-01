@@ -138,7 +138,8 @@ const DocumentSelector: React.FC<DocumentSelectorProps> = ({
         
         // Filter for only approved/effective documents that can be used as dependencies
         const approvedDocuments = documentsArray.filter((doc: any) => 
-          doc.status === 'EFFECTIVE' || 
+          doc.status === 'EFFECTIVE' ||
+          doc.status === 'APPROVED_AND_EFFECTIVE' || 
           doc.status === 'APPROVED' ||
           doc.status === 'APPROVED_PENDING_EFFECTIVE'
         );
