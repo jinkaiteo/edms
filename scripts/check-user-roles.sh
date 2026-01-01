@@ -6,7 +6,7 @@
 echo "Checking admin user roles and permissions..."
 echo ""
 
-docker compose -f docker-compose.prod.yml exec backend python manage.py shell << 'EOF'
+docker compose -f docker-compose.prod.yml exec -T backend python manage.py shell << 'EOF'
 from apps.users.models import User, Role, UserRole
 
 # Get admin user
