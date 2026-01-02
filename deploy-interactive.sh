@@ -611,6 +611,26 @@ initialize_database() {
     fi
     
     echo ""
+    print_step "Creating default roles..."
+    echo ""
+    
+    if docker compose -f docker-compose.prod.yml exec -T backend python manage.py create_default_roles; then
+        print_success "Default roles created (7 roles)"
+    else
+        print_warning "Roles creation had warnings (may already exist)"
+    fi
+    
+    echo ""
+    print_step "Creating default Django groups..."
+    echo ""
+    
+    if docker compose -f docker-compose.prod.yml exec -T backend python manage.py create_default_groups; then
+        print_success "Default Django groups created (6 groups)"
+    else
+        print_warning "Groups creation had warnings (may already exist)"
+    fi
+    
+    echo ""
     print_step "Creating test users..."
     echo ""
     
@@ -622,11 +642,21 @@ initialize_database() {
     fi
     
     echo ""
+    print_step "Creating default document types..."
+    echo ""
+    
+    if docker compose -f docker-compose.prod.yml exec -T backend python manage.py create_default_document_types; then
+        print_success "Document types created (6 types)"
+    else
+        print_warning "Document types creation had warnings (may already exist)"
+    fi
+    
+    echo ""
     print_step "Creating default document sources..."
     echo ""
     
     if docker compose -f docker-compose.prod.yml exec -T backend python manage.py create_default_document_sources; then
-        print_success "Document sources created"
+        print_success "Document sources created (3 sources)"
     else
         print_warning "Document sources creation had warnings (may already exist)"
     fi
