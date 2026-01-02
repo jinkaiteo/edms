@@ -54,3 +54,4 @@ cryptography==41.0.7
 
 # Scheduler Enhancement
 django-celery-beat==2.5.0
+pytz==2024.1
