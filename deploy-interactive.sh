@@ -622,6 +622,16 @@ initialize_database() {
     fi
     
     echo ""
+    print_step "Creating default document sources..."
+    echo ""
+    
+    if docker compose -f docker-compose.prod.yml exec -T backend python manage.py create_default_document_sources; then
+        print_success "Document sources created"
+    else
+        print_warning "Document sources creation had warnings (may already exist)"
+    fi
+    
+    echo ""
     print_step "Initializing workflow defaults..."
     echo ""
     
