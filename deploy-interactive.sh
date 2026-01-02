@@ -642,6 +642,16 @@ initialize_database() {
     fi
     
     echo ""
+    print_step "Assigning roles to test users..."
+    echo ""
+    
+    if bash scripts/fix-reviewer-approver-roles.sh; then
+        print_success "Test user roles assigned (author01, reviewer01, approver01)"
+    else
+        print_warning "Role assignment had warnings (may already exist)"
+    fi
+    
+    echo ""
 }
 
 ################################################################################
