@@ -32,6 +32,46 @@ admin = User.objects.filter(is_superuser=True).first()
 if not admin:
     print("⚠️  No admin user found, using self-assignment")
 
+# Fix author01
+print("\n### Fixing author01 ###")
+try:
+    author = User.objects.get(username='author01')
+    author_role = Role.objects.filter(name='Document Author').first()
+    
+    if not author_role:
+        print("✗ Document Author role not found!")
+    else:
+        # Remove wrong roles
+        removed_count = author.user_roles.all().delete()[0]
+        if removed_count > 0:
+            print(f"  Removed {removed_count} incorrect role(s)")
+        
+        # Assign correct role
+        UserRole.objects.create(
+            user=author,
+            role=author_role,
+            is_active=True,
+            assigned_by=admin if admin else author
+        )
+        print(f"✓ Assigned: {author_role.name} ({author_role.module}/{author_role.permission_level})")
+        
+        # Add to Authors group
+        authors_group = Group.objects.filter(name='Authors').first()
+        if authors_group:
+            author.groups.add(authors_group)
+            print(f"✓ Added to Authors group")
+        
+        # Verify
+        can_create = author.user_roles.filter(
+            role__module='O1',
+            role__permission_level__in=['author', 'review', 'approve', 'admin'],
+            is_active=True
+        ).exists()
+        print(f"  Can create documents: {can_create}")
+        
+except User.DoesNotExist:
+    print("✗ author01 user not found!")
+
 # Fix reviewer01
 print("\n### Fixing reviewer01 ###")
 try:
@@ -134,5 +174,6 @@ PYTHON
 log "✅ Role assignments fixed!"
 log ""
 log "Test the users:"
+echo "  author01 - should be able to create documents"
 echo "  reviewer01 - should be able to review documents"
 echo "  approver01 - should be able to approve documents"
