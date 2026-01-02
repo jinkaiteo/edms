@@ -403,7 +403,8 @@ class PlaceholderService:
             version_data = []
             for version_doc in all_versions:
                 version = f"v{version_doc.version_major:02d}.{version_doc.version_minor:02d}"
-                date = version_doc.created_at.strftime('%m/%d/%Y') if version_doc.created_at else 'Unknown'
+                # Include timezone in date format
+                date = version_doc.created_at.strftime('%m/%d/%Y UTC') if version_doc.created_at else 'Unknown'
                 
                 # Get author name
                 if version_doc.author:
@@ -430,7 +431,7 @@ class PlaceholderService:
                 'title': 'VERSION HISTORY',
                 'headers': ['Version', 'Date', 'Author', 'Status', 'Comments'],
                 'rows': version_data,
-                'generated': timezone.now().strftime('%m/%d/%Y %I:%M %p'),
+                'generated': timezone.now().strftime('%m/%d/%Y %I:%M %p UTC'),
                 'count': len(version_data)
             }
             
