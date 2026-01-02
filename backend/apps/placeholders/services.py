@@ -18,6 +18,7 @@ from django.contrib.auth import get_user_model
 from django.utils import timezone
 from django.core.files.storage import default_storage
 from django.core.cache import cache
+import pytz
 
 from docx import Document as DocxDocument
 from docxtpl import DocxTemplate
@@ -403,8 +404,14 @@ class PlaceholderService:
             version_data = []
             for version_doc in all_versions:
                 version = f"v{version_doc.version_major:02d}.{version_doc.version_minor:02d}"
-                # Include timezone in date format
-                date = version_doc.created_at.strftime('%m/%d/%Y UTC') if version_doc.created_at else 'Unknown'
+                # Include both UTC and local timezone in date format
+                if version_doc.created_at:
+                    display_tz = pytz.timezone(getattr(settings, 'DISPLAY_TIMEZONE', 'Asia/Singapore'))
+                    local_time = version_doc.created_at.astimezone(display_tz)
+                    local_name = local_time.strftime('%Z')
+                    date = f"{version_doc.created_at.strftime('%m/%d/%Y')} UTC ({local_time.strftime('%m/%d/%Y')} {local_name})"
+                else:
+                    date = 'Unknown'
                 
                 # Get author name
                 if version_doc.author:
@@ -427,11 +434,18 @@ class PlaceholderService:
                     'comments': reason
                 })
             
+            # Generate timestamp with both timezones
+            now_utc = timezone.now()
+            display_tz = pytz.timezone(getattr(settings, 'DISPLAY_TIMEZONE', 'Asia/Singapore'))
+            now_local = now_utc.astimezone(display_tz)
+            local_name = now_local.strftime('%Z')
+            generated_time = f"{now_utc.strftime('%m/%d/%Y %I:%M %p')} UTC ({now_local.strftime('%I:%M %p')} {local_name})"
+            
             return {
                 'title': 'VERSION HISTORY',
                 'headers': ['Version', 'Date', 'Author', 'Status', 'Comments'],
                 'rows': version_data,
-                'generated': timezone.now().strftime('%m/%d/%Y %I:%M %p UTC'),
+                'generated': generated_time,
                 'count': len(version_data)
             }
             

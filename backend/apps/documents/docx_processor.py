@@ -304,12 +304,19 @@ class DocxTemplateProcessor:
         return len(paragraphs_to_process) > 0  # Return True if any processing was attempted
 
     def _get_current_timestamp(self):
-        """Get current timestamp with timezone."""
+        """Get current timestamp with both UTC and local timezone."""
         from django.utils import timezone
         from django.conf import settings
-        now = timezone.now()
-        timezone_name = settings.TIME_ZONE
-        return now.strftime(f'%m/%d/%Y %I:%M %p {timezone_name}')
+        import pytz
+        
+        now_utc = timezone.now()
+        
+        # Get display timezone (Singapore)
+        display_tz = pytz.timezone(getattr(settings, 'DISPLAY_TIMEZONE', 'Asia/Singapore'))
+        now_local = now_utc.astimezone(display_tz)
+        local_name = now_local.strftime('%Z')  # 'SGT' for Singapore Time
+        
+        return f"{now_utc.strftime('%m/%d/%Y %I:%M %p')} UTC ({now_local.strftime('%I:%M %p')} {local_name})"
     
     def get_template_variables(self, document: Document) -> Dict[str, str]:
         """

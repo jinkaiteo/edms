@@ -9,6 +9,7 @@ from typing import Dict, Any
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.utils import timezone
+import pytz
 from .models import Document
 from apps.placeholders.models import PlaceholderDefinition
 
@@ -108,25 +109,30 @@ class DocumentAnnotationProcessor:
             metadata['EFFECTIVE_DATE_LONG'] = 'Not Set'
         
         # Current date/time information (for download) - Using UTC timezone-aware datetime
-        now = timezone.now()  # UTC timezone-aware datetime
-        today = now.date()    # UTC date
+        now_utc = timezone.now()  # UTC timezone-aware datetime
+        today_utc = now_utc.date()    # UTC date
         
-        # Get timezone name for display
-        timezone_name = settings.TIME_ZONE  # 'UTC'
-        timezone_display = f" {timezone_name}"
+        # Get display timezone (Singapore)
+        display_tz = pytz.timezone(getattr(settings, 'DISPLAY_TIMEZONE', 'Asia/Singapore'))
+        now_local = now_utc.astimezone(display_tz)
+        today_local = now_local.date()
         
-        metadata['DOWNLOAD_DATE'] = today.strftime('%Y-%m-%d')
-        metadata['DOWNLOAD_DATE_LONG'] = today.strftime('%B %d, %Y')
-        metadata['DOWNLOAD_TIME'] = now.strftime('%H:%M:%S') + timezone_display
-        metadata['DOWNLOAD_DATETIME'] = now.strftime('%Y-%m-%d %H:%M:%S') + timezone_display
-        metadata['DOWNLOAD_DATETIME_ISO'] = now.isoformat()  # ISO 8601 format with timezone
-        metadata['CURRENT_DATE'] = today.strftime('%Y-%m-%d')
-        metadata['CURRENT_DATE_LONG'] = today.strftime('%B %d, %Y')
-        metadata['CURRENT_TIME'] = now.strftime('%H:%M:%S') + timezone_display
-        metadata['CURRENT_DATETIME'] = now.strftime('%Y-%m-%d %H:%M:%S') + timezone_display
-        metadata['CURRENT_DATETIME_ISO'] = now.isoformat()  # ISO 8601 format with timezone
-        metadata['CURRENT_YEAR'] = str(today.year)
-        metadata['TIMEZONE'] = timezone_name  # Explicit timezone field
+        # Get timezone abbreviations
+        utc_name = 'UTC'
+        local_name = now_local.strftime('%Z')  # 'SGT' for Singapore Time
+        
+        metadata['DOWNLOAD_DATE'] = today_utc.strftime('%Y-%m-%d')
+        metadata['DOWNLOAD_DATE_LONG'] = today_utc.strftime('%B %d, %Y')
+        metadata['DOWNLOAD_TIME'] = f"{now_utc.strftime('%H:%M:%S')} UTC ({now_local.strftime('%H:%M:%S')} {local_name})"
+        metadata['DOWNLOAD_DATETIME'] = f"{now_utc.strftime('%Y-%m-%d %H:%M:%S')} UTC ({now_local.strftime('%Y-%m-%d %H:%M:%S')} {local_name})"
+        metadata['DOWNLOAD_DATETIME_ISO'] = now_utc.isoformat()  # ISO 8601 format with timezone
+        metadata['CURRENT_DATE'] = today_utc.strftime('%Y-%m-%d')
+        metadata['CURRENT_DATE_LONG'] = today_utc.strftime('%B %d, %Y')
+        metadata['CURRENT_TIME'] = f"{now_utc.strftime('%H:%M:%S')} UTC ({now_local.strftime('%H:%M:%S')} {local_name})"
+        metadata['CURRENT_DATETIME'] = f"{now_utc.strftime('%Y-%m-%d %H:%M:%S')} UTC ({now_local.strftime('%Y-%m-%d %H:%M:%S')} {local_name})"
+        metadata['CURRENT_DATETIME_ISO'] = now_utc.isoformat()  # ISO 8601 format with timezone
+        metadata['CURRENT_YEAR'] = str(today_utc.year)
+        metadata['TIMEZONE'] = f"{utc_name} / {local_name}"  # Show both timezones
         
         # Status information
         metadata['DOC_STATUS'] = document.status.replace('_', ' ').title()
@@ -261,10 +267,15 @@ class DocumentAnnotationProcessor:
             return f"Error generating version history table: {str(e)}"
 
     def _get_current_timestamp(self):
-        """Get current timestamp in a readable format with timezone."""
-        now = timezone.now()  # UTC timezone-aware datetime
-        timezone_name = settings.TIME_ZONE
-        return now.strftime(f'%m/%d/%Y %I:%M %p {timezone_name}')
+        """Get current timestamp in a readable format with both UTC and local timezone."""
+        now_utc = timezone.now()  # UTC timezone-aware datetime
+        
+        # Get display timezone (Singapore)
+        display_tz = pytz.timezone(getattr(settings, 'DISPLAY_TIMEZONE', 'Asia/Singapore'))
+        now_local = now_utc.astimezone(display_tz)
+        local_name = now_local.strftime('%Z')  # 'SGT' for Singapore Time
+        
+        return f"{now_utc.strftime('%m/%d/%Y %I:%M %p')} UTC ({now_local.strftime('%I:%M %p')} {local_name})"
     
     def _get_version_change_reason(self, document):
         """Extract the reason for change from workflow comments or document description."""

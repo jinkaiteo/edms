@@ -404,7 +404,13 @@ class OfficialPDFGenerator:
             # Add document info
             c.drawString(50, 350, f"Document: {document.title}")
             c.drawString(50, 330, f"File: {document.file_name}")
-            c.drawString(50, 310, f"Generated: {timezone.now().strftime('%Y-%m-%d %H:%M UTC')}")
+            # Show both UTC and local timezone
+            now_utc = timezone.now()
+            import pytz
+            display_tz = pytz.timezone(getattr(settings, 'DISPLAY_TIMEZONE', 'Asia/Singapore'))
+            now_local = now_utc.astimezone(display_tz)
+            local_name = now_local.strftime('%Z')
+            c.drawString(50, 310, f"Generated: {now_utc.strftime('%Y-%m-%d %H:%M')} UTC ({now_local.strftime('%H:%M')} {local_name})")
             
             c.save()
             pdf_content = pdf_buffer.getvalue()
