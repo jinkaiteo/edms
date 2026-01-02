@@ -798,8 +798,8 @@ class SystemBackupViewSet(viewsets.ViewSet):
                         fields = rec.get('fields', {})
                         if isinstance(fields, dict):
                             state_codes.add(fields.get('code'))
-                    type_codes = {rec.get('fields', {}).get('code') if isinstance(rec.get('fields', {}), dict) else None for rec in db_data if rec.get('model') == 'documents.documenttype'}
-                    source_names = {rec.get('fields', {}).get('name') if isinstance(rec.get('fields', {}), dict) else None for rec in db_data if rec.get('model') == 'documents.documentsource'}
+                    type_codes = {rec.get('fields', {}).get('code') for rec in db_data if rec.get('model') == 'documents.documenttype' and isinstance(rec.get('fields', {}), dict)}
+                    source_names = {rec.get('fields', {}).get('name') for rec in db_data if rec.get('model') == 'documents.documentsource' and isinstance(rec.get('fields', {}), dict)}
                     for rec in db_data:
                         if rec.get('model') == 'documents.document':
                             flds = rec.get('fields', {})
