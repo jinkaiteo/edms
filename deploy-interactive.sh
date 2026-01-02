@@ -607,7 +607,17 @@ initialize_database() {
     if docker compose -f docker-compose.prod.yml exec -T backend python manage.py collectstatic --noinput; then
         print_success "Static files collected"
     else
-        print_error "Failed to collect static files"
+        print_warning "Failed to collect static files (non-critical, continuing...)"
+    fi
+    
+    echo ""
+    print_step "Creating test users..."
+    echo ""
+    
+    if bash scripts/create-test-users.sh; then
+        print_success "Test users created"
+    else
+        print_error "Failed to create test users"
         return 1
     fi
     
