@@ -58,6 +58,150 @@
 
 These insights focus on patterns that prevent common development pitfalls and improve code reliability across similar projects.
 
+## Status Naming and System Integration
+
+### Check Automated Systems Before Standardizing Statuses
+When choosing between similar status names (e.g., EFFECTIVE vs APPROVED_AND_EFFECTIVE), always check what automated systems (schedulers, background tasks) expect FIRST before making architectural decisions.
+
+**Critical Pattern**: Look for status references in:
+- Scheduler tasks (`apps/scheduler/automated_tasks.py`)
+- Celery tasks
+- Management commands
+- Any code that runs without user interaction
+
+**Example from session**: Chose APPROVED_AND_EFFECTIVE for workflow but scheduler expected EFFECTIVE, causing:
+- Approval workflow failures
+- PDF download button disabled
+- Dependencies not displaying
+- Scheduler unable to activate pending documents
+
+**Solution**: Standardized on EFFECTIVE (what scheduler expected) rather than forcing scheduler to change.
+
+### Serializer Filter Debugging Pattern
+When data exists in database but doesn't appear in API responses, check serializer filters BEFORE debugging frontend or backend logic.
+
+**Symptom**: Backend logs show "saved successfully" but frontend shows empty arrays/null values.
+
+**Common Cause**: Serializer method filters exclude the data:
+```python
+def get_dependencies(self, obj):
+    # This filter might exclude valid data!
+    return obj.dependencies.filter(
+        depends_on__status__in=['EFFECTIVE']  # Wrong status = data hidden
+    )
+```
+
+**Debugging Steps**:
+1. Verify data exists in database (Django shell)
+2. Check serializer get_* methods for status filters
+3. Check if filter values match actual document statuses
+4. Look for status__in=[...] patterns in List AND Detail serializers
+
+**Prevention**: When adding new statuses, grep for all status filters: `grep -r "status__in=" backend/apps/*/serializers.py`
+
+## Deployment Script Dependencies
+
+### Initialization Order Matters: Analyze Foreign Keys
+When writing initialization scripts, analyze ALL foreign key dependencies to determine correct execution order.
+
+**Pattern**: Build dependency tree bottom-up:
+1. Independent models (no FKs)
+2. Models with FKs to #1
+3. Models with FKs to #2
+4. ...and so on
+
+**Example from session**:
+- WorkflowType has `created_by` FK to User
+- Tried to create WorkflowTypes before Users existed
+- Result: "No users found in database" error
+- Solution: Create Users BEFORE WorkflowTypes
+
+**Correct Sequence**:
+```bash
+1. Users (no dependencies)
+2. Groups (no dependencies)  
+3. Roles (FK to nothing critical)
+4. WorkflowTypes (FK to User via created_by)
+5. DocumentStates (no dependencies but referenced by WorkflowTypes)
+6. Everything else
+```
+
+**Prevention**: Before writing init script, check model definitions:
+```python
+grep -A 10 "class WorkflowType" backend/apps/workflows/models.py
+# Look for ForeignKey, OneToOneField, required fields
+```
+
+### Graceful Degradation in Deployment Scripts
+Distinguish between critical and nice-to-have initialization steps. Make non-essential steps non-fatal.
+
+**Critical (must succeed)**:
+- Database migrations
+- User creation
+- Core workflow states
+- Required configuration
+
+**Nice-to-have (can fail)**:
+- Static file collection (only affects admin UI)
+- Cache warming
+- Non-essential notifications
+- UI theming
+
+**Implementation**:
+```bash
+# Critical - exit on failure
+if ! create_users; then
+    error "User creation failed"
+    exit 1
+fi
+
+# Nice-to-have - warn but continue
+if ! collectstatic; then
+    warn "Static files failed (non-critical, admin UI may lack styling)"
+fi
+```
+
+**Benefit**: Deployment continues despite minor issues, reducing troubleshooting time.
+
+## Docker Volume Management
+
+### Volume Prune for Clean Slate
+`docker-compose down -v` doesn't always remove volumes with permission issues. For truly clean deployments, use `docker volume prune -f`.
+
+**Issue Pattern**:
+- Old deployment created files as root
+- New deployment runs as different user
+- Volume persists with old permissions
+- `down -v` claims to remove volume but files remain
+
+**Symptoms**:
+- PermissionError when accessing old files
+- "Permission denied" on collectstatic
+- Can't delete/overwrite existing files
+
+**Nuclear Solution**:
+```bash
+docker-compose down
+docker volume prune -f  # Removes ALL unused volumes
+docker-compose up -d
+```
+
+**Surgical Solution** (if you need to keep some volumes):
+```bash
+docker-compose down
+docker volume ls | grep problematic_volume
+docker volume rm specific_volume_name
+docker-compose up -d
+```
+
+**Prevention**: 
+- Run containers as non-root user from start
+- Use named volumes with proper ownership
+- Document required volume cleanup in deployment guides
+- Make collectstatic failures non-fatal (see Graceful Degradation)
+
+These insights focus on patterns that prevent common development pitfalls and improve code reliability across similar projects.
+
 ## Component Unification Patterns
 
 ### Modal Consolidation Benefits
