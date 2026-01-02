@@ -781,3 +781,191 @@ docker compose up -d backend
 **Prevention**: After adding new Python files (models, views, management commands), always rebuild the Docker image. Code changes to existing files can hot-reload, but new files require image rebuild.
 
 **Efficient Pattern**: Create a rebuild script that stops service → rebuilds image → restarts service → waits for health check.
+## Docker Container Rebuild Pattern
+
+### Python Code Changes Require Image Rebuild, Not Just Restart
+
+**Critical Pattern:** When modifying Python code in Docker containers, the container must be REBUILT to load the new code, not just restarted.
+
+**Problem Pattern:**
+```bash
+# ❌ WRONG - Won't load new Python code
+git pull origin develop
+docker compose restart backend
+
+# Container restarts but runs OLD code from existing image
+```
+
+**Correct Pattern:**
+```bash
+# ✅ CORRECT - Rebuilds image with new code
+git pull origin develop
+docker compose stop backend
+docker compose build backend  # Creates new image from updated code on disk
+docker compose up -d backend
+```
+
+**Why This Happens:**
+- Docker containers run from **images** (snapshots), not live code on disk
+- `git pull` updates files on disk
+- But containers continue using the old image until rebuilt
+- Even if code is on disk, container needs new image
+
+**Timeline Understanding:**
+```
+Disk (has new code) → Build → Image (snapshot) → Container (runs from image)
+```
+
+After code changes:
+```
+Disk (✅ new) → No rebuild → Image (❌ old) → Container (❌ runs old code)
+```
+
+After rebuild:
+```
+Disk (✅ new) → Build → Image (✅ new) → Container (✅ runs new code)
+```
+
+**Symptoms of Running Old Code:**
+- Changes committed and pushed to GitHub
+- Code pulled to server successfully
+- `grep` shows new code in files on disk
+- But application behavior doesn't change
+- Tests pass locally but fail on server
+- Import errors for newly added modules (e.g., `ModuleNotFoundError: No module named 'pytz'`)
+
+**Verification:**
+```bash
+# Check if code is on disk (should show new code)
+grep "new_feature" backend/apps/myapp/file.py
+
+# Check if container has new code (may show old code)
+docker compose exec backend grep "new_feature" /app/apps/myapp/file.py
+
+# If these differ, image needs rebuild
+```
+
+**Exception - When Restart is Sufficient:**
+- Configuration file changes (if not baked into image)
+- Environment variable changes
+- Django settings changes (if code itself didn't change)
+- Static file changes (if volume-mounted)
+
+**Build Caching Issues:**
+Docker may use cached layers even with `build`:
+```bash
+# Force complete rebuild
+docker compose build --no-cache backend
+```
+
+**Related Issue - Frontend Container Networking:**
+When backend is rebuilt, it gets a new IP address. Frontend may cache old IP:
+```bash
+# Fix: Restart frontend to refresh backend hostname resolution
+docker compose restart frontend
+```
+
+## Timezone Implementation Strategy
+
+### pytz Dependency for Timezone Conversion
+
+When implementing dual timezone display (UTC + local time), add `pytz` to requirements:
+
+```python
+# requirements/base.txt
+pytz==2024.1  # Required for timezone conversion to display local time
+```
+
+**Without pytz:**
+- Code compiles successfully
+- Imports don't fail at startup
+- But crashes at runtime when timezone conversion is attempted
+- Results in 500 errors when feature is used
+
+**Symptom:**
+```python
+import pytz  # No error at import time
+display_tz = pytz.timezone('Asia/Singapore')  # Crashes here if pytz not installed
+```
+
+### Display Timezone Implementation
+
+**Settings Configuration:**
+```python
+# settings/base.py
+TIME_ZONE = 'UTC'  # Storage timezone (always UTC for database)
+DISPLAY_TIMEZONE = 'Asia/Singapore'  # User-facing display timezone
+USE_TZ = True  # Enable timezone-aware datetimes
+```
+
+**Code Pattern:**
+```python
+from django.utils import timezone
+from django.conf import settings
+import pytz
+
+now_utc = timezone.now()
+display_tz = pytz.timezone(getattr(settings, 'DISPLAY_TIMEZONE', 'Asia/Singapore'))
+now_local = now_utc.astimezone(display_tz)
+
+# Explicit timezone name (not strftime('%Z') which returns '+08')
+local_name = 'SGT'  # Singapore Standard Time
+
+result = f"{now_utc.strftime('%H:%M:%S')} UTC ({now_local.strftime('%H:%M:%S')} {local_name})"
+# Output: "15:52:33 UTC (23:52:33 SGT)"
+```
+
+**Timezone Abbreviation Issue:**
+`pytz` returns numeric offset ('+08') not abbreviation ('SGT'):
+```python
+# ❌ Returns '+08' not 'SGT'
+local_name = now_local.strftime('%Z')
+
+# ✅ Explicitly use abbreviation
+local_name = 'SGT'  # For Singapore
+```
+
+### Date vs DateTime Display Strategy
+
+**Date-only fields (no timezone needed):**
+- Fields: CREATED_DATE, EFFECTIVE_DATE, APPROVAL_DATE
+- Format: `2026-01-02` or `January 2, 2026`
+- Timezone: None shown (dates same in UTC and local time)
+- Users understand dates without timezone context
+
+**DateTime fields (dual timezone recommended):**
+- Fields: DOWNLOAD_TIME, CURRENT_DATETIME, VERSION_HISTORY generated
+- Format: `15:52:33 UTC (23:52:33 SGT)`
+- Timezone: Show both UTC and local time
+- Critical for audit trails and compliance
+
+**Backend vs Frontend:**
+- **Backend (documents):** Show both UTC and local time (permanent record, audit compliance)
+- **Frontend (web UI):** Can use browser local time (temporary display, user convenience)
+- **API responses:** Always UTC ISO 8601
+- **Database storage:** Always UTC
+
+**Scheduler Timezone Handling:**
+- Celery tasks should use `CELERY_TIMEZONE = 'UTC'`
+- All date comparisons use `timezone.now()` (UTC-aware)
+- Do NOT convert scheduler logic to local timezone
+- Documents become effective at midnight UTC (8 AM SGT for Singapore)
+- This is correct behavior - consistent across timezones
+
+### Common Mistake - Multiple Timestamp Methods
+
+When adding timezone display, check ALL locations that generate timestamps:
+- `annotation_processor.py` - `_get_current_timestamp()`
+- `docx_processor.py` - `_get_current_timestamp()` (separate copy!)
+- `pdf_generator.py` - Inline timestamp generation
+- `services.py` - VERSION_HISTORY timestamps
+- `zip_processor.py` - Metadata timestamps
+
+**Pattern:** Search for all timestamp generation patterns:
+```bash
+grep -r "datetime.now()" backend/apps/
+grep -r "strftime" backend/apps/ | grep -i "time\|date"
+grep -r "Generated:" backend/apps/
+```
+
+Each file may have its own timestamp method that needs updating.
