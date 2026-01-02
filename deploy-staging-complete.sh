@@ -289,6 +289,14 @@ else
 fi
 
 echo ""
+print_step "Initializing workflow states and types..."
+if bash scripts/initialize-workflow-defaults.sh; then
+    print_success "12 DocumentStates and 4 WorkflowTypes created"
+else
+    warn "Workflow initialization had warnings (may already exist)"
+fi
+
+echo ""
 print_step "Creating default document sources..."
 if docker compose -f "$COMPOSE_FILE" exec -T backend python manage.py create_default_document_sources; then
     print_success "3 document sources created"

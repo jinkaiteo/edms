@@ -612,6 +612,16 @@ initialize_database() {
     fi
     
     echo ""
+    print_step "Initializing workflow defaults..."
+    echo ""
+    
+    if bash scripts/initialize-workflow-defaults.sh; then
+        print_success "Workflow states and types initialized"
+    else
+        print_warning "Workflow initialization had warnings (may already exist)"
+    fi
+    
+    echo ""
 }
 
 ################################################################################
