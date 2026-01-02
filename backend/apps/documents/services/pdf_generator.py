@@ -409,7 +409,7 @@ class OfficialPDFGenerator:
             import pytz
             display_tz = pytz.timezone(getattr(settings, 'DISPLAY_TIMEZONE', 'Asia/Singapore'))
             now_local = now_utc.astimezone(display_tz)
-            local_name = now_local.strftime('%Z')
+            local_name = 'SGT'  # Singapore Standard Time
             c.drawString(50, 310, f"Generated: {now_utc.strftime('%Y-%m-%d %H:%M')} UTC ({now_local.strftime('%H:%M')} {local_name})")
             
             c.save()

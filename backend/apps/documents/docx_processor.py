@@ -314,7 +314,7 @@ class DocxTemplateProcessor:
         # Get display timezone (Singapore)
         display_tz = pytz.timezone(getattr(settings, 'DISPLAY_TIMEZONE', 'Asia/Singapore'))
         now_local = now_utc.astimezone(display_tz)
-        local_name = now_local.strftime('%Z')  # 'SGT' for Singapore Time
+        local_name = 'SGT'  # Singapore Standard Time  # 'SGT' for Singapore Time
         
         return f"{now_utc.strftime('%m/%d/%Y %I:%M %p')} UTC ({now_local.strftime('%I:%M %p')} {local_name})"
     
