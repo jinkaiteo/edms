@@ -304,9 +304,12 @@ class DocxTemplateProcessor:
         return len(paragraphs_to_process) > 0  # Return True if any processing was attempted
 
     def _get_current_timestamp(self):
-        """Get current timestamp."""
-        from datetime import datetime
-        return datetime.now().strftime('%m/%d/%Y %I:%M %p')
+        """Get current timestamp with timezone."""
+        from django.utils import timezone
+        from django.conf import settings
+        now = timezone.now()
+        timezone_name = settings.TIME_ZONE
+        return now.strftime(f'%m/%d/%Y %I:%M %p {timezone_name}')
     
     def get_template_variables(self, document: Document) -> Dict[str, str]:
         """

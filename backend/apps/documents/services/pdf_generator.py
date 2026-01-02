@@ -404,7 +404,7 @@ class OfficialPDFGenerator:
             # Add document info
             c.drawString(50, 350, f"Document: {document.title}")
             c.drawString(50, 330, f"File: {document.file_name}")
-            c.drawString(50, 310, f"Generated: {timezone.now().strftime('%Y-%m-%d %H:%M')}")
+            c.drawString(50, 310, f"Generated: {timezone.now().strftime('%Y-%m-%d %H:%M UTC')}")
             
             c.save()
             pdf_content = pdf_buffer.getvalue()
