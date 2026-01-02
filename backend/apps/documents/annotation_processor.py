@@ -8,6 +8,7 @@ from datetime import datetime, date
 from typing import Dict, Any
 from django.conf import settings
 from django.contrib.auth import get_user_model
+from django.utils import timezone
 from .models import Document
 from apps.placeholders.models import PlaceholderDefinition
 
@@ -106,18 +107,26 @@ class DocumentAnnotationProcessor:
             metadata['EFFECTIVE_DATE'] = 'Not Set'
             metadata['EFFECTIVE_DATE_LONG'] = 'Not Set'
         
-        # Current date/time information (for download)
-        now = datetime.now()
-        today = date.today()
+        # Current date/time information (for download) - Using UTC timezone-aware datetime
+        now = timezone.now()  # UTC timezone-aware datetime
+        today = now.date()    # UTC date
+        
+        # Get timezone name for display
+        timezone_name = settings.TIME_ZONE  # 'UTC'
+        timezone_display = f" {timezone_name}"
+        
         metadata['DOWNLOAD_DATE'] = today.strftime('%Y-%m-%d')
         metadata['DOWNLOAD_DATE_LONG'] = today.strftime('%B %d, %Y')
-        metadata['DOWNLOAD_TIME'] = now.strftime('%H:%M:%S')
-        metadata['DOWNLOAD_DATETIME'] = now.strftime('%Y-%m-%d %H:%M:%S')
+        metadata['DOWNLOAD_TIME'] = now.strftime('%H:%M:%S') + timezone_display
+        metadata['DOWNLOAD_DATETIME'] = now.strftime('%Y-%m-%d %H:%M:%S') + timezone_display
+        metadata['DOWNLOAD_DATETIME_ISO'] = now.isoformat()  # ISO 8601 format with timezone
         metadata['CURRENT_DATE'] = today.strftime('%Y-%m-%d')
         metadata['CURRENT_DATE_LONG'] = today.strftime('%B %d, %Y')
-        metadata['CURRENT_TIME'] = now.strftime('%H:%M:%S')
-        metadata['CURRENT_DATETIME'] = now.strftime('%Y-%m-%d %H:%M:%S')
+        metadata['CURRENT_TIME'] = now.strftime('%H:%M:%S') + timezone_display
+        metadata['CURRENT_DATETIME'] = now.strftime('%Y-%m-%d %H:%M:%S') + timezone_display
+        metadata['CURRENT_DATETIME_ISO'] = now.isoformat()  # ISO 8601 format with timezone
         metadata['CURRENT_YEAR'] = str(today.year)
+        metadata['TIMEZONE'] = timezone_name  # Explicit timezone field
         
         # Status information
         metadata['DOC_STATUS'] = document.status.replace('_', ' ').title()
@@ -252,9 +261,10 @@ class DocumentAnnotationProcessor:
             return f"Error generating version history table: {str(e)}"
 
     def _get_current_timestamp(self):
-        """Get current timestamp in a readable format."""
-        from datetime import datetime
-        return datetime.now().strftime('%m/%d/%Y %I:%M %p')
+        """Get current timestamp in a readable format with timezone."""
+        now = timezone.now()  # UTC timezone-aware datetime
+        timezone_name = settings.TIME_ZONE
+        return now.strftime(f'%m/%d/%Y %I:%M %p {timezone_name}')
     
     def _get_version_change_reason(self, document):
         """Extract the reason for change from workflow comments or document description."""
@@ -434,8 +444,8 @@ It would be replaced with:
                     author = type('obj', (object,), {'first_name': 'John', 'last_name': 'Doe', 'username': 'jdoe', 'email': 'jdoe@example.com'})
                     reviewer = None
                     approver = None
-                    created_at = datetime.now()
-                    updated_at = datetime.now()
+                    created_at = timezone.now()  # UTC timezone-aware
+                    updated_at = timezone.now()  # UTC timezone-aware
                     approval_date = None
                     effective_date = None
                     status = "DRAFT"
