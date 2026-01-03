@@ -93,6 +93,9 @@ class EnhancedRestoreProcessor:
             if 'tables_info' in data:
                 logger.info("📦 Found wrapped backup format - extracting from 'tables_info'")
                 data = data['tables_info']
+                logger.info(f"📊 After extraction - type: {type(data)}")
+                if isinstance(data, dict):
+                    logger.info(f"📊 tables_info is a dict with keys: {list(data.keys())}")
             elif 'database_info' in data:
                 logger.info("📦 Found wrapped backup format - extracting from 'database_info'")
                 data = data['database_info']
