@@ -926,7 +926,7 @@ class SystemBackupViewSet(viewsets.ViewSet):
                             from django.contrib.auth import get_user_model
                             with open(db_file, 'r') as f:
                                 db_data = json.load(f)
-                            backup_users = [r for r in db_data if r.get('model') in ('users.user','auth.user')]
+                            backup_users = [r for r in db_data if isinstance(r, dict) and r.get('model') in ('users.user','auth.user')]
                             User = get_user_model()
                             created_users = 0
                             for rec in backup_users:
@@ -964,7 +964,7 @@ class SystemBackupViewSet(viewsets.ViewSet):
                             from django.db import transaction
                             from apps.documents.models import DocumentType, DocumentSource
                             # Upsert DocumentType by code
-                            dt_records = [r for r in db_data if r.get('model') == 'documents.documenttype']
+                            dt_records = [r for r in db_data if isinstance(r, dict) and r.get('model') == 'documents.documenttype']
                             with transaction.atomic():
                                 for rec in dt_records:
                                     f = rec.get('fields')
@@ -988,7 +988,7 @@ class SystemBackupViewSet(viewsets.ViewSet):
                                         if updated:
                                             obj.save(update_fields=['name','description'])
                             # Upsert DocumentSource by name (or code if present)
-                            ds_records = [r for r in db_data if r.get('model') == 'documents.documentsource']
+                            ds_records = [r for r in db_data if isinstance(r, dict) and r.get('model') == 'documents.documentsource']
                             with transaction.atomic():
                                 for rec in ds_records:
                                     f = rec.get('fields')
@@ -1024,7 +1024,7 @@ class SystemBackupViewSet(viewsets.ViewSet):
                             User = get_user_model()
 
                             # UserRole gap-fill: ensure each (username, role) exists
-                            ur_recs = [r for r in db_data if r.get('model') == 'users.userrole']
+                            ur_recs = [r for r in db_data if isinstance(r, dict) and r.get('model') == 'users.userrole']
                             with transaction.atomic():
                                 for rec in ur_recs:
                                     flds = rec.get('fields')
@@ -1049,7 +1049,7 @@ class SystemBackupViewSet(viewsets.ViewSet):
                                             )
 
                             # Document gap-fill: ensure each document_number exists and type/source binding is correct
-                            doc_recs = [r for r in db_data if r.get('model') == 'documents.document']
+                            doc_recs = [r for r in db_data if isinstance(r, dict) and r.get('model') == 'documents.document']
                             with transaction.atomic():
                                 for rec in doc_recs:
                                     flds = rec.get('fields')
@@ -1105,7 +1105,7 @@ class SystemBackupViewSet(viewsets.ViewSet):
                             current_userroles = UserRole.objects.count()
                             if current_userroles == 0:
                                 created_ur = 0
-                                ur_recs = [r for r in db_data if r.get('model') == 'users.userrole']
+                                ur_recs = [r for r in db_data if isinstance(r, dict) and r.get('model') == 'users.userrole']
                                 for rec in ur_recs:
                                     fields = rec.get('fields')
                                     if not isinstance(fields, dict):
@@ -1138,7 +1138,7 @@ class SystemBackupViewSet(viewsets.ViewSet):
                             current_docs = Document.objects.count()
                             if current_docs == 0:
                                 created_docs = 0
-                                doc_recs = [r for r in db_data if r.get('model') == 'documents.document']
+                                doc_recs = [r for r in db_data if isinstance(r, dict) and r.get('model') == 'documents.document']
                                 for rec in doc_recs:
                                     fields = rec.get('fields')
                                     if not isinstance(fields, dict):
@@ -1370,7 +1370,7 @@ class SystemBackupViewSet(viewsets.ViewSet):
                         # Restore document dependencies
                         try:
                             from apps.documents.models import DocumentDependency
-                            dep_recs = [r for r in db_data if r.get('model') == 'documents.documentdependency']
+                            dep_recs = [r for r in db_data if isinstance(r, dict) and r.get('model') == 'documents.documentdependency']
                             created_deps = 0
                             with transaction.atomic():
                                 for rec in dep_recs:
@@ -1413,14 +1413,14 @@ class SystemBackupViewSet(viewsets.ViewSet):
                         try:
                             from apps.workflows.models_simple import DocumentWorkflow, DocumentTransition, DocumentState, WorkflowType
                             # Build quick lookup for backup records
-                            wf_recs = [r for r in db_data if r.get('model') == 'workflows.documentworkflow']
-                            tr_recs = [r for r in db_data if r.get('model') == 'workflows.documenttransition']
+                            wf_recs = [r for r in db_data if isinstance(r, dict) and r.get('model') == 'workflows.documentworkflow']
+                            tr_recs = [r for r in db_data if isinstance(r, dict) and r.get('model') == 'workflows.documenttransition']
 
                             # 1) Pre-upsert workflow metadata (types and states) from backup to avoid missing refs
                             try:
                                 from django.db import transaction as _tx
                                 # Upsert WorkflowType by code
-                                wt_recs = [r for r in db_data if r.get('model') == 'workflows.workflowtype']
+                                wt_recs = [r for r in db_data if isinstance(r, dict) and r.get('model') == 'workflows.workflowtype']
                                 with _tx.atomic():
                                     for rec in wt_recs:
                                         f = rec.get('fields')
@@ -1443,7 +1443,7 @@ class SystemBackupViewSet(viewsets.ViewSet):
                                             if updated:
                                                 obj.save(update_fields=['name','description'])
                                 # Upsert DocumentState by code
-                                ds_recs = [r for r in db_data if r.get('model') == 'workflows.documentstate']
+                                ds_recs = [r for r in db_data if isinstance(r, dict) and r.get('model') == 'workflows.documentstate']
                                 with _tx.atomic():
                                     for rec in ds_recs:
                                         f = rec.get('fields')
