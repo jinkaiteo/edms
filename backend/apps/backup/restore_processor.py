@@ -89,7 +89,17 @@ class EnhancedRestoreProcessor:
         logger.info(f"📊 Loaded data type: {type(data)}")
         if isinstance(data, dict):
             logger.info(f"📊 Dict keys: {list(data.keys())}")
-        elif isinstance(data, list):
+            # Handle wrapped backup format - extract the actual fixture data
+            if 'tables_info' in data:
+                logger.info("📦 Found wrapped backup format - extracting from 'tables_info'")
+                data = data['tables_info']
+            elif 'database_info' in data:
+                logger.info("📦 Found wrapped backup format - extracting from 'database_info'")
+                data = data['database_info']
+            else:
+                raise ValueError(f"Backup data is a dict but missing 'tables_info' or 'database_info' key. Keys: {list(data.keys())}")
+        
+        if isinstance(data, list):
             logger.info(f"📊 List length: {len(data)}")
             if len(data) > 0:
                 logger.info(f"📊 First item type: {type(data[0])}")
