@@ -801,6 +801,8 @@ class SystemBackupViewSet(viewsets.ViewSet):
                     # Extract type codes - ensure fields is dict before accessing
                     type_codes = set()
                     for rec in db_data:
+                        if not isinstance(rec, dict):
+                            continue
                         if rec.get('model') == 'documents.documenttype':
                             fields = rec.get('fields')
                             if isinstance(fields, dict):
@@ -811,6 +813,8 @@ class SystemBackupViewSet(viewsets.ViewSet):
                     # Extract source names - ensure fields is dict before accessing
                     source_names = set()
                     for rec in db_data:
+                        if not isinstance(rec, dict):
+                            continue
                         if rec.get('model') == 'documents.documentsource':
                             fields = rec.get('fields')
                             if isinstance(fields, dict):
@@ -818,6 +822,8 @@ class SystemBackupViewSet(viewsets.ViewSet):
                                 if name:
                                     source_names.add(name)
                     for rec in db_data:
+                        if not isinstance(rec, dict):
+                            continue
                         if rec.get('model') == 'documents.document':
                             flds = rec.get('fields')
                             # Skip if fields is not a dict
