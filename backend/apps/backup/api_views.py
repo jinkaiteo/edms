@@ -817,7 +817,10 @@ class SystemBackupViewSet(viewsets.ViewSet):
                                     source_names.add(name)
                     for rec in db_data:
                         if rec.get('model') == 'documents.document':
-                            flds = rec.get('fields', {})
+                            flds = rec.get('fields')
+                            # Skip if fields is not a dict
+                            if not isinstance(flds, dict):
+                                continue
                             dt = flds.get('document_type')
                             ds = flds.get('document_source')
                             dt_code = dt[0] if isinstance(dt, list) and dt else None
