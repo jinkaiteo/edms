@@ -85,8 +85,19 @@ class EnhancedRestoreProcessor:
         with open(backup_file_path, 'r') as f:
             data = json.load(f)
         
+        # Debug: log what we actually got
+        logger.info(f"📊 Loaded data type: {type(data)}")
+        if isinstance(data, dict):
+            logger.info(f"📊 Dict keys: {list(data.keys())}")
+        elif isinstance(data, list):
+            logger.info(f"📊 List length: {len(data)}")
+            if len(data) > 0:
+                logger.info(f"📊 First item type: {type(data[0])}")
+        else:
+            logger.info(f"📊 Unexpected type: {data}")
+        
         if not isinstance(data, list):
-            raise ValueError("Backup data must be a list of Django fixture records")
+            raise ValueError(f"Backup data must be a list of Django fixture records, got {type(data).__name__}")
         
         self.restoration_stats['total_records'] = len(data)
         logger.info(f"✅ Loaded {len(data)} records from backup")
