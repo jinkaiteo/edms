@@ -457,7 +457,9 @@ class SystemBackupViewSet(viewsets.ViewSet):
         backup_tr = {}
         for rec in data:
             model = rec.get('model')
-            fields = rec.get('fields', {})
+            fields = rec.get('fields')
+            if not isinstance(fields, dict):
+                continue
             if model == 'workflows.documentworkflow':
                 doc_num = (fields.get('document', [None])[0] or '').strip() or None
                 if doc_num:
@@ -922,7 +924,9 @@ class SystemBackupViewSet(viewsets.ViewSet):
                             User = get_user_model()
                             created_users = 0
                             for rec in backup_users:
-                                fields = rec.get('fields', {})
+                                fields = rec.get('fields')
+                                if not isinstance(fields, dict):
+                                    continue
                                 username = fields.get('username')
                                 if not username:
                                     continue
@@ -957,7 +961,9 @@ class SystemBackupViewSet(viewsets.ViewSet):
                             dt_records = [r for r in db_data if r.get('model') == 'documents.documenttype']
                             with transaction.atomic():
                                 for rec in dt_records:
-                                    f = rec.get('fields', {})
+                                    f = rec.get('fields')
+                                    if not isinstance(f, dict):
+                                        continue
                                     code = f.get('code')
                                     if not code:
                                         continue
@@ -979,7 +985,9 @@ class SystemBackupViewSet(viewsets.ViewSet):
                             ds_records = [r for r in db_data if r.get('model') == 'documents.documentsource']
                             with transaction.atomic():
                                 for rec in ds_records:
-                                    f = rec.get('fields', {})
+                                    f = rec.get('fields')
+                                    if not isinstance(f, dict):
+                                        continue
                                     name = f.get('name') or f.get('code')
                                     if not name:
                                         continue
@@ -1013,7 +1021,9 @@ class SystemBackupViewSet(viewsets.ViewSet):
                             ur_recs = [r for r in db_data if r.get('model') == 'users.userrole']
                             with transaction.atomic():
                                 for rec in ur_recs:
-                                    flds = rec.get('fields', {})
+                                    flds = rec.get('fields')
+                                    if not isinstance(flds, dict):
+                                        continue
                                     uname = flds.get('user', [None])[0]
                                     rname = flds.get('role', [None])[0]
                                     assigned_by_name = flds.get('assigned_by', [None])[0]
@@ -1036,7 +1046,9 @@ class SystemBackupViewSet(viewsets.ViewSet):
                             doc_recs = [r for r in db_data if r.get('model') == 'documents.document']
                             with transaction.atomic():
                                 for rec in doc_recs:
-                                    flds = rec.get('fields', {})
+                                    flds = rec.get('fields')
+                                    if not isinstance(flds, dict):
+                                        continue
                                     number = flds.get('document_number')
                                     if not number or Document.objects.filter(document_number=number).exists():
                                         continue
@@ -1089,7 +1101,9 @@ class SystemBackupViewSet(viewsets.ViewSet):
                                 created_ur = 0
                                 ur_recs = [r for r in db_data if r.get('model') == 'users.userrole']
                                 for rec in ur_recs:
-                                    fields = rec.get('fields', {})
+                                    fields = rec.get('fields')
+                                    if not isinstance(fields, dict):
+                                        continue
                                     try:
                                         uname = fields.get('user', [None])[0]
                                         rname = fields.get('role', [None])[0]
@@ -1120,7 +1134,9 @@ class SystemBackupViewSet(viewsets.ViewSet):
                                 created_docs = 0
                                 doc_recs = [r for r in db_data if r.get('model') == 'documents.document']
                                 for rec in doc_recs:
-                                    fields = rec.get('fields', {})
+                                    fields = rec.get('fields')
+                                    if not isinstance(fields, dict):
+                                        continue
                                     try:
                                         number = fields.get('document_number')
                                         if not number:
@@ -1206,7 +1222,9 @@ class SystemBackupViewSet(viewsets.ViewSet):
                             try:
                                 for rec in db_data:
                                     if rec.get('model') == 'documents.document':
-                                        flds = rec.get('fields', {})
+                                        flds = rec.get('fields')
+                                        if not isinstance(flds, dict):
+                                            continue
                                         num = flds.get('document_number')
                                         if not num:
                                             continue
@@ -1350,7 +1368,9 @@ class SystemBackupViewSet(viewsets.ViewSet):
                             created_deps = 0
                             with transaction.atomic():
                                 for rec in dep_recs:
-                                    f = rec.get('fields', {})
+                                    f = rec.get('fields')
+                                    if not isinstance(f, dict):
+                                        continue
                                     doc_num = (f.get('document', [None])[0] or '').strip() or None
                                     dep_on_num = (f.get('depends_on', [None])[0] or '').strip() or None
                                     dep_type = f.get('dependency_type') or 'REFERENCE'
@@ -1397,7 +1417,9 @@ class SystemBackupViewSet(viewsets.ViewSet):
                                 wt_recs = [r for r in db_data if r.get('model') == 'workflows.workflowtype']
                                 with _tx.atomic():
                                     for rec in wt_recs:
-                                        f = rec.get('fields', {})
+                                        f = rec.get('fields')
+                                        if not isinstance(f, dict):
+                                            continue
                                         code = f.get('code')
                                         if not code:
                                             continue
@@ -1418,7 +1440,9 @@ class SystemBackupViewSet(viewsets.ViewSet):
                                 ds_recs = [r for r in db_data if r.get('model') == 'workflows.documentstate']
                                 with _tx.atomic():
                                     for rec in ds_recs:
-                                        f = rec.get('fields', {})
+                                        f = rec.get('fields')
+                                        if not isinstance(f, dict):
+                                            continue
                                         code = f.get('code')
                                         if not code:
                                             continue
@@ -1450,7 +1474,9 @@ class SystemBackupViewSet(viewsets.ViewSet):
                             with transaction.atomic():
                                 # 2) Restore workflows
                                 for rec in wf_recs:
-                                    f = rec.get('fields', {})
+                                    f = rec.get('fields')
+                                    if not isinstance(f, dict):
+                                        continue
                                     # Resolve document by natural key (document_number)
                                     doc_num = (f.get('document', [None])[0] or '').strip() or None
                                     if not doc_num:
@@ -1496,7 +1522,9 @@ class SystemBackupViewSet(viewsets.ViewSet):
                                 from datetime import datetime
                                 import pytz
                                 for rec in tr_recs:
-                                    f = rec.get('fields', {})
+                                    f = rec.get('fields')
+                                    if not isinstance(f, dict):
+                                        continue
                                     # Resolve owning workflow via document natural key
                                     doc_num = (f.get('workflow', [None])[0] or '').strip() or None
                                     if not doc_num:
@@ -1566,7 +1594,9 @@ class SystemBackupViewSet(viewsets.ViewSet):
                             try:
                                 affected_docs = set()
                                 for rec in tr_recs:
-                                    f = rec.get('fields', {})
+                                    f = rec.get('fields')
+                                    if not isinstance(f, dict):
+                                        continue
                                     doc_num = (f.get('workflow', [None])[0] or '').strip() or None
                                     if doc_num:
                                         affected_docs.add(doc_num)
