@@ -196,16 +196,20 @@ class BackupService:
             logger.info(f"Including M2M models: {', '.join(include_models)}")
             
             # Export data using Django's dumpdata with natural keys
-            call_command(
-                'dumpdata',
-                *all_models_to_backup,      # Include all critical apps + M2M models (FIXED)
-                '--natural-foreign',  # Use natural keys for foreign key references
-                '--natural-primary',  # Use natural keys for primary keys where available
-                '--indent=2',         # Pretty formatting
-                '--exclude=sessions.session',  # Exclude session data
-                stdout=backup_buffer,
-                verbosity=0          # Quiet output
-            )
+            # Wrap in transaction to prevent cursor stability issues
+            from django.db import transaction
+            
+            with transaction.atomic():
+                call_command(
+                    'dumpdata',
+                    *all_models_to_backup,      # Include all critical apps + M2M models (FIXED)
+                    '--natural-foreign',  # Use natural keys for foreign key references
+                    '--natural-primary',  # Use natural keys for primary keys where available
+                    '--indent=2',         # Pretty formatting
+                    '--exclude=sessions.session',  # Exclude session data
+                    stdout=backup_buffer,
+                    verbosity=0          # Quiet output
+                )
             
             # Get the backup data
             backup_content = backup_buffer.getvalue()
