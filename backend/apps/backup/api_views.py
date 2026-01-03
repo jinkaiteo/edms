@@ -795,9 +795,7 @@ class SystemBackupViewSet(viewsets.ViewSet):
                     if not db_member:
                         raise Exception('database_backup.json not found in archive')
                     with tar.extractfile(db_member) as fobj:
-                        fields = rec.get('fields', {})
-                        if isinstance(fields, dict):
-                            state_codes.add(fields.get('code'))
+                        db_data = json.load(io.TextIOWrapper(fobj, encoding='utf-8'))
                     type_codes = {rec.get('fields', {}).get('code') for rec in db_data if rec.get('model') == 'documents.documenttype' and isinstance(rec.get('fields', {}), dict)}
                     source_names = {rec.get('fields', {}).get('name') for rec in db_data if rec.get('model') == 'documents.documentsource' and isinstance(rec.get('fields', {}), dict)}
                     for rec in db_data:
