@@ -360,19 +360,7 @@ class Document(models.Model):
     @classmethod
     def get_by_natural_key(cls, document_number):
         """Get document by natural key (document_number)"""
-        from apps.backup.optimization import NaturalKeyOptimizer
-        
-        # Try cache first
-        cached_obj = NaturalKeyOptimizer.get_cached_natural_key_lookup(cls, (document_number,))
-        if cached_obj:
-            return cached_obj
-        
-        # Cache miss - do database lookup
-        obj = cls.objects.get(document_number=document_number)
-        
-        # Cache the result
-        NaturalKeyOptimizer.cache_natural_key_lookup(cls, (document_number,), obj)
-        return obj
+        return cls.objects.get(document_number=document_number)
     
     def __str__(self):
         return f"{self.document_number} - {self.title} (v{self.version_major:02d}.{self.version_minor:02d})"
