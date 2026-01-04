@@ -158,7 +158,7 @@ class DocumentViewSet(viewsets.ModelViewSet):
     permission_classes = [permissions.IsAuthenticated]
     pagination_class = StandardResultsSetPagination
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
-    filterset_fields = ['status', 'document_type', 'created_by']
+    filterset_fields = ['status', 'document_type', 'author']  # Fixed: Document model uses 'author' not 'created_by'
     search_fields = ['title', 'document_number', 'description']
     ordering_fields = ['created_at', 'title', 'document_number', 'effective_date']
     ordering = ['-created_at']
