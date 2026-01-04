@@ -183,7 +183,6 @@ class NotificationViewSet(viewsets.ReadOnlyModelViewSet):
             periodic_tasks = PeriodicTask.objects.filter(enabled=True)
             beat_tasks = {
                 'total_scheduled': periodic_tasks.count(),
-                'backup_tasks': periodic_tasks.filter(name__icontains='backup').count(),
                 'notification_tasks': periodic_tasks.filter(name__icontains='notification').count(),
                 'health_check_tasks': periodic_tasks.filter(name__icontains='health').count(),
                 'document_tasks': periodic_tasks.filter(name__icontains='document').count(),

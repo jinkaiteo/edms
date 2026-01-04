@@ -47,7 +47,6 @@ api_urlpatterns = [
     # Service modules
     path('placeholders/', include('apps.placeholders.urls')),
     path('scheduler/', include('apps.scheduler.urls')),
-    path('backup/', include('apps.backup.urls')),
     path('settings/', include('apps.settings.urls')),
     path('security/', include('apps.security.urls')),
 ]
