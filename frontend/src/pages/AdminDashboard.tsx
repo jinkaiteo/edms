@@ -8,7 +8,6 @@ import AuditTrailViewer from '../components/audit/AuditTrailViewer.tsx';
 import Reports from '../components/reports/Reports.tsx';
 import LoadingSpinner from '../components/common/LoadingSpinner.tsx';
 import SchedulerStatusWidget from '../components/scheduler/SchedulerStatusWidget.tsx';
-import BackupManagement from '../components/backup/BackupManagement.tsx';
 import { useDashboardUpdates } from '../hooks/useDashboardUpdates.ts';
 import { DashboardStats } from '../types/api.ts';
 
@@ -54,7 +53,6 @@ const AdminDashboard: React.FC = () => {
   const adminQuickLinks = [
     { name: 'User Management', href: '/admin?tab=users', icon: '👥', description: 'Manage users, roles, and permissions' },
     { name: 'Placeholder Management', href: '/admin?tab=placeholders', icon: '🔧', description: 'Manage document placeholders' },
-    { name: 'Backup Management', href: '/admin?tab=backup', icon: '💾', description: 'Manage system backups and disaster recovery' },
     { name: 'Reports', href: '/admin?tab=reports', icon: '📊', description: 'Generate compliance reports' },
     { name: 'Scheduler Dashboard', href: '/admin?tab=scheduler', icon: '🖥️', description: 'Monitor automated tasks' },
     { name: 'Audit Trail', href: '/admin?tab=audit', icon: '📋', description: 'View system audit logs' },
@@ -225,7 +223,7 @@ const AdminDashboard: React.FC = () => {
           <div className="p-4 border-b border-gray-200">
             <h3 className="text-lg font-semibold text-gray-900 flex items-center">
               <span className="mr-2">🖥️</span>
-              Scheduler & Backup Status
+              Scheduler Status
             </h3>
           </div>
           <div className="p-4">
@@ -311,8 +309,6 @@ const AdminDashboard: React.FC = () => {
         return <UserManagement />;
       case 'placeholders':
         return <PlaceholderManagement />;
-      case 'backup':
-        return <BackupManagement />;
       case 'reports':
         return <Reports />;
       case 'scheduler':
