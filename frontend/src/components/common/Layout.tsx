@@ -541,7 +541,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
 
               {/* Help & Documentation Link */}
               <a
-                href="https://github.com/your-org/your-repo/wiki"
+                href="https://github.com/jinkaiteo/edms/wiki"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="text-gray-600 hover:text-blue-600 transition-colors mr-4"
