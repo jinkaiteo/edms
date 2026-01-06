@@ -1,0 +1,31 @@
+EDMS Deployment Package Manifest
+================================
+
+Package: edms-deployment-20260105-222100
+Created: Mon Jan  5 10:21:00 PM +08 2026
+Creator: create-deployment-package.sh v1.0
+
+Contents:
+---------
+- Complete backend application (Django)
+- Complete frontend application (React)
+- Docker infrastructure files
+- Production documentation (4 guides)
+- Interactive deployment script
+- Configuration templates
+
+Size: 6.5M
+
+Files: 494
+
+Deployment Steps:
+-----------------
+1. Copy this package to production server
+2. Run: ./deploy-interactive.sh
+3. Follow the interactive prompts
+4. Access your application
+
+For detailed instructions, see:
+- README-DEPLOYMENT.md
+- docs/DEPLOYMENT_QUICK_START.md
+

@@ -1,0 +1,249 @@
+# Production Docker Compose for EDMS
+# Optimized for production deployment with standardized workflow system
+
+version: '3.8'
+
+services:
+  # PostgreSQL Database - Production Configuration
+  db:
+    image: postgres:18
+    container_name: edms_prod_db
+    environment:
+      POSTGRES_DB: ${DB_NAME:-edms_prod_db}
+      POSTGRES_USER: ${DB_USER:-edms_prod_user}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-change_me_in_production}
+      POSTGRES_INITDB_ARGS: "--auth-host=scram-sha-256"
+    volumes:
+      - postgres_prod_data:/var/lib/postgresql
+      - ./logs/db:/var/log/postgresql
+    ports:
+      - "${POSTGRES_PORT:-5433}:5432"  # Configurable port for external access
+    networks:
+      - edms_prod_network
+    restart: unless-stopped
+    # Use default postgres command for simplicity
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-edms_prod_user} -d ${DB_NAME:-edms_prod_db}"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Redis - Production Configuration
+  redis:
+    image: redis:7-alpine
+    container_name: edms_prod_redis
+    command: >
+      redis-server
+      --requirepass ${REDIS_PASSWORD:-change_me_redis_password}
+      --appendonly yes
+      --appendfsync everysec
+      --maxmemory 256mb
+      --maxmemory-policy allkeys-lru
+    volumes:
+      - redis_prod_data:/data
+      - ./logs/redis:/var/log/redis
+    ports:
+      - "${REDIS_PORT:-6380}:6379"  # Configurable port for external access
+    networks:
+      - edms_prod_network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "--raw", "incr", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Django Backend - Production Configuration
+  backend:
+    build:
+      context: ./backend
+      dockerfile: ../infrastructure/containers/Dockerfile.backend.prod
+      target: production
+    container_name: edms_prod_backend
+    volumes:
+      - ./storage:/app/storage:rw
+      - ./logs:/app/logs:rw
+      - static_files:/app/staticfiles:rw
+    ports:
+      - "${BACKEND_PORT:-8001}:8000"  # Configurable port for HAProxy routing
+    environment:
+      - DEBUG=False
+      - DJANGO_SETTINGS_MODULE=edms.settings.production
+      - SECRET_KEY=${SECRET_KEY:-generate_a_secure_secret_key_here}
+      - DB_HOST=db
+      - DB_NAME=${DB_NAME:-edms_prod_db}
+      - DB_USER=${DB_USER:-edms_prod_user}
+      - DB_PASSWORD=${DB_PASSWORD:-change_me_in_production}
+      - DB_PORT=5432
+      - REDIS_URL=redis://:${REDIS_PASSWORD:-change_me_redis_password}@redis:6379/1
+      - CELERY_BROKER_URL=redis://:${REDIS_PASSWORD:-change_me_redis_password}@redis:6379/0
+      - ALLOWED_HOSTS=${ALLOWED_HOSTS:-localhost,127.0.0.1,edms_prod_backend}
+      - CORS_ALLOWED_ORIGINS=${CORS_ALLOWED_ORIGINS:-http://localhost:3001}
+      - ENVIRONMENT=production
+      - EDMS_MASTER_KEY=${EDMS_MASTER_KEY:-generate_a_secure_master_key_here}
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - edms_prod_network
+    restart: unless-stopped
+    command: >
+      sh -c "echo 'Starting production backend...' &&
+             python manage.py migrate --run-syncdb &&
+             python manage.py collectstatic --noinput &&
+             python manage.py loaddata initial_users.json || true &&
+             echo 'Backend setup complete, starting server...' &&
+             gunicorn edms.wsgi:application --bind 0.0.0.0:8000 --workers 4 --timeout 120 --keep-alive 2 --max-requests 1000 --max-requests-jitter 50 --access-logfile - --error-logfile -"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Celery Worker - Production Configuration
+  celery_worker:
+    build:
+      context: ./backend
+      dockerfile: ../infrastructure/containers/Dockerfile.backend.prod
+      target: production
+    container_name: edms_prod_celery_worker
+    volumes:
+      - ./storage:/app/storage:rw
+      - ./logs:/app/logs:rw
+    environment:
+      - DEBUG=False
+      - DJANGO_SETTINGS_MODULE=edms.settings.production
+      - SECRET_KEY=${SECRET_KEY:-generate_a_secure_secret_key_here}
+      - DB_HOST=db
+      - DB_NAME=${DB_NAME:-edms_prod_db}
+      - DB_USER=${DB_USER:-edms_prod_user}
+      - DB_PASSWORD=${DB_PASSWORD:-change_me_in_production}
+      - REDIS_URL=redis://:${REDIS_PASSWORD:-change_me_redis_password}@redis:6379/1
+      - CELERY_BROKER_URL=redis://:${REDIS_PASSWORD:-change_me_redis_password}@redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://:${REDIS_PASSWORD:-change_me_redis_password}@redis:6379/0
+      - EDMS_MASTER_KEY=${EDMS_MASTER_KEY:-generate_a_secure_master_key_here}
+    healthcheck:
+      test: ["CMD-SHELL", "celery -A edms inspect ping -d celery@$$HOSTNAME"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      backend:
+        condition: service_healthy
+    networks:
+      - edms_prod_network
+    restart: unless-stopped
+    command: >
+      celery -A edms worker
+      --loglevel=warning
+      --concurrency=4
+      --max-tasks-per-child=1000
+
+  # Celery Beat - Production Configuration
+  celery_beat:
+    build:
+      context: ./backend
+      dockerfile: ../infrastructure/containers/Dockerfile.backend.prod
+      target: production
+    container_name: edms_prod_celery_beat
+    volumes:
+      - ./storage:/app/storage:rw
+      - ./logs:/app/logs:rw
+    environment:
+      - DEBUG=False
+      - DJANGO_SETTINGS_MODULE=edms.settings.production
+      - SECRET_KEY=${SECRET_KEY:-generate_a_secure_secret_key_here}
+      - DB_HOST=db
+      - DB_NAME=${DB_NAME:-edms_prod_db}
+      - DB_USER=${DB_USER:-edms_prod_user}
+      - DB_PASSWORD=${DB_PASSWORD:-change_me_in_production}
+      - REDIS_URL=redis://:${REDIS_PASSWORD:-change_me_redis_password}@redis:6379/1
+      - EDMS_MASTER_KEY=${EDMS_MASTER_KEY:-generate_a_secure_master_key_here}
+      - CELERY_BROKER_URL=redis://:${REDIS_PASSWORD:-change_me_redis_password}@redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://:${REDIS_PASSWORD:-change_me_redis_password}@redis:6379/0
+    # Health check disabled - Beat is a scheduler, doesn't respond to ping
+    # Check logs for "Scheduler: Sending" to verify it's working
+    healthcheck:
+      disable: true
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      backend:
+        condition: service_healthy
+    networks:
+      - edms_prod_network
+    restart: unless-stopped
+    command: >
+      celery -A edms beat
+      --loglevel=warning
+
+  # React Frontend - Production Configuration
+  frontend:
+    build:
+      context: .
+      dockerfile: infrastructure/containers/Dockerfile.frontend.prod
+      target: production
+      args:
+        REACT_APP_API_URL: /api/v1
+    container_name: edms_prod_frontend
+    ports:
+      - "${FRONTEND_PORT:-3001}:80"  # Configurable port for HAProxy routing
+    environment:
+      - REACT_APP_API_URL=/api/v1
+      - NODE_ENV=production
+    depends_on:
+      backend:
+        condition: service_healthy
+    networks:
+      - edms_prod_network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:80"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Nginx Load Balancer/Reverse Proxy (Optional)
+  # nginx:
+  #   image: nginx:alpine
+  #   container_name: edms_prod_nginx
+  #   volumes:
+  #     - ./infrastructure/nginx/nginx.prod.conf:/etc/nginx/nginx.conf:ro
+  #     - static_files:/var/www/static:ro
+  #     - ./logs/nginx:/var/log/nginx
+  #   ports:
+  #     - "80:80"
+  #     - "443:443"
+  #   depends_on:
+  #     - backend
+  #     - frontend
+  #   networks:
+  #     - edms_prod_network
+  #   restart: unless-stopped
+  #   healthcheck:
+  #     test: ["CMD", "curl", "-f", "http://localhost/health"]
+  #     interval: 30s
+  #     timeout: 10s
+  #     retries: 3
+
+volumes:
+  postgres_prod_data:
+  redis_prod_data:
+  static_files:
+
+networks:
+  edms_prod_network:
+    driver: bridge
+    ipam:
+      driver: default
+      config:
+        - subnet: 172.20.0.0/16

@@ -1,0 +1,35 @@
+# Environment files
+.env
+.env.local
+*.env
+
+# Python
+__pycache__/
+*.py[cod]
+*.so
+*.egg-info/
+dist/
+build/
+
+# Node
+node_modules/
+npm-debug.log*
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Application
+backend/storage/media/*
+backend/logs/*.log
+backend/*.sqlite3
+backend/staticfiles/
+
+# Docker
+*.log

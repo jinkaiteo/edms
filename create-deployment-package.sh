@@ -114,6 +114,7 @@ cp PRODUCTION_DEPLOYMENT_READINESS.md "${PACKAGE_DIR}/docs/" 2>/dev/null || true
 cp DEPLOYMENT_QUICK_START.md "${PACKAGE_DIR}/docs/" 2>/dev/null || true
 cp DOCKER_NETWORKING_EXPLAINED.md "${PACKAGE_DIR}/docs/" 2>/dev/null || true
 cp HAPROXY_INTEGRATION_GUIDE.md "${PACKAGE_DIR}/docs/" 2>/dev/null || true
+cp METHOD2_BACKUP_RESTORE_REFERENCE.md "${PACKAGE_DIR}/docs/" 2>/dev/null || true
 cp README.md "${PACKAGE_DIR}/" 2>/dev/null || true
 
 echo "✓ Documentation copied"
@@ -125,8 +126,15 @@ cp deploy-interactive.sh "${PACKAGE_DIR}/" 2>/dev/null || true
 chmod +x "${PACKAGE_DIR}/deploy-interactive.sh" 2>/dev/null || true
 
 # Copy utility scripts if they exist
-cp scripts/backup-system.sh "${PACKAGE_DIR}/scripts/" 2>/dev/null || true
 cp scripts/deploy-production.sh "${PACKAGE_DIR}/scripts/" 2>/dev/null || true
+
+# Copy Method #2 backup and restore scripts
+echo "Copying backup and restore scripts..."
+cp scripts/backup-edms.sh "${PACKAGE_DIR}/scripts/" 2>/dev/null || true
+cp scripts/restore-edms.sh "${PACKAGE_DIR}/scripts/" 2>/dev/null || true
+cp scripts/setup-backup-cron.sh "${PACKAGE_DIR}/scripts/" 2>/dev/null || true
+cp scripts/verify-backup.sh "${PACKAGE_DIR}/scripts/" 2>/dev/null || true
+chmod +x "${PACKAGE_DIR}/scripts/"*.sh 2>/dev/null || true
 
 echo "✓ Scripts copied"
 
