@@ -30,8 +30,10 @@ api_urlpatterns = [
     path('', include('apps.api.v1.urls')),  # All auth endpoints: auth/login/, auth/token/, auth/logout/, etc.
     path('session/', include('apps.api.v1.session_urls')),  # Session auth endpoints
     
-    # User management (direct access to users viewset only)
-    path('users/', include(('apps.users.urls', 'users-api'), namespace='users-api')),
+    # User management - Removed duplicate registration
+    # UserViewSet is already registered in apps.api.v1.urls.py at /api/v1/users/
+    # This prevented /users/{id}/assign_role/ and other actions from working
+    # path('users/', include(('apps.users.urls', 'users-api'), namespace='users-api')),
     
     # Dashboard statistics
     path('dashboard/stats/', DashboardStatsView.as_view(), name='dashboard-stats'),

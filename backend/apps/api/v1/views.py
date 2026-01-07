@@ -23,6 +23,8 @@ from apps.documents.serializers import (
 )
 from apps.users.models import User, Role, UserRole
 from apps.users.serializers import UserSerializer, RoleSerializer, UserRoleSerializer
+# Import full UserViewSet from apps.users.views to get all action methods (assign_role, remove_role, etc.)
+from apps.users.views import UserViewSet as FullUserViewSet
 from apps.workflows.models import DocumentWorkflow, DocumentTransition, WorkflowInstance  # WorkflowTask removed
 from apps.workflows.serializers import (
     WorkflowInstanceSerializer, WorkflowTransitionSerializer  # WorkflowTaskSerializer removed
@@ -463,24 +465,9 @@ class DocumentVersionViewSet(viewsets.ReadOnlyModelViewSet):
     ordering = ['-created_at']
 
 
-class UserViewSet(viewsets.ModelViewSet):
-    """User management API endpoints."""
-    
-    queryset = User.objects.all()
-    serializer_class = UserSerializer
-    permission_classes = [permissions.IsAuthenticated]
-    pagination_class = StandardResultsSetPagination
-    filter_backends = [filters.SearchFilter, filters.OrderingFilter]
-    search_fields = ['username', 'email', 'first_name', 'last_name']
-    ordering = ['username']
-    
-    def get_permissions(self):
-        """Adjust permissions based on action."""
-        if self.action in ['list', 'retrieve']:
-            permission_classes = [permissions.IsAuthenticated]
-        else:
-            permission_classes = [permissions.IsAdminUser]
-        return [permission() for permission in permission_classes]
+# Use the full UserViewSet from apps.users.views which includes all action methods
+# This provides assign_role, remove_role, reset_password, and create_user actions
+UserViewSet = FullUserViewSet
 
 
 class RoleViewSet(viewsets.ModelViewSet):
