@@ -313,9 +313,9 @@ const DocumentCreateModal: React.FC<DocumentCreateModalProps> = ({
       setLoading(true);
       
       const [typesResponse, sourcesResponse, documentsResponse] = await Promise.all([
-        apiService.get('/documents/types/'),
-        apiService.get('/documents/sources/'),
-        apiService.get('/documents/documents/?status=EFFECTIVE')
+        apiService.get('/document-types/'),
+        apiService.get('/document-sources/'),
+        apiService.get('/documents/?status=EFFECTIVE')
       ]);
       
       setDocumentTypes(Array.isArray(typesResponse) ? typesResponse : typesResponse.results || []);
@@ -510,6 +510,18 @@ const DocumentCreateModal: React.FC<DocumentCreateModalProps> = ({
       setLoading(true);
       setError(null);
 
+      // Get current user to set as author
+      let currentUserId: number;
+      try {
+        const currentUser = await apiService.getCurrentUser();
+        currentUserId = currentUser.id;
+        console.log('✅ Current user ID:', currentUserId);
+      } catch (error) {
+        console.error('❌ Failed to get current user:', error);
+        setError('Failed to get current user information. Please try logging in again.');
+        return;
+      }
+
       // Create FormData for file upload with defensive values
       const formData = new FormData();
       const titleValue = title.trim();
@@ -523,6 +535,7 @@ const DocumentCreateModal: React.FC<DocumentCreateModalProps> = ({
       formData.append('priority', priority);
       formData.append('requires_training', requiresTraining.toString());
       formData.append('is_controlled', 'true'); // Add missing field
+      formData.append('author', currentUserId.toString()); // Add current user as author
       
       // Debug selectedFile state
       console.log('🔍 Debug - selectedFile:', selectedFile);
@@ -578,8 +591,8 @@ const DocumentCreateModal: React.FC<DocumentCreateModalProps> = ({
 
       // Use direct fetch for FormData uploads (create or update)
       const apiUrl = editDocument 
-        ? `/api/v1/documents/documents/${editDocument.uuid}/`
-        : '/api/v1/documents/documents/';
+        ? `/api/v1/documents/${editDocument.uuid}/`
+        : '/api/v1/documents/';
       
       const method = editDocument ? 'PATCH' : 'POST';
       

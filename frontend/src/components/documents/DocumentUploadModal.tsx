@@ -71,11 +71,11 @@ const DocumentUploadModal: React.FC<DocumentUploadModalProps> = ({
       setLoadingData(true);
 
       // Load document types using apiService.get() like DocumentUploadNew
-      const typesResponse = await apiService.get('/documents/types/');
+      const typesResponse = await apiService.get('/document-types/');
       setDocumentTypes(Array.isArray(typesResponse) ? typesResponse : typesResponse.results || []);
       
       // Load document sources using apiService.get() like DocumentUploadNew
-      const sourcesResponse = await apiService.get('/documents/sources/');
+      const sourcesResponse = await apiService.get('/document-sources/');
       setDocumentSources(Array.isArray(sourcesResponse) ? sourcesResponse : sourcesResponse.results || []);
       
       // Load users using direct API call like DocumentUploadNew
