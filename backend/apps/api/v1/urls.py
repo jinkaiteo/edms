@@ -50,6 +50,9 @@ from .views import (
     # SystemConfigurationViewSet, UICustomizationViewSet, FeatureToggleViewSet,  # Temporarily disabled
 )
 
+# Import DocumentSourceViewSet directly from documents app
+from apps.documents.views import DocumentSourceViewSet
+
 # Import authentication views
 from .auth_views import LoginView, LogoutView, CurrentUserView, CSRFTokenView, auth_status
 from rest_framework_simplejwt.views import TokenObtainPairView
@@ -63,6 +66,7 @@ router = DefaultRouter()
 # Document management endpoints
 router.register(r'documents', DocumentViewSet, basename='document')
 router.register(r'document-types', DocumentTypeViewSet, basename='documenttype')
+router.register(r'document-sources', DocumentSourceViewSet, basename='documentsource')
 router.register(r'document-versions', DocumentVersionViewSet, basename='documentversion')
 
 # User management endpoints

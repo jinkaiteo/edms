@@ -21,6 +21,8 @@ from apps.documents.models import Document, DocumentType, DocumentVersion
 from apps.documents.serializers import (
     DocumentDetailSerializer, DocumentTypeSerializer, DocumentVersionSerializer
 )
+# Import DocumentSourceViewSet from documents app
+from apps.documents.views import DocumentSourceViewSet
 from apps.users.models import User, Role, UserRole
 from apps.users.serializers import UserSerializer, RoleSerializer, UserRoleSerializer
 # Import full UserViewSet from apps.users.views to get all action methods (assign_role, remove_role, etc.)
