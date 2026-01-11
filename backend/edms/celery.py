@@ -112,33 +112,30 @@ app.conf.beat_schedule = {
         }
     },
     
-    # S4 Backup System - Daily Full Backup - runs daily at 2 AM
-    'backup-daily-full': {
-        'task': 'apps.backup.tasks.run_scheduled_backup',
+    # Hybrid Backup System - Daily Backup - runs daily at 2 AM
+    'hybrid-backup-daily': {
+        'task': 'apps.core.tasks.run_hybrid_backup',
         'schedule': crontab(minute=0, hour=2),  # Daily at 02:00
-        'kwargs': {'backup_name': 'backup-daily-full'},
         'options': {
             'expires': 3600,  # Task expires after 1 hour
             'priority': 9,    # Highest priority - critical infrastructure
         }
     },
     
-    # S4 Backup System - Weekly Export - runs Sundays at 3 AM
-    'backup-weekly-export': {
-        'task': 'apps.backup.tasks.run_scheduled_backup',
+    # Hybrid Backup System - Weekly Backup - runs Sundays at 3 AM
+    'hybrid-backup-weekly': {
+        'task': 'apps.core.tasks.run_hybrid_backup',
         'schedule': crontab(minute=0, hour=3, day_of_week=0),  # Sunday 03:00
-        'kwargs': {'backup_name': 'backup-weekly-export'},
         'options': {
             'expires': 7200,  # Task expires after 2 hours
             'priority': 8,    # High priority
         }
     },
     
-    # S4 Backup System - Monthly Archive - runs 1st of month at 4 AM
-    'backup-monthly-archive': {
-        'task': 'apps.backup.tasks.run_scheduled_backup',
+    # Hybrid Backup System - Monthly Backup - runs 1st of month at 4 AM
+    'hybrid-backup-monthly': {
+        'task': 'apps.core.tasks.run_hybrid_backup',
         'schedule': crontab(minute=0, hour=4, day_of_month=1),  # 1st of month at 04:00
-        'kwargs': {'backup_name': 'backup-monthly-archive'},
         'options': {
             'expires': 10800,  # Task expires after 3 hours
             'priority': 7,     # High priority
