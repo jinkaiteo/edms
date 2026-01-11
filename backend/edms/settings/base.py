@@ -39,6 +39,7 @@ THIRD_PARTY_APPS = [
 ]
 
 LOCAL_APPS = [
+    'apps.core',  # Core utilities (backup system, etc.)
     'apps.users',
     'apps.documents',
     'apps.workflows',
@@ -46,7 +47,6 @@ LOCAL_APPS = [
     'apps.security',
     'apps.placeholders',
     'apps.scheduler',
-    'apps.backup',
     'apps.settings',
     'apps.admin_pages',
 ]
@@ -62,7 +62,6 @@ MIDDLEWARE = [
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
-    'apps.backup.middleware.BackupAPIAuthMiddleware',  # Enable admin session auth for backup APIs
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
     'apps.audit.middleware_api_fix.EnhancedAuditMiddleware',

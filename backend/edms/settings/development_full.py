@@ -13,7 +13,6 @@ INSTALLED_APPS += [
     'apps.security',
     'apps.placeholders',
     # 'apps.search',  # Temporarily disabled (depends on audit)
-    'apps.backup',
     'apps.settings',
     'apps.scheduler',
     'apps.api',

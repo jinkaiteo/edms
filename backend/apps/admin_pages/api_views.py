@@ -196,7 +196,7 @@ def system_reinit_status(request):
         from apps.documents.models import Document
         from apps.workflows.models import WorkflowInstance
         from apps.audit.models import AuditTrail
-        from apps.backup.models import BackupJob
+        # Backup module removed - using hybrid backup system
         
         status = {
             'system_status': {
@@ -204,7 +204,7 @@ def system_reinit_status(request):
                 'documents': Document.objects.count(),
                 'workflows': WorkflowInstance.objects.count(),
                 'audit_trails': AuditTrail.objects.count(),
-                'backup_jobs': BackupJob.objects.count()
+                # backup_jobs count removed - old system deprecated
             },
             'ready_for_reinit': True,
             'current_time': timezone.now().isoformat(),

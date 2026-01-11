@@ -1,0 +1,317 @@
+{% extends "admin/base_site.html" %}
+{% load admin_urls static admin_modify %}
+
+{% block title %}Notification Dashboard - {{ site_title|default:"Django Admin" }}{% endblock %}
+
+{% block extrahead %}
+    {{ block.super }}
+    <style>
+        .notification-dashboard {
+            padding: 20px;
+        }
+        
+        .dashboard-stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        
+        .stat-card {
+            background: #fff;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            padding: 20px;
+            text-align: center;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        
+        .stat-number {
+            font-size: 2.5em;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+        
+        .stat-label {
+            color: #666;
+            font-size: 0.9em;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        
+        .pending-notifications { color: #ffc107; }
+        .sent-notifications { color: #28a745; }
+        .failed-notifications { color: #dc3545; }
+        .total-notifications { color: #007bff; }
+        
+        .dashboard-section {
+            background: #fff;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            overflow: hidden;
+        }
+        
+        .section-header {
+            background: #f8f8f8;
+            padding: 15px 20px;
+            border-bottom: 1px solid #ddd;
+            font-weight: bold;
+            color: #333;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .section-content {
+            padding: 20px;
+        }
+        
+        .notification-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 15px;
+        }
+        
+        .notification-table th,
+        .notification-table td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #eee;
+        }
+        
+        .notification-table th {
+            background: #f8f8f8;
+            font-weight: bold;
+            color: #333;
+        }
+        
+        .status-badge {
+            padding: 4px 8px;
+            border-radius: 3px;
+            font-size: 11px;
+            font-weight: bold;
+            text-transform: uppercase;
+        }
+        
+        .status-pending { background: #fff3cd; color: #856404; }
+        .status-sent { background: #d4edda; color: #155724; }
+        .status-failed { background: #f8d7da; color: #721c24; }
+        .status-cancelled { background: #e2e3e5; color: #383d41; }
+        
+        .priority-badge {
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-size: 10px;
+            font-weight: bold;
+            text-transform: uppercase;
+        }
+        
+        .priority-low { background: #bee5eb; color: #0c5460; }
+        .priority-normal { background: #d4edda; color: #155724; }
+        .priority-high { background: #fff3cd; color: #856404; }
+        .priority-urgent { background: #f8d7da; color: #721c24; }
+        
+        .action-buttons {
+            margin: 20px 0;
+        }
+        
+        .action-button {
+            background: #007bff;
+            color: white;
+            padding: 10px 20px;
+            text-decoration: none;
+            border-radius: 4px;
+            margin-right: 10px;
+            display: inline-block;
+            font-size: 14px;
+            border: none;
+            cursor: pointer;
+        }
+        
+        .action-button:hover {
+            background: #0056b3;
+            color: white;
+        }
+        
+        .test-button { background: #28a745; }
+        .test-button:hover { background: #218838; }
+        
+        .process-button { background: #ffc107; color: #212529; }
+        .process-button:hover { background: #e0a800; }
+        
+        .refresh-note {
+            color: #666;
+            font-size: 0.9em;
+            margin-top: 20px;
+            font-style: italic;
+        }
+        
+        .empty-state {
+            text-align: center;
+            padding: 40px;
+            color: #666;
+            font-style: italic;
+        }
+    </style>
+{% endblock %}
+
+{% block content %}
+<div class="notification-dashboard">
+    <h1>📧 EDMS Notification Dashboard</h1>
+    <p>Monitor and manage automated notifications for document lifecycle events and system alerts.</p>
+    
+    <!-- Statistics Cards -->
+    <div class="dashboard-stats">
+        <div class="stat-card">
+            <div class="stat-number total-notifications">{{ stats.total }}</div>
+            <div class="stat-label">Total Notifications</div>
+        </div>
+        
+        <div class="stat-card">
+            <div class="stat-number pending-notifications">{{ stats.pending }}</div>
+            <div class="stat-label">Pending</div>
+        </div>
+        
+        <div class="stat-card">
+            <div class="stat-number sent-notifications">{{ stats.sent }}</div>
+            <div class="stat-label">Sent</div>
+        </div>
+        
+        <div class="stat-card">
+            <div class="stat-number failed-notifications">{{ stats.failed }}</div>
+            <div class="stat-label">Failed</div>
+        </div>
+    </div>
+    
+    <!-- Action Buttons -->
+    <div class="action-buttons">
+        <form method="post" action="{% url 'admin:scheduler_test_notification' %}" style="display: inline;">
+            {% csrf_token %}
+            <button type="submit" class="action-button test-button">
+                🧪 Send Test Notification
+            </button>
+        </form>
+        <a href="{% url 'admin:scheduler_process_notifications' %}" class="action-button process-button">
+            ⚡ Process Queue Now
+        </a>
+        <a href="{% url 'admin:scheduler_notificationqueue_changelist' %}" class="action-button">
+            📋 Manage All Notifications
+        </a>
+        <a href="{% url 'admin:scheduler_notification_stats' %}" class="action-button" target="_blank">
+            📊 View Statistics (JSON)
+        </a>
+    </div>
+    
+    <!-- Recent Notifications -->
+    <div class="dashboard-section">
+        <div class="section-header">
+            <span>📬 Recent Notifications</span>
+            <span style="font-size: 0.9em; font-weight: normal; color: #666;">Last 24 hours</span>
+        </div>
+        <div class="section-content">
+            {% if recent_notifications %}
+                <table class="notification-table">
+                    <thead>
+                        <tr>
+                            <th>Subject</th>
+                            <th>Type</th>
+                            <th>Status</th>
+                            <th>Priority</th>
+                            <th>Recipients</th>
+                            <th>Scheduled</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for notification in recent_notifications %}
+                        <tr>
+                            <td>
+                                <strong>{{ notification.subject|truncatechars:60 }}</strong>
+                                {% if notification.error_message %}
+                                    <br><small style="color: #dc3545;">{{ notification.error_message|truncatechars:80 }}</small>
+                                {% endif %}
+                            </td>
+                            <td>{{ notification.get_notification_type_display }}</td>
+                            <td>
+                                <span class="status-badge status-{{ notification.status|lower }}">
+                                    {{ notification.status }}
+                                </span>
+                            </td>
+                            <td>
+                                <span class="priority-badge priority-{{ notification.priority|lower }}">
+                                    {{ notification.priority }}
+                                </span>
+                            </td>
+                            <td>
+                                {{ notification.recipients.count }}
+                                {% if notification.recipient_emails %}
+                                    + {{ notification.recipient_emails|length }} email{{ notification.recipient_emails|length|pluralize }}
+                                {% endif %}
+                            </td>
+                            <td>{{ notification.scheduled_at|date:"M d, H:i" }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            {% else %}
+                <div class="empty-state">
+                    <p>📭 No notifications in the last 24 hours</p>
+                    <p>The system will automatically create notifications when documents are processed or workflows timeout.</p>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+    
+    <!-- Notification Types Overview -->
+    <div class="dashboard-section">
+        <div class="section-header">
+            <span>📋 Notification Types Configuration</span>
+        </div>
+        <div class="section-content">
+            <h3>Automated Notifications Active:</h3>
+            <ul style="line-height: 1.8;">
+                <li><strong>Document Effective Notifications</strong> - Sent when documents become effective automatically</li>
+                <li><strong>Document Obsolescence Notifications</strong> - Sent when documents are retired</li>
+                <li><strong>Workflow Timeout Notifications</strong> - Sent for overdue approvals/reviews (>7 days)</li>
+                <li><strong>System Health Alerts</strong> - Sent to administrators when system issues are detected</li>
+                <li><strong>Task Failure Alerts</strong> - Sent when scheduled tasks fail</li>
+                <li><strong>Daily Summary Notifications</strong> - Daily activity summary (8 AM)</li>
+            </ul>
+            
+            <h3>Notification Schedule:</h3>
+            <ul style="line-height: 1.8;">
+                <li>📮 <strong>Queue Processing</strong>: Every 5 minutes</li>
+                <li>📊 <strong>Daily Summaries</strong>: Daily at 8:00 AM</li>
+                <li>⚠️ <strong>Workflow Timeouts</strong>: Daily at 9:00 AM</li>
+                <li>🔔 <strong>Immediate Alerts</strong>: Real-time for critical events</li>
+            </ul>
+            
+            <h3>Email Configuration:</h3>
+            <ul style="line-height: 1.8;">
+                <li>📧 <strong>Backend</strong>: {{ email_backend }}</li>
+                <li>📮 <strong>From Address</strong>: {{ from_email }}</li>
+                <li>👥 <strong>Admin Recipients</strong>: {{ admin_count }} administrator{{ admin_count|pluralize }}</li>
+                <li>🎯 <strong>Total Users with Email</strong>: {{ users_with_email }} user{{ users_with_email|pluralize }}</li>
+            </ul>
+        </div>
+    </div>
+    
+    <div class="refresh-note">
+        🔄 Dashboard data updates automatically. Last updated: <span id="last-updated">{{ now|date:"Y-m-d H:i:s" }} UTC</span>
+    </div>
+</div>
+
+<script>
+function updateTimestamp() {
+    document.getElementById('last-updated').textContent = new Date().toISOString().slice(0, 19).replace('T', ' ') + ' UTC';
+}
+
+// Update timestamp every minute
+setInterval(updateTimestamp, 60000);
+
+// Auto-refresh stats every 5 minutes
+setInterval(function() {
+    location.reload();
+}, 300000);
+</script>
+{% endblock %}

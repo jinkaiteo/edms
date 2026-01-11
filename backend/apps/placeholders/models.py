@@ -131,12 +131,8 @@ class PlaceholderDefinition(models.Model):
     @classmethod
     def get_by_natural_key(cls, name):
         """Get placeholder definition by natural key (name)"""
-        from apps.backup.optimization import NaturalKeyOptimizer
-        
-        # Try cache first
-        cached_obj = NaturalKeyOptimizer.get_cached_natural_key_lookup(cls, (name,))
-        if cached_obj:
-            return cached_obj
+        # Backup optimization module removed - using direct lookup
+        # Old NaturalKeyOptimizer no longer available
         
         # Cache miss - do database lookup
         obj = cls.objects.get(name=name)

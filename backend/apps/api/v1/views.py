@@ -44,8 +44,8 @@ from apps.placeholders.models import DocumentTemplate, PlaceholderDefinition, Do
 from apps.placeholders.serializers import (
     DocumentTemplateSerializer, PlaceholderDefinitionSerializer, DocumentGenerationSerializer
 )
-from apps.backup.models import BackupJob, HealthCheck, SystemMetric
-# from apps.backup.serializers import BackupJobSerializer, HealthCheckSerializer, SystemMetricSerializer  # Not available
+# Backup module removed - using hybrid backup system (shell scripts + Celery)
+# Old backup models (BackupJob, HealthCheck, SystemMetric) no longer needed
 from apps.settings.models import SystemConfiguration, UICustomization, FeatureToggle
 # from apps.settings.serializers import (
 #     SystemConfigurationSerializer, UICustomizationSerializer, FeatureToggleSerializer

@@ -21,12 +21,8 @@ app.config_from_object('django.conf:settings', namespace='CELERY')
 # Load task modules from all registered Django apps
 app.autodiscover_tasks()
 
-# Explicitly import backup tasks to ensure they're registered
-try:
-    import apps.backup.tasks
-except ImportError as e:
-    import logging
-    logging.error(f"Failed to import backup tasks: {e}")
+# Old backup module removed - using hybrid backup system via apps.core.tasks
+# Backup tasks are now in apps.core.tasks.run_hybrid_backup (scheduled below)
 
 # S3 Scheduler Module - Celery Beat Schedule for automated tasks
 app.conf.beat_schedule = {
@@ -142,15 +138,7 @@ app.conf.beat_schedule = {
         }
     },
     
-    # S4 Backup System - Cleanup Old Backups - runs daily at 5 AM
-    'backup-cleanup': {
-        'task': 'apps.backup.tasks.cleanup_old_backups',
-        'schedule': crontab(minute=0, hour=5),  # Daily at 05:00
-        'options': {
-            'expires': 3600,  # Task expires after 1 hour
-            'priority': 5,    # Medium priority
-        }
-    },
+    # Note: Old backup cleanup task removed - implement simple file cleanup if needed
 }
 
 # Task routing configuration
@@ -159,7 +147,6 @@ app.conf.task_routes = {
     'apps.workflows.tasks.*': {'queue': 'workflows'},
     'apps.scheduler.automated_tasks.cleanup_workflow_tasks': {'queue': 'maintenance'},
     'apps.scheduler.automated_tasks.*': {'queue': 'scheduler'},
-    'apps.backup.tasks.*': {'queue': 'maintenance'},
     'apps.audit.tasks.*': {'queue': 'maintenance'},
 }
 
