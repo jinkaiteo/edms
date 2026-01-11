@@ -1,0 +1,67 @@
+# Dockerfile for CI/CD Runner
+# Multi-purpose image for running automation scripts in CI/CD pipelines
+
+FROM ubuntu:22.04
+
+# Avoid prompts during build
+ENV DEBIAN_FRONTEND=noninteractive
+
+# Install system dependencies
+RUN apt-get update && apt-get install -y \
+    # Basic tools
+    curl \
+    wget \
+    git \
+    ssh \
+    openssh-client \
+    ca-certificates \
+    gnupg \
+    lsb-release \
+    # Python
+    python3 \
+    python3-pip \
+    python3-venv \
+    # Node.js dependencies
+    nodejs \
+    npm \
+    # Docker CLI
+    docker.io \
+    docker-compose \
+    # Network tools
+    netcat \
+    netstat-nat \
+    iproute2 \
+    iputils-ping \
+    dnsutils \
+    # Utilities
+    jq \
+    vim \
+    nano \
+    less \
+    tar \
+    gzip \
+    zip \
+    unzip \
+    # Monitoring tools
+    htop \
+    procps \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install Docker Compose (latest version)
+RUN curl -L "https://github.com/docker/compose/releases/latest/download/docker-compose-$(uname -s)-$(uname -m)" \
+    -o /usr/local/bin/docker-compose && \
+    chmod +x /usr/local/bin/docker-compose
+
+# Create workspace
+WORKDIR /workspace
+
+# Create non-root user for CI operations
+RUN useradd -m -s /bin/bash ciuser && \
+    usermod -aG docker ciuser
+
+# Set up entrypoint
+COPY infrastructure/containers/ci-entrypoint.sh /usr/local/bin/
+RUN chmod +x /usr/local/bin/ci-entrypoint.sh
+
+ENTRYPOINT ["/usr/local/bin/ci-entrypoint.sh"]
+CMD ["/bin/bash"]

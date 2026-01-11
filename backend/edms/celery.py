@@ -21,12 +21,8 @@ app.config_from_object('django.conf:settings', namespace='CELERY')
 # Load task modules from all registered Django apps
 app.autodiscover_tasks()
 
-# Explicitly import backup tasks to ensure they're registered
-try:
-    import apps.backup.tasks
-except ImportError as e:
-    import logging
-    logging.error(f"Failed to import backup tasks: {e}")
+# Old backup module removed - using hybrid backup system via apps.core.tasks
+# Backup tasks are now in apps.core.tasks.run_hybrid_backup (scheduled below)
 
 # S3 Scheduler Module - Celery Beat Schedule for automated tasks
 app.conf.beat_schedule = {
@@ -112,48 +108,37 @@ app.conf.beat_schedule = {
         }
     },
     
-    # S4 Backup System - Daily Full Backup - runs daily at 2 AM
-    'backup-daily-full': {
-        'task': 'apps.backup.tasks.run_scheduled_backup',
+    # Hybrid Backup System - Daily Backup - runs daily at 2 AM
+    'hybrid-backup-daily': {
+        'task': 'apps.core.tasks.run_hybrid_backup',
         'schedule': crontab(minute=0, hour=2),  # Daily at 02:00
-        'kwargs': {'backup_name': 'backup-daily-full'},
         'options': {
             'expires': 3600,  # Task expires after 1 hour
             'priority': 9,    # Highest priority - critical infrastructure
         }
     },
     
-    # S4 Backup System - Weekly Export - runs Sundays at 3 AM
-    'backup-weekly-export': {
-        'task': 'apps.backup.tasks.run_scheduled_backup',
+    # Hybrid Backup System - Weekly Backup - runs Sundays at 3 AM
+    'hybrid-backup-weekly': {
+        'task': 'apps.core.tasks.run_hybrid_backup',
         'schedule': crontab(minute=0, hour=3, day_of_week=0),  # Sunday 03:00
-        'kwargs': {'backup_name': 'backup-weekly-export'},
         'options': {
             'expires': 7200,  # Task expires after 2 hours
             'priority': 8,    # High priority
         }
     },
     
-    # S4 Backup System - Monthly Archive - runs 1st of month at 4 AM
-    'backup-monthly-archive': {
-        'task': 'apps.backup.tasks.run_scheduled_backup',
+    # Hybrid Backup System - Monthly Backup - runs 1st of month at 4 AM
+    'hybrid-backup-monthly': {
+        'task': 'apps.core.tasks.run_hybrid_backup',
         'schedule': crontab(minute=0, hour=4, day_of_month=1),  # 1st of month at 04:00
-        'kwargs': {'backup_name': 'backup-monthly-archive'},
         'options': {
             'expires': 10800,  # Task expires after 3 hours
             'priority': 7,     # High priority
         }
     },
     
-    # S4 Backup System - Cleanup Old Backups - runs daily at 5 AM
-    'backup-cleanup': {
-        'task': 'apps.backup.tasks.cleanup_old_backups',
-        'schedule': crontab(minute=0, hour=5),  # Daily at 05:00
-        'options': {
-            'expires': 3600,  # Task expires after 1 hour
-            'priority': 5,    # Medium priority
-        }
-    },
+    # Note: Old backup cleanup task removed - implement simple file cleanup if needed
 }
 
 # Task routing configuration
@@ -162,7 +147,6 @@ app.conf.task_routes = {
     'apps.workflows.tasks.*': {'queue': 'workflows'},
     'apps.scheduler.automated_tasks.cleanup_workflow_tasks': {'queue': 'maintenance'},
     'apps.scheduler.automated_tasks.*': {'queue': 'scheduler'},
-    'apps.backup.tasks.*': {'queue': 'maintenance'},
     'apps.audit.tasks.*': {'queue': 'maintenance'},
 }
 

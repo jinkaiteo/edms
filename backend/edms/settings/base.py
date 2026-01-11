@@ -39,6 +39,7 @@ THIRD_PARTY_APPS = [
 ]
 
 LOCAL_APPS = [
+    'apps.core',  # Core utilities (backup system, etc.)
     'apps.users',
     'apps.documents',
     'apps.workflows',

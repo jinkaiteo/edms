@@ -53,7 +53,6 @@ LOCAL_APPS = [
     'apps.security',
     'apps.placeholders',
     'apps.scheduler',
-    'apps.backup',
     'apps.settings',
     'apps.admin_pages',
     'apps.api',

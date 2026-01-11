@@ -1,0 +1,176 @@
+============================= test session starts ==============================
+platform linux -- Python 3.11.14, pytest-7.4.3, pluggy-1.6.0 -- /usr/local/bin/python
+cachedir: .pytest_cache
+django: version: 4.2.16, settings: edms.settings.production (from env)
+rootdir: /app
+configfile: pytest.ini
+plugins: cov-4.1.0, Faker-20.1.0, django-4.7.0
+collecting ... collected 54 items
+
+apps/documents/tests/test_document_dependencies.py::TestDocumentDependencies::test_add_dependency_to_document PASSED [  1%]
+apps/documents/tests/test_document_dependencies.py::TestDocumentDependencies::test_circular_dependency_prevented PASSED [  3%]
+apps/documents/tests/test_document_dependencies.py::TestDocumentDependencies::test_indirect_circular_dependency_prevented PASSED [  5%]
+apps/documents/tests/test_document_dependencies.py::TestDocumentDependencies::test_self_dependency_prevented PASSED [  7%]
+apps/documents/tests/test_document_dependencies.py::TestDocumentDependencies::test_multiple_dependencies_allowed PASSED [  9%]
+apps/documents/tests/test_document_dependencies.py::TestDocumentDependencies::test_critical_dependency_flag PASSED [ 11%]
+apps/documents/tests/test_document_dependencies.py::TestDocumentDependencies::test_dependency_types PASSED [ 12%]
+apps/documents/tests/test_document_dependencies.py::TestDocumentDependencies::test_dependency_on_draft_document PASSED [ 14%]
+apps/documents/tests/test_document_dependencies.py::TestDocumentDependencies::test_version_aware_circular_dependency_detection PASSED [ 16%]
+apps/documents/tests/test_document_dependencies.py::TestDocumentDependencies::test_get_dependency_chain PASSED [ 18%]
+apps/documents/tests/test_document_dependencies.py::TestDocumentDependencies::test_remove_dependency PASSED [ 20%]
+apps/documents/tests/test_document_dependencies.py::TestDocumentDependencies::test_detect_circular_dependencies_system_wide PASSED [ 22%]
+apps/workflows/tests/test_versioning_workflow.py::TestDocumentVersioning::test_create_major_version_from_effective_document ERROR [ 24%]
+apps/workflows/tests/test_versioning_workflow.py::TestDocumentVersioning::test_create_minor_version_from_effective_document ERROR [ 25%]
+apps/workflows/tests/test_versioning_workflow.py::TestDocumentVersioning::test_cannot_version_non_effective_document ERROR [ 27%]
+apps/workflows/tests/test_versioning_workflow.py::TestDocumentVersioning::test_versioned_document_follows_full_workflow ERROR [ 29%]
+apps/workflows/tests/test_versioning_workflow.py::TestDocumentVersioning::test_old_version_superseded_when_new_version_effective ERROR [ 31%]
+apps/workflows/tests/test_versioning_workflow.py::TestDocumentVersioning::test_version_numbering_format ERROR [ 33%]
+apps/workflows/tests/test_versioning_workflow.py::TestDocumentVersioning::test_version_inherits_document_type_and_source ERROR [ 35%]
+apps/workflows/tests/test_versioning_workflow.py::TestDocumentVersioning::test_multiple_versions_chain ERROR [ 37%]
+apps/workflows/tests/test_versioning_workflow.py::TestDocumentVersioning::test_versioning_preserves_dependencies ERROR [ 38%]
+apps/workflows/tests/test_versioning_workflow.py::TestDocumentVersioning::test_cannot_create_version_without_reason ERROR [ 40%]
+apps/workflows/tests/test_versioning_workflow.py::TestDocumentVersioning::test_superseded_documents_are_read_only ERROR [ 42%]
+apps/workflows/tests/test_obsolescence_workflow.py::TestDocumentObsolescence::test_approver_can_mark_document_obsolete ERROR [ 44%]
+apps/workflows/tests/test_obsolescence_workflow.py::TestDocumentObsolescence::test_obsolescence_requires_reason ERROR [ 46%]
+apps/workflows/tests/test_obsolescence_workflow.py::TestDocumentObsolescence::test_scheduled_obsolescence_date ERROR [ 48%]
+apps/workflows/tests/test_obsolescence_workflow.py::TestDocumentObsolescence::test_immediate_obsolescence ERROR [ 50%]
+apps/workflows/tests/test_obsolescence_workflow.py::TestDocumentObsolescence::test_cannot_obsolete_non_effective_document ERROR [ 51%]
+apps/workflows/tests/test_obsolescence_workflow.py::TestDocumentObsolescence::test_author_cannot_mark_obsolete ERROR [ 53%]
+apps/workflows/tests/test_obsolescence_workflow.py::TestDocumentObsolescence::test_obsolete_documents_are_read_only ERROR [ 55%]
+apps/workflows/tests/test_termination_workflow.py::TestDocumentTermination::test_author_can_terminate_draft_document ERROR [ 57%]
+apps/workflows/tests/test_termination_workflow.py::TestDocumentTermination::test_author_can_terminate_under_review_document ERROR [ 59%]
+apps/workflows/tests/test_termination_workflow.py::TestDocumentTermination::test_author_can_terminate_pending_approval_document ERROR [ 61%]
+apps/workflows/tests/test_termination_workflow.py::TestDocumentTermination::test_termination_requires_reason ERROR [ 62%]
+apps/workflows/tests/test_termination_workflow.py::TestDocumentTermination::test_cannot_terminate_effective_document ERROR [ 64%]
+apps/workflows/tests/test_termination_workflow.py::TestDocumentTermination::test_non_author_cannot_terminate ERROR [ 66%]
+apps/workflows/tests/test_termination_workflow.py::TestDocumentTermination::test_terminated_documents_are_read_only ERROR [ 68%]
+apps/scheduler/tests/test_document_activation.py::TestSchedulerDocumentActivation::test_document_becomes_effective_on_scheduled_date PASSED [ 70%]
+apps/scheduler/tests/test_document_activation.py::TestSchedulerDocumentActivation::test_future_dated_documents_remain_pending PASSED [ 72%]
+apps/scheduler/tests/test_document_activation.py::TestSchedulerDocumentActivation::test_scheduler_activates_multiple_documents PASSED [ 74%]
+apps/scheduler/tests/test_document_activation.py::TestSchedulerDocumentActivation::test_past_dated_documents_activated_immediately PASSED [ 75%]
+apps/scheduler/tests/test_document_activation.py::TestSchedulerDocumentActivation::test_scheduler_skips_non_pending_documents PASSED [ 77%]
+apps/scheduler/tests/test_document_activation.py::TestSchedulerDocumentActivation::test_scheduler_timezone_handling PASSED [ 79%]
+apps/scheduler/tests/test_obsolescence_automation.py::TestSchedulerObsolescence::test_scheduler_marks_documents_obsolete_on_date PASSED [ 81%]
+apps/scheduler/tests/test_obsolescence_automation.py::TestSchedulerObsolescence::test_future_obsolescence_remains_scheduled PASSED [ 83%]
+apps/scheduler/tests/test_obsolescence_automation.py::TestSchedulerObsolescence::test_past_obsolescence_processed_immediately PASSED [ 85%]
+apps/audit/tests/test_workflow_audit_trail.py::TestWorkflowAuditTrail::test_audit_trail_created_on_status_change ERROR [ 87%]
+apps/audit/tests/test_workflow_audit_trail.py::TestWorkflowAuditTrail::test_audit_trail_captures_user_info ERROR [ 88%]
+apps/audit/tests/test_workflow_audit_trail.py::TestWorkflowAuditTrail::test_audit_trail_captures_timestamp ERROR [ 90%]
+apps/audit/tests/test_workflow_audit_trail.py::TestWorkflowAuditTrail::test_audit_trail_captures_status_change ERROR [ 92%]
+apps/audit/tests/test_workflow_audit_trail.py::TestWorkflowAuditTrail::test_audit_trail_captures_comment ERROR [ 94%]
+apps/audit/tests/test_workflow_audit_trail.py::TestWorkflowAuditTrail::test_audit_trail_is_immutable ERROR [ 96%]
+apps/audit/tests/test_workflow_audit_trail.py::TestWorkflowAuditTrail::test_audit_trail_filtering_by_user ERROR [ 98%]
+apps/audit/tests/test_workflow_audit_trail.py::TestWorkflowAuditTrail::test_complete_workflow_audit_trail ERROR [100%]
+
+==================================== ERRORS ====================================
+_ ERROR at setup of TestDocumentVersioning.test_create_major_version_from_effective_document _
+E   TypeError: DocumentState() got unexpected keyword arguments: 'workflow_type'
+_ ERROR at setup of TestDocumentVersioning.test_create_minor_version_from_effective_document _
+E   TypeError: DocumentState() got unexpected keyword arguments: 'workflow_type'
+_ ERROR at setup of TestDocumentVersioning.test_cannot_version_non_effective_document _
+E   TypeError: DocumentState() got unexpected keyword arguments: 'workflow_type'
+_ ERROR at setup of TestDocumentVersioning.test_versioned_document_follows_full_workflow _
+E   TypeError: DocumentState() got unexpected keyword arguments: 'workflow_type'
+_ ERROR at setup of TestDocumentVersioning.test_old_version_superseded_when_new_version_effective _
+E   TypeError: DocumentState() got unexpected keyword arguments: 'workflow_type'
+____ ERROR at setup of TestDocumentVersioning.test_version_numbering_format ____
+E   TypeError: DocumentState() got unexpected keyword arguments: 'workflow_type'
+_ ERROR at setup of TestDocumentVersioning.test_version_inherits_document_type_and_source _
+E   TypeError: DocumentState() got unexpected keyword arguments: 'workflow_type'
+____ ERROR at setup of TestDocumentVersioning.test_multiple_versions_chain _____
+E   TypeError: DocumentState() got unexpected keyword arguments: 'workflow_type'
+_ ERROR at setup of TestDocumentVersioning.test_versioning_preserves_dependencies _
+E   TypeError: DocumentState() got unexpected keyword arguments: 'workflow_type'
+_ ERROR at setup of TestDocumentVersioning.test_cannot_create_version_without_reason _
+E   TypeError: DocumentState() got unexpected keyword arguments: 'workflow_type'
+_ ERROR at setup of TestDocumentVersioning.test_superseded_documents_are_read_only _
+E   TypeError: DocumentState() got unexpected keyword arguments: 'workflow_type'
+_ ERROR at setup of TestDocumentObsolescence.test_approver_can_mark_document_obsolete _
+E   NameError: name 'DocumentState' is not defined
+_ ERROR at setup of TestDocumentObsolescence.test_obsolescence_requires_reason _
+E   NameError: name 'DocumentState' is not defined
+_ ERROR at setup of TestDocumentObsolescence.test_scheduled_obsolescence_date __
+E   NameError: name 'DocumentState' is not defined
+____ ERROR at setup of TestDocumentObsolescence.test_immediate_obsolescence ____
+E   NameError: name 'DocumentState' is not defined
+_ ERROR at setup of TestDocumentObsolescence.test_cannot_obsolete_non_effective_document _
+E   NameError: name 'DocumentState' is not defined
+_ ERROR at setup of TestDocumentObsolescence.test_author_cannot_mark_obsolete __
+E   NameError: name 'DocumentState' is not defined
+_ ERROR at setup of TestDocumentObsolescence.test_obsolete_documents_are_read_only _
+E   NameError: name 'DocumentState' is not defined
+_ ERROR at setup of TestDocumentTermination.test_author_can_terminate_draft_document _
+E   NameError: name 'DocumentState' is not defined
+_ ERROR at setup of TestDocumentTermination.test_author_can_terminate_under_review_document _
+E   NameError: name 'DocumentState' is not defined
+_ ERROR at setup of TestDocumentTermination.test_author_can_terminate_pending_approval_document _
+E   NameError: name 'DocumentState' is not defined
+__ ERROR at setup of TestDocumentTermination.test_termination_requires_reason __
+E   NameError: name 'DocumentState' is not defined
+_ ERROR at setup of TestDocumentTermination.test_cannot_terminate_effective_document _
+E   NameError: name 'DocumentState' is not defined
+__ ERROR at setup of TestDocumentTermination.test_non_author_cannot_terminate __
+E   NameError: name 'DocumentState' is not defined
+_ ERROR at setup of TestDocumentTermination.test_terminated_documents_are_read_only _
+E   NameError: name 'DocumentState' is not defined
+_ ERROR at setup of TestWorkflowAuditTrail.test_audit_trail_created_on_status_change _
+E   NameError: name 'DocumentState' is not defined
+_ ERROR at setup of TestWorkflowAuditTrail.test_audit_trail_captures_user_info _
+E   NameError: name 'DocumentState' is not defined
+_ ERROR at setup of TestWorkflowAuditTrail.test_audit_trail_captures_timestamp _
+E   NameError: name 'DocumentState' is not defined
+_ ERROR at setup of TestWorkflowAuditTrail.test_audit_trail_captures_status_change _
+E   NameError: name 'DocumentState' is not defined
+__ ERROR at setup of TestWorkflowAuditTrail.test_audit_trail_captures_comment __
+E   NameError: name 'DocumentState' is not defined
+____ ERROR at setup of TestWorkflowAuditTrail.test_audit_trail_is_immutable ____
+E   NameError: name 'DocumentState' is not defined
+_ ERROR at setup of TestWorkflowAuditTrail.test_audit_trail_filtering_by_user __
+E   NameError: name 'DocumentState' is not defined
+_ ERROR at setup of TestWorkflowAuditTrail.test_complete_workflow_audit_trail __
+E   NameError: name 'DocumentState' is not defined
+=============================== warnings summary ===============================
+../usr/local/lib/python3.11/site-packages/django/conf/__init__.py:289
+  /usr/local/lib/python3.11/site-packages/django/conf/__init__.py:289: RemovedInDjango51Warning: The STATICFILES_STORAGE setting is deprecated. Use STORAGES instead.
+    warnings.warn(STATICFILES_STORAGE_DEPRECATED_MSG, RemovedInDjango51Warning)
+
+../usr/local/lib/python3.11/site-packages/rest_framework_simplejwt/__init__.py:1
+  /usr/local/lib/python3.11/site-packages/rest_framework_simplejwt/__init__.py:1: DeprecationWarning: pkg_resources is deprecated as an API. See https://setuptools.pypa.io/en/latest/pkg_resources.html
+    from pkg_resources import DistributionNotFound, get_distribution
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ============================
+ERROR apps/workflows/tests/test_versioning_workflow.py::TestDocumentVersioning::test_create_major_version_from_effective_document
+ERROR apps/workflows/tests/test_versioning_workflow.py::TestDocumentVersioning::test_create_minor_version_from_effective_document
+ERROR apps/workflows/tests/test_versioning_workflow.py::TestDocumentVersioning::test_cannot_version_non_effective_document
+ERROR apps/workflows/tests/test_versioning_workflow.py::TestDocumentVersioning::test_versioned_document_follows_full_workflow
+ERROR apps/workflows/tests/test_versioning_workflow.py::TestDocumentVersioning::test_old_version_superseded_when_new_version_effective
+ERROR apps/workflows/tests/test_versioning_workflow.py::TestDocumentVersioning::test_version_numbering_format
+ERROR apps/workflows/tests/test_versioning_workflow.py::TestDocumentVersioning::test_version_inherits_document_type_and_source
+ERROR apps/workflows/tests/test_versioning_workflow.py::TestDocumentVersioning::test_multiple_versions_chain
+ERROR apps/workflows/tests/test_versioning_workflow.py::TestDocumentVersioning::test_versioning_preserves_dependencies
+ERROR apps/workflows/tests/test_versioning_workflow.py::TestDocumentVersioning::test_cannot_create_version_without_reason
+ERROR apps/workflows/tests/test_versioning_workflow.py::TestDocumentVersioning::test_superseded_documents_are_read_only
+ERROR apps/workflows/tests/test_obsolescence_workflow.py::TestDocumentObsolescence::test_approver_can_mark_document_obsolete
+ERROR apps/workflows/tests/test_obsolescence_workflow.py::TestDocumentObsolescence::test_obsolescence_requires_reason
+ERROR apps/workflows/tests/test_obsolescence_workflow.py::TestDocumentObsolescence::test_scheduled_obsolescence_date
+ERROR apps/workflows/tests/test_obsolescence_workflow.py::TestDocumentObsolescence::test_immediate_obsolescence
+ERROR apps/workflows/tests/test_obsolescence_workflow.py::TestDocumentObsolescence::test_cannot_obsolete_non_effective_document
+ERROR apps/workflows/tests/test_obsolescence_workflow.py::TestDocumentObsolescence::test_author_cannot_mark_obsolete
+ERROR apps/workflows/tests/test_obsolescence_workflow.py::TestDocumentObsolescence::test_obsolete_documents_are_read_only
+ERROR apps/workflows/tests/test_termination_workflow.py::TestDocumentTermination::test_author_can_terminate_draft_document
+ERROR apps/workflows/tests/test_termination_workflow.py::TestDocumentTermination::test_author_can_terminate_under_review_document
+ERROR apps/workflows/tests/test_termination_workflow.py::TestDocumentTermination::test_author_can_terminate_pending_approval_document
+ERROR apps/workflows/tests/test_termination_workflow.py::TestDocumentTermination::test_termination_requires_reason
+ERROR apps/workflows/tests/test_termination_workflow.py::TestDocumentTermination::test_cannot_terminate_effective_document
+ERROR apps/workflows/tests/test_termination_workflow.py::TestDocumentTermination::test_non_author_cannot_terminate
+ERROR apps/workflows/tests/test_termination_workflow.py::TestDocumentTermination::test_terminated_documents_are_read_only
+ERROR apps/audit/tests/test_workflow_audit_trail.py::TestWorkflowAuditTrail::test_audit_trail_created_on_status_change
+ERROR apps/audit/tests/test_workflow_audit_trail.py::TestWorkflowAuditTrail::test_audit_trail_captures_user_info
+ERROR apps/audit/tests/test_workflow_audit_trail.py::TestWorkflowAuditTrail::test_audit_trail_captures_timestamp
+ERROR apps/audit/tests/test_workflow_audit_trail.py::TestWorkflowAuditTrail::test_audit_trail_captures_status_change
+ERROR apps/audit/tests/test_workflow_audit_trail.py::TestWorkflowAuditTrail::test_audit_trail_captures_comment
+ERROR apps/audit/tests/test_workflow_audit_trail.py::TestWorkflowAuditTrail::test_audit_trail_is_immutable
+ERROR apps/audit/tests/test_workflow_audit_trail.py::TestWorkflowAuditTrail::test_audit_trail_filtering_by_user
+ERROR apps/audit/tests/test_workflow_audit_trail.py::TestWorkflowAuditTrail::test_complete_workflow_audit_trail
+================== 21 passed, 2 warnings, 33 errors in 35.82s ==================

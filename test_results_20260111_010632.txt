@@ -1,0 +1,2730 @@
+============================= test session starts ==============================
+platform linux -- Python 3.11.14, pytest-7.4.3, pluggy-1.6.0 -- /usr/local/bin/python
+cachedir: .pytest_cache
+django: version: 4.2.16, settings: edms.settings.production (from env)
+rootdir: /app
+configfile: pytest.ini
+plugins: cov-4.1.0, Faker-20.1.0, django-4.7.0
+collecting ... collected 54 items
+
+apps/workflows/tests/test_versioning_workflow.py::TestDocumentVersioning::test_create_major_version_from_effective_document ERROR [  1%]
+apps/workflows/tests/test_versioning_workflow.py::TestDocumentVersioning::test_create_minor_version_from_effective_document ERROR [  3%]
+apps/workflows/tests/test_versioning_workflow.py::TestDocumentVersioning::test_cannot_version_non_effective_document ERROR [  5%]
+apps/workflows/tests/test_versioning_workflow.py::TestDocumentVersioning::test_versioned_document_follows_full_workflow ERROR [  7%]
+apps/workflows/tests/test_versioning_workflow.py::TestDocumentVersioning::test_old_version_superseded_when_new_version_effective ERROR [  9%]
+apps/workflows/tests/test_versioning_workflow.py::TestDocumentVersioning::test_version_numbering_format ERROR [ 11%]
+apps/workflows/tests/test_versioning_workflow.py::TestDocumentVersioning::test_version_inherits_document_type_and_source ERROR [ 12%]
+apps/workflows/tests/test_versioning_workflow.py::TestDocumentVersioning::test_multiple_versions_chain ERROR [ 14%]
+apps/workflows/tests/test_versioning_workflow.py::TestDocumentVersioning::test_versioning_preserves_dependencies ERROR [ 16%]
+apps/workflows/tests/test_versioning_workflow.py::TestDocumentVersioning::test_cannot_create_version_without_reason ERROR [ 18%]
+apps/workflows/tests/test_versioning_workflow.py::TestDocumentVersioning::test_superseded_documents_are_read_only ERROR [ 20%]
+apps/workflows/tests/test_obsolescence_workflow.py::TestDocumentObsolescence::test_approver_can_mark_document_obsolete ERROR [ 22%]
+apps/workflows/tests/test_obsolescence_workflow.py::TestDocumentObsolescence::test_obsolescence_requires_reason ERROR [ 24%]
+apps/workflows/tests/test_obsolescence_workflow.py::TestDocumentObsolescence::test_scheduled_obsolescence_date ERROR [ 25%]
+apps/workflows/tests/test_obsolescence_workflow.py::TestDocumentObsolescence::test_immediate_obsolescence ERROR [ 27%]
+apps/workflows/tests/test_obsolescence_workflow.py::TestDocumentObsolescence::test_cannot_obsolete_non_effective_document ERROR [ 29%]
+apps/workflows/tests/test_obsolescence_workflow.py::TestDocumentObsolescence::test_author_cannot_mark_obsolete ERROR [ 31%]
+apps/workflows/tests/test_obsolescence_workflow.py::TestDocumentObsolescence::test_obsolete_documents_are_read_only ERROR [ 33%]
+apps/workflows/tests/test_termination_workflow.py::TestDocumentTermination::test_author_can_terminate_draft_document ERROR [ 35%]
+apps/workflows/tests/test_termination_workflow.py::TestDocumentTermination::test_author_can_terminate_under_review_document ERROR [ 37%]
+apps/workflows/tests/test_termination_workflow.py::TestDocumentTermination::test_author_can_terminate_pending_approval_document ERROR [ 38%]
+apps/workflows/tests/test_termination_workflow.py::TestDocumentTermination::test_termination_requires_reason ERROR [ 40%]
+apps/workflows/tests/test_termination_workflow.py::TestDocumentTermination::test_cannot_terminate_effective_document ERROR [ 42%]
+apps/workflows/tests/test_termination_workflow.py::TestDocumentTermination::test_non_author_cannot_terminate ERROR [ 44%]
+apps/workflows/tests/test_termination_workflow.py::TestDocumentTermination::test_terminated_documents_are_read_only ERROR [ 46%]
+apps/documents/tests/test_document_dependencies.py::TestDocumentDependencies::test_add_dependency_to_document ERROR [ 48%]
+apps/documents/tests/test_document_dependencies.py::TestDocumentDependencies::test_circular_dependency_prevented ERROR [ 50%]
+apps/documents/tests/test_document_dependencies.py::TestDocumentDependencies::test_indirect_circular_dependency_prevented ERROR [ 51%]
+apps/documents/tests/test_document_dependencies.py::TestDocumentDependencies::test_self_dependency_prevented ERROR [ 53%]
+apps/documents/tests/test_document_dependencies.py::TestDocumentDependencies::test_multiple_dependencies_allowed ERROR [ 55%]
+apps/documents/tests/test_document_dependencies.py::TestDocumentDependencies::test_critical_dependency_flag ERROR [ 57%]
+apps/documents/tests/test_document_dependencies.py::TestDocumentDependencies::test_dependency_types ERROR [ 59%]
+apps/documents/tests/test_document_dependencies.py::TestDocumentDependencies::test_dependency_on_draft_document ERROR [ 61%]
+apps/documents/tests/test_document_dependencies.py::TestDocumentDependencies::test_version_aware_circular_dependency_detection ERROR [ 62%]
+apps/documents/tests/test_document_dependencies.py::TestDocumentDependencies::test_get_dependency_chain ERROR [ 64%]
+apps/documents/tests/test_document_dependencies.py::TestDocumentDependencies::test_remove_dependency ERROR [ 66%]
+apps/documents/tests/test_document_dependencies.py::TestDocumentDependencies::test_detect_circular_dependencies_system_wide ERROR [ 68%]
+apps/scheduler/tests/test_document_activation.py::TestSchedulerDocumentActivation::test_document_becomes_effective_on_scheduled_date ERROR [ 70%]
+apps/scheduler/tests/test_document_activation.py::TestSchedulerDocumentActivation::test_future_dated_documents_remain_pending ERROR [ 72%]
+apps/scheduler/tests/test_document_activation.py::TestSchedulerDocumentActivation::test_scheduler_activates_multiple_documents ERROR [ 74%]
+apps/scheduler/tests/test_document_activation.py::TestSchedulerDocumentActivation::test_past_dated_documents_activated_immediately ERROR [ 75%]
+apps/scheduler/tests/test_document_activation.py::TestSchedulerDocumentActivation::test_scheduler_skips_non_pending_documents ERROR [ 77%]
+apps/scheduler/tests/test_document_activation.py::TestSchedulerDocumentActivation::test_scheduler_timezone_handling ERROR [ 79%]
+apps/scheduler/tests/test_obsolescence_automation.py::TestSchedulerObsolescence::test_scheduler_marks_documents_obsolete_on_date ERROR [ 81%]
+apps/scheduler/tests/test_obsolescence_automation.py::TestSchedulerObsolescence::test_future_obsolescence_remains_scheduled ERROR [ 83%]
+apps/scheduler/tests/test_obsolescence_automation.py::TestSchedulerObsolescence::test_past_obsolescence_processed_immediately ERROR [ 85%]
+apps/audit/tests/test_workflow_audit_trail.py::TestWorkflowAuditTrail::test_audit_trail_created_on_status_change ERROR [ 87%]
+apps/audit/tests/test_workflow_audit_trail.py::TestWorkflowAuditTrail::test_audit_trail_captures_user_info ERROR [ 88%]
+apps/audit/tests/test_workflow_audit_trail.py::TestWorkflowAuditTrail::test_audit_trail_captures_timestamp ERROR [ 90%]
+apps/audit/tests/test_workflow_audit_trail.py::TestWorkflowAuditTrail::test_audit_trail_captures_status_change ERROR [ 92%]
+apps/audit/tests/test_workflow_audit_trail.py::TestWorkflowAuditTrail::test_audit_trail_captures_comment ERROR [ 94%]
+apps/audit/tests/test_workflow_audit_trail.py::TestWorkflowAuditTrail::test_audit_trail_is_immutable ERROR [ 96%]
+apps/audit/tests/test_workflow_audit_trail.py::TestWorkflowAuditTrail::test_audit_trail_filtering_by_user ERROR [ 98%]
+apps/audit/tests/test_workflow_audit_trail.py::TestWorkflowAuditTrail::test_complete_workflow_audit_trail ERROR [100%]
+
+==================================== ERRORS ====================================
+_ ERROR at setup of TestDocumentVersioning.test_create_major_version_from_effective_document _
+/usr/local/lib/python3.11/site-packages/django/db/backends/utils.py:89: in _execute
+    return self.cursor.execute(sql, params)
+E   psycopg2.errors.UndefinedColumn: column workflow_notifications.is_read does not exist
+E   LINE 1: ...tatus", "workflow_notifications"."error_message", "workflow_...
+E                                                                ^
+
+The above exception was the direct cause of the following exception:
+/usr/local/lib/python3.11/site-packages/django/db/models/sql/compiler.py:1562: in execute_sql
+    cursor.execute(sql, params)
+/usr/local/lib/python3.11/site-packages/django/db/backends/utils.py:67: in execute
+    return self._execute_with_wrappers(
+/usr/local/lib/python3.11/site-packages/django/db/backends/utils.py:80: in _execute_with_wrappers
+    return executor(sql, params, many, context)
+/usr/local/lib/python3.11/site-packages/django/db/backends/utils.py:84: in _execute
+    with self.db.wrap_database_errors:
+/usr/local/lib/python3.11/site-packages/django/db/utils.py:91: in __exit__
+    raise dj_exc_value.with_traceback(traceback) from exc_value
+/usr/local/lib/python3.11/site-packages/django/db/backends/utils.py:89: in _execute
+    return self.cursor.execute(sql, params)
+E   django.db.utils.ProgrammingError: column workflow_notifications.is_read does not exist
+E   LINE 1: ...tatus", "workflow_notifications"."error_message", "workflow_...
+E                                                                ^
+
+During handling of the above exception, another exception occurred:
+/home/edms/.local/lib/python3.11/site-packages/pytest_django/plugin.py:527: in _django_db_marker
+    request.getfixturevalue("_django_db_helper")
+/home/edms/.local/lib/python3.11/site-packages/pytest_django/fixtures.py:140: in django_db_setup
+    db_cfg = setup_databases(
+/usr/local/lib/python3.11/site-packages/django/test/utils.py:221: in setup_databases
+    connection.creation.create_test_db(
+/usr/local/lib/python3.11/site-packages/django/db/backends/base/creation.py:94: in create_test_db
+    self.connection._test_serialized_contents = self.serialize_db_to_string()
+/usr/local/lib/python3.11/site-packages/django/db/backends/base/creation.py:142: in serialize_db_to_string
+    serializers.serialize("json", get_objects(), indent=None, stream=out)
+/usr/local/lib/python3.11/site-packages/django/core/serializers/__init__.py:134: in serialize
+    s.serialize(queryset, **options)
+/usr/local/lib/python3.11/site-packages/django/core/serializers/base.py:132: in serialize
+    for count, obj in enumerate(queryset, start=1):
+/usr/local/lib/python3.11/site-packages/django/db/backends/base/creation.py:138: in get_objects
+    yield from queryset.iterator()
+/usr/local/lib/python3.11/site-packages/django/db/models/query.py:516: in _iterator
+    yield from iterable
+/usr/local/lib/python3.11/site-packages/django/db/models/query.py:91: in __iter__
+    results = compiler.execute_sql(
+/usr/local/lib/python3.11/site-packages/django/db/models/sql/compiler.py:1565: in execute_sql
+    cursor.close()
+E   psycopg2.errors.InvalidCursorName: cursor "_django_curs_123396302027648_sync_28" does not exist
+---------------------------- Captured stdout setup -----------------------------
+Updated 0 document numbers to zero-padded format
+---------------------------- Captured stderr setup -----------------------------
+Creating test database for alias 'default'...
+Got an error creating the test database: database "test_edms_prod_db" already exists
+
+Destroying old test database for alias 'default'...
+_ ERROR at setup of TestDocumentVersioning.test_create_minor_version_from_effective_document _
+/usr/local/lib/python3.11/site-packages/django/db/backends/utils.py:89: in _execute
+    return self.cursor.execute(sql, params)
+E   psycopg2.errors.UndefinedColumn: column workflow_notifications.is_read does not exist
+E   LINE 1: ...tatus", "workflow_notifications"."error_message", "workflow_...
+E                                                                ^
+
+The above exception was the direct cause of the following exception:
+/usr/local/lib/python3.11/site-packages/django/db/models/sql/compiler.py:1562: in execute_sql
+    cursor.execute(sql, params)
+/usr/local/lib/python3.11/site-packages/django/db/backends/utils.py:67: in execute
+    return self._execute_with_wrappers(
+/usr/local/lib/python3.11/site-packages/django/db/backends/utils.py:80: in _execute_with_wrappers
+    return executor(sql, params, many, context)
+/usr/local/lib/python3.11/site-packages/django/db/backends/utils.py:84: in _execute
+    with self.db.wrap_database_errors:
+/usr/local/lib/python3.11/site-packages/django/db/utils.py:91: in __exit__
+    raise dj_exc_value.with_traceback(traceback) from exc_value
+/usr/local/lib/python3.11/site-packages/django/db/backends/utils.py:89: in _execute
+    return self.cursor.execute(sql, params)
+E   django.db.utils.ProgrammingError: column workflow_notifications.is_read does not exist
+E   LINE 1: ...tatus", "workflow_notifications"."error_message", "workflow_...
+E                                                                ^
+
+During handling of the above exception, another exception occurred:
+/home/edms/.local/lib/python3.11/site-packages/pytest_django/plugin.py:527: in _django_db_marker
+    request.getfixturevalue("_django_db_helper")
+/home/edms/.local/lib/python3.11/site-packages/pytest_django/fixtures.py:140: in django_db_setup
+    db_cfg = setup_databases(
+/usr/local/lib/python3.11/site-packages/django/test/utils.py:221: in setup_databases
+    connection.creation.create_test_db(
+/usr/local/lib/python3.11/site-packages/django/db/backends/base/creation.py:94: in create_test_db
+    self.connection._test_serialized_contents = self.serialize_db_to_string()
+/usr/local/lib/python3.11/site-packages/django/db/backends/base/creation.py:142: in serialize_db_to_string
+    serializers.serialize("json", get_objects(), indent=None, stream=out)
+/usr/local/lib/python3.11/site-packages/django/core/serializers/__init__.py:134: in serialize
+    s.serialize(queryset, **options)
+/usr/local/lib/python3.11/site-packages/django/core/serializers/base.py:132: in serialize
+    for count, obj in enumerate(queryset, start=1):
+/usr/local/lib/python3.11/site-packages/django/db/backends/base/creation.py:138: in get_objects
+    yield from queryset.iterator()
+/usr/local/lib/python3.11/site-packages/django/db/models/query.py:516: in _iterator
+    yield from iterable
+/usr/local/lib/python3.11/site-packages/django/db/models/query.py:91: in __iter__
+    results = compiler.execute_sql(
+/usr/local/lib/python3.11/site-packages/django/db/models/sql/compiler.py:1565: in execute_sql
+    cursor.close()
+E   psycopg2.errors.InvalidCursorName: cursor "_django_curs_123396302027648_sync_28" does not exist
+_ ERROR at setup of TestDocumentVersioning.test_cannot_version_non_effective_document _
+/usr/local/lib/python3.11/site-packages/django/db/backends/utils.py:89: in _execute
+    return self.cursor.execute(sql, params)
+E   psycopg2.errors.UndefinedColumn: column workflow_notifications.is_read does not exist
+E   LINE 1: ...tatus", "workflow_notifications"."error_message", "workflow_...
+E                                                                ^
+
+The above exception was the direct cause of the following exception:
+/usr/local/lib/python3.11/site-packages/django/db/models/sql/compiler.py:1562: in execute_sql
+    cursor.execute(sql, params)
+/usr/local/lib/python3.11/site-packages/django/db/backends/utils.py:67: in execute
+    return self._execute_with_wrappers(
+/usr/local/lib/python3.11/site-packages/django/db/backends/utils.py:80: in _execute_with_wrappers
+    return executor(sql, params, many, context)
+/usr/local/lib/python3.11/site-packages/django/db/backends/utils.py:84: in _execute
+    with self.db.wrap_database_errors:
+/usr/local/lib/python3.11/site-packages/django/db/utils.py:91: in __exit__
+    raise dj_exc_value.with_traceback(traceback) from exc_value
+/usr/local/lib/python3.11/site-packages/django/db/backends/utils.py:89: in _execute
+    return self.cursor.execute(sql, params)
+E   django.db.utils.ProgrammingError: column workflow_notifications.is_read does not exist
+E   LINE 1: ...tatus", "workflow_notifications"."error_message", "workflow_...
+E                                                                ^
+
+During handling of the above exception, another exception occurred:
+/home/edms/.local/lib/python3.11/site-packages/pytest_django/plugin.py:527: in _django_db_marker
+    request.getfixturevalue("_django_db_helper")
+/home/edms/.local/lib/python3.11/site-packages/pytest_django/fixtures.py:140: in django_db_setup
+    db_cfg = setup_databases(
+/usr/local/lib/python3.11/site-packages/django/test/utils.py:221: in setup_databases
+    connection.creation.create_test_db(
+/usr/local/lib/python3.11/site-packages/django/db/backends/base/creation.py:94: in create_test_db
+    self.connection._test_serialized_contents = self.serialize_db_to_string()
+/usr/local/lib/python3.11/site-packages/django/db/backends/base/creation.py:142: in serialize_db_to_string
+    serializers.serialize("json", get_objects(), indent=None, stream=out)
+/usr/local/lib/python3.11/site-packages/django/core/serializers/__init__.py:134: in serialize
+    s.serialize(queryset, **options)
+/usr/local/lib/python3.11/site-packages/django/core/serializers/base.py:132: in serialize
+    for count, obj in enumerate(queryset, start=1):
+/usr/local/lib/python3.11/site-packages/django/db/backends/base/creation.py:138: in get_objects
+    yield from queryset.iterator()
+/usr/local/lib/python3.11/site-packages/django/db/models/query.py:516: in _iterator
+    yield from iterable
+/usr/local/lib/python3.11/site-packages/django/db/models/query.py:91: in __iter__
+    results = compiler.execute_sql(
+/usr/local/lib/python3.11/site-packages/django/db/models/sql/compiler.py:1565: in execute_sql
+    cursor.close()
+E   psycopg2.errors.InvalidCursorName: cursor "_django_curs_123396302027648_sync_28" does not exist
+_ ERROR at setup of TestDocumentVersioning.test_versioned_document_follows_full_workflow _
+/usr/local/lib/python3.11/site-packages/django/db/backends/utils.py:89: in _execute
+    return self.cursor.execute(sql, params)
+E   psycopg2.errors.UndefinedColumn: column workflow_notifications.is_read does not exist
+E   LINE 1: ...tatus", "workflow_notifications"."error_message", "workflow_...
+E                                                                ^
+
+The above exception was the direct cause of the following exception:
+/usr/local/lib/python3.11/site-packages/django/db/models/sql/compiler.py:1562: in execute_sql
+    cursor.execute(sql, params)
+/usr/local/lib/python3.11/site-packages/django/db/backends/utils.py:67: in execute
+    return self._execute_with_wrappers(
+/usr/local/lib/python3.11/site-packages/django/db/backends/utils.py:80: in _execute_with_wrappers
+    return executor(sql, params, many, context)
+/usr/local/lib/python3.11/site-packages/django/db/backends/utils.py:84: in _execute
+    with self.db.wrap_database_errors:
+/usr/local/lib/python3.11/site-packages/django/db/utils.py:91: in __exit__
+    raise dj_exc_value.with_traceback(traceback) from exc_value
+/usr/local/lib/python3.11/site-packages/django/db/backends/utils.py:89: in _execute
+    return self.cursor.execute(sql, params)
+E   django.db.utils.ProgrammingError: column workflow_notifications.is_read does not exist
+E   LINE 1: ...tatus", "workflow_notifications"."error_message", "workflow_...
+E                                                                ^
+
+During handling of the above exception, another exception occurred:
+/home/edms/.local/lib/python3.11/site-packages/pytest_django/plugin.py:527: in _django_db_marker
+    request.getfixturevalue("_django_db_helper")
+/home/edms/.local/lib/python3.11/site-packages/pytest_django/fixtures.py:140: in django_db_setup
+    db_cfg = setup_databases(
+/usr/local/lib/python3.11/site-packages/django/test/utils.py:221: in setup_databases
+    connection.creation.create_test_db(
+/usr/local/lib/python3.11/site-packages/django/db/backends/base/creation.py:94: in create_test_db
+    self.connection._test_serialized_contents = self.serialize_db_to_string()
+/usr/local/lib/python3.11/site-packages/django/db/backends/base/creation.py:142: in serialize_db_to_string
+    serializers.serialize("json", get_objects(), indent=None, stream=out)
+/usr/local/lib/python3.11/site-packages/django/core/serializers/__init__.py:134: in serialize
+    s.serialize(queryset, **options)
+/usr/local/lib/python3.11/site-packages/django/core/serializers/base.py:132: in serialize
+    for count, obj in enumerate(queryset, start=1):
+/usr/local/lib/python3.11/site-packages/django/db/backends/base/creation.py:138: in get_objects
+    yield from queryset.iterator()
+/usr/local/lib/python3.11/site-packages/django/db/models/query.py:516: in _iterator
+    yield from iterable
+/usr/local/lib/python3.11/site-packages/django/db/models/query.py:91: in __iter__
+    results = compiler.execute_sql(
+/usr/local/lib/python3.11/site-packages/django/db/models/sql/compiler.py:1565: in execute_sql
+    cursor.close()
+E   psycopg2.errors.InvalidCursorName: cursor "_django_curs_123396302027648_sync_28" does not exist
+_ ERROR at setup of TestDocumentVersioning.test_old_version_superseded_when_new_version_effective _
+/usr/local/lib/python3.11/site-packages/django/db/backends/utils.py:89: in _execute
+    return self.cursor.execute(sql, params)
+E   psycopg2.errors.UndefinedColumn: column workflow_notifications.is_read does not exist
+E   LINE 1: ...tatus", "workflow_notifications"."error_message", "workflow_...
+E                                                                ^
+
+The above exception was the direct cause of the following exception:
+/usr/local/lib/python3.11/site-packages/django/db/models/sql/compiler.py:1562: in execute_sql
+    cursor.execute(sql, params)
+/usr/local/lib/python3.11/site-packages/django/db/backends/utils.py:67: in execute
+    return self._execute_with_wrappers(
+/usr/local/lib/python3.11/site-packages/django/db/backends/utils.py:80: in _execute_with_wrappers
+    return executor(sql, params, many, context)
+/usr/local/lib/python3.11/site-packages/django/db/backends/utils.py:84: in _execute
+    with self.db.wrap_database_errors:
+/usr/local/lib/python3.11/site-packages/django/db/utils.py:91: in __exit__
+    raise dj_exc_value.with_traceback(traceback) from exc_value
+/usr/local/lib/python3.11/site-packages/django/db/backends/utils.py:89: in _execute
+    return self.cursor.execute(sql, params)
+E   django.db.utils.ProgrammingError: column workflow_notifications.is_read does not exist
+E   LINE 1: ...tatus", "workflow_notifications"."error_message", "workflow_...
+E                                                                ^
+
+During handling of the above exception, another exception occurred:
+/home/edms/.local/lib/python3.11/site-packages/pytest_django/plugin.py:527: in _django_db_marker
+    request.getfixturevalue("_django_db_helper")
+/home/edms/.local/lib/python3.11/site-packages/pytest_django/fixtures.py:140: in django_db_setup
+    db_cfg = setup_databases(
+/usr/local/lib/python3.11/site-packages/django/test/utils.py:221: in setup_databases
+    connection.creation.create_test_db(
+/usr/local/lib/python3.11/site-packages/django/db/backends/base/creation.py:94: in create_test_db
+    self.connection._test_serialized_contents = self.serialize_db_to_string()
+/usr/local/lib/python3.11/site-packages/django/db/backends/base/creation.py:142: in serialize_db_to_string
+    serializers.serialize("json", get_objects(), indent=None, stream=out)
+/usr/local/lib/python3.11/site-packages/django/core/serializers/__init__.py:134: in serialize
+    s.serialize(queryset, **options)
+/usr/local/lib/python3.11/site-packages/django/core/serializers/base.py:132: in serialize
+    for count, obj in enumerate(queryset, start=1):
+/usr/local/lib/python3.11/site-packages/django/db/backends/base/creation.py:138: in get_objects
+    yield from queryset.iterator()
+/usr/local/lib/python3.11/site-packages/django/db/models/query.py:516: in _iterator
+    yield from iterable
+/usr/local/lib/python3.11/site-packages/django/db/models/query.py:91: in __iter__
+    results = compiler.execute_sql(
+/usr/local/lib/python3.11/site-packages/django/db/models/sql/compiler.py:1565: in execute_sql
+    cursor.close()
+E   psycopg2.errors.InvalidCursorName: cursor "_django_curs_123396302027648_sync_28" does not exist
+____ ERROR at setup of TestDocumentVersioning.test_version_numbering_format ____
+/usr/local/lib/python3.11/site-packages/django/db/backends/utils.py:89: in _execute
+    return self.cursor.execute(sql, params)
+E   psycopg2.errors.UndefinedColumn: column workflow_notifications.is_read does not exist
+E   LINE 1: ...tatus", "workflow_notifications"."error_message", "workflow_...
+E                                                                ^
+
+The above exception was the direct cause of the following exception:
+/usr/local/lib/python3.11/site-packages/django/db/models/sql/compiler.py:1562: in execute_sql
+    cursor.execute(sql, params)
+/usr/local/lib/python3.11/site-packages/django/db/backends/utils.py:67: in execute
+    return self._execute_with_wrappers(
+/usr/local/lib/python3.11/site-packages/django/db/backends/utils.py:80: in _execute_with_wrappers
+    return executor(sql, params, many, context)
+/usr/local/lib/python3.11/site-packages/django/db/backends/utils.py:84: in _execute
+    with self.db.wrap_database_errors:
+/usr/local/lib/python3.11/site-packages/django/db/utils.py:91: in __exit__
+    raise dj_exc_value.with_traceback(traceback) from exc_value
+/usr/local/lib/python3.11/site-packages/django/db/backends/utils.py:89: in _execute
+    return self.cursor.execute(sql, params)
+E   django.db.utils.ProgrammingError: column workflow_notifications.is_read does not exist
+E   LINE 1: ...tatus", "workflow_notifications"."error_message", "workflow_...
+E                                                                ^
+
+During handling of the above exception, another exception occurred:
+/home/edms/.local/lib/python3.11/site-packages/pytest_django/plugin.py:527: in _django_db_marker
+    request.getfixturevalue("_django_db_helper")
+/home/edms/.local/lib/python3.11/site-packages/pytest_django/fixtures.py:140: in django_db_setup
+    db_cfg = setup_databases(
+/usr/local/lib/python3.11/site-packages/django/test/utils.py:221: in setup_databases
+    connection.creation.create_test_db(
+/usr/local/lib/python3.11/site-packages/django/db/backends/base/creation.py:94: in create_test_db
+    self.connection._test_serialized_contents = self.serialize_db_to_string()
+/usr/local/lib/python3.11/site-packages/django/db/backends/base/creation.py:142: in serialize_db_to_string
+    serializers.serialize("json", get_objects(), indent=None, stream=out)
+/usr/local/lib/python3.11/site-packages/django/core/serializers/__init__.py:134: in serialize
+    s.serialize(queryset, **options)
+/usr/local/lib/python3.11/site-packages/django/core/serializers/base.py:132: in serialize
+    for count, obj in enumerate(queryset, start=1):
+/usr/local/lib/python3.11/site-packages/django/db/backends/base/creation.py:138: in get_objects
+    yield from queryset.iterator()
+/usr/local/lib/python3.11/site-packages/django/db/models/query.py:516: in _iterator
+    yield from iterable
+/usr/local/lib/python3.11/site-packages/django/db/models/query.py:91: in __iter__
+    results = compiler.execute_sql(
+/usr/local/lib/python3.11/site-packages/django/db/models/sql/compiler.py:1565: in execute_sql
+    cursor.close()
+E   psycopg2.errors.InvalidCursorName: cursor "_django_curs_123396302027648_sync_28" does not exist
+_ ERROR at setup of TestDocumentVersioning.test_version_inherits_document_type_and_source _
+/usr/local/lib/python3.11/site-packages/django/db/backends/utils.py:89: in _execute
+    return self.cursor.execute(sql, params)
+E   psycopg2.errors.UndefinedColumn: column workflow_notifications.is_read does not exist
+E   LINE 1: ...tatus", "workflow_notifications"."error_message", "workflow_...
+E                                                                ^
+
+The above exception was the direct cause of the following exception:
+/usr/local/lib/python3.11/site-packages/django/db/models/sql/compiler.py:1562: in execute_sql
+    cursor.execute(sql, params)
+/usr/local/lib/python3.11/site-packages/django/db/backends/utils.py:67: in execute
+    return self._execute_with_wrappers(
+/usr/local/lib/python3.11/site-packages/django/db/backends/utils.py:80: in _execute_with_wrappers
+    return executor(sql, params, many, context)
+/usr/local/lib/python3.11/site-packages/django/db/backends/utils.py:84: in _execute
+    with self.db.wrap_database_errors:
+/usr/local/lib/python3.11/site-packages/django/db/utils.py:91: in __exit__
+    raise dj_exc_value.with_traceback(traceback) from exc_value
+/usr/local/lib/python3.11/site-packages/django/db/backends/utils.py:89: in _execute
+    return self.cursor.execute(sql, params)
+E   django.db.utils.ProgrammingError: column workflow_notifications.is_read does not exist
+E   LINE 1: ...tatus", "workflow_notifications"."error_message", "workflow_...
+E                                                                ^
+
+During handling of the above exception, another exception occurred:
+/home/edms/.local/lib/python3.11/site-packages/pytest_django/plugin.py:527: in _django_db_marker
+    request.getfixturevalue("_django_db_helper")
+/home/edms/.local/lib/python3.11/site-packages/pytest_django/fixtures.py:140: in django_db_setup
+    db_cfg = setup_databases(
+/usr/local/lib/python3.11/site-packages/django/test/utils.py:221: in setup_databases
+    connection.creation.create_test_db(
+/usr/local/lib/python3.11/site-packages/django/db/backends/base/creation.py:94: in create_test_db
+    self.connection._test_serialized_contents = self.serialize_db_to_string()
+/usr/local/lib/python3.11/site-packages/django/db/backends/base/creation.py:142: in serialize_db_to_string
+    serializers.serialize("json", get_objects(), indent=None, stream=out)
+/usr/local/lib/python3.11/site-packages/django/core/serializers/__init__.py:134: in serialize
+    s.serialize(queryset, **options)
+/usr/local/lib/python3.11/site-packages/django/core/serializers/base.py:132: in serialize
+    for count, obj in enumerate(queryset, start=1):
+/usr/local/lib/python3.11/site-packages/django/db/backends/base/creation.py:138: in get_objects
+    yield from queryset.iterator()
+/usr/local/lib/python3.11/site-packages/django/db/models/query.py:516: in _iterator
+    yield from iterable
+/usr/local/lib/python3.11/site-packages/django/db/models/query.py:91: in __iter__
+    results = compiler.execute_sql(
+/usr/local/lib/python3.11/site-packages/django/db/models/sql/compiler.py:1565: in execute_sql
+    cursor.close()
+E   psycopg2.errors.InvalidCursorName: cursor "_django_curs_123396302027648_sync_28" does not exist
+____ ERROR at setup of TestDocumentVersioning.test_multiple_versions_chain _____
+/usr/local/lib/python3.11/site-packages/django/db/backends/utils.py:89: in _execute
+    return self.cursor.execute(sql, params)
+E   psycopg2.errors.UndefinedColumn: column workflow_notifications.is_read does not exist
+E   LINE 1: ...tatus", "workflow_notifications"."error_message", "workflow_...
+E                                                                ^
+
+The above exception was the direct cause of the following exception:
+/usr/local/lib/python3.11/site-packages/django/db/models/sql/compiler.py:1562: in execute_sql
+    cursor.execute(sql, params)
+/usr/local/lib/python3.11/site-packages/django/db/backends/utils.py:67: in execute
+    return self._execute_with_wrappers(
+/usr/local/lib/python3.11/site-packages/django/db/backends/utils.py:80: in _execute_with_wrappers
+    return executor(sql, params, many, context)
+/usr/local/lib/python3.11/site-packages/django/db/backends/utils.py:84: in _execute
+    with self.db.wrap_database_errors:
+/usr/local/lib/python3.11/site-packages/django/db/utils.py:91: in __exit__
+    raise dj_exc_value.with_traceback(traceback) from exc_value
+/usr/local/lib/python3.11/site-packages/django/db/backends/utils.py:89: in _execute
+    return self.cursor.execute(sql, params)
+E   django.db.utils.ProgrammingError: column workflow_notifications.is_read does not exist
+E   LINE 1: ...tatus", "workflow_notifications"."error_message", "workflow_...
+E                                                                ^
+
+During handling of the above exception, another exception occurred:
+/home/edms/.local/lib/python3.11/site-packages/pytest_django/plugin.py:527: in _django_db_marker
+    request.getfixturevalue("_django_db_helper")
+/home/edms/.local/lib/python3.11/site-packages/pytest_django/fixtures.py:140: in django_db_setup
+    db_cfg = setup_databases(
+/usr/local/lib/python3.11/site-packages/django/test/utils.py:221: in setup_databases
+    connection.creation.create_test_db(
+/usr/local/lib/python3.11/site-packages/django/db/backends/base/creation.py:94: in create_test_db
+    self.connection._test_serialized_contents = self.serialize_db_to_string()
+/usr/local/lib/python3.11/site-packages/django/db/backends/base/creation.py:142: in serialize_db_to_string
+    serializers.serialize("json", get_objects(), indent=None, stream=out)
+/usr/local/lib/python3.11/site-packages/django/core/serializers/__init__.py:134: in serialize
+    s.serialize(queryset, **options)
+/usr/local/lib/python3.11/site-packages/django/core/serializers/base.py:132: in serialize
+    for count, obj in enumerate(queryset, start=1):
+/usr/local/lib/python3.11/site-packages/django/db/backends/base/creation.py:138: in get_objects
+    yield from queryset.iterator()
+/usr/local/lib/python3.11/site-packages/django/db/models/query.py:516: in _iterator
+    yield from iterable
+/usr/local/lib/python3.11/site-packages/django/db/models/query.py:91: in __iter__
+    results = compiler.execute_sql(
+/usr/local/lib/python3.11/site-packages/django/db/models/sql/compiler.py:1565: in execute_sql
+    cursor.close()
+E   psycopg2.errors.InvalidCursorName: cursor "_django_curs_123396302027648_sync_28" does not exist
+_ ERROR at setup of TestDocumentVersioning.test_versioning_preserves_dependencies _
+/usr/local/lib/python3.11/site-packages/django/db/backends/utils.py:89: in _execute
+    return self.cursor.execute(sql, params)
+E   psycopg2.errors.UndefinedColumn: column workflow_notifications.is_read does not exist
+E   LINE 1: ...tatus", "workflow_notifications"."error_message", "workflow_...
+E                                                                ^
+
+The above exception was the direct cause of the following exception:
+/usr/local/lib/python3.11/site-packages/django/db/models/sql/compiler.py:1562: in execute_sql
+    cursor.execute(sql, params)
+/usr/local/lib/python3.11/site-packages/django/db/backends/utils.py:67: in execute
+    return self._execute_with_wrappers(
+/usr/local/lib/python3.11/site-packages/django/db/backends/utils.py:80: in _execute_with_wrappers
+    return executor(sql, params, many, context)
+/usr/local/lib/python3.11/site-packages/django/db/backends/utils.py:84: in _execute
+    with self.db.wrap_database_errors:
+/usr/local/lib/python3.11/site-packages/django/db/utils.py:91: in __exit__
+    raise dj_exc_value.with_traceback(traceback) from exc_value
+/usr/local/lib/python3.11/site-packages/django/db/backends/utils.py:89: in _execute
+    return self.cursor.execute(sql, params)
+E   django.db.utils.ProgrammingError: column workflow_notifications.is_read does not exist
+E   LINE 1: ...tatus", "workflow_notifications"."error_message", "workflow_...
+E                                                                ^
+
+During handling of the above exception, another exception occurred:
+/home/edms/.local/lib/python3.11/site-packages/pytest_django/plugin.py:527: in _django_db_marker
+    request.getfixturevalue("_django_db_helper")
+/home/edms/.local/lib/python3.11/site-packages/pytest_django/fixtures.py:140: in django_db_setup
+    db_cfg = setup_databases(
+/usr/local/lib/python3.11/site-packages/django/test/utils.py:221: in setup_databases
+    connection.creation.create_test_db(
+/usr/local/lib/python3.11/site-packages/django/db/backends/base/creation.py:94: in create_test_db
+    self.connection._test_serialized_contents = self.serialize_db_to_string()
+/usr/local/lib/python3.11/site-packages/django/db/backends/base/creation.py:142: in serialize_db_to_string
+    serializers.serialize("json", get_objects(), indent=None, stream=out)
+/usr/local/lib/python3.11/site-packages/django/core/serializers/__init__.py:134: in serialize
+    s.serialize(queryset, **options)
+/usr/local/lib/python3.11/site-packages/django/core/serializers/base.py:132: in serialize
+    for count, obj in enumerate(queryset, start=1):
+/usr/local/lib/python3.11/site-packages/django/db/backends/base/creation.py:138: in get_objects
+    yield from queryset.iterator()
+/usr/local/lib/python3.11/site-packages/django/db/models/query.py:516: in _iterator
+    yield from iterable
+/usr/local/lib/python3.11/site-packages/django/db/models/query.py:91: in __iter__
+    results = compiler.execute_sql(
+/usr/local/lib/python3.11/site-packages/django/db/models/sql/compiler.py:1565: in execute_sql
+    cursor.close()
+E   psycopg2.errors.InvalidCursorName: cursor "_django_curs_123396302027648_sync_28" does not exist
+_ ERROR at setup of TestDocumentVersioning.test_cannot_create_version_without_reason _
+/usr/local/lib/python3.11/site-packages/django/db/backends/utils.py:89: in _execute
+    return self.cursor.execute(sql, params)
+E   psycopg2.errors.UndefinedColumn: column workflow_notifications.is_read does not exist
+E   LINE 1: ...tatus", "workflow_notifications"."error_message", "workflow_...
+E                                                                ^
+
+The above exception was the direct cause of the following exception:
+/usr/local/lib/python3.11/site-packages/django/db/models/sql/compiler.py:1562: in execute_sql
+    cursor.execute(sql, params)
+/usr/local/lib/python3.11/site-packages/django/db/backends/utils.py:67: in execute
+    return self._execute_with_wrappers(
+/usr/local/lib/python3.11/site-packages/django/db/backends/utils.py:80: in _execute_with_wrappers
+    return executor(sql, params, many, context)
+/usr/local/lib/python3.11/site-packages/django/db/backends/utils.py:84: in _execute
+    with self.db.wrap_database_errors:
+/usr/local/lib/python3.11/site-packages/django/db/utils.py:91: in __exit__
+    raise dj_exc_value.with_traceback(traceback) from exc_value
+/usr/local/lib/python3.11/site-packages/django/db/backends/utils.py:89: in _execute
+    return self.cursor.execute(sql, params)
+E   django.db.utils.ProgrammingError: column workflow_notifications.is_read does not exist
+E   LINE 1: ...tatus", "workflow_notifications"."error_message", "workflow_...
+E                                                                ^
+
+During handling of the above exception, another exception occurred:
+/home/edms/.local/lib/python3.11/site-packages/pytest_django/plugin.py:527: in _django_db_marker
+    request.getfixturevalue("_django_db_helper")
+/home/edms/.local/lib/python3.11/site-packages/pytest_django/fixtures.py:140: in django_db_setup
+    db_cfg = setup_databases(
+/usr/local/lib/python3.11/site-packages/django/test/utils.py:221: in setup_databases
+    connection.creation.create_test_db(
+/usr/local/lib/python3.11/site-packages/django/db/backends/base/creation.py:94: in create_test_db
+    self.connection._test_serialized_contents = self.serialize_db_to_string()
+/usr/local/lib/python3.11/site-packages/django/db/backends/base/creation.py:142: in serialize_db_to_string
+    serializers.serialize("json", get_objects(), indent=None, stream=out)
+/usr/local/lib/python3.11/site-packages/django/core/serializers/__init__.py:134: in serialize
+    s.serialize(queryset, **options)
+/usr/local/lib/python3.11/site-packages/django/core/serializers/base.py:132: in serialize
+    for count, obj in enumerate(queryset, start=1):
+/usr/local/lib/python3.11/site-packages/django/db/backends/base/creation.py:138: in get_objects
+    yield from queryset.iterator()
+/usr/local/lib/python3.11/site-packages/django/db/models/query.py:516: in _iterator
+    yield from iterable
+/usr/local/lib/python3.11/site-packages/django/db/models/query.py:91: in __iter__
+    results = compiler.execute_sql(
+/usr/local/lib/python3.11/site-packages/django/db/models/sql/compiler.py:1565: in execute_sql
+    cursor.close()
+E   psycopg2.errors.InvalidCursorName: cursor "_django_curs_123396302027648_sync_28" does not exist
+_ ERROR at setup of TestDocumentVersioning.test_superseded_documents_are_read_only _
+/usr/local/lib/python3.11/site-packages/django/db/backends/utils.py:89: in _execute
+    return self.cursor.execute(sql, params)
+E   psycopg2.errors.UndefinedColumn: column workflow_notifications.is_read does not exist
+E   LINE 1: ...tatus", "workflow_notifications"."error_message", "workflow_...
+E                                                                ^
+
+The above exception was the direct cause of the following exception:
+/usr/local/lib/python3.11/site-packages/django/db/models/sql/compiler.py:1562: in execute_sql
+    cursor.execute(sql, params)
+/usr/local/lib/python3.11/site-packages/django/db/backends/utils.py:67: in execute
+    return self._execute_with_wrappers(
+/usr/local/lib/python3.11/site-packages/django/db/backends/utils.py:80: in _execute_with_wrappers
+    return executor(sql, params, many, context)
+/usr/local/lib/python3.11/site-packages/django/db/backends/utils.py:84: in _execute
+    with self.db.wrap_database_errors:
+/usr/local/lib/python3.11/site-packages/django/db/utils.py:91: in __exit__
+    raise dj_exc_value.with_traceback(traceback) from exc_value
+/usr/local/lib/python3.11/site-packages/django/db/backends/utils.py:89: in _execute
+    return self.cursor.execute(sql, params)
+E   django.db.utils.ProgrammingError: column workflow_notifications.is_read does not exist
+E   LINE 1: ...tatus", "workflow_notifications"."error_message", "workflow_...
+E                                                                ^
+
+During handling of the above exception, another exception occurred:
+/home/edms/.local/lib/python3.11/site-packages/pytest_django/plugin.py:527: in _django_db_marker
+    request.getfixturevalue("_django_db_helper")
+/home/edms/.local/lib/python3.11/site-packages/pytest_django/fixtures.py:140: in django_db_setup
+    db_cfg = setup_databases(
+/usr/local/lib/python3.11/site-packages/django/test/utils.py:221: in setup_databases
+    connection.creation.create_test_db(
+/usr/local/lib/python3.11/site-packages/django/db/backends/base/creation.py:94: in create_test_db
+    self.connection._test_serialized_contents = self.serialize_db_to_string()
+/usr/local/lib/python3.11/site-packages/django/db/backends/base/creation.py:142: in serialize_db_to_string
+    serializers.serialize("json", get_objects(), indent=None, stream=out)
+/usr/local/lib/python3.11/site-packages/django/core/serializers/__init__.py:134: in serialize
+    s.serialize(queryset, **options)
+/usr/local/lib/python3.11/site-packages/django/core/serializers/base.py:132: in serialize
+    for count, obj in enumerate(queryset, start=1):
+/usr/local/lib/python3.11/site-packages/django/db/backends/base/creation.py:138: in get_objects
+    yield from queryset.iterator()
+/usr/local/lib/python3.11/site-packages/django/db/models/query.py:516: in _iterator
+    yield from iterable
+/usr/local/lib/python3.11/site-packages/django/db/models/query.py:91: in __iter__
+    results = compiler.execute_sql(
+/usr/local/lib/python3.11/site-packages/django/db/models/sql/compiler.py:1565: in execute_sql
+    cursor.close()
+E   psycopg2.errors.InvalidCursorName: cursor "_django_curs_123396302027648_sync_28" does not exist
+_ ERROR at setup of TestDocumentObsolescence.test_approver_can_mark_document_obsolete _
+/usr/local/lib/python3.11/site-packages/django/db/backends/utils.py:89: in _execute
+    return self.cursor.execute(sql, params)
+E   psycopg2.errors.UndefinedColumn: column workflow_notifications.is_read does not exist
+E   LINE 1: ...tatus", "workflow_notifications"."error_message", "workflow_...
+E                                                                ^
+
+The above exception was the direct cause of the following exception:
+/usr/local/lib/python3.11/site-packages/django/db/models/sql/compiler.py:1562: in execute_sql
+    cursor.execute(sql, params)
+/usr/local/lib/python3.11/site-packages/django/db/backends/utils.py:67: in execute
+    return self._execute_with_wrappers(
+/usr/local/lib/python3.11/site-packages/django/db/backends/utils.py:80: in _execute_with_wrappers
+    return executor(sql, params, many, context)
+/usr/local/lib/python3.11/site-packages/django/db/backends/utils.py:84: in _execute
+    with self.db.wrap_database_errors:
+/usr/local/lib/python3.11/site-packages/django/db/utils.py:91: in __exit__
+    raise dj_exc_value.with_traceback(traceback) from exc_value
+/usr/local/lib/python3.11/site-packages/django/db/backends/utils.py:89: in _execute
+    return self.cursor.execute(sql, params)
+E   django.db.utils.ProgrammingError: column workflow_notifications.is_read does not exist
+E   LINE 1: ...tatus", "workflow_notifications"."error_message", "workflow_...
+E                                                                ^
+
+During handling of the above exception, another exception occurred:
+/home/edms/.local/lib/python3.11/site-packages/pytest_django/plugin.py:527: in _django_db_marker
+    request.getfixturevalue("_django_db_helper")
+/home/edms/.local/lib/python3.11/site-packages/pytest_django/fixtures.py:140: in django_db_setup
+    db_cfg = setup_databases(
+/usr/local/lib/python3.11/site-packages/django/test/utils.py:221: in setup_databases
+    connection.creation.create_test_db(
+/usr/local/lib/python3.11/site-packages/django/db/backends/base/creation.py:94: in create_test_db
+    self.connection._test_serialized_contents = self.serialize_db_to_string()
+/usr/local/lib/python3.11/site-packages/django/db/backends/base/creation.py:142: in serialize_db_to_string
+    serializers.serialize("json", get_objects(), indent=None, stream=out)
+/usr/local/lib/python3.11/site-packages/django/core/serializers/__init__.py:134: in serialize
+    s.serialize(queryset, **options)
+/usr/local/lib/python3.11/site-packages/django/core/serializers/base.py:132: in serialize
+    for count, obj in enumerate(queryset, start=1):
+/usr/local/lib/python3.11/site-packages/django/db/backends/base/creation.py:138: in get_objects
+    yield from queryset.iterator()
+/usr/local/lib/python3.11/site-packages/django/db/models/query.py:516: in _iterator
+    yield from iterable
+/usr/local/lib/python3.11/site-packages/django/db/models/query.py:91: in __iter__
+    results = compiler.execute_sql(
+/usr/local/lib/python3.11/site-packages/django/db/models/sql/compiler.py:1565: in execute_sql
+    cursor.close()
+E   psycopg2.errors.InvalidCursorName: cursor "_django_curs_123396302027648_sync_28" does not exist
+_ ERROR at setup of TestDocumentObsolescence.test_obsolescence_requires_reason _
+/usr/local/lib/python3.11/site-packages/django/db/backends/utils.py:89: in _execute
+    return self.cursor.execute(sql, params)
+E   psycopg2.errors.UndefinedColumn: column workflow_notifications.is_read does not exist
+E   LINE 1: ...tatus", "workflow_notifications"."error_message", "workflow_...
+E                                                                ^
+
+The above exception was the direct cause of the following exception:
+/usr/local/lib/python3.11/site-packages/django/db/models/sql/compiler.py:1562: in execute_sql
+    cursor.execute(sql, params)
+/usr/local/lib/python3.11/site-packages/django/db/backends/utils.py:67: in execute
+    return self._execute_with_wrappers(
+/usr/local/lib/python3.11/site-packages/django/db/backends/utils.py:80: in _execute_with_wrappers
+    return executor(sql, params, many, context)
+/usr/local/lib/python3.11/site-packages/django/db/backends/utils.py:84: in _execute
+    with self.db.wrap_database_errors:
+/usr/local/lib/python3.11/site-packages/django/db/utils.py:91: in __exit__
+    raise dj_exc_value.with_traceback(traceback) from exc_value
+/usr/local/lib/python3.11/site-packages/django/db/backends/utils.py:89: in _execute
+    return self.cursor.execute(sql, params)
+E   django.db.utils.ProgrammingError: column workflow_notifications.is_read does not exist
+E   LINE 1: ...tatus", "workflow_notifications"."error_message", "workflow_...
+E                                                                ^
+
+During handling of the above exception, another exception occurred:
+/home/edms/.local/lib/python3.11/site-packages/pytest_django/plugin.py:527: in _django_db_marker
+    request.getfixturevalue("_django_db_helper")
+/home/edms/.local/lib/python3.11/site-packages/pytest_django/fixtures.py:140: in django_db_setup
+    db_cfg = setup_databases(
+/usr/local/lib/python3.11/site-packages/django/test/utils.py:221: in setup_databases
+    connection.creation.create_test_db(
+/usr/local/lib/python3.11/site-packages/django/db/backends/base/creation.py:94: in create_test_db
+    self.connection._test_serialized_contents = self.serialize_db_to_string()
+/usr/local/lib/python3.11/site-packages/django/db/backends/base/creation.py:142: in serialize_db_to_string
+    serializers.serialize("json", get_objects(), indent=None, stream=out)
+/usr/local/lib/python3.11/site-packages/django/core/serializers/__init__.py:134: in serialize
+    s.serialize(queryset, **options)
+/usr/local/lib/python3.11/site-packages/django/core/serializers/base.py:132: in serialize
+    for count, obj in enumerate(queryset, start=1):
+/usr/local/lib/python3.11/site-packages/django/db/backends/base/creation.py:138: in get_objects
+    yield from queryset.iterator()
+/usr/local/lib/python3.11/site-packages/django/db/models/query.py:516: in _iterator
+    yield from iterable
+/usr/local/lib/python3.11/site-packages/django/db/models/query.py:91: in __iter__
+    results = compiler.execute_sql(
+/usr/local/lib/python3.11/site-packages/django/db/models/sql/compiler.py:1565: in execute_sql
+    cursor.close()
+E   psycopg2.errors.InvalidCursorName: cursor "_django_curs_123396302027648_sync_28" does not exist
+_ ERROR at setup of TestDocumentObsolescence.test_scheduled_obsolescence_date __
+/usr/local/lib/python3.11/site-packages/django/db/backends/utils.py:89: in _execute
+    return self.cursor.execute(sql, params)
+E   psycopg2.errors.UndefinedColumn: column workflow_notifications.is_read does not exist
+E   LINE 1: ...tatus", "workflow_notifications"."error_message", "workflow_...
+E                                                                ^
+
+The above exception was the direct cause of the following exception:
+/usr/local/lib/python3.11/site-packages/django/db/models/sql/compiler.py:1562: in execute_sql
+    cursor.execute(sql, params)
+/usr/local/lib/python3.11/site-packages/django/db/backends/utils.py:67: in execute
+    return self._execute_with_wrappers(
+/usr/local/lib/python3.11/site-packages/django/db/backends/utils.py:80: in _execute_with_wrappers
+    return executor(sql, params, many, context)
+/usr/local/lib/python3.11/site-packages/django/db/backends/utils.py:84: in _execute
+    with self.db.wrap_database_errors:
+/usr/local/lib/python3.11/site-packages/django/db/utils.py:91: in __exit__
+    raise dj_exc_value.with_traceback(traceback) from exc_value
+/usr/local/lib/python3.11/site-packages/django/db/backends/utils.py:89: in _execute
+    return self.cursor.execute(sql, params)
+E   django.db.utils.ProgrammingError: column workflow_notifications.is_read does not exist
+E   LINE 1: ...tatus", "workflow_notifications"."error_message", "workflow_...
+E                                                                ^
+
+During handling of the above exception, another exception occurred:
+/home/edms/.local/lib/python3.11/site-packages/pytest_django/plugin.py:527: in _django_db_marker
+    request.getfixturevalue("_django_db_helper")
+/home/edms/.local/lib/python3.11/site-packages/pytest_django/fixtures.py:140: in django_db_setup
+    db_cfg = setup_databases(
+/usr/local/lib/python3.11/site-packages/django/test/utils.py:221: in setup_databases
+    connection.creation.create_test_db(
+/usr/local/lib/python3.11/site-packages/django/db/backends/base/creation.py:94: in create_test_db
+    self.connection._test_serialized_contents = self.serialize_db_to_string()
+/usr/local/lib/python3.11/site-packages/django/db/backends/base/creation.py:142: in serialize_db_to_string
+    serializers.serialize("json", get_objects(), indent=None, stream=out)
+/usr/local/lib/python3.11/site-packages/django/core/serializers/__init__.py:134: in serialize
+    s.serialize(queryset, **options)
+/usr/local/lib/python3.11/site-packages/django/core/serializers/base.py:132: in serialize
+    for count, obj in enumerate(queryset, start=1):
+/usr/local/lib/python3.11/site-packages/django/db/backends/base/creation.py:138: in get_objects
+    yield from queryset.iterator()
+/usr/local/lib/python3.11/site-packages/django/db/models/query.py:516: in _iterator
+    yield from iterable
+/usr/local/lib/python3.11/site-packages/django/db/models/query.py:91: in __iter__
+    results = compiler.execute_sql(
+/usr/local/lib/python3.11/site-packages/django/db/models/sql/compiler.py:1565: in execute_sql
+    cursor.close()
+E   psycopg2.errors.InvalidCursorName: cursor "_django_curs_123396302027648_sync_28" does not exist
+____ ERROR at setup of TestDocumentObsolescence.test_immediate_obsolescence ____
+/usr/local/lib/python3.11/site-packages/django/db/backends/utils.py:89: in _execute
+    return self.cursor.execute(sql, params)
+E   psycopg2.errors.UndefinedColumn: column workflow_notifications.is_read does not exist
+E   LINE 1: ...tatus", "workflow_notifications"."error_message", "workflow_...
+E                                                                ^
+
+The above exception was the direct cause of the following exception:
+/usr/local/lib/python3.11/site-packages/django/db/models/sql/compiler.py:1562: in execute_sql
+    cursor.execute(sql, params)
+/usr/local/lib/python3.11/site-packages/django/db/backends/utils.py:67: in execute
+    return self._execute_with_wrappers(
+/usr/local/lib/python3.11/site-packages/django/db/backends/utils.py:80: in _execute_with_wrappers
+    return executor(sql, params, many, context)
+/usr/local/lib/python3.11/site-packages/django/db/backends/utils.py:84: in _execute
+    with self.db.wrap_database_errors:
+/usr/local/lib/python3.11/site-packages/django/db/utils.py:91: in __exit__
+    raise dj_exc_value.with_traceback(traceback) from exc_value
+/usr/local/lib/python3.11/site-packages/django/db/backends/utils.py:89: in _execute
+    return self.cursor.execute(sql, params)
+E   django.db.utils.ProgrammingError: column workflow_notifications.is_read does not exist
+E   LINE 1: ...tatus", "workflow_notifications"."error_message", "workflow_...
+E                                                                ^
+
+During handling of the above exception, another exception occurred:
+/home/edms/.local/lib/python3.11/site-packages/pytest_django/plugin.py:527: in _django_db_marker
+    request.getfixturevalue("_django_db_helper")
+/home/edms/.local/lib/python3.11/site-packages/pytest_django/fixtures.py:140: in django_db_setup
+    db_cfg = setup_databases(
+/usr/local/lib/python3.11/site-packages/django/test/utils.py:221: in setup_databases
+    connection.creation.create_test_db(
+/usr/local/lib/python3.11/site-packages/django/db/backends/base/creation.py:94: in create_test_db
+    self.connection._test_serialized_contents = self.serialize_db_to_string()
+/usr/local/lib/python3.11/site-packages/django/db/backends/base/creation.py:142: in serialize_db_to_string
+    serializers.serialize("json", get_objects(), indent=None, stream=out)
+/usr/local/lib/python3.11/site-packages/django/core/serializers/__init__.py:134: in serialize
+    s.serialize(queryset, **options)
+/usr/local/lib/python3.11/site-packages/django/core/serializers/base.py:132: in serialize
+    for count, obj in enumerate(queryset, start=1):
+/usr/local/lib/python3.11/site-packages/django/db/backends/base/creation.py:138: in get_objects
+    yield from queryset.iterator()
+/usr/local/lib/python3.11/site-packages/django/db/models/query.py:516: in _iterator
+    yield from iterable
+/usr/local/lib/python3.11/site-packages/django/db/models/query.py:91: in __iter__
+    results = compiler.execute_sql(
+/usr/local/lib/python3.11/site-packages/django/db/models/sql/compiler.py:1565: in execute_sql
+    cursor.close()
+E   psycopg2.errors.InvalidCursorName: cursor "_django_curs_123396302027648_sync_28" does not exist
+_ ERROR at setup of TestDocumentObsolescence.test_cannot_obsolete_non_effective_document _
+/usr/local/lib/python3.11/site-packages/django/db/backends/utils.py:89: in _execute
+    return self.cursor.execute(sql, params)
+E   psycopg2.errors.UndefinedColumn: column workflow_notifications.is_read does not exist
+E   LINE 1: ...tatus", "workflow_notifications"."error_message", "workflow_...
+E                                                                ^
+
+The above exception was the direct cause of the following exception:
+/usr/local/lib/python3.11/site-packages/django/db/models/sql/compiler.py:1562: in execute_sql
+    cursor.execute(sql, params)
+/usr/local/lib/python3.11/site-packages/django/db/backends/utils.py:67: in execute
+    return self._execute_with_wrappers(
+/usr/local/lib/python3.11/site-packages/django/db/backends/utils.py:80: in _execute_with_wrappers
+    return executor(sql, params, many, context)
+/usr/local/lib/python3.11/site-packages/django/db/backends/utils.py:84: in _execute
+    with self.db.wrap_database_errors:
+/usr/local/lib/python3.11/site-packages/django/db/utils.py:91: in __exit__
+    raise dj_exc_value.with_traceback(traceback) from exc_value
+/usr/local/lib/python3.11/site-packages/django/db/backends/utils.py:89: in _execute
+    return self.cursor.execute(sql, params)
+E   django.db.utils.ProgrammingError: column workflow_notifications.is_read does not exist
+E   LINE 1: ...tatus", "workflow_notifications"."error_message", "workflow_...
+E                                                                ^
+
+During handling of the above exception, another exception occurred:
+/home/edms/.local/lib/python3.11/site-packages/pytest_django/plugin.py:527: in _django_db_marker
+    request.getfixturevalue("_django_db_helper")
+/home/edms/.local/lib/python3.11/site-packages/pytest_django/fixtures.py:140: in django_db_setup
+    db_cfg = setup_databases(
+/usr/local/lib/python3.11/site-packages/django/test/utils.py:221: in setup_databases
+    connection.creation.create_test_db(
+/usr/local/lib/python3.11/site-packages/django/db/backends/base/creation.py:94: in create_test_db
+    self.connection._test_serialized_contents = self.serialize_db_to_string()
+/usr/local/lib/python3.11/site-packages/django/db/backends/base/creation.py:142: in serialize_db_to_string
+    serializers.serialize("json", get_objects(), indent=None, stream=out)
+/usr/local/lib/python3.11/site-packages/django/core/serializers/__init__.py:134: in serialize
+    s.serialize(queryset, **options)
+/usr/local/lib/python3.11/site-packages/django/core/serializers/base.py:132: in serialize
+    for count, obj in enumerate(queryset, start=1):
+/usr/local/lib/python3.11/site-packages/django/db/backends/base/creation.py:138: in get_objects
+    yield from queryset.iterator()
+/usr/local/lib/python3.11/site-packages/django/db/models/query.py:516: in _iterator
+    yield from iterable
+/usr/local/lib/python3.11/site-packages/django/db/models/query.py:91: in __iter__
+    results = compiler.execute_sql(
+/usr/local/lib/python3.11/site-packages/django/db/models/sql/compiler.py:1565: in execute_sql
+    cursor.close()
+E   psycopg2.errors.InvalidCursorName: cursor "_django_curs_123396302027648_sync_28" does not exist
+_ ERROR at setup of TestDocumentObsolescence.test_author_cannot_mark_obsolete __
+/usr/local/lib/python3.11/site-packages/django/db/backends/utils.py:89: in _execute
+    return self.cursor.execute(sql, params)
+E   psycopg2.errors.UndefinedColumn: column workflow_notifications.is_read does not exist
+E   LINE 1: ...tatus", "workflow_notifications"."error_message", "workflow_...
+E                                                                ^
+
+The above exception was the direct cause of the following exception:
+/usr/local/lib/python3.11/site-packages/django/db/models/sql/compiler.py:1562: in execute_sql
+    cursor.execute(sql, params)
+/usr/local/lib/python3.11/site-packages/django/db/backends/utils.py:67: in execute
+    return self._execute_with_wrappers(
+/usr/local/lib/python3.11/site-packages/django/db/backends/utils.py:80: in _execute_with_wrappers
+    return executor(sql, params, many, context)
+/usr/local/lib/python3.11/site-packages/django/db/backends/utils.py:84: in _execute
+    with self.db.wrap_database_errors:
+/usr/local/lib/python3.11/site-packages/django/db/utils.py:91: in __exit__
+    raise dj_exc_value.with_traceback(traceback) from exc_value
+/usr/local/lib/python3.11/site-packages/django/db/backends/utils.py:89: in _execute
+    return self.cursor.execute(sql, params)
+E   django.db.utils.ProgrammingError: column workflow_notifications.is_read does not exist
+E   LINE 1: ...tatus", "workflow_notifications"."error_message", "workflow_...
+E                                                                ^
+
+During handling of the above exception, another exception occurred:
+/home/edms/.local/lib/python3.11/site-packages/pytest_django/plugin.py:527: in _django_db_marker
+    request.getfixturevalue("_django_db_helper")
+/home/edms/.local/lib/python3.11/site-packages/pytest_django/fixtures.py:140: in django_db_setup
+    db_cfg = setup_databases(
+/usr/local/lib/python3.11/site-packages/django/test/utils.py:221: in setup_databases
+    connection.creation.create_test_db(
+/usr/local/lib/python3.11/site-packages/django/db/backends/base/creation.py:94: in create_test_db
+    self.connection._test_serialized_contents = self.serialize_db_to_string()
+/usr/local/lib/python3.11/site-packages/django/db/backends/base/creation.py:142: in serialize_db_to_string
+    serializers.serialize("json", get_objects(), indent=None, stream=out)
+/usr/local/lib/python3.11/site-packages/django/core/serializers/__init__.py:134: in serialize
+    s.serialize(queryset, **options)
+/usr/local/lib/python3.11/site-packages/django/core/serializers/base.py:132: in serialize
+    for count, obj in enumerate(queryset, start=1):
+/usr/local/lib/python3.11/site-packages/django/db/backends/base/creation.py:138: in get_objects
+    yield from queryset.iterator()
+/usr/local/lib/python3.11/site-packages/django/db/models/query.py:516: in _iterator
+    yield from iterable
+/usr/local/lib/python3.11/site-packages/django/db/models/query.py:91: in __iter__
+    results = compiler.execute_sql(
+/usr/local/lib/python3.11/site-packages/django/db/models/sql/compiler.py:1565: in execute_sql
+    cursor.close()
+E   psycopg2.errors.InvalidCursorName: cursor "_django_curs_123396302027648_sync_28" does not exist
+_ ERROR at setup of TestDocumentObsolescence.test_obsolete_documents_are_read_only _
+/usr/local/lib/python3.11/site-packages/django/db/backends/utils.py:89: in _execute
+    return self.cursor.execute(sql, params)
+E   psycopg2.errors.UndefinedColumn: column workflow_notifications.is_read does not exist
+E   LINE 1: ...tatus", "workflow_notifications"."error_message", "workflow_...
+E                                                                ^
+
+The above exception was the direct cause of the following exception:
+/usr/local/lib/python3.11/site-packages/django/db/models/sql/compiler.py:1562: in execute_sql
+    cursor.execute(sql, params)
+/usr/local/lib/python3.11/site-packages/django/db/backends/utils.py:67: in execute
+    return self._execute_with_wrappers(
+/usr/local/lib/python3.11/site-packages/django/db/backends/utils.py:80: in _execute_with_wrappers
+    return executor(sql, params, many, context)
+/usr/local/lib/python3.11/site-packages/django/db/backends/utils.py:84: in _execute
+    with self.db.wrap_database_errors:
+/usr/local/lib/python3.11/site-packages/django/db/utils.py:91: in __exit__
+    raise dj_exc_value.with_traceback(traceback) from exc_value
+/usr/local/lib/python3.11/site-packages/django/db/backends/utils.py:89: in _execute
+    return self.cursor.execute(sql, params)
+E   django.db.utils.ProgrammingError: column workflow_notifications.is_read does not exist
+E   LINE 1: ...tatus", "workflow_notifications"."error_message", "workflow_...
+E                                                                ^
+
+During handling of the above exception, another exception occurred:
+/home/edms/.local/lib/python3.11/site-packages/pytest_django/plugin.py:527: in _django_db_marker
+    request.getfixturevalue("_django_db_helper")
+/home/edms/.local/lib/python3.11/site-packages/pytest_django/fixtures.py:140: in django_db_setup
+    db_cfg = setup_databases(
+/usr/local/lib/python3.11/site-packages/django/test/utils.py:221: in setup_databases
+    connection.creation.create_test_db(
+/usr/local/lib/python3.11/site-packages/django/db/backends/base/creation.py:94: in create_test_db
+    self.connection._test_serialized_contents = self.serialize_db_to_string()
+/usr/local/lib/python3.11/site-packages/django/db/backends/base/creation.py:142: in serialize_db_to_string
+    serializers.serialize("json", get_objects(), indent=None, stream=out)
+/usr/local/lib/python3.11/site-packages/django/core/serializers/__init__.py:134: in serialize
+    s.serialize(queryset, **options)
+/usr/local/lib/python3.11/site-packages/django/core/serializers/base.py:132: in serialize
+    for count, obj in enumerate(queryset, start=1):
+/usr/local/lib/python3.11/site-packages/django/db/backends/base/creation.py:138: in get_objects
+    yield from queryset.iterator()
+/usr/local/lib/python3.11/site-packages/django/db/models/query.py:516: in _iterator
+    yield from iterable
+/usr/local/lib/python3.11/site-packages/django/db/models/query.py:91: in __iter__
+    results = compiler.execute_sql(
+/usr/local/lib/python3.11/site-packages/django/db/models/sql/compiler.py:1565: in execute_sql
+    cursor.close()
+E   psycopg2.errors.InvalidCursorName: cursor "_django_curs_123396302027648_sync_28" does not exist
+_ ERROR at setup of TestDocumentTermination.test_author_can_terminate_draft_document _
+/usr/local/lib/python3.11/site-packages/django/db/backends/utils.py:89: in _execute
+    return self.cursor.execute(sql, params)
+E   psycopg2.errors.UndefinedColumn: column workflow_notifications.is_read does not exist
+E   LINE 1: ...tatus", "workflow_notifications"."error_message", "workflow_...
+E                                                                ^
+
+The above exception was the direct cause of the following exception:
+/usr/local/lib/python3.11/site-packages/django/db/models/sql/compiler.py:1562: in execute_sql
+    cursor.execute(sql, params)
+/usr/local/lib/python3.11/site-packages/django/db/backends/utils.py:67: in execute
+    return self._execute_with_wrappers(
+/usr/local/lib/python3.11/site-packages/django/db/backends/utils.py:80: in _execute_with_wrappers
+    return executor(sql, params, many, context)
+/usr/local/lib/python3.11/site-packages/django/db/backends/utils.py:84: in _execute
+    with self.db.wrap_database_errors:
+/usr/local/lib/python3.11/site-packages/django/db/utils.py:91: in __exit__
+    raise dj_exc_value.with_traceback(traceback) from exc_value
+/usr/local/lib/python3.11/site-packages/django/db/backends/utils.py:89: in _execute
+    return self.cursor.execute(sql, params)
+E   django.db.utils.ProgrammingError: column workflow_notifications.is_read does not exist
+E   LINE 1: ...tatus", "workflow_notifications"."error_message", "workflow_...
+E                                                                ^
+
+During handling of the above exception, another exception occurred:
+/home/edms/.local/lib/python3.11/site-packages/pytest_django/plugin.py:527: in _django_db_marker
+    request.getfixturevalue("_django_db_helper")
+/home/edms/.local/lib/python3.11/site-packages/pytest_django/fixtures.py:140: in django_db_setup
+    db_cfg = setup_databases(
+/usr/local/lib/python3.11/site-packages/django/test/utils.py:221: in setup_databases
+    connection.creation.create_test_db(
+/usr/local/lib/python3.11/site-packages/django/db/backends/base/creation.py:94: in create_test_db
+    self.connection._test_serialized_contents = self.serialize_db_to_string()
+/usr/local/lib/python3.11/site-packages/django/db/backends/base/creation.py:142: in serialize_db_to_string
+    serializers.serialize("json", get_objects(), indent=None, stream=out)
+/usr/local/lib/python3.11/site-packages/django/core/serializers/__init__.py:134: in serialize
+    s.serialize(queryset, **options)
+/usr/local/lib/python3.11/site-packages/django/core/serializers/base.py:132: in serialize
+    for count, obj in enumerate(queryset, start=1):
+/usr/local/lib/python3.11/site-packages/django/db/backends/base/creation.py:138: in get_objects
+    yield from queryset.iterator()
+/usr/local/lib/python3.11/site-packages/django/db/models/query.py:516: in _iterator
+    yield from iterable
+/usr/local/lib/python3.11/site-packages/django/db/models/query.py:91: in __iter__
+    results = compiler.execute_sql(
+/usr/local/lib/python3.11/site-packages/django/db/models/sql/compiler.py:1565: in execute_sql
+    cursor.close()
+E   psycopg2.errors.InvalidCursorName: cursor "_django_curs_123396302027648_sync_28" does not exist
+_ ERROR at setup of TestDocumentTermination.test_author_can_terminate_under_review_document _
+/usr/local/lib/python3.11/site-packages/django/db/backends/utils.py:89: in _execute
+    return self.cursor.execute(sql, params)
+E   psycopg2.errors.UndefinedColumn: column workflow_notifications.is_read does not exist
+E   LINE 1: ...tatus", "workflow_notifications"."error_message", "workflow_...
+E                                                                ^
+
+The above exception was the direct cause of the following exception:
+/usr/local/lib/python3.11/site-packages/django/db/models/sql/compiler.py:1562: in execute_sql
+    cursor.execute(sql, params)
+/usr/local/lib/python3.11/site-packages/django/db/backends/utils.py:67: in execute
+    return self._execute_with_wrappers(
+/usr/local/lib/python3.11/site-packages/django/db/backends/utils.py:80: in _execute_with_wrappers
+    return executor(sql, params, many, context)
+/usr/local/lib/python3.11/site-packages/django/db/backends/utils.py:84: in _execute
+    with self.db.wrap_database_errors:
+/usr/local/lib/python3.11/site-packages/django/db/utils.py:91: in __exit__
+    raise dj_exc_value.with_traceback(traceback) from exc_value
+/usr/local/lib/python3.11/site-packages/django/db/backends/utils.py:89: in _execute
+    return self.cursor.execute(sql, params)
+E   django.db.utils.ProgrammingError: column workflow_notifications.is_read does not exist
+E   LINE 1: ...tatus", "workflow_notifications"."error_message", "workflow_...
+E                                                                ^
+
+During handling of the above exception, another exception occurred:
+/home/edms/.local/lib/python3.11/site-packages/pytest_django/plugin.py:527: in _django_db_marker
+    request.getfixturevalue("_django_db_helper")
+/home/edms/.local/lib/python3.11/site-packages/pytest_django/fixtures.py:140: in django_db_setup
+    db_cfg = setup_databases(
+/usr/local/lib/python3.11/site-packages/django/test/utils.py:221: in setup_databases
+    connection.creation.create_test_db(
+/usr/local/lib/python3.11/site-packages/django/db/backends/base/creation.py:94: in create_test_db
+    self.connection._test_serialized_contents = self.serialize_db_to_string()
+/usr/local/lib/python3.11/site-packages/django/db/backends/base/creation.py:142: in serialize_db_to_string
+    serializers.serialize("json", get_objects(), indent=None, stream=out)
+/usr/local/lib/python3.11/site-packages/django/core/serializers/__init__.py:134: in serialize
+    s.serialize(queryset, **options)
+/usr/local/lib/python3.11/site-packages/django/core/serializers/base.py:132: in serialize
+    for count, obj in enumerate(queryset, start=1):
+/usr/local/lib/python3.11/site-packages/django/db/backends/base/creation.py:138: in get_objects
+    yield from queryset.iterator()
+/usr/local/lib/python3.11/site-packages/django/db/models/query.py:516: in _iterator
+    yield from iterable
+/usr/local/lib/python3.11/site-packages/django/db/models/query.py:91: in __iter__
+    results = compiler.execute_sql(
+/usr/local/lib/python3.11/site-packages/django/db/models/sql/compiler.py:1565: in execute_sql
+    cursor.close()
+E   psycopg2.errors.InvalidCursorName: cursor "_django_curs_123396302027648_sync_28" does not exist
+_ ERROR at setup of TestDocumentTermination.test_author_can_terminate_pending_approval_document _
+/usr/local/lib/python3.11/site-packages/django/db/backends/utils.py:89: in _execute
+    return self.cursor.execute(sql, params)
+E   psycopg2.errors.UndefinedColumn: column workflow_notifications.is_read does not exist
+E   LINE 1: ...tatus", "workflow_notifications"."error_message", "workflow_...
+E                                                                ^
+
+The above exception was the direct cause of the following exception:
+/usr/local/lib/python3.11/site-packages/django/db/models/sql/compiler.py:1562: in execute_sql
+    cursor.execute(sql, params)
+/usr/local/lib/python3.11/site-packages/django/db/backends/utils.py:67: in execute
+    return self._execute_with_wrappers(
+/usr/local/lib/python3.11/site-packages/django/db/backends/utils.py:80: in _execute_with_wrappers
+    return executor(sql, params, many, context)
+/usr/local/lib/python3.11/site-packages/django/db/backends/utils.py:84: in _execute
+    with self.db.wrap_database_errors:
+/usr/local/lib/python3.11/site-packages/django/db/utils.py:91: in __exit__
+    raise dj_exc_value.with_traceback(traceback) from exc_value
+/usr/local/lib/python3.11/site-packages/django/db/backends/utils.py:89: in _execute
+    return self.cursor.execute(sql, params)
+E   django.db.utils.ProgrammingError: column workflow_notifications.is_read does not exist
+E   LINE 1: ...tatus", "workflow_notifications"."error_message", "workflow_...
+E                                                                ^
+
+During handling of the above exception, another exception occurred:
+/home/edms/.local/lib/python3.11/site-packages/pytest_django/plugin.py:527: in _django_db_marker
+    request.getfixturevalue("_django_db_helper")
+/home/edms/.local/lib/python3.11/site-packages/pytest_django/fixtures.py:140: in django_db_setup
+    db_cfg = setup_databases(
+/usr/local/lib/python3.11/site-packages/django/test/utils.py:221: in setup_databases
+    connection.creation.create_test_db(
+/usr/local/lib/python3.11/site-packages/django/db/backends/base/creation.py:94: in create_test_db
+    self.connection._test_serialized_contents = self.serialize_db_to_string()
+/usr/local/lib/python3.11/site-packages/django/db/backends/base/creation.py:142: in serialize_db_to_string
+    serializers.serialize("json", get_objects(), indent=None, stream=out)
+/usr/local/lib/python3.11/site-packages/django/core/serializers/__init__.py:134: in serialize
+    s.serialize(queryset, **options)
+/usr/local/lib/python3.11/site-packages/django/core/serializers/base.py:132: in serialize
+    for count, obj in enumerate(queryset, start=1):
+/usr/local/lib/python3.11/site-packages/django/db/backends/base/creation.py:138: in get_objects
+    yield from queryset.iterator()
+/usr/local/lib/python3.11/site-packages/django/db/models/query.py:516: in _iterator
+    yield from iterable
+/usr/local/lib/python3.11/site-packages/django/db/models/query.py:91: in __iter__
+    results = compiler.execute_sql(
+/usr/local/lib/python3.11/site-packages/django/db/models/sql/compiler.py:1565: in execute_sql
+    cursor.close()
+E   psycopg2.errors.InvalidCursorName: cursor "_django_curs_123396302027648_sync_28" does not exist
+__ ERROR at setup of TestDocumentTermination.test_termination_requires_reason __
+/usr/local/lib/python3.11/site-packages/django/db/backends/utils.py:89: in _execute
+    return self.cursor.execute(sql, params)
+E   psycopg2.errors.UndefinedColumn: column workflow_notifications.is_read does not exist
+E   LINE 1: ...tatus", "workflow_notifications"."error_message", "workflow_...
+E                                                                ^
+
+The above exception was the direct cause of the following exception:
+/usr/local/lib/python3.11/site-packages/django/db/models/sql/compiler.py:1562: in execute_sql
+    cursor.execute(sql, params)
+/usr/local/lib/python3.11/site-packages/django/db/backends/utils.py:67: in execute
+    return self._execute_with_wrappers(
+/usr/local/lib/python3.11/site-packages/django/db/backends/utils.py:80: in _execute_with_wrappers
+    return executor(sql, params, many, context)
+/usr/local/lib/python3.11/site-packages/django/db/backends/utils.py:84: in _execute
+    with self.db.wrap_database_errors:
+/usr/local/lib/python3.11/site-packages/django/db/utils.py:91: in __exit__
+    raise dj_exc_value.with_traceback(traceback) from exc_value
+/usr/local/lib/python3.11/site-packages/django/db/backends/utils.py:89: in _execute
+    return self.cursor.execute(sql, params)
+E   django.db.utils.ProgrammingError: column workflow_notifications.is_read does not exist
+E   LINE 1: ...tatus", "workflow_notifications"."error_message", "workflow_...
+E                                                                ^
+
+During handling of the above exception, another exception occurred:
+/home/edms/.local/lib/python3.11/site-packages/pytest_django/plugin.py:527: in _django_db_marker
+    request.getfixturevalue("_django_db_helper")
+/home/edms/.local/lib/python3.11/site-packages/pytest_django/fixtures.py:140: in django_db_setup
+    db_cfg = setup_databases(
+/usr/local/lib/python3.11/site-packages/django/test/utils.py:221: in setup_databases
+    connection.creation.create_test_db(
+/usr/local/lib/python3.11/site-packages/django/db/backends/base/creation.py:94: in create_test_db
+    self.connection._test_serialized_contents = self.serialize_db_to_string()
+/usr/local/lib/python3.11/site-packages/django/db/backends/base/creation.py:142: in serialize_db_to_string
+    serializers.serialize("json", get_objects(), indent=None, stream=out)
+/usr/local/lib/python3.11/site-packages/django/core/serializers/__init__.py:134: in serialize
+    s.serialize(queryset, **options)
+/usr/local/lib/python3.11/site-packages/django/core/serializers/base.py:132: in serialize
+    for count, obj in enumerate(queryset, start=1):
+/usr/local/lib/python3.11/site-packages/django/db/backends/base/creation.py:138: in get_objects
+    yield from queryset.iterator()
+/usr/local/lib/python3.11/site-packages/django/db/models/query.py:516: in _iterator
+    yield from iterable
+/usr/local/lib/python3.11/site-packages/django/db/models/query.py:91: in __iter__
+    results = compiler.execute_sql(
+/usr/local/lib/python3.11/site-packages/django/db/models/sql/compiler.py:1565: in execute_sql
+    cursor.close()
+E   psycopg2.errors.InvalidCursorName: cursor "_django_curs_123396302027648_sync_28" does not exist
+_ ERROR at setup of TestDocumentTermination.test_cannot_terminate_effective_document _
+/usr/local/lib/python3.11/site-packages/django/db/backends/utils.py:89: in _execute
+    return self.cursor.execute(sql, params)
+E   psycopg2.errors.UndefinedColumn: column workflow_notifications.is_read does not exist
+E   LINE 1: ...tatus", "workflow_notifications"."error_message", "workflow_...
+E                                                                ^
+
+The above exception was the direct cause of the following exception:
+/usr/local/lib/python3.11/site-packages/django/db/models/sql/compiler.py:1562: in execute_sql
+    cursor.execute(sql, params)
+/usr/local/lib/python3.11/site-packages/django/db/backends/utils.py:67: in execute
+    return self._execute_with_wrappers(
+/usr/local/lib/python3.11/site-packages/django/db/backends/utils.py:80: in _execute_with_wrappers
+    return executor(sql, params, many, context)
+/usr/local/lib/python3.11/site-packages/django/db/backends/utils.py:84: in _execute
+    with self.db.wrap_database_errors:
+/usr/local/lib/python3.11/site-packages/django/db/utils.py:91: in __exit__
+    raise dj_exc_value.with_traceback(traceback) from exc_value
+/usr/local/lib/python3.11/site-packages/django/db/backends/utils.py:89: in _execute
+    return self.cursor.execute(sql, params)
+E   django.db.utils.ProgrammingError: column workflow_notifications.is_read does not exist
+E   LINE 1: ...tatus", "workflow_notifications"."error_message", "workflow_...
+E                                                                ^
+
+During handling of the above exception, another exception occurred:
+/home/edms/.local/lib/python3.11/site-packages/pytest_django/plugin.py:527: in _django_db_marker
+    request.getfixturevalue("_django_db_helper")
+/home/edms/.local/lib/python3.11/site-packages/pytest_django/fixtures.py:140: in django_db_setup
+    db_cfg = setup_databases(
+/usr/local/lib/python3.11/site-packages/django/test/utils.py:221: in setup_databases
+    connection.creation.create_test_db(
+/usr/local/lib/python3.11/site-packages/django/db/backends/base/creation.py:94: in create_test_db
+    self.connection._test_serialized_contents = self.serialize_db_to_string()
+/usr/local/lib/python3.11/site-packages/django/db/backends/base/creation.py:142: in serialize_db_to_string
+    serializers.serialize("json", get_objects(), indent=None, stream=out)
+/usr/local/lib/python3.11/site-packages/django/core/serializers/__init__.py:134: in serialize
+    s.serialize(queryset, **options)
+/usr/local/lib/python3.11/site-packages/django/core/serializers/base.py:132: in serialize
+    for count, obj in enumerate(queryset, start=1):
+/usr/local/lib/python3.11/site-packages/django/db/backends/base/creation.py:138: in get_objects
+    yield from queryset.iterator()
+/usr/local/lib/python3.11/site-packages/django/db/models/query.py:516: in _iterator
+    yield from iterable
+/usr/local/lib/python3.11/site-packages/django/db/models/query.py:91: in __iter__
+    results = compiler.execute_sql(
+/usr/local/lib/python3.11/site-packages/django/db/models/sql/compiler.py:1565: in execute_sql
+    cursor.close()
+E   psycopg2.errors.InvalidCursorName: cursor "_django_curs_123396302027648_sync_28" does not exist
+__ ERROR at setup of TestDocumentTermination.test_non_author_cannot_terminate __
+/usr/local/lib/python3.11/site-packages/django/db/backends/utils.py:89: in _execute
+    return self.cursor.execute(sql, params)
+E   psycopg2.errors.UndefinedColumn: column workflow_notifications.is_read does not exist
+E   LINE 1: ...tatus", "workflow_notifications"."error_message", "workflow_...
+E                                                                ^
+
+The above exception was the direct cause of the following exception:
+/usr/local/lib/python3.11/site-packages/django/db/models/sql/compiler.py:1562: in execute_sql
+    cursor.execute(sql, params)
+/usr/local/lib/python3.11/site-packages/django/db/backends/utils.py:67: in execute
+    return self._execute_with_wrappers(
+/usr/local/lib/python3.11/site-packages/django/db/backends/utils.py:80: in _execute_with_wrappers
+    return executor(sql, params, many, context)
+/usr/local/lib/python3.11/site-packages/django/db/backends/utils.py:84: in _execute
+    with self.db.wrap_database_errors:
+/usr/local/lib/python3.11/site-packages/django/db/utils.py:91: in __exit__
+    raise dj_exc_value.with_traceback(traceback) from exc_value
+/usr/local/lib/python3.11/site-packages/django/db/backends/utils.py:89: in _execute
+    return self.cursor.execute(sql, params)
+E   django.db.utils.ProgrammingError: column workflow_notifications.is_read does not exist
+E   LINE 1: ...tatus", "workflow_notifications"."error_message", "workflow_...
+E                                                                ^
+
+During handling of the above exception, another exception occurred:
+/home/edms/.local/lib/python3.11/site-packages/pytest_django/plugin.py:527: in _django_db_marker
+    request.getfixturevalue("_django_db_helper")
+/home/edms/.local/lib/python3.11/site-packages/pytest_django/fixtures.py:140: in django_db_setup
+    db_cfg = setup_databases(
+/usr/local/lib/python3.11/site-packages/django/test/utils.py:221: in setup_databases
+    connection.creation.create_test_db(
+/usr/local/lib/python3.11/site-packages/django/db/backends/base/creation.py:94: in create_test_db
+    self.connection._test_serialized_contents = self.serialize_db_to_string()
+/usr/local/lib/python3.11/site-packages/django/db/backends/base/creation.py:142: in serialize_db_to_string
+    serializers.serialize("json", get_objects(), indent=None, stream=out)
+/usr/local/lib/python3.11/site-packages/django/core/serializers/__init__.py:134: in serialize
+    s.serialize(queryset, **options)
+/usr/local/lib/python3.11/site-packages/django/core/serializers/base.py:132: in serialize
+    for count, obj in enumerate(queryset, start=1):
+/usr/local/lib/python3.11/site-packages/django/db/backends/base/creation.py:138: in get_objects
+    yield from queryset.iterator()
+/usr/local/lib/python3.11/site-packages/django/db/models/query.py:516: in _iterator
+    yield from iterable
+/usr/local/lib/python3.11/site-packages/django/db/models/query.py:91: in __iter__
+    results = compiler.execute_sql(
+/usr/local/lib/python3.11/site-packages/django/db/models/sql/compiler.py:1565: in execute_sql
+    cursor.close()
+E   psycopg2.errors.InvalidCursorName: cursor "_django_curs_123396302027648_sync_28" does not exist
+_ ERROR at setup of TestDocumentTermination.test_terminated_documents_are_read_only _
+/usr/local/lib/python3.11/site-packages/django/db/backends/utils.py:89: in _execute
+    return self.cursor.execute(sql, params)
+E   psycopg2.errors.UndefinedColumn: column workflow_notifications.is_read does not exist
+E   LINE 1: ...tatus", "workflow_notifications"."error_message", "workflow_...
+E                                                                ^
+
+The above exception was the direct cause of the following exception:
+/usr/local/lib/python3.11/site-packages/django/db/models/sql/compiler.py:1562: in execute_sql
+    cursor.execute(sql, params)
+/usr/local/lib/python3.11/site-packages/django/db/backends/utils.py:67: in execute
+    return self._execute_with_wrappers(
+/usr/local/lib/python3.11/site-packages/django/db/backends/utils.py:80: in _execute_with_wrappers
+    return executor(sql, params, many, context)
+/usr/local/lib/python3.11/site-packages/django/db/backends/utils.py:84: in _execute
+    with self.db.wrap_database_errors:
+/usr/local/lib/python3.11/site-packages/django/db/utils.py:91: in __exit__
+    raise dj_exc_value.with_traceback(traceback) from exc_value
+/usr/local/lib/python3.11/site-packages/django/db/backends/utils.py:89: in _execute
+    return self.cursor.execute(sql, params)
+E   django.db.utils.ProgrammingError: column workflow_notifications.is_read does not exist
+E   LINE 1: ...tatus", "workflow_notifications"."error_message", "workflow_...
+E                                                                ^
+
+During handling of the above exception, another exception occurred:
+/home/edms/.local/lib/python3.11/site-packages/pytest_django/plugin.py:527: in _django_db_marker
+    request.getfixturevalue("_django_db_helper")
+/home/edms/.local/lib/python3.11/site-packages/pytest_django/fixtures.py:140: in django_db_setup
+    db_cfg = setup_databases(
+/usr/local/lib/python3.11/site-packages/django/test/utils.py:221: in setup_databases
+    connection.creation.create_test_db(
+/usr/local/lib/python3.11/site-packages/django/db/backends/base/creation.py:94: in create_test_db
+    self.connection._test_serialized_contents = self.serialize_db_to_string()
+/usr/local/lib/python3.11/site-packages/django/db/backends/base/creation.py:142: in serialize_db_to_string
+    serializers.serialize("json", get_objects(), indent=None, stream=out)
+/usr/local/lib/python3.11/site-packages/django/core/serializers/__init__.py:134: in serialize
+    s.serialize(queryset, **options)
+/usr/local/lib/python3.11/site-packages/django/core/serializers/base.py:132: in serialize
+    for count, obj in enumerate(queryset, start=1):
+/usr/local/lib/python3.11/site-packages/django/db/backends/base/creation.py:138: in get_objects
+    yield from queryset.iterator()
+/usr/local/lib/python3.11/site-packages/django/db/models/query.py:516: in _iterator
+    yield from iterable
+/usr/local/lib/python3.11/site-packages/django/db/models/query.py:91: in __iter__
+    results = compiler.execute_sql(
+/usr/local/lib/python3.11/site-packages/django/db/models/sql/compiler.py:1565: in execute_sql
+    cursor.close()
+E   psycopg2.errors.InvalidCursorName: cursor "_django_curs_123396302027648_sync_28" does not exist
+__ ERROR at setup of TestDocumentDependencies.test_add_dependency_to_document __
+/usr/local/lib/python3.11/site-packages/django/db/backends/utils.py:89: in _execute
+    return self.cursor.execute(sql, params)
+E   psycopg2.errors.UndefinedColumn: column workflow_notifications.is_read does not exist
+E   LINE 1: ...tatus", "workflow_notifications"."error_message", "workflow_...
+E                                                                ^
+
+The above exception was the direct cause of the following exception:
+/usr/local/lib/python3.11/site-packages/django/db/models/sql/compiler.py:1562: in execute_sql
+    cursor.execute(sql, params)
+/usr/local/lib/python3.11/site-packages/django/db/backends/utils.py:67: in execute
+    return self._execute_with_wrappers(
+/usr/local/lib/python3.11/site-packages/django/db/backends/utils.py:80: in _execute_with_wrappers
+    return executor(sql, params, many, context)
+/usr/local/lib/python3.11/site-packages/django/db/backends/utils.py:84: in _execute
+    with self.db.wrap_database_errors:
+/usr/local/lib/python3.11/site-packages/django/db/utils.py:91: in __exit__
+    raise dj_exc_value.with_traceback(traceback) from exc_value
+/usr/local/lib/python3.11/site-packages/django/db/backends/utils.py:89: in _execute
+    return self.cursor.execute(sql, params)
+E   django.db.utils.ProgrammingError: column workflow_notifications.is_read does not exist
+E   LINE 1: ...tatus", "workflow_notifications"."error_message", "workflow_...
+E                                                                ^
+
+During handling of the above exception, another exception occurred:
+/home/edms/.local/lib/python3.11/site-packages/pytest_django/plugin.py:527: in _django_db_marker
+    request.getfixturevalue("_django_db_helper")
+/home/edms/.local/lib/python3.11/site-packages/pytest_django/fixtures.py:140: in django_db_setup
+    db_cfg = setup_databases(
+/usr/local/lib/python3.11/site-packages/django/test/utils.py:221: in setup_databases
+    connection.creation.create_test_db(
+/usr/local/lib/python3.11/site-packages/django/db/backends/base/creation.py:94: in create_test_db
+    self.connection._test_serialized_contents = self.serialize_db_to_string()
+/usr/local/lib/python3.11/site-packages/django/db/backends/base/creation.py:142: in serialize_db_to_string
+    serializers.serialize("json", get_objects(), indent=None, stream=out)
+/usr/local/lib/python3.11/site-packages/django/core/serializers/__init__.py:134: in serialize
+    s.serialize(queryset, **options)
+/usr/local/lib/python3.11/site-packages/django/core/serializers/base.py:132: in serialize
+    for count, obj in enumerate(queryset, start=1):
+/usr/local/lib/python3.11/site-packages/django/db/backends/base/creation.py:138: in get_objects
+    yield from queryset.iterator()
+/usr/local/lib/python3.11/site-packages/django/db/models/query.py:516: in _iterator
+    yield from iterable
+/usr/local/lib/python3.11/site-packages/django/db/models/query.py:91: in __iter__
+    results = compiler.execute_sql(
+/usr/local/lib/python3.11/site-packages/django/db/models/sql/compiler.py:1565: in execute_sql
+    cursor.close()
+E   psycopg2.errors.InvalidCursorName: cursor "_django_curs_123396302027648_sync_28" does not exist
+_ ERROR at setup of TestDocumentDependencies.test_circular_dependency_prevented _
+/usr/local/lib/python3.11/site-packages/django/db/backends/utils.py:89: in _execute
+    return self.cursor.execute(sql, params)
+E   psycopg2.errors.UndefinedColumn: column workflow_notifications.is_read does not exist
+E   LINE 1: ...tatus", "workflow_notifications"."error_message", "workflow_...
+E                                                                ^
+
+The above exception was the direct cause of the following exception:
+/usr/local/lib/python3.11/site-packages/django/db/models/sql/compiler.py:1562: in execute_sql
+    cursor.execute(sql, params)
+/usr/local/lib/python3.11/site-packages/django/db/backends/utils.py:67: in execute
+    return self._execute_with_wrappers(
+/usr/local/lib/python3.11/site-packages/django/db/backends/utils.py:80: in _execute_with_wrappers
+    return executor(sql, params, many, context)
+/usr/local/lib/python3.11/site-packages/django/db/backends/utils.py:84: in _execute
+    with self.db.wrap_database_errors:
+/usr/local/lib/python3.11/site-packages/django/db/utils.py:91: in __exit__
+    raise dj_exc_value.with_traceback(traceback) from exc_value
+/usr/local/lib/python3.11/site-packages/django/db/backends/utils.py:89: in _execute
+    return self.cursor.execute(sql, params)
+E   django.db.utils.ProgrammingError: column workflow_notifications.is_read does not exist
+E   LINE 1: ...tatus", "workflow_notifications"."error_message", "workflow_...
+E                                                                ^
+
+During handling of the above exception, another exception occurred:
+/home/edms/.local/lib/python3.11/site-packages/pytest_django/plugin.py:527: in _django_db_marker
+    request.getfixturevalue("_django_db_helper")
+/home/edms/.local/lib/python3.11/site-packages/pytest_django/fixtures.py:140: in django_db_setup
+    db_cfg = setup_databases(
+/usr/local/lib/python3.11/site-packages/django/test/utils.py:221: in setup_databases
+    connection.creation.create_test_db(
+/usr/local/lib/python3.11/site-packages/django/db/backends/base/creation.py:94: in create_test_db
+    self.connection._test_serialized_contents = self.serialize_db_to_string()
+/usr/local/lib/python3.11/site-packages/django/db/backends/base/creation.py:142: in serialize_db_to_string
+    serializers.serialize("json", get_objects(), indent=None, stream=out)
+/usr/local/lib/python3.11/site-packages/django/core/serializers/__init__.py:134: in serialize
+    s.serialize(queryset, **options)
+/usr/local/lib/python3.11/site-packages/django/core/serializers/base.py:132: in serialize
+    for count, obj in enumerate(queryset, start=1):
+/usr/local/lib/python3.11/site-packages/django/db/backends/base/creation.py:138: in get_objects
+    yield from queryset.iterator()
+/usr/local/lib/python3.11/site-packages/django/db/models/query.py:516: in _iterator
+    yield from iterable
+/usr/local/lib/python3.11/site-packages/django/db/models/query.py:91: in __iter__
+    results = compiler.execute_sql(
+/usr/local/lib/python3.11/site-packages/django/db/models/sql/compiler.py:1565: in execute_sql
+    cursor.close()
+E   psycopg2.errors.InvalidCursorName: cursor "_django_curs_123396302027648_sync_28" does not exist
+_ ERROR at setup of TestDocumentDependencies.test_indirect_circular_dependency_prevented _
+/usr/local/lib/python3.11/site-packages/django/db/backends/utils.py:89: in _execute
+    return self.cursor.execute(sql, params)
+E   psycopg2.errors.UndefinedColumn: column workflow_notifications.is_read does not exist
+E   LINE 1: ...tatus", "workflow_notifications"."error_message", "workflow_...
+E                                                                ^
+
+The above exception was the direct cause of the following exception:
+/usr/local/lib/python3.11/site-packages/django/db/models/sql/compiler.py:1562: in execute_sql
+    cursor.execute(sql, params)
+/usr/local/lib/python3.11/site-packages/django/db/backends/utils.py:67: in execute
+    return self._execute_with_wrappers(
+/usr/local/lib/python3.11/site-packages/django/db/backends/utils.py:80: in _execute_with_wrappers
+    return executor(sql, params, many, context)
+/usr/local/lib/python3.11/site-packages/django/db/backends/utils.py:84: in _execute
+    with self.db.wrap_database_errors:
+/usr/local/lib/python3.11/site-packages/django/db/utils.py:91: in __exit__
+    raise dj_exc_value.with_traceback(traceback) from exc_value
+/usr/local/lib/python3.11/site-packages/django/db/backends/utils.py:89: in _execute
+    return self.cursor.execute(sql, params)
+E   django.db.utils.ProgrammingError: column workflow_notifications.is_read does not exist
+E   LINE 1: ...tatus", "workflow_notifications"."error_message", "workflow_...
+E                                                                ^
+
+During handling of the above exception, another exception occurred:
+/home/edms/.local/lib/python3.11/site-packages/pytest_django/plugin.py:527: in _django_db_marker
+    request.getfixturevalue("_django_db_helper")
+/home/edms/.local/lib/python3.11/site-packages/pytest_django/fixtures.py:140: in django_db_setup
+    db_cfg = setup_databases(
+/usr/local/lib/python3.11/site-packages/django/test/utils.py:221: in setup_databases
+    connection.creation.create_test_db(
+/usr/local/lib/python3.11/site-packages/django/db/backends/base/creation.py:94: in create_test_db
+    self.connection._test_serialized_contents = self.serialize_db_to_string()
+/usr/local/lib/python3.11/site-packages/django/db/backends/base/creation.py:142: in serialize_db_to_string
+    serializers.serialize("json", get_objects(), indent=None, stream=out)
+/usr/local/lib/python3.11/site-packages/django/core/serializers/__init__.py:134: in serialize
+    s.serialize(queryset, **options)
+/usr/local/lib/python3.11/site-packages/django/core/serializers/base.py:132: in serialize
+    for count, obj in enumerate(queryset, start=1):
+/usr/local/lib/python3.11/site-packages/django/db/backends/base/creation.py:138: in get_objects
+    yield from queryset.iterator()
+/usr/local/lib/python3.11/site-packages/django/db/models/query.py:516: in _iterator
+    yield from iterable
+/usr/local/lib/python3.11/site-packages/django/db/models/query.py:91: in __iter__
+    results = compiler.execute_sql(
+/usr/local/lib/python3.11/site-packages/django/db/models/sql/compiler.py:1565: in execute_sql
+    cursor.close()
+E   psycopg2.errors.InvalidCursorName: cursor "_django_curs_123396302027648_sync_28" does not exist
+__ ERROR at setup of TestDocumentDependencies.test_self_dependency_prevented ___
+/usr/local/lib/python3.11/site-packages/django/db/backends/utils.py:89: in _execute
+    return self.cursor.execute(sql, params)
+E   psycopg2.errors.UndefinedColumn: column workflow_notifications.is_read does not exist
+E   LINE 1: ...tatus", "workflow_notifications"."error_message", "workflow_...
+E                                                                ^
+
+The above exception was the direct cause of the following exception:
+/usr/local/lib/python3.11/site-packages/django/db/models/sql/compiler.py:1562: in execute_sql
+    cursor.execute(sql, params)
+/usr/local/lib/python3.11/site-packages/django/db/backends/utils.py:67: in execute
+    return self._execute_with_wrappers(
+/usr/local/lib/python3.11/site-packages/django/db/backends/utils.py:80: in _execute_with_wrappers
+    return executor(sql, params, many, context)
+/usr/local/lib/python3.11/site-packages/django/db/backends/utils.py:84: in _execute
+    with self.db.wrap_database_errors:
+/usr/local/lib/python3.11/site-packages/django/db/utils.py:91: in __exit__
+    raise dj_exc_value.with_traceback(traceback) from exc_value
+/usr/local/lib/python3.11/site-packages/django/db/backends/utils.py:89: in _execute
+    return self.cursor.execute(sql, params)
+E   django.db.utils.ProgrammingError: column workflow_notifications.is_read does not exist
+E   LINE 1: ...tatus", "workflow_notifications"."error_message", "workflow_...
+E                                                                ^
+
+During handling of the above exception, another exception occurred:
+/home/edms/.local/lib/python3.11/site-packages/pytest_django/plugin.py:527: in _django_db_marker
+    request.getfixturevalue("_django_db_helper")
+/home/edms/.local/lib/python3.11/site-packages/pytest_django/fixtures.py:140: in django_db_setup
+    db_cfg = setup_databases(
+/usr/local/lib/python3.11/site-packages/django/test/utils.py:221: in setup_databases
+    connection.creation.create_test_db(
+/usr/local/lib/python3.11/site-packages/django/db/backends/base/creation.py:94: in create_test_db
+    self.connection._test_serialized_contents = self.serialize_db_to_string()
+/usr/local/lib/python3.11/site-packages/django/db/backends/base/creation.py:142: in serialize_db_to_string
+    serializers.serialize("json", get_objects(), indent=None, stream=out)
+/usr/local/lib/python3.11/site-packages/django/core/serializers/__init__.py:134: in serialize
+    s.serialize(queryset, **options)
+/usr/local/lib/python3.11/site-packages/django/core/serializers/base.py:132: in serialize
+    for count, obj in enumerate(queryset, start=1):
+/usr/local/lib/python3.11/site-packages/django/db/backends/base/creation.py:138: in get_objects
+    yield from queryset.iterator()
+/usr/local/lib/python3.11/site-packages/django/db/models/query.py:516: in _iterator
+    yield from iterable
+/usr/local/lib/python3.11/site-packages/django/db/models/query.py:91: in __iter__
+    results = compiler.execute_sql(
+/usr/local/lib/python3.11/site-packages/django/db/models/sql/compiler.py:1565: in execute_sql
+    cursor.close()
+E   psycopg2.errors.InvalidCursorName: cursor "_django_curs_123396302027648_sync_28" does not exist
+_ ERROR at setup of TestDocumentDependencies.test_multiple_dependencies_allowed _
+/usr/local/lib/python3.11/site-packages/django/db/backends/utils.py:89: in _execute
+    return self.cursor.execute(sql, params)
+E   psycopg2.errors.UndefinedColumn: column workflow_notifications.is_read does not exist
+E   LINE 1: ...tatus", "workflow_notifications"."error_message", "workflow_...
+E                                                                ^
+
+The above exception was the direct cause of the following exception:
+/usr/local/lib/python3.11/site-packages/django/db/models/sql/compiler.py:1562: in execute_sql
+    cursor.execute(sql, params)
+/usr/local/lib/python3.11/site-packages/django/db/backends/utils.py:67: in execute
+    return self._execute_with_wrappers(
+/usr/local/lib/python3.11/site-packages/django/db/backends/utils.py:80: in _execute_with_wrappers
+    return executor(sql, params, many, context)
+/usr/local/lib/python3.11/site-packages/django/db/backends/utils.py:84: in _execute
+    with self.db.wrap_database_errors:
+/usr/local/lib/python3.11/site-packages/django/db/utils.py:91: in __exit__
+    raise dj_exc_value.with_traceback(traceback) from exc_value
+/usr/local/lib/python3.11/site-packages/django/db/backends/utils.py:89: in _execute
+    return self.cursor.execute(sql, params)
+E   django.db.utils.ProgrammingError: column workflow_notifications.is_read does not exist
+E   LINE 1: ...tatus", "workflow_notifications"."error_message", "workflow_...
+E                                                                ^
+
+During handling of the above exception, another exception occurred:
+/home/edms/.local/lib/python3.11/site-packages/pytest_django/plugin.py:527: in _django_db_marker
+    request.getfixturevalue("_django_db_helper")
+/home/edms/.local/lib/python3.11/site-packages/pytest_django/fixtures.py:140: in django_db_setup
+    db_cfg = setup_databases(
+/usr/local/lib/python3.11/site-packages/django/test/utils.py:221: in setup_databases
+    connection.creation.create_test_db(
+/usr/local/lib/python3.11/site-packages/django/db/backends/base/creation.py:94: in create_test_db
+    self.connection._test_serialized_contents = self.serialize_db_to_string()
+/usr/local/lib/python3.11/site-packages/django/db/backends/base/creation.py:142: in serialize_db_to_string
+    serializers.serialize("json", get_objects(), indent=None, stream=out)
+/usr/local/lib/python3.11/site-packages/django/core/serializers/__init__.py:134: in serialize
+    s.serialize(queryset, **options)
+/usr/local/lib/python3.11/site-packages/django/core/serializers/base.py:132: in serialize
+    for count, obj in enumerate(queryset, start=1):
+/usr/local/lib/python3.11/site-packages/django/db/backends/base/creation.py:138: in get_objects
+    yield from queryset.iterator()
+/usr/local/lib/python3.11/site-packages/django/db/models/query.py:516: in _iterator
+    yield from iterable
+/usr/local/lib/python3.11/site-packages/django/db/models/query.py:91: in __iter__
+    results = compiler.execute_sql(
+/usr/local/lib/python3.11/site-packages/django/db/models/sql/compiler.py:1565: in execute_sql
+    cursor.close()
+E   psycopg2.errors.InvalidCursorName: cursor "_django_curs_123396302027648_sync_28" does not exist
+___ ERROR at setup of TestDocumentDependencies.test_critical_dependency_flag ___
+/usr/local/lib/python3.11/site-packages/django/db/backends/utils.py:89: in _execute
+    return self.cursor.execute(sql, params)
+E   psycopg2.errors.UndefinedColumn: column workflow_notifications.is_read does not exist
+E   LINE 1: ...tatus", "workflow_notifications"."error_message", "workflow_...
+E                                                                ^
+
+The above exception was the direct cause of the following exception:
+/usr/local/lib/python3.11/site-packages/django/db/models/sql/compiler.py:1562: in execute_sql
+    cursor.execute(sql, params)
+/usr/local/lib/python3.11/site-packages/django/db/backends/utils.py:67: in execute
+    return self._execute_with_wrappers(
+/usr/local/lib/python3.11/site-packages/django/db/backends/utils.py:80: in _execute_with_wrappers
+    return executor(sql, params, many, context)
+/usr/local/lib/python3.11/site-packages/django/db/backends/utils.py:84: in _execute
+    with self.db.wrap_database_errors:
+/usr/local/lib/python3.11/site-packages/django/db/utils.py:91: in __exit__
+    raise dj_exc_value.with_traceback(traceback) from exc_value
+/usr/local/lib/python3.11/site-packages/django/db/backends/utils.py:89: in _execute
+    return self.cursor.execute(sql, params)
+E   django.db.utils.ProgrammingError: column workflow_notifications.is_read does not exist
+E   LINE 1: ...tatus", "workflow_notifications"."error_message", "workflow_...
+E                                                                ^
+
+During handling of the above exception, another exception occurred:
+/home/edms/.local/lib/python3.11/site-packages/pytest_django/plugin.py:527: in _django_db_marker
+    request.getfixturevalue("_django_db_helper")
+/home/edms/.local/lib/python3.11/site-packages/pytest_django/fixtures.py:140: in django_db_setup
+    db_cfg = setup_databases(
+/usr/local/lib/python3.11/site-packages/django/test/utils.py:221: in setup_databases
+    connection.creation.create_test_db(
+/usr/local/lib/python3.11/site-packages/django/db/backends/base/creation.py:94: in create_test_db
+    self.connection._test_serialized_contents = self.serialize_db_to_string()
+/usr/local/lib/python3.11/site-packages/django/db/backends/base/creation.py:142: in serialize_db_to_string
+    serializers.serialize("json", get_objects(), indent=None, stream=out)
+/usr/local/lib/python3.11/site-packages/django/core/serializers/__init__.py:134: in serialize
+    s.serialize(queryset, **options)
+/usr/local/lib/python3.11/site-packages/django/core/serializers/base.py:132: in serialize
+    for count, obj in enumerate(queryset, start=1):
+/usr/local/lib/python3.11/site-packages/django/db/backends/base/creation.py:138: in get_objects
+    yield from queryset.iterator()
+/usr/local/lib/python3.11/site-packages/django/db/models/query.py:516: in _iterator
+    yield from iterable
+/usr/local/lib/python3.11/site-packages/django/db/models/query.py:91: in __iter__
+    results = compiler.execute_sql(
+/usr/local/lib/python3.11/site-packages/django/db/models/sql/compiler.py:1565: in execute_sql
+    cursor.close()
+E   psycopg2.errors.InvalidCursorName: cursor "_django_curs_123396302027648_sync_28" does not exist
+_______ ERROR at setup of TestDocumentDependencies.test_dependency_types _______
+/usr/local/lib/python3.11/site-packages/django/db/backends/utils.py:89: in _execute
+    return self.cursor.execute(sql, params)
+E   psycopg2.errors.UndefinedColumn: column workflow_notifications.is_read does not exist
+E   LINE 1: ...tatus", "workflow_notifications"."error_message", "workflow_...
+E                                                                ^
+
+The above exception was the direct cause of the following exception:
+/usr/local/lib/python3.11/site-packages/django/db/models/sql/compiler.py:1562: in execute_sql
+    cursor.execute(sql, params)
+/usr/local/lib/python3.11/site-packages/django/db/backends/utils.py:67: in execute
+    return self._execute_with_wrappers(
+/usr/local/lib/python3.11/site-packages/django/db/backends/utils.py:80: in _execute_with_wrappers
+    return executor(sql, params, many, context)
+/usr/local/lib/python3.11/site-packages/django/db/backends/utils.py:84: in _execute
+    with self.db.wrap_database_errors:
+/usr/local/lib/python3.11/site-packages/django/db/utils.py:91: in __exit__
+    raise dj_exc_value.with_traceback(traceback) from exc_value
+/usr/local/lib/python3.11/site-packages/django/db/backends/utils.py:89: in _execute
+    return self.cursor.execute(sql, params)
+E   django.db.utils.ProgrammingError: column workflow_notifications.is_read does not exist
+E   LINE 1: ...tatus", "workflow_notifications"."error_message", "workflow_...
+E                                                                ^
+
+During handling of the above exception, another exception occurred:
+/home/edms/.local/lib/python3.11/site-packages/pytest_django/plugin.py:527: in _django_db_marker
+    request.getfixturevalue("_django_db_helper")
+/home/edms/.local/lib/python3.11/site-packages/pytest_django/fixtures.py:140: in django_db_setup
+    db_cfg = setup_databases(
+/usr/local/lib/python3.11/site-packages/django/test/utils.py:221: in setup_databases
+    connection.creation.create_test_db(
+/usr/local/lib/python3.11/site-packages/django/db/backends/base/creation.py:94: in create_test_db
+    self.connection._test_serialized_contents = self.serialize_db_to_string()
+/usr/local/lib/python3.11/site-packages/django/db/backends/base/creation.py:142: in serialize_db_to_string
+    serializers.serialize("json", get_objects(), indent=None, stream=out)
+/usr/local/lib/python3.11/site-packages/django/core/serializers/__init__.py:134: in serialize
+    s.serialize(queryset, **options)
+/usr/local/lib/python3.11/site-packages/django/core/serializers/base.py:132: in serialize
+    for count, obj in enumerate(queryset, start=1):
+/usr/local/lib/python3.11/site-packages/django/db/backends/base/creation.py:138: in get_objects
+    yield from queryset.iterator()
+/usr/local/lib/python3.11/site-packages/django/db/models/query.py:516: in _iterator
+    yield from iterable
+/usr/local/lib/python3.11/site-packages/django/db/models/query.py:91: in __iter__
+    results = compiler.execute_sql(
+/usr/local/lib/python3.11/site-packages/django/db/models/sql/compiler.py:1565: in execute_sql
+    cursor.close()
+E   psycopg2.errors.InvalidCursorName: cursor "_django_curs_123396302027648_sync_28" does not exist
+_ ERROR at setup of TestDocumentDependencies.test_dependency_on_draft_document _
+/usr/local/lib/python3.11/site-packages/django/db/backends/utils.py:89: in _execute
+    return self.cursor.execute(sql, params)
+E   psycopg2.errors.UndefinedColumn: column workflow_notifications.is_read does not exist
+E   LINE 1: ...tatus", "workflow_notifications"."error_message", "workflow_...
+E                                                                ^
+
+The above exception was the direct cause of the following exception:
+/usr/local/lib/python3.11/site-packages/django/db/models/sql/compiler.py:1562: in execute_sql
+    cursor.execute(sql, params)
+/usr/local/lib/python3.11/site-packages/django/db/backends/utils.py:67: in execute
+    return self._execute_with_wrappers(
+/usr/local/lib/python3.11/site-packages/django/db/backends/utils.py:80: in _execute_with_wrappers
+    return executor(sql, params, many, context)
+/usr/local/lib/python3.11/site-packages/django/db/backends/utils.py:84: in _execute
+    with self.db.wrap_database_errors:
+/usr/local/lib/python3.11/site-packages/django/db/utils.py:91: in __exit__
+    raise dj_exc_value.with_traceback(traceback) from exc_value
+/usr/local/lib/python3.11/site-packages/django/db/backends/utils.py:89: in _execute
+    return self.cursor.execute(sql, params)
+E   django.db.utils.ProgrammingError: column workflow_notifications.is_read does not exist
+E   LINE 1: ...tatus", "workflow_notifications"."error_message", "workflow_...
+E                                                                ^
+
+During handling of the above exception, another exception occurred:
+/home/edms/.local/lib/python3.11/site-packages/pytest_django/plugin.py:527: in _django_db_marker
+    request.getfixturevalue("_django_db_helper")
+/home/edms/.local/lib/python3.11/site-packages/pytest_django/fixtures.py:140: in django_db_setup
+    db_cfg = setup_databases(
+/usr/local/lib/python3.11/site-packages/django/test/utils.py:221: in setup_databases
+    connection.creation.create_test_db(
+/usr/local/lib/python3.11/site-packages/django/db/backends/base/creation.py:94: in create_test_db
+    self.connection._test_serialized_contents = self.serialize_db_to_string()
+/usr/local/lib/python3.11/site-packages/django/db/backends/base/creation.py:142: in serialize_db_to_string
+    serializers.serialize("json", get_objects(), indent=None, stream=out)
+/usr/local/lib/python3.11/site-packages/django/core/serializers/__init__.py:134: in serialize
+    s.serialize(queryset, **options)
+/usr/local/lib/python3.11/site-packages/django/core/serializers/base.py:132: in serialize
+    for count, obj in enumerate(queryset, start=1):
+/usr/local/lib/python3.11/site-packages/django/db/backends/base/creation.py:138: in get_objects
+    yield from queryset.iterator()
+/usr/local/lib/python3.11/site-packages/django/db/models/query.py:516: in _iterator
+    yield from iterable
+/usr/local/lib/python3.11/site-packages/django/db/models/query.py:91: in __iter__
+    results = compiler.execute_sql(
+/usr/local/lib/python3.11/site-packages/django/db/models/sql/compiler.py:1565: in execute_sql
+    cursor.close()
+E   psycopg2.errors.InvalidCursorName: cursor "_django_curs_123396302027648_sync_28" does not exist
+_ ERROR at setup of TestDocumentDependencies.test_version_aware_circular_dependency_detection _
+/usr/local/lib/python3.11/site-packages/django/db/backends/utils.py:89: in _execute
+    return self.cursor.execute(sql, params)
+E   psycopg2.errors.UndefinedColumn: column workflow_notifications.is_read does not exist
+E   LINE 1: ...tatus", "workflow_notifications"."error_message", "workflow_...
+E                                                                ^
+
+The above exception was the direct cause of the following exception:
+/usr/local/lib/python3.11/site-packages/django/db/models/sql/compiler.py:1562: in execute_sql
+    cursor.execute(sql, params)
+/usr/local/lib/python3.11/site-packages/django/db/backends/utils.py:67: in execute
+    return self._execute_with_wrappers(
+/usr/local/lib/python3.11/site-packages/django/db/backends/utils.py:80: in _execute_with_wrappers
+    return executor(sql, params, many, context)
+/usr/local/lib/python3.11/site-packages/django/db/backends/utils.py:84: in _execute
+    with self.db.wrap_database_errors:
+/usr/local/lib/python3.11/site-packages/django/db/utils.py:91: in __exit__
+    raise dj_exc_value.with_traceback(traceback) from exc_value
+/usr/local/lib/python3.11/site-packages/django/db/backends/utils.py:89: in _execute
+    return self.cursor.execute(sql, params)
+E   django.db.utils.ProgrammingError: column workflow_notifications.is_read does not exist
+E   LINE 1: ...tatus", "workflow_notifications"."error_message", "workflow_...
+E                                                                ^
+
+During handling of the above exception, another exception occurred:
+/home/edms/.local/lib/python3.11/site-packages/pytest_django/plugin.py:527: in _django_db_marker
+    request.getfixturevalue("_django_db_helper")
+/home/edms/.local/lib/python3.11/site-packages/pytest_django/fixtures.py:140: in django_db_setup
+    db_cfg = setup_databases(
+/usr/local/lib/python3.11/site-packages/django/test/utils.py:221: in setup_databases
+    connection.creation.create_test_db(
+/usr/local/lib/python3.11/site-packages/django/db/backends/base/creation.py:94: in create_test_db
+    self.connection._test_serialized_contents = self.serialize_db_to_string()
+/usr/local/lib/python3.11/site-packages/django/db/backends/base/creation.py:142: in serialize_db_to_string
+    serializers.serialize("json", get_objects(), indent=None, stream=out)
+/usr/local/lib/python3.11/site-packages/django/core/serializers/__init__.py:134: in serialize
+    s.serialize(queryset, **options)
+/usr/local/lib/python3.11/site-packages/django/core/serializers/base.py:132: in serialize
+    for count, obj in enumerate(queryset, start=1):
+/usr/local/lib/python3.11/site-packages/django/db/backends/base/creation.py:138: in get_objects
+    yield from queryset.iterator()
+/usr/local/lib/python3.11/site-packages/django/db/models/query.py:516: in _iterator
+    yield from iterable
+/usr/local/lib/python3.11/site-packages/django/db/models/query.py:91: in __iter__
+    results = compiler.execute_sql(
+/usr/local/lib/python3.11/site-packages/django/db/models/sql/compiler.py:1565: in execute_sql
+    cursor.close()
+E   psycopg2.errors.InvalidCursorName: cursor "_django_curs_123396302027648_sync_28" does not exist
+_____ ERROR at setup of TestDocumentDependencies.test_get_dependency_chain _____
+/usr/local/lib/python3.11/site-packages/django/db/backends/utils.py:89: in _execute
+    return self.cursor.execute(sql, params)
+E   psycopg2.errors.UndefinedColumn: column workflow_notifications.is_read does not exist
+E   LINE 1: ...tatus", "workflow_notifications"."error_message", "workflow_...
+E                                                                ^
+
+The above exception was the direct cause of the following exception:
+/usr/local/lib/python3.11/site-packages/django/db/models/sql/compiler.py:1562: in execute_sql
+    cursor.execute(sql, params)
+/usr/local/lib/python3.11/site-packages/django/db/backends/utils.py:67: in execute
+    return self._execute_with_wrappers(
+/usr/local/lib/python3.11/site-packages/django/db/backends/utils.py:80: in _execute_with_wrappers
+    return executor(sql, params, many, context)
+/usr/local/lib/python3.11/site-packages/django/db/backends/utils.py:84: in _execute
+    with self.db.wrap_database_errors:
+/usr/local/lib/python3.11/site-packages/django/db/utils.py:91: in __exit__
+    raise dj_exc_value.with_traceback(traceback) from exc_value
+/usr/local/lib/python3.11/site-packages/django/db/backends/utils.py:89: in _execute
+    return self.cursor.execute(sql, params)
+E   django.db.utils.ProgrammingError: column workflow_notifications.is_read does not exist
+E   LINE 1: ...tatus", "workflow_notifications"."error_message", "workflow_...
+E                                                                ^
+
+During handling of the above exception, another exception occurred:
+/home/edms/.local/lib/python3.11/site-packages/pytest_django/plugin.py:527: in _django_db_marker
+    request.getfixturevalue("_django_db_helper")
+/home/edms/.local/lib/python3.11/site-packages/pytest_django/fixtures.py:140: in django_db_setup
+    db_cfg = setup_databases(
+/usr/local/lib/python3.11/site-packages/django/test/utils.py:221: in setup_databases
+    connection.creation.create_test_db(
+/usr/local/lib/python3.11/site-packages/django/db/backends/base/creation.py:94: in create_test_db
+    self.connection._test_serialized_contents = self.serialize_db_to_string()
+/usr/local/lib/python3.11/site-packages/django/db/backends/base/creation.py:142: in serialize_db_to_string
+    serializers.serialize("json", get_objects(), indent=None, stream=out)
+/usr/local/lib/python3.11/site-packages/django/core/serializers/__init__.py:134: in serialize
+    s.serialize(queryset, **options)
+/usr/local/lib/python3.11/site-packages/django/core/serializers/base.py:132: in serialize
+    for count, obj in enumerate(queryset, start=1):
+/usr/local/lib/python3.11/site-packages/django/db/backends/base/creation.py:138: in get_objects
+    yield from queryset.iterator()
+/usr/local/lib/python3.11/site-packages/django/db/models/query.py:516: in _iterator
+    yield from iterable
+/usr/local/lib/python3.11/site-packages/django/db/models/query.py:91: in __iter__
+    results = compiler.execute_sql(
+/usr/local/lib/python3.11/site-packages/django/db/models/sql/compiler.py:1565: in execute_sql
+    cursor.close()
+E   psycopg2.errors.InvalidCursorName: cursor "_django_curs_123396302027648_sync_28" does not exist
+______ ERROR at setup of TestDocumentDependencies.test_remove_dependency _______
+/usr/local/lib/python3.11/site-packages/django/db/backends/utils.py:89: in _execute
+    return self.cursor.execute(sql, params)
+E   psycopg2.errors.UndefinedColumn: column workflow_notifications.is_read does not exist
+E   LINE 1: ...tatus", "workflow_notifications"."error_message", "workflow_...
+E                                                                ^
+
+The above exception was the direct cause of the following exception:
+/usr/local/lib/python3.11/site-packages/django/db/models/sql/compiler.py:1562: in execute_sql
+    cursor.execute(sql, params)
+/usr/local/lib/python3.11/site-packages/django/db/backends/utils.py:67: in execute
+    return self._execute_with_wrappers(
+/usr/local/lib/python3.11/site-packages/django/db/backends/utils.py:80: in _execute_with_wrappers
+    return executor(sql, params, many, context)
+/usr/local/lib/python3.11/site-packages/django/db/backends/utils.py:84: in _execute
+    with self.db.wrap_database_errors:
+/usr/local/lib/python3.11/site-packages/django/db/utils.py:91: in __exit__
+    raise dj_exc_value.with_traceback(traceback) from exc_value
+/usr/local/lib/python3.11/site-packages/django/db/backends/utils.py:89: in _execute
+    return self.cursor.execute(sql, params)
+E   django.db.utils.ProgrammingError: column workflow_notifications.is_read does not exist
+E   LINE 1: ...tatus", "workflow_notifications"."error_message", "workflow_...
+E                                                                ^
+
+During handling of the above exception, another exception occurred:
+/home/edms/.local/lib/python3.11/site-packages/pytest_django/plugin.py:527: in _django_db_marker
+    request.getfixturevalue("_django_db_helper")
+/home/edms/.local/lib/python3.11/site-packages/pytest_django/fixtures.py:140: in django_db_setup
+    db_cfg = setup_databases(
+/usr/local/lib/python3.11/site-packages/django/test/utils.py:221: in setup_databases
+    connection.creation.create_test_db(
+/usr/local/lib/python3.11/site-packages/django/db/backends/base/creation.py:94: in create_test_db
+    self.connection._test_serialized_contents = self.serialize_db_to_string()
+/usr/local/lib/python3.11/site-packages/django/db/backends/base/creation.py:142: in serialize_db_to_string
+    serializers.serialize("json", get_objects(), indent=None, stream=out)
+/usr/local/lib/python3.11/site-packages/django/core/serializers/__init__.py:134: in serialize
+    s.serialize(queryset, **options)
+/usr/local/lib/python3.11/site-packages/django/core/serializers/base.py:132: in serialize
+    for count, obj in enumerate(queryset, start=1):
+/usr/local/lib/python3.11/site-packages/django/db/backends/base/creation.py:138: in get_objects
+    yield from queryset.iterator()
+/usr/local/lib/python3.11/site-packages/django/db/models/query.py:516: in _iterator
+    yield from iterable
+/usr/local/lib/python3.11/site-packages/django/db/models/query.py:91: in __iter__
+    results = compiler.execute_sql(
+/usr/local/lib/python3.11/site-packages/django/db/models/sql/compiler.py:1565: in execute_sql
+    cursor.close()
+E   psycopg2.errors.InvalidCursorName: cursor "_django_curs_123396302027648_sync_28" does not exist
+_ ERROR at setup of TestDocumentDependencies.test_detect_circular_dependencies_system_wide _
+/usr/local/lib/python3.11/site-packages/django/db/backends/utils.py:89: in _execute
+    return self.cursor.execute(sql, params)
+E   psycopg2.errors.UndefinedColumn: column workflow_notifications.is_read does not exist
+E   LINE 1: ...tatus", "workflow_notifications"."error_message", "workflow_...
+E                                                                ^
+
+The above exception was the direct cause of the following exception:
+/usr/local/lib/python3.11/site-packages/django/db/models/sql/compiler.py:1562: in execute_sql
+    cursor.execute(sql, params)
+/usr/local/lib/python3.11/site-packages/django/db/backends/utils.py:67: in execute
+    return self._execute_with_wrappers(
+/usr/local/lib/python3.11/site-packages/django/db/backends/utils.py:80: in _execute_with_wrappers
+    return executor(sql, params, many, context)
+/usr/local/lib/python3.11/site-packages/django/db/backends/utils.py:84: in _execute
+    with self.db.wrap_database_errors:
+/usr/local/lib/python3.11/site-packages/django/db/utils.py:91: in __exit__
+    raise dj_exc_value.with_traceback(traceback) from exc_value
+/usr/local/lib/python3.11/site-packages/django/db/backends/utils.py:89: in _execute
+    return self.cursor.execute(sql, params)
+E   django.db.utils.ProgrammingError: column workflow_notifications.is_read does not exist
+E   LINE 1: ...tatus", "workflow_notifications"."error_message", "workflow_...
+E                                                                ^
+
+During handling of the above exception, another exception occurred:
+/home/edms/.local/lib/python3.11/site-packages/pytest_django/plugin.py:527: in _django_db_marker
+    request.getfixturevalue("_django_db_helper")
+/home/edms/.local/lib/python3.11/site-packages/pytest_django/fixtures.py:140: in django_db_setup
+    db_cfg = setup_databases(
+/usr/local/lib/python3.11/site-packages/django/test/utils.py:221: in setup_databases
+    connection.creation.create_test_db(
+/usr/local/lib/python3.11/site-packages/django/db/backends/base/creation.py:94: in create_test_db
+    self.connection._test_serialized_contents = self.serialize_db_to_string()
+/usr/local/lib/python3.11/site-packages/django/db/backends/base/creation.py:142: in serialize_db_to_string
+    serializers.serialize("json", get_objects(), indent=None, stream=out)
+/usr/local/lib/python3.11/site-packages/django/core/serializers/__init__.py:134: in serialize
+    s.serialize(queryset, **options)
+/usr/local/lib/python3.11/site-packages/django/core/serializers/base.py:132: in serialize
+    for count, obj in enumerate(queryset, start=1):
+/usr/local/lib/python3.11/site-packages/django/db/backends/base/creation.py:138: in get_objects
+    yield from queryset.iterator()
+/usr/local/lib/python3.11/site-packages/django/db/models/query.py:516: in _iterator
+    yield from iterable
+/usr/local/lib/python3.11/site-packages/django/db/models/query.py:91: in __iter__
+    results = compiler.execute_sql(
+/usr/local/lib/python3.11/site-packages/django/db/models/sql/compiler.py:1565: in execute_sql
+    cursor.close()
+E   psycopg2.errors.InvalidCursorName: cursor "_django_curs_123396302027648_sync_28" does not exist
+_ ERROR at setup of TestSchedulerDocumentActivation.test_document_becomes_effective_on_scheduled_date _
+/usr/local/lib/python3.11/site-packages/django/db/backends/utils.py:89: in _execute
+    return self.cursor.execute(sql, params)
+E   psycopg2.errors.UndefinedColumn: column workflow_notifications.is_read does not exist
+E   LINE 1: ...tatus", "workflow_notifications"."error_message", "workflow_...
+E                                                                ^
+
+The above exception was the direct cause of the following exception:
+/usr/local/lib/python3.11/site-packages/django/db/models/sql/compiler.py:1562: in execute_sql
+    cursor.execute(sql, params)
+/usr/local/lib/python3.11/site-packages/django/db/backends/utils.py:67: in execute
+    return self._execute_with_wrappers(
+/usr/local/lib/python3.11/site-packages/django/db/backends/utils.py:80: in _execute_with_wrappers
+    return executor(sql, params, many, context)
+/usr/local/lib/python3.11/site-packages/django/db/backends/utils.py:84: in _execute
+    with self.db.wrap_database_errors:
+/usr/local/lib/python3.11/site-packages/django/db/utils.py:91: in __exit__
+    raise dj_exc_value.with_traceback(traceback) from exc_value
+/usr/local/lib/python3.11/site-packages/django/db/backends/utils.py:89: in _execute
+    return self.cursor.execute(sql, params)
+E   django.db.utils.ProgrammingError: column workflow_notifications.is_read does not exist
+E   LINE 1: ...tatus", "workflow_notifications"."error_message", "workflow_...
+E                                                                ^
+
+During handling of the above exception, another exception occurred:
+/home/edms/.local/lib/python3.11/site-packages/pytest_django/plugin.py:527: in _django_db_marker
+    request.getfixturevalue("_django_db_helper")
+/home/edms/.local/lib/python3.11/site-packages/pytest_django/fixtures.py:140: in django_db_setup
+    db_cfg = setup_databases(
+/usr/local/lib/python3.11/site-packages/django/test/utils.py:221: in setup_databases
+    connection.creation.create_test_db(
+/usr/local/lib/python3.11/site-packages/django/db/backends/base/creation.py:94: in create_test_db
+    self.connection._test_serialized_contents = self.serialize_db_to_string()
+/usr/local/lib/python3.11/site-packages/django/db/backends/base/creation.py:142: in serialize_db_to_string
+    serializers.serialize("json", get_objects(), indent=None, stream=out)
+/usr/local/lib/python3.11/site-packages/django/core/serializers/__init__.py:134: in serialize
+    s.serialize(queryset, **options)
+/usr/local/lib/python3.11/site-packages/django/core/serializers/base.py:132: in serialize
+    for count, obj in enumerate(queryset, start=1):
+/usr/local/lib/python3.11/site-packages/django/db/backends/base/creation.py:138: in get_objects
+    yield from queryset.iterator()
+/usr/local/lib/python3.11/site-packages/django/db/models/query.py:516: in _iterator
+    yield from iterable
+/usr/local/lib/python3.11/site-packages/django/db/models/query.py:91: in __iter__
+    results = compiler.execute_sql(
+/usr/local/lib/python3.11/site-packages/django/db/models/sql/compiler.py:1565: in execute_sql
+    cursor.close()
+E   psycopg2.errors.InvalidCursorName: cursor "_django_curs_123396302027648_sync_28" does not exist
+_ ERROR at setup of TestSchedulerDocumentActivation.test_future_dated_documents_remain_pending _
+/usr/local/lib/python3.11/site-packages/django/db/backends/utils.py:89: in _execute
+    return self.cursor.execute(sql, params)
+E   psycopg2.errors.UndefinedColumn: column workflow_notifications.is_read does not exist
+E   LINE 1: ...tatus", "workflow_notifications"."error_message", "workflow_...
+E                                                                ^
+
+The above exception was the direct cause of the following exception:
+/usr/local/lib/python3.11/site-packages/django/db/models/sql/compiler.py:1562: in execute_sql
+    cursor.execute(sql, params)
+/usr/local/lib/python3.11/site-packages/django/db/backends/utils.py:67: in execute
+    return self._execute_with_wrappers(
+/usr/local/lib/python3.11/site-packages/django/db/backends/utils.py:80: in _execute_with_wrappers
+    return executor(sql, params, many, context)
+/usr/local/lib/python3.11/site-packages/django/db/backends/utils.py:84: in _execute
+    with self.db.wrap_database_errors:
+/usr/local/lib/python3.11/site-packages/django/db/utils.py:91: in __exit__
+    raise dj_exc_value.with_traceback(traceback) from exc_value
+/usr/local/lib/python3.11/site-packages/django/db/backends/utils.py:89: in _execute
+    return self.cursor.execute(sql, params)
+E   django.db.utils.ProgrammingError: column workflow_notifications.is_read does not exist
+E   LINE 1: ...tatus", "workflow_notifications"."error_message", "workflow_...
+E                                                                ^
+
+During handling of the above exception, another exception occurred:
+/home/edms/.local/lib/python3.11/site-packages/pytest_django/plugin.py:527: in _django_db_marker
+    request.getfixturevalue("_django_db_helper")
+/home/edms/.local/lib/python3.11/site-packages/pytest_django/fixtures.py:140: in django_db_setup
+    db_cfg = setup_databases(
+/usr/local/lib/python3.11/site-packages/django/test/utils.py:221: in setup_databases
+    connection.creation.create_test_db(
+/usr/local/lib/python3.11/site-packages/django/db/backends/base/creation.py:94: in create_test_db
+    self.connection._test_serialized_contents = self.serialize_db_to_string()
+/usr/local/lib/python3.11/site-packages/django/db/backends/base/creation.py:142: in serialize_db_to_string
+    serializers.serialize("json", get_objects(), indent=None, stream=out)
+/usr/local/lib/python3.11/site-packages/django/core/serializers/__init__.py:134: in serialize
+    s.serialize(queryset, **options)
+/usr/local/lib/python3.11/site-packages/django/core/serializers/base.py:132: in serialize
+    for count, obj in enumerate(queryset, start=1):
+/usr/local/lib/python3.11/site-packages/django/db/backends/base/creation.py:138: in get_objects
+    yield from queryset.iterator()
+/usr/local/lib/python3.11/site-packages/django/db/models/query.py:516: in _iterator
+    yield from iterable
+/usr/local/lib/python3.11/site-packages/django/db/models/query.py:91: in __iter__
+    results = compiler.execute_sql(
+/usr/local/lib/python3.11/site-packages/django/db/models/sql/compiler.py:1565: in execute_sql
+    cursor.close()
+E   psycopg2.errors.InvalidCursorName: cursor "_django_curs_123396302027648_sync_28" does not exist
+_ ERROR at setup of TestSchedulerDocumentActivation.test_scheduler_activates_multiple_documents _
+/usr/local/lib/python3.11/site-packages/django/db/backends/utils.py:89: in _execute
+    return self.cursor.execute(sql, params)
+E   psycopg2.errors.UndefinedColumn: column workflow_notifications.is_read does not exist
+E   LINE 1: ...tatus", "workflow_notifications"."error_message", "workflow_...
+E                                                                ^
+
+The above exception was the direct cause of the following exception:
+/usr/local/lib/python3.11/site-packages/django/db/models/sql/compiler.py:1562: in execute_sql
+    cursor.execute(sql, params)
+/usr/local/lib/python3.11/site-packages/django/db/backends/utils.py:67: in execute
+    return self._execute_with_wrappers(
+/usr/local/lib/python3.11/site-packages/django/db/backends/utils.py:80: in _execute_with_wrappers
+    return executor(sql, params, many, context)
+/usr/local/lib/python3.11/site-packages/django/db/backends/utils.py:84: in _execute
+    with self.db.wrap_database_errors:
+/usr/local/lib/python3.11/site-packages/django/db/utils.py:91: in __exit__
+    raise dj_exc_value.with_traceback(traceback) from exc_value
+/usr/local/lib/python3.11/site-packages/django/db/backends/utils.py:89: in _execute
+    return self.cursor.execute(sql, params)
+E   django.db.utils.ProgrammingError: column workflow_notifications.is_read does not exist
+E   LINE 1: ...tatus", "workflow_notifications"."error_message", "workflow_...
+E                                                                ^
+
+During handling of the above exception, another exception occurred:
+/home/edms/.local/lib/python3.11/site-packages/pytest_django/plugin.py:527: in _django_db_marker
+    request.getfixturevalue("_django_db_helper")
+/home/edms/.local/lib/python3.11/site-packages/pytest_django/fixtures.py:140: in django_db_setup
+    db_cfg = setup_databases(
+/usr/local/lib/python3.11/site-packages/django/test/utils.py:221: in setup_databases
+    connection.creation.create_test_db(
+/usr/local/lib/python3.11/site-packages/django/db/backends/base/creation.py:94: in create_test_db
+    self.connection._test_serialized_contents = self.serialize_db_to_string()
+/usr/local/lib/python3.11/site-packages/django/db/backends/base/creation.py:142: in serialize_db_to_string
+    serializers.serialize("json", get_objects(), indent=None, stream=out)
+/usr/local/lib/python3.11/site-packages/django/core/serializers/__init__.py:134: in serialize
+    s.serialize(queryset, **options)
+/usr/local/lib/python3.11/site-packages/django/core/serializers/base.py:132: in serialize
+    for count, obj in enumerate(queryset, start=1):
+/usr/local/lib/python3.11/site-packages/django/db/backends/base/creation.py:138: in get_objects
+    yield from queryset.iterator()
+/usr/local/lib/python3.11/site-packages/django/db/models/query.py:516: in _iterator
+    yield from iterable
+/usr/local/lib/python3.11/site-packages/django/db/models/query.py:91: in __iter__
+    results = compiler.execute_sql(
+/usr/local/lib/python3.11/site-packages/django/db/models/sql/compiler.py:1565: in execute_sql
+    cursor.close()
+E   psycopg2.errors.InvalidCursorName: cursor "_django_curs_123396302027648_sync_28" does not exist
+_ ERROR at setup of TestSchedulerDocumentActivation.test_past_dated_documents_activated_immediately _
+/usr/local/lib/python3.11/site-packages/django/db/backends/utils.py:89: in _execute
+    return self.cursor.execute(sql, params)
+E   psycopg2.errors.UndefinedColumn: column workflow_notifications.is_read does not exist
+E   LINE 1: ...tatus", "workflow_notifications"."error_message", "workflow_...
+E                                                                ^
+
+The above exception was the direct cause of the following exception:
+/usr/local/lib/python3.11/site-packages/django/db/models/sql/compiler.py:1562: in execute_sql
+    cursor.execute(sql, params)
+/usr/local/lib/python3.11/site-packages/django/db/backends/utils.py:67: in execute
+    return self._execute_with_wrappers(
+/usr/local/lib/python3.11/site-packages/django/db/backends/utils.py:80: in _execute_with_wrappers
+    return executor(sql, params, many, context)
+/usr/local/lib/python3.11/site-packages/django/db/backends/utils.py:84: in _execute
+    with self.db.wrap_database_errors:
+/usr/local/lib/python3.11/site-packages/django/db/utils.py:91: in __exit__
+    raise dj_exc_value.with_traceback(traceback) from exc_value
+/usr/local/lib/python3.11/site-packages/django/db/backends/utils.py:89: in _execute
+    return self.cursor.execute(sql, params)
+E   django.db.utils.ProgrammingError: column workflow_notifications.is_read does not exist
+E   LINE 1: ...tatus", "workflow_notifications"."error_message", "workflow_...
+E                                                                ^
+
+During handling of the above exception, another exception occurred:
+/home/edms/.local/lib/python3.11/site-packages/pytest_django/plugin.py:527: in _django_db_marker
+    request.getfixturevalue("_django_db_helper")
+/home/edms/.local/lib/python3.11/site-packages/pytest_django/fixtures.py:140: in django_db_setup
+    db_cfg = setup_databases(
+/usr/local/lib/python3.11/site-packages/django/test/utils.py:221: in setup_databases
+    connection.creation.create_test_db(
+/usr/local/lib/python3.11/site-packages/django/db/backends/base/creation.py:94: in create_test_db
+    self.connection._test_serialized_contents = self.serialize_db_to_string()
+/usr/local/lib/python3.11/site-packages/django/db/backends/base/creation.py:142: in serialize_db_to_string
+    serializers.serialize("json", get_objects(), indent=None, stream=out)
+/usr/local/lib/python3.11/site-packages/django/core/serializers/__init__.py:134: in serialize
+    s.serialize(queryset, **options)
+/usr/local/lib/python3.11/site-packages/django/core/serializers/base.py:132: in serialize
+    for count, obj in enumerate(queryset, start=1):
+/usr/local/lib/python3.11/site-packages/django/db/backends/base/creation.py:138: in get_objects
+    yield from queryset.iterator()
+/usr/local/lib/python3.11/site-packages/django/db/models/query.py:516: in _iterator
+    yield from iterable
+/usr/local/lib/python3.11/site-packages/django/db/models/query.py:91: in __iter__
+    results = compiler.execute_sql(
+/usr/local/lib/python3.11/site-packages/django/db/models/sql/compiler.py:1565: in execute_sql
+    cursor.close()
+E   psycopg2.errors.InvalidCursorName: cursor "_django_curs_123396302027648_sync_28" does not exist
+_ ERROR at setup of TestSchedulerDocumentActivation.test_scheduler_skips_non_pending_documents _
+/usr/local/lib/python3.11/site-packages/django/db/backends/utils.py:89: in _execute
+    return self.cursor.execute(sql, params)
+E   psycopg2.errors.UndefinedColumn: column workflow_notifications.is_read does not exist
+E   LINE 1: ...tatus", "workflow_notifications"."error_message", "workflow_...
+E                                                                ^
+
+The above exception was the direct cause of the following exception:
+/usr/local/lib/python3.11/site-packages/django/db/models/sql/compiler.py:1562: in execute_sql
+    cursor.execute(sql, params)
+/usr/local/lib/python3.11/site-packages/django/db/backends/utils.py:67: in execute
+    return self._execute_with_wrappers(
+/usr/local/lib/python3.11/site-packages/django/db/backends/utils.py:80: in _execute_with_wrappers
+    return executor(sql, params, many, context)
+/usr/local/lib/python3.11/site-packages/django/db/backends/utils.py:84: in _execute
+    with self.db.wrap_database_errors:
+/usr/local/lib/python3.11/site-packages/django/db/utils.py:91: in __exit__
+    raise dj_exc_value.with_traceback(traceback) from exc_value
+/usr/local/lib/python3.11/site-packages/django/db/backends/utils.py:89: in _execute
+    return self.cursor.execute(sql, params)
+E   django.db.utils.ProgrammingError: column workflow_notifications.is_read does not exist
+E   LINE 1: ...tatus", "workflow_notifications"."error_message", "workflow_...
+E                                                                ^
+
+During handling of the above exception, another exception occurred:
+/home/edms/.local/lib/python3.11/site-packages/pytest_django/plugin.py:527: in _django_db_marker
+    request.getfixturevalue("_django_db_helper")
+/home/edms/.local/lib/python3.11/site-packages/pytest_django/fixtures.py:140: in django_db_setup
+    db_cfg = setup_databases(
+/usr/local/lib/python3.11/site-packages/django/test/utils.py:221: in setup_databases
+    connection.creation.create_test_db(
+/usr/local/lib/python3.11/site-packages/django/db/backends/base/creation.py:94: in create_test_db
+    self.connection._test_serialized_contents = self.serialize_db_to_string()
+/usr/local/lib/python3.11/site-packages/django/db/backends/base/creation.py:142: in serialize_db_to_string
+    serializers.serialize("json", get_objects(), indent=None, stream=out)
+/usr/local/lib/python3.11/site-packages/django/core/serializers/__init__.py:134: in serialize
+    s.serialize(queryset, **options)
+/usr/local/lib/python3.11/site-packages/django/core/serializers/base.py:132: in serialize
+    for count, obj in enumerate(queryset, start=1):
+/usr/local/lib/python3.11/site-packages/django/db/backends/base/creation.py:138: in get_objects
+    yield from queryset.iterator()
+/usr/local/lib/python3.11/site-packages/django/db/models/query.py:516: in _iterator
+    yield from iterable
+/usr/local/lib/python3.11/site-packages/django/db/models/query.py:91: in __iter__
+    results = compiler.execute_sql(
+/usr/local/lib/python3.11/site-packages/django/db/models/sql/compiler.py:1565: in execute_sql
+    cursor.close()
+E   psycopg2.errors.InvalidCursorName: cursor "_django_curs_123396302027648_sync_28" does not exist
+_ ERROR at setup of TestSchedulerDocumentActivation.test_scheduler_timezone_handling _
+/usr/local/lib/python3.11/site-packages/django/db/backends/utils.py:89: in _execute
+    return self.cursor.execute(sql, params)
+E   psycopg2.errors.UndefinedColumn: column workflow_notifications.is_read does not exist
+E   LINE 1: ...tatus", "workflow_notifications"."error_message", "workflow_...
+E                                                                ^
+
+The above exception was the direct cause of the following exception:
+/usr/local/lib/python3.11/site-packages/django/db/models/sql/compiler.py:1562: in execute_sql
+    cursor.execute(sql, params)
+/usr/local/lib/python3.11/site-packages/django/db/backends/utils.py:67: in execute
+    return self._execute_with_wrappers(
+/usr/local/lib/python3.11/site-packages/django/db/backends/utils.py:80: in _execute_with_wrappers
+    return executor(sql, params, many, context)
+/usr/local/lib/python3.11/site-packages/django/db/backends/utils.py:84: in _execute
+    with self.db.wrap_database_errors:
+/usr/local/lib/python3.11/site-packages/django/db/utils.py:91: in __exit__
+    raise dj_exc_value.with_traceback(traceback) from exc_value
+/usr/local/lib/python3.11/site-packages/django/db/backends/utils.py:89: in _execute
+    return self.cursor.execute(sql, params)
+E   django.db.utils.ProgrammingError: column workflow_notifications.is_read does not exist
+E   LINE 1: ...tatus", "workflow_notifications"."error_message", "workflow_...
+E                                                                ^
+
+During handling of the above exception, another exception occurred:
+/home/edms/.local/lib/python3.11/site-packages/pytest_django/plugin.py:527: in _django_db_marker
+    request.getfixturevalue("_django_db_helper")
+/home/edms/.local/lib/python3.11/site-packages/pytest_django/fixtures.py:140: in django_db_setup
+    db_cfg = setup_databases(
+/usr/local/lib/python3.11/site-packages/django/test/utils.py:221: in setup_databases
+    connection.creation.create_test_db(
+/usr/local/lib/python3.11/site-packages/django/db/backends/base/creation.py:94: in create_test_db
+    self.connection._test_serialized_contents = self.serialize_db_to_string()
+/usr/local/lib/python3.11/site-packages/django/db/backends/base/creation.py:142: in serialize_db_to_string
+    serializers.serialize("json", get_objects(), indent=None, stream=out)
+/usr/local/lib/python3.11/site-packages/django/core/serializers/__init__.py:134: in serialize
+    s.serialize(queryset, **options)
+/usr/local/lib/python3.11/site-packages/django/core/serializers/base.py:132: in serialize
+    for count, obj in enumerate(queryset, start=1):
+/usr/local/lib/python3.11/site-packages/django/db/backends/base/creation.py:138: in get_objects
+    yield from queryset.iterator()
+/usr/local/lib/python3.11/site-packages/django/db/models/query.py:516: in _iterator
+    yield from iterable
+/usr/local/lib/python3.11/site-packages/django/db/models/query.py:91: in __iter__
+    results = compiler.execute_sql(
+/usr/local/lib/python3.11/site-packages/django/db/models/sql/compiler.py:1565: in execute_sql
+    cursor.close()
+E   psycopg2.errors.InvalidCursorName: cursor "_django_curs_123396302027648_sync_28" does not exist
+_ ERROR at setup of TestSchedulerObsolescence.test_scheduler_marks_documents_obsolete_on_date _
+/usr/local/lib/python3.11/site-packages/django/db/backends/utils.py:89: in _execute
+    return self.cursor.execute(sql, params)
+E   psycopg2.errors.UndefinedColumn: column workflow_notifications.is_read does not exist
+E   LINE 1: ...tatus", "workflow_notifications"."error_message", "workflow_...
+E                                                                ^
+
+The above exception was the direct cause of the following exception:
+/usr/local/lib/python3.11/site-packages/django/db/models/sql/compiler.py:1562: in execute_sql
+    cursor.execute(sql, params)
+/usr/local/lib/python3.11/site-packages/django/db/backends/utils.py:67: in execute
+    return self._execute_with_wrappers(
+/usr/local/lib/python3.11/site-packages/django/db/backends/utils.py:80: in _execute_with_wrappers
+    return executor(sql, params, many, context)
+/usr/local/lib/python3.11/site-packages/django/db/backends/utils.py:84: in _execute
+    with self.db.wrap_database_errors:
+/usr/local/lib/python3.11/site-packages/django/db/utils.py:91: in __exit__
+    raise dj_exc_value.with_traceback(traceback) from exc_value
+/usr/local/lib/python3.11/site-packages/django/db/backends/utils.py:89: in _execute
+    return self.cursor.execute(sql, params)
+E   django.db.utils.ProgrammingError: column workflow_notifications.is_read does not exist
+E   LINE 1: ...tatus", "workflow_notifications"."error_message", "workflow_...
+E                                                                ^
+
+During handling of the above exception, another exception occurred:
+/home/edms/.local/lib/python3.11/site-packages/pytest_django/plugin.py:527: in _django_db_marker
+    request.getfixturevalue("_django_db_helper")
+/home/edms/.local/lib/python3.11/site-packages/pytest_django/fixtures.py:140: in django_db_setup
+    db_cfg = setup_databases(
+/usr/local/lib/python3.11/site-packages/django/test/utils.py:221: in setup_databases
+    connection.creation.create_test_db(
+/usr/local/lib/python3.11/site-packages/django/db/backends/base/creation.py:94: in create_test_db
+    self.connection._test_serialized_contents = self.serialize_db_to_string()
+/usr/local/lib/python3.11/site-packages/django/db/backends/base/creation.py:142: in serialize_db_to_string
+    serializers.serialize("json", get_objects(), indent=None, stream=out)
+/usr/local/lib/python3.11/site-packages/django/core/serializers/__init__.py:134: in serialize
+    s.serialize(queryset, **options)
+/usr/local/lib/python3.11/site-packages/django/core/serializers/base.py:132: in serialize
+    for count, obj in enumerate(queryset, start=1):
+/usr/local/lib/python3.11/site-packages/django/db/backends/base/creation.py:138: in get_objects
+    yield from queryset.iterator()
+/usr/local/lib/python3.11/site-packages/django/db/models/query.py:516: in _iterator
+    yield from iterable
+/usr/local/lib/python3.11/site-packages/django/db/models/query.py:91: in __iter__
+    results = compiler.execute_sql(
+/usr/local/lib/python3.11/site-packages/django/db/models/sql/compiler.py:1565: in execute_sql
+    cursor.close()
+E   psycopg2.errors.InvalidCursorName: cursor "_django_curs_123396302027648_sync_28" does not exist
+_ ERROR at setup of TestSchedulerObsolescence.test_future_obsolescence_remains_scheduled _
+/usr/local/lib/python3.11/site-packages/django/db/backends/utils.py:89: in _execute
+    return self.cursor.execute(sql, params)
+E   psycopg2.errors.UndefinedColumn: column workflow_notifications.is_read does not exist
+E   LINE 1: ...tatus", "workflow_notifications"."error_message", "workflow_...
+E                                                                ^
+
+The above exception was the direct cause of the following exception:
+/usr/local/lib/python3.11/site-packages/django/db/models/sql/compiler.py:1562: in execute_sql
+    cursor.execute(sql, params)
+/usr/local/lib/python3.11/site-packages/django/db/backends/utils.py:67: in execute
+    return self._execute_with_wrappers(
+/usr/local/lib/python3.11/site-packages/django/db/backends/utils.py:80: in _execute_with_wrappers
+    return executor(sql, params, many, context)
+/usr/local/lib/python3.11/site-packages/django/db/backends/utils.py:84: in _execute
+    with self.db.wrap_database_errors:
+/usr/local/lib/python3.11/site-packages/django/db/utils.py:91: in __exit__
+    raise dj_exc_value.with_traceback(traceback) from exc_value
+/usr/local/lib/python3.11/site-packages/django/db/backends/utils.py:89: in _execute
+    return self.cursor.execute(sql, params)
+E   django.db.utils.ProgrammingError: column workflow_notifications.is_read does not exist
+E   LINE 1: ...tatus", "workflow_notifications"."error_message", "workflow_...
+E                                                                ^
+
+During handling of the above exception, another exception occurred:
+/home/edms/.local/lib/python3.11/site-packages/pytest_django/plugin.py:527: in _django_db_marker
+    request.getfixturevalue("_django_db_helper")
+/home/edms/.local/lib/python3.11/site-packages/pytest_django/fixtures.py:140: in django_db_setup
+    db_cfg = setup_databases(
+/usr/local/lib/python3.11/site-packages/django/test/utils.py:221: in setup_databases
+    connection.creation.create_test_db(
+/usr/local/lib/python3.11/site-packages/django/db/backends/base/creation.py:94: in create_test_db
+    self.connection._test_serialized_contents = self.serialize_db_to_string()
+/usr/local/lib/python3.11/site-packages/django/db/backends/base/creation.py:142: in serialize_db_to_string
+    serializers.serialize("json", get_objects(), indent=None, stream=out)
+/usr/local/lib/python3.11/site-packages/django/core/serializers/__init__.py:134: in serialize
+    s.serialize(queryset, **options)
+/usr/local/lib/python3.11/site-packages/django/core/serializers/base.py:132: in serialize
+    for count, obj in enumerate(queryset, start=1):
+/usr/local/lib/python3.11/site-packages/django/db/backends/base/creation.py:138: in get_objects
+    yield from queryset.iterator()
+/usr/local/lib/python3.11/site-packages/django/db/models/query.py:516: in _iterator
+    yield from iterable
+/usr/local/lib/python3.11/site-packages/django/db/models/query.py:91: in __iter__
+    results = compiler.execute_sql(
+/usr/local/lib/python3.11/site-packages/django/db/models/sql/compiler.py:1565: in execute_sql
+    cursor.close()
+E   psycopg2.errors.InvalidCursorName: cursor "_django_curs_123396302027648_sync_28" does not exist
+_ ERROR at setup of TestSchedulerObsolescence.test_past_obsolescence_processed_immediately _
+/usr/local/lib/python3.11/site-packages/django/db/backends/utils.py:89: in _execute
+    return self.cursor.execute(sql, params)
+E   psycopg2.errors.UndefinedColumn: column workflow_notifications.is_read does not exist
+E   LINE 1: ...tatus", "workflow_notifications"."error_message", "workflow_...
+E                                                                ^
+
+The above exception was the direct cause of the following exception:
+/usr/local/lib/python3.11/site-packages/django/db/models/sql/compiler.py:1562: in execute_sql
+    cursor.execute(sql, params)
+/usr/local/lib/python3.11/site-packages/django/db/backends/utils.py:67: in execute
+    return self._execute_with_wrappers(
+/usr/local/lib/python3.11/site-packages/django/db/backends/utils.py:80: in _execute_with_wrappers
+    return executor(sql, params, many, context)
+/usr/local/lib/python3.11/site-packages/django/db/backends/utils.py:84: in _execute
+    with self.db.wrap_database_errors:
+/usr/local/lib/python3.11/site-packages/django/db/utils.py:91: in __exit__
+    raise dj_exc_value.with_traceback(traceback) from exc_value
+/usr/local/lib/python3.11/site-packages/django/db/backends/utils.py:89: in _execute
+    return self.cursor.execute(sql, params)
+E   django.db.utils.ProgrammingError: column workflow_notifications.is_read does not exist
+E   LINE 1: ...tatus", "workflow_notifications"."error_message", "workflow_...
+E                                                                ^
+
+During handling of the above exception, another exception occurred:
+/home/edms/.local/lib/python3.11/site-packages/pytest_django/plugin.py:527: in _django_db_marker
+    request.getfixturevalue("_django_db_helper")
+/home/edms/.local/lib/python3.11/site-packages/pytest_django/fixtures.py:140: in django_db_setup
+    db_cfg = setup_databases(
+/usr/local/lib/python3.11/site-packages/django/test/utils.py:221: in setup_databases
+    connection.creation.create_test_db(
+/usr/local/lib/python3.11/site-packages/django/db/backends/base/creation.py:94: in create_test_db
+    self.connection._test_serialized_contents = self.serialize_db_to_string()
+/usr/local/lib/python3.11/site-packages/django/db/backends/base/creation.py:142: in serialize_db_to_string
+    serializers.serialize("json", get_objects(), indent=None, stream=out)
+/usr/local/lib/python3.11/site-packages/django/core/serializers/__init__.py:134: in serialize
+    s.serialize(queryset, **options)
+/usr/local/lib/python3.11/site-packages/django/core/serializers/base.py:132: in serialize
+    for count, obj in enumerate(queryset, start=1):
+/usr/local/lib/python3.11/site-packages/django/db/backends/base/creation.py:138: in get_objects
+    yield from queryset.iterator()
+/usr/local/lib/python3.11/site-packages/django/db/models/query.py:516: in _iterator
+    yield from iterable
+/usr/local/lib/python3.11/site-packages/django/db/models/query.py:91: in __iter__
+    results = compiler.execute_sql(
+/usr/local/lib/python3.11/site-packages/django/db/models/sql/compiler.py:1565: in execute_sql
+    cursor.close()
+E   psycopg2.errors.InvalidCursorName: cursor "_django_curs_123396302027648_sync_28" does not exist
+_ ERROR at setup of TestWorkflowAuditTrail.test_audit_trail_created_on_status_change _
+/usr/local/lib/python3.11/site-packages/django/db/backends/utils.py:89: in _execute
+    return self.cursor.execute(sql, params)
+E   psycopg2.errors.UndefinedColumn: column workflow_notifications.is_read does not exist
+E   LINE 1: ...tatus", "workflow_notifications"."error_message", "workflow_...
+E                                                                ^
+
+The above exception was the direct cause of the following exception:
+/usr/local/lib/python3.11/site-packages/django/db/models/sql/compiler.py:1562: in execute_sql
+    cursor.execute(sql, params)
+/usr/local/lib/python3.11/site-packages/django/db/backends/utils.py:67: in execute
+    return self._execute_with_wrappers(
+/usr/local/lib/python3.11/site-packages/django/db/backends/utils.py:80: in _execute_with_wrappers
+    return executor(sql, params, many, context)
+/usr/local/lib/python3.11/site-packages/django/db/backends/utils.py:84: in _execute
+    with self.db.wrap_database_errors:
+/usr/local/lib/python3.11/site-packages/django/db/utils.py:91: in __exit__
+    raise dj_exc_value.with_traceback(traceback) from exc_value
+/usr/local/lib/python3.11/site-packages/django/db/backends/utils.py:89: in _execute
+    return self.cursor.execute(sql, params)
+E   django.db.utils.ProgrammingError: column workflow_notifications.is_read does not exist
+E   LINE 1: ...tatus", "workflow_notifications"."error_message", "workflow_...
+E                                                                ^
+
+During handling of the above exception, another exception occurred:
+/home/edms/.local/lib/python3.11/site-packages/pytest_django/plugin.py:527: in _django_db_marker
+    request.getfixturevalue("_django_db_helper")
+/home/edms/.local/lib/python3.11/site-packages/pytest_django/fixtures.py:140: in django_db_setup
+    db_cfg = setup_databases(
+/usr/local/lib/python3.11/site-packages/django/test/utils.py:221: in setup_databases
+    connection.creation.create_test_db(
+/usr/local/lib/python3.11/site-packages/django/db/backends/base/creation.py:94: in create_test_db
+    self.connection._test_serialized_contents = self.serialize_db_to_string()
+/usr/local/lib/python3.11/site-packages/django/db/backends/base/creation.py:142: in serialize_db_to_string
+    serializers.serialize("json", get_objects(), indent=None, stream=out)
+/usr/local/lib/python3.11/site-packages/django/core/serializers/__init__.py:134: in serialize
+    s.serialize(queryset, **options)
+/usr/local/lib/python3.11/site-packages/django/core/serializers/base.py:132: in serialize
+    for count, obj in enumerate(queryset, start=1):
+/usr/local/lib/python3.11/site-packages/django/db/backends/base/creation.py:138: in get_objects
+    yield from queryset.iterator()
+/usr/local/lib/python3.11/site-packages/django/db/models/query.py:516: in _iterator
+    yield from iterable
+/usr/local/lib/python3.11/site-packages/django/db/models/query.py:91: in __iter__
+    results = compiler.execute_sql(
+/usr/local/lib/python3.11/site-packages/django/db/models/sql/compiler.py:1565: in execute_sql
+    cursor.close()
+E   psycopg2.errors.InvalidCursorName: cursor "_django_curs_123396302027648_sync_28" does not exist
+_ ERROR at setup of TestWorkflowAuditTrail.test_audit_trail_captures_user_info _
+/usr/local/lib/python3.11/site-packages/django/db/backends/utils.py:89: in _execute
+    return self.cursor.execute(sql, params)
+E   psycopg2.errors.UndefinedColumn: column workflow_notifications.is_read does not exist
+E   LINE 1: ...tatus", "workflow_notifications"."error_message", "workflow_...
+E                                                                ^
+
+The above exception was the direct cause of the following exception:
+/usr/local/lib/python3.11/site-packages/django/db/models/sql/compiler.py:1562: in execute_sql
+    cursor.execute(sql, params)
+/usr/local/lib/python3.11/site-packages/django/db/backends/utils.py:67: in execute
+    return self._execute_with_wrappers(
+/usr/local/lib/python3.11/site-packages/django/db/backends/utils.py:80: in _execute_with_wrappers
+    return executor(sql, params, many, context)
+/usr/local/lib/python3.11/site-packages/django/db/backends/utils.py:84: in _execute
+    with self.db.wrap_database_errors:
+/usr/local/lib/python3.11/site-packages/django/db/utils.py:91: in __exit__
+    raise dj_exc_value.with_traceback(traceback) from exc_value
+/usr/local/lib/python3.11/site-packages/django/db/backends/utils.py:89: in _execute
+    return self.cursor.execute(sql, params)
+E   django.db.utils.ProgrammingError: column workflow_notifications.is_read does not exist
+E   LINE 1: ...tatus", "workflow_notifications"."error_message", "workflow_...
+E                                                                ^
+
+During handling of the above exception, another exception occurred:
+/home/edms/.local/lib/python3.11/site-packages/pytest_django/plugin.py:527: in _django_db_marker
+    request.getfixturevalue("_django_db_helper")
+/home/edms/.local/lib/python3.11/site-packages/pytest_django/fixtures.py:140: in django_db_setup
+    db_cfg = setup_databases(
+/usr/local/lib/python3.11/site-packages/django/test/utils.py:221: in setup_databases
+    connection.creation.create_test_db(
+/usr/local/lib/python3.11/site-packages/django/db/backends/base/creation.py:94: in create_test_db
+    self.connection._test_serialized_contents = self.serialize_db_to_string()
+/usr/local/lib/python3.11/site-packages/django/db/backends/base/creation.py:142: in serialize_db_to_string
+    serializers.serialize("json", get_objects(), indent=None, stream=out)
+/usr/local/lib/python3.11/site-packages/django/core/serializers/__init__.py:134: in serialize
+    s.serialize(queryset, **options)
+/usr/local/lib/python3.11/site-packages/django/core/serializers/base.py:132: in serialize
+    for count, obj in enumerate(queryset, start=1):
+/usr/local/lib/python3.11/site-packages/django/db/backends/base/creation.py:138: in get_objects
+    yield from queryset.iterator()
+/usr/local/lib/python3.11/site-packages/django/db/models/query.py:516: in _iterator
+    yield from iterable
+/usr/local/lib/python3.11/site-packages/django/db/models/query.py:91: in __iter__
+    results = compiler.execute_sql(
+/usr/local/lib/python3.11/site-packages/django/db/models/sql/compiler.py:1565: in execute_sql
+    cursor.close()
+E   psycopg2.errors.InvalidCursorName: cursor "_django_curs_123396302027648_sync_28" does not exist
+_ ERROR at setup of TestWorkflowAuditTrail.test_audit_trail_captures_timestamp _
+/usr/local/lib/python3.11/site-packages/django/db/backends/utils.py:89: in _execute
+    return self.cursor.execute(sql, params)
+E   psycopg2.errors.UndefinedColumn: column workflow_notifications.is_read does not exist
+E   LINE 1: ...tatus", "workflow_notifications"."error_message", "workflow_...
+E                                                                ^
+
+The above exception was the direct cause of the following exception:
+/usr/local/lib/python3.11/site-packages/django/db/models/sql/compiler.py:1562: in execute_sql
+    cursor.execute(sql, params)
+/usr/local/lib/python3.11/site-packages/django/db/backends/utils.py:67: in execute
+    return self._execute_with_wrappers(
+/usr/local/lib/python3.11/site-packages/django/db/backends/utils.py:80: in _execute_with_wrappers
+    return executor(sql, params, many, context)
+/usr/local/lib/python3.11/site-packages/django/db/backends/utils.py:84: in _execute
+    with self.db.wrap_database_errors:
+/usr/local/lib/python3.11/site-packages/django/db/utils.py:91: in __exit__
+    raise dj_exc_value.with_traceback(traceback) from exc_value
+/usr/local/lib/python3.11/site-packages/django/db/backends/utils.py:89: in _execute
+    return self.cursor.execute(sql, params)
+E   django.db.utils.ProgrammingError: column workflow_notifications.is_read does not exist
+E   LINE 1: ...tatus", "workflow_notifications"."error_message", "workflow_...
+E                                                                ^
+
+During handling of the above exception, another exception occurred:
+/home/edms/.local/lib/python3.11/site-packages/pytest_django/plugin.py:527: in _django_db_marker
+    request.getfixturevalue("_django_db_helper")
+/home/edms/.local/lib/python3.11/site-packages/pytest_django/fixtures.py:140: in django_db_setup
+    db_cfg = setup_databases(
+/usr/local/lib/python3.11/site-packages/django/test/utils.py:221: in setup_databases
+    connection.creation.create_test_db(
+/usr/local/lib/python3.11/site-packages/django/db/backends/base/creation.py:94: in create_test_db
+    self.connection._test_serialized_contents = self.serialize_db_to_string()
+/usr/local/lib/python3.11/site-packages/django/db/backends/base/creation.py:142: in serialize_db_to_string
+    serializers.serialize("json", get_objects(), indent=None, stream=out)
+/usr/local/lib/python3.11/site-packages/django/core/serializers/__init__.py:134: in serialize
+    s.serialize(queryset, **options)
+/usr/local/lib/python3.11/site-packages/django/core/serializers/base.py:132: in serialize
+    for count, obj in enumerate(queryset, start=1):
+/usr/local/lib/python3.11/site-packages/django/db/backends/base/creation.py:138: in get_objects
+    yield from queryset.iterator()
+/usr/local/lib/python3.11/site-packages/django/db/models/query.py:516: in _iterator
+    yield from iterable
+/usr/local/lib/python3.11/site-packages/django/db/models/query.py:91: in __iter__
+    results = compiler.execute_sql(
+/usr/local/lib/python3.11/site-packages/django/db/models/sql/compiler.py:1565: in execute_sql
+    cursor.close()
+E   psycopg2.errors.InvalidCursorName: cursor "_django_curs_123396302027648_sync_28" does not exist
+_ ERROR at setup of TestWorkflowAuditTrail.test_audit_trail_captures_status_change _
+/usr/local/lib/python3.11/site-packages/django/db/backends/utils.py:89: in _execute
+    return self.cursor.execute(sql, params)
+E   psycopg2.errors.UndefinedColumn: column workflow_notifications.is_read does not exist
+E   LINE 1: ...tatus", "workflow_notifications"."error_message", "workflow_...
+E                                                                ^
+
+The above exception was the direct cause of the following exception:
+/usr/local/lib/python3.11/site-packages/django/db/models/sql/compiler.py:1562: in execute_sql
+    cursor.execute(sql, params)
+/usr/local/lib/python3.11/site-packages/django/db/backends/utils.py:67: in execute
+    return self._execute_with_wrappers(
+/usr/local/lib/python3.11/site-packages/django/db/backends/utils.py:80: in _execute_with_wrappers
+    return executor(sql, params, many, context)
+/usr/local/lib/python3.11/site-packages/django/db/backends/utils.py:84: in _execute
+    with self.db.wrap_database_errors:
+/usr/local/lib/python3.11/site-packages/django/db/utils.py:91: in __exit__
+    raise dj_exc_value.with_traceback(traceback) from exc_value
+/usr/local/lib/python3.11/site-packages/django/db/backends/utils.py:89: in _execute
+    return self.cursor.execute(sql, params)
+E   django.db.utils.ProgrammingError: column workflow_notifications.is_read does not exist
+E   LINE 1: ...tatus", "workflow_notifications"."error_message", "workflow_...
+E                                                                ^
+
+During handling of the above exception, another exception occurred:
+/home/edms/.local/lib/python3.11/site-packages/pytest_django/plugin.py:527: in _django_db_marker
+    request.getfixturevalue("_django_db_helper")
+/home/edms/.local/lib/python3.11/site-packages/pytest_django/fixtures.py:140: in django_db_setup
+    db_cfg = setup_databases(
+/usr/local/lib/python3.11/site-packages/django/test/utils.py:221: in setup_databases
+    connection.creation.create_test_db(
+/usr/local/lib/python3.11/site-packages/django/db/backends/base/creation.py:94: in create_test_db
+    self.connection._test_serialized_contents = self.serialize_db_to_string()
+/usr/local/lib/python3.11/site-packages/django/db/backends/base/creation.py:142: in serialize_db_to_string
+    serializers.serialize("json", get_objects(), indent=None, stream=out)
+/usr/local/lib/python3.11/site-packages/django/core/serializers/__init__.py:134: in serialize
+    s.serialize(queryset, **options)
+/usr/local/lib/python3.11/site-packages/django/core/serializers/base.py:132: in serialize
+    for count, obj in enumerate(queryset, start=1):
+/usr/local/lib/python3.11/site-packages/django/db/backends/base/creation.py:138: in get_objects
+    yield from queryset.iterator()
+/usr/local/lib/python3.11/site-packages/django/db/models/query.py:516: in _iterator
+    yield from iterable
+/usr/local/lib/python3.11/site-packages/django/db/models/query.py:91: in __iter__
+    results = compiler.execute_sql(
+/usr/local/lib/python3.11/site-packages/django/db/models/sql/compiler.py:1565: in execute_sql
+    cursor.close()
+E   psycopg2.errors.InvalidCursorName: cursor "_django_curs_123396302027648_sync_28" does not exist
+__ ERROR at setup of TestWorkflowAuditTrail.test_audit_trail_captures_comment __
+/usr/local/lib/python3.11/site-packages/django/db/backends/utils.py:89: in _execute
+    return self.cursor.execute(sql, params)
+E   psycopg2.errors.UndefinedColumn: column workflow_notifications.is_read does not exist
+E   LINE 1: ...tatus", "workflow_notifications"."error_message", "workflow_...
+E                                                                ^
+
+The above exception was the direct cause of the following exception:
+/usr/local/lib/python3.11/site-packages/django/db/models/sql/compiler.py:1562: in execute_sql
+    cursor.execute(sql, params)
+/usr/local/lib/python3.11/site-packages/django/db/backends/utils.py:67: in execute
+    return self._execute_with_wrappers(
+/usr/local/lib/python3.11/site-packages/django/db/backends/utils.py:80: in _execute_with_wrappers
+    return executor(sql, params, many, context)
+/usr/local/lib/python3.11/site-packages/django/db/backends/utils.py:84: in _execute
+    with self.db.wrap_database_errors:
+/usr/local/lib/python3.11/site-packages/django/db/utils.py:91: in __exit__
+    raise dj_exc_value.with_traceback(traceback) from exc_value
+/usr/local/lib/python3.11/site-packages/django/db/backends/utils.py:89: in _execute
+    return self.cursor.execute(sql, params)
+E   django.db.utils.ProgrammingError: column workflow_notifications.is_read does not exist
+E   LINE 1: ...tatus", "workflow_notifications"."error_message", "workflow_...
+E                                                                ^
+
+During handling of the above exception, another exception occurred:
+/home/edms/.local/lib/python3.11/site-packages/pytest_django/plugin.py:527: in _django_db_marker
+    request.getfixturevalue("_django_db_helper")
+/home/edms/.local/lib/python3.11/site-packages/pytest_django/fixtures.py:140: in django_db_setup
+    db_cfg = setup_databases(
+/usr/local/lib/python3.11/site-packages/django/test/utils.py:221: in setup_databases
+    connection.creation.create_test_db(
+/usr/local/lib/python3.11/site-packages/django/db/backends/base/creation.py:94: in create_test_db
+    self.connection._test_serialized_contents = self.serialize_db_to_string()
+/usr/local/lib/python3.11/site-packages/django/db/backends/base/creation.py:142: in serialize_db_to_string
+    serializers.serialize("json", get_objects(), indent=None, stream=out)
+/usr/local/lib/python3.11/site-packages/django/core/serializers/__init__.py:134: in serialize
+    s.serialize(queryset, **options)
+/usr/local/lib/python3.11/site-packages/django/core/serializers/base.py:132: in serialize
+    for count, obj in enumerate(queryset, start=1):
+/usr/local/lib/python3.11/site-packages/django/db/backends/base/creation.py:138: in get_objects
+    yield from queryset.iterator()
+/usr/local/lib/python3.11/site-packages/django/db/models/query.py:516: in _iterator
+    yield from iterable
+/usr/local/lib/python3.11/site-packages/django/db/models/query.py:91: in __iter__
+    results = compiler.execute_sql(
+/usr/local/lib/python3.11/site-packages/django/db/models/sql/compiler.py:1565: in execute_sql
+    cursor.close()
+E   psycopg2.errors.InvalidCursorName: cursor "_django_curs_123396302027648_sync_28" does not exist
+____ ERROR at setup of TestWorkflowAuditTrail.test_audit_trail_is_immutable ____
+/usr/local/lib/python3.11/site-packages/django/db/backends/utils.py:89: in _execute
+    return self.cursor.execute(sql, params)
+E   psycopg2.errors.UndefinedColumn: column workflow_notifications.is_read does not exist
+E   LINE 1: ...tatus", "workflow_notifications"."error_message", "workflow_...
+E                                                                ^
+
+The above exception was the direct cause of the following exception:
+/usr/local/lib/python3.11/site-packages/django/db/models/sql/compiler.py:1562: in execute_sql
+    cursor.execute(sql, params)
+/usr/local/lib/python3.11/site-packages/django/db/backends/utils.py:67: in execute
+    return self._execute_with_wrappers(
+/usr/local/lib/python3.11/site-packages/django/db/backends/utils.py:80: in _execute_with_wrappers
+    return executor(sql, params, many, context)
+/usr/local/lib/python3.11/site-packages/django/db/backends/utils.py:84: in _execute
+    with self.db.wrap_database_errors:
+/usr/local/lib/python3.11/site-packages/django/db/utils.py:91: in __exit__
+    raise dj_exc_value.with_traceback(traceback) from exc_value
+/usr/local/lib/python3.11/site-packages/django/db/backends/utils.py:89: in _execute
+    return self.cursor.execute(sql, params)
+E   django.db.utils.ProgrammingError: column workflow_notifications.is_read does not exist
+E   LINE 1: ...tatus", "workflow_notifications"."error_message", "workflow_...
+E                                                                ^
+
+During handling of the above exception, another exception occurred:
+/home/edms/.local/lib/python3.11/site-packages/pytest_django/plugin.py:527: in _django_db_marker
+    request.getfixturevalue("_django_db_helper")
+/home/edms/.local/lib/python3.11/site-packages/pytest_django/fixtures.py:140: in django_db_setup
+    db_cfg = setup_databases(
+/usr/local/lib/python3.11/site-packages/django/test/utils.py:221: in setup_databases
+    connection.creation.create_test_db(
+/usr/local/lib/python3.11/site-packages/django/db/backends/base/creation.py:94: in create_test_db
+    self.connection._test_serialized_contents = self.serialize_db_to_string()
+/usr/local/lib/python3.11/site-packages/django/db/backends/base/creation.py:142: in serialize_db_to_string
+    serializers.serialize("json", get_objects(), indent=None, stream=out)
+/usr/local/lib/python3.11/site-packages/django/core/serializers/__init__.py:134: in serialize
+    s.serialize(queryset, **options)
+/usr/local/lib/python3.11/site-packages/django/core/serializers/base.py:132: in serialize
+    for count, obj in enumerate(queryset, start=1):
+/usr/local/lib/python3.11/site-packages/django/db/backends/base/creation.py:138: in get_objects
+    yield from queryset.iterator()
+/usr/local/lib/python3.11/site-packages/django/db/models/query.py:516: in _iterator
+    yield from iterable
+/usr/local/lib/python3.11/site-packages/django/db/models/query.py:91: in __iter__
+    results = compiler.execute_sql(
+/usr/local/lib/python3.11/site-packages/django/db/models/sql/compiler.py:1565: in execute_sql
+    cursor.close()
+E   psycopg2.errors.InvalidCursorName: cursor "_django_curs_123396302027648_sync_28" does not exist
+_ ERROR at setup of TestWorkflowAuditTrail.test_audit_trail_filtering_by_user __
+/usr/local/lib/python3.11/site-packages/django/db/backends/utils.py:89: in _execute
+    return self.cursor.execute(sql, params)
+E   psycopg2.errors.UndefinedColumn: column workflow_notifications.is_read does not exist
+E   LINE 1: ...tatus", "workflow_notifications"."error_message", "workflow_...
+E                                                                ^
+
+The above exception was the direct cause of the following exception:
+/usr/local/lib/python3.11/site-packages/django/db/models/sql/compiler.py:1562: in execute_sql
+    cursor.execute(sql, params)
+/usr/local/lib/python3.11/site-packages/django/db/backends/utils.py:67: in execute
+    return self._execute_with_wrappers(
+/usr/local/lib/python3.11/site-packages/django/db/backends/utils.py:80: in _execute_with_wrappers
+    return executor(sql, params, many, context)
+/usr/local/lib/python3.11/site-packages/django/db/backends/utils.py:84: in _execute
+    with self.db.wrap_database_errors:
+/usr/local/lib/python3.11/site-packages/django/db/utils.py:91: in __exit__
+    raise dj_exc_value.with_traceback(traceback) from exc_value
+/usr/local/lib/python3.11/site-packages/django/db/backends/utils.py:89: in _execute
+    return self.cursor.execute(sql, params)
+E   django.db.utils.ProgrammingError: column workflow_notifications.is_read does not exist
+E   LINE 1: ...tatus", "workflow_notifications"."error_message", "workflow_...
+E                                                                ^
+
+During handling of the above exception, another exception occurred:
+/home/edms/.local/lib/python3.11/site-packages/pytest_django/plugin.py:527: in _django_db_marker
+    request.getfixturevalue("_django_db_helper")
+/home/edms/.local/lib/python3.11/site-packages/pytest_django/fixtures.py:140: in django_db_setup
+    db_cfg = setup_databases(
+/usr/local/lib/python3.11/site-packages/django/test/utils.py:221: in setup_databases
+    connection.creation.create_test_db(
+/usr/local/lib/python3.11/site-packages/django/db/backends/base/creation.py:94: in create_test_db
+    self.connection._test_serialized_contents = self.serialize_db_to_string()
+/usr/local/lib/python3.11/site-packages/django/db/backends/base/creation.py:142: in serialize_db_to_string
+    serializers.serialize("json", get_objects(), indent=None, stream=out)
+/usr/local/lib/python3.11/site-packages/django/core/serializers/__init__.py:134: in serialize
+    s.serialize(queryset, **options)
+/usr/local/lib/python3.11/site-packages/django/core/serializers/base.py:132: in serialize
+    for count, obj in enumerate(queryset, start=1):
+/usr/local/lib/python3.11/site-packages/django/db/backends/base/creation.py:138: in get_objects
+    yield from queryset.iterator()
+/usr/local/lib/python3.11/site-packages/django/db/models/query.py:516: in _iterator
+    yield from iterable
+/usr/local/lib/python3.11/site-packages/django/db/models/query.py:91: in __iter__
+    results = compiler.execute_sql(
+/usr/local/lib/python3.11/site-packages/django/db/models/sql/compiler.py:1565: in execute_sql
+    cursor.close()
+E   psycopg2.errors.InvalidCursorName: cursor "_django_curs_123396302027648_sync_28" does not exist
+_ ERROR at setup of TestWorkflowAuditTrail.test_complete_workflow_audit_trail __
+/usr/local/lib/python3.11/site-packages/django/db/backends/utils.py:89: in _execute
+    return self.cursor.execute(sql, params)
+E   psycopg2.errors.UndefinedColumn: column workflow_notifications.is_read does not exist
+E   LINE 1: ...tatus", "workflow_notifications"."error_message", "workflow_...
+E                                                                ^
+
+The above exception was the direct cause of the following exception:
+/usr/local/lib/python3.11/site-packages/django/db/models/sql/compiler.py:1562: in execute_sql
+    cursor.execute(sql, params)
+/usr/local/lib/python3.11/site-packages/django/db/backends/utils.py:67: in execute
+    return self._execute_with_wrappers(
+/usr/local/lib/python3.11/site-packages/django/db/backends/utils.py:80: in _execute_with_wrappers
+    return executor(sql, params, many, context)
+/usr/local/lib/python3.11/site-packages/django/db/backends/utils.py:84: in _execute
+    with self.db.wrap_database_errors:
+/usr/local/lib/python3.11/site-packages/django/db/utils.py:91: in __exit__
+    raise dj_exc_value.with_traceback(traceback) from exc_value
+/usr/local/lib/python3.11/site-packages/django/db/backends/utils.py:89: in _execute
+    return self.cursor.execute(sql, params)
+E   django.db.utils.ProgrammingError: column workflow_notifications.is_read does not exist
+E   LINE 1: ...tatus", "workflow_notifications"."error_message", "workflow_...
+E                                                                ^
+
+During handling of the above exception, another exception occurred:
+/home/edms/.local/lib/python3.11/site-packages/pytest_django/plugin.py:527: in _django_db_marker
+    request.getfixturevalue("_django_db_helper")
+/home/edms/.local/lib/python3.11/site-packages/pytest_django/fixtures.py:140: in django_db_setup
+    db_cfg = setup_databases(
+/usr/local/lib/python3.11/site-packages/django/test/utils.py:221: in setup_databases
+    connection.creation.create_test_db(
+/usr/local/lib/python3.11/site-packages/django/db/backends/base/creation.py:94: in create_test_db
+    self.connection._test_serialized_contents = self.serialize_db_to_string()
+/usr/local/lib/python3.11/site-packages/django/db/backends/base/creation.py:142: in serialize_db_to_string
+    serializers.serialize("json", get_objects(), indent=None, stream=out)
+/usr/local/lib/python3.11/site-packages/django/core/serializers/__init__.py:134: in serialize
+    s.serialize(queryset, **options)
+/usr/local/lib/python3.11/site-packages/django/core/serializers/base.py:132: in serialize
+    for count, obj in enumerate(queryset, start=1):
+/usr/local/lib/python3.11/site-packages/django/db/backends/base/creation.py:138: in get_objects
+    yield from queryset.iterator()
+/usr/local/lib/python3.11/site-packages/django/db/models/query.py:516: in _iterator
+    yield from iterable
+/usr/local/lib/python3.11/site-packages/django/db/models/query.py:91: in __iter__
+    results = compiler.execute_sql(
+/usr/local/lib/python3.11/site-packages/django/db/models/sql/compiler.py:1565: in execute_sql
+    cursor.close()
+E   psycopg2.errors.InvalidCursorName: cursor "_django_curs_123396302027648_sync_28" does not exist
+=============================== warnings summary ===============================
+../usr/local/lib/python3.11/site-packages/django/conf/__init__.py:289
+  /usr/local/lib/python3.11/site-packages/django/conf/__init__.py:289: RemovedInDjango51Warning: The STATICFILES_STORAGE setting is deprecated. Use STORAGES instead.
+    warnings.warn(STATICFILES_STORAGE_DEPRECATED_MSG, RemovedInDjango51Warning)
+
+../usr/local/lib/python3.11/site-packages/rest_framework_simplejwt/__init__.py:1
+  /usr/local/lib/python3.11/site-packages/rest_framework_simplejwt/__init__.py:1: DeprecationWarning: pkg_resources is deprecated as an API. See https://setuptools.pypa.io/en/latest/pkg_resources.html
+    from pkg_resources import DistributionNotFound, get_distribution
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ============================
+ERROR apps/workflows/tests/test_versioning_workflow.py::TestDocumentVersioning::test_create_major_version_from_effective_document
+ERROR apps/workflows/tests/test_versioning_workflow.py::TestDocumentVersioning::test_create_minor_version_from_effective_document
+ERROR apps/workflows/tests/test_versioning_workflow.py::TestDocumentVersioning::test_cannot_version_non_effective_document
+ERROR apps/workflows/tests/test_versioning_workflow.py::TestDocumentVersioning::test_versioned_document_follows_full_workflow
+ERROR apps/workflows/tests/test_versioning_workflow.py::TestDocumentVersioning::test_old_version_superseded_when_new_version_effective
+ERROR apps/workflows/tests/test_versioning_workflow.py::TestDocumentVersioning::test_version_numbering_format
+ERROR apps/workflows/tests/test_versioning_workflow.py::TestDocumentVersioning::test_version_inherits_document_type_and_source
+ERROR apps/workflows/tests/test_versioning_workflow.py::TestDocumentVersioning::test_multiple_versions_chain
+ERROR apps/workflows/tests/test_versioning_workflow.py::TestDocumentVersioning::test_versioning_preserves_dependencies
+ERROR apps/workflows/tests/test_versioning_workflow.py::TestDocumentVersioning::test_cannot_create_version_without_reason
+ERROR apps/workflows/tests/test_versioning_workflow.py::TestDocumentVersioning::test_superseded_documents_are_read_only
+ERROR apps/workflows/tests/test_obsolescence_workflow.py::TestDocumentObsolescence::test_approver_can_mark_document_obsolete
+ERROR apps/workflows/tests/test_obsolescence_workflow.py::TestDocumentObsolescence::test_obsolescence_requires_reason
+ERROR apps/workflows/tests/test_obsolescence_workflow.py::TestDocumentObsolescence::test_scheduled_obsolescence_date
+ERROR apps/workflows/tests/test_obsolescence_workflow.py::TestDocumentObsolescence::test_immediate_obsolescence
+ERROR apps/workflows/tests/test_obsolescence_workflow.py::TestDocumentObsolescence::test_cannot_obsolete_non_effective_document
+ERROR apps/workflows/tests/test_obsolescence_workflow.py::TestDocumentObsolescence::test_author_cannot_mark_obsolete
+ERROR apps/workflows/tests/test_obsolescence_workflow.py::TestDocumentObsolescence::test_obsolete_documents_are_read_only
+ERROR apps/workflows/tests/test_termination_workflow.py::TestDocumentTermination::test_author_can_terminate_draft_document
+ERROR apps/workflows/tests/test_termination_workflow.py::TestDocumentTermination::test_author_can_terminate_under_review_document
+ERROR apps/workflows/tests/test_termination_workflow.py::TestDocumentTermination::test_author_can_terminate_pending_approval_document
+ERROR apps/workflows/tests/test_termination_workflow.py::TestDocumentTermination::test_termination_requires_reason
+ERROR apps/workflows/tests/test_termination_workflow.py::TestDocumentTermination::test_cannot_terminate_effective_document
+ERROR apps/workflows/tests/test_termination_workflow.py::TestDocumentTermination::test_non_author_cannot_terminate
+ERROR apps/workflows/tests/test_termination_workflow.py::TestDocumentTermination::test_terminated_documents_are_read_only
+ERROR apps/documents/tests/test_document_dependencies.py::TestDocumentDependencies::test_add_dependency_to_document
+ERROR apps/documents/tests/test_document_dependencies.py::TestDocumentDependencies::test_circular_dependency_prevented
+ERROR apps/documents/tests/test_document_dependencies.py::TestDocumentDependencies::test_indirect_circular_dependency_prevented
+ERROR apps/documents/tests/test_document_dependencies.py::TestDocumentDependencies::test_self_dependency_prevented
+ERROR apps/documents/tests/test_document_dependencies.py::TestDocumentDependencies::test_multiple_dependencies_allowed
+ERROR apps/documents/tests/test_document_dependencies.py::TestDocumentDependencies::test_critical_dependency_flag
+ERROR apps/documents/tests/test_document_dependencies.py::TestDocumentDependencies::test_dependency_types
+ERROR apps/documents/tests/test_document_dependencies.py::TestDocumentDependencies::test_dependency_on_draft_document
+ERROR apps/documents/tests/test_document_dependencies.py::TestDocumentDependencies::test_version_aware_circular_dependency_detection
+ERROR apps/documents/tests/test_document_dependencies.py::TestDocumentDependencies::test_get_dependency_chain
+ERROR apps/documents/tests/test_document_dependencies.py::TestDocumentDependencies::test_remove_dependency
+ERROR apps/documents/tests/test_document_dependencies.py::TestDocumentDependencies::test_detect_circular_dependencies_system_wide
+ERROR apps/scheduler/tests/test_document_activation.py::TestSchedulerDocumentActivation::test_document_becomes_effective_on_scheduled_date
+ERROR apps/scheduler/tests/test_document_activation.py::TestSchedulerDocumentActivation::test_future_dated_documents_remain_pending
+ERROR apps/scheduler/tests/test_document_activation.py::TestSchedulerDocumentActivation::test_scheduler_activates_multiple_documents
+ERROR apps/scheduler/tests/test_document_activation.py::TestSchedulerDocumentActivation::test_past_dated_documents_activated_immediately
+ERROR apps/scheduler/tests/test_document_activation.py::TestSchedulerDocumentActivation::test_scheduler_skips_non_pending_documents
+ERROR apps/scheduler/tests/test_document_activation.py::TestSchedulerDocumentActivation::test_scheduler_timezone_handling
+ERROR apps/scheduler/tests/test_obsolescence_automation.py::TestSchedulerObsolescence::test_scheduler_marks_documents_obsolete_on_date
+ERROR apps/scheduler/tests/test_obsolescence_automation.py::TestSchedulerObsolescence::test_future_obsolescence_remains_scheduled
+ERROR apps/scheduler/tests/test_obsolescence_automation.py::TestSchedulerObsolescence::test_past_obsolescence_processed_immediately
+ERROR apps/audit/tests/test_workflow_audit_trail.py::TestWorkflowAuditTrail::test_audit_trail_created_on_status_change
+ERROR apps/audit/tests/test_workflow_audit_trail.py::TestWorkflowAuditTrail::test_audit_trail_captures_user_info
+ERROR apps/audit/tests/test_workflow_audit_trail.py::TestWorkflowAuditTrail::test_audit_trail_captures_timestamp
+ERROR apps/audit/tests/test_workflow_audit_trail.py::TestWorkflowAuditTrail::test_audit_trail_captures_status_change
+ERROR apps/audit/tests/test_workflow_audit_trail.py::TestWorkflowAuditTrail::test_audit_trail_captures_comment
+ERROR apps/audit/tests/test_workflow_audit_trail.py::TestWorkflowAuditTrail::test_audit_trail_is_immutable
+ERROR apps/audit/tests/test_workflow_audit_trail.py::TestWorkflowAuditTrail::test_audit_trail_filtering_by_user
+ERROR apps/audit/tests/test_workflow_audit_trail.py::TestWorkflowAuditTrail::test_complete_workflow_audit_trail
+======================= 2 warnings, 54 errors in 22.39s ========================

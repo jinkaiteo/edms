@@ -30,7 +30,7 @@ def validate_system_state(phase_name="Unknown"):
         from apps.documents.models import Document, DocumentVersion, DocumentType
         from apps.workflows.models import WorkflowInstance, WorkflowType
         from apps.audit.models import AuditTrail
-        from apps.backup.models import BackupJob, BackupConfiguration
+        # Backup module removed - using hybrid backup system (shell scripts + Celery)
         from apps.placeholders.models import DocumentTemplate, PlaceholderDefinition
         
         # Core data counts

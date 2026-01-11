@@ -1,0 +1,95 @@
+╔═══════════════════════════════════════════════════════════════╗
+║                                                               ║
+║     EDMS Production Deployment Package Manifest              ║
+║                                                               ║
+╚═══════════════════════════════════════════════════════════════╝
+
+Package Information
+===================
+Name:        edms-production-20260106-170206
+Created:     Tue Jan  6 05:02:06 PM +08 2026
+Creator:     create-production-package.sh v2.0
+Size:        6.7M
+Total Files: 376
+
+File Breakdown
+==============
+Backend Files:        256
+Frontend Files:       99
+Infrastructure Files: 10
+Scripts:              3
+Documentation:        8
+
+Package Structure
+=================
+edms-production-20260106-170206/
+├── backend/              # Django application
+│   ├── apps/            # Application modules
+│   ├── edms/            # Core configuration
+│   ├── fixtures/        # Initial data
+│   └── requirements/    # Python dependencies
+├── frontend/            # React application
+│   ├── src/            # Source code
+│   └── public/         # Static assets
+├── infrastructure/      # Docker setup
+│   ├── containers/     # Dockerfiles
+│   └── nginx/          # Web server config
+├── scripts/            # Utility scripts
+├── docs/               # Documentation
+├── docker-compose.yml  # Development config
+├── docker-compose.prod.yml  # Production config
+├── deploy-interactive.sh    # Interactive setup
+└── quick-deploy.sh     # Quick deployment
+
+Deployment Instructions
+=======================
+1. Copy this package to your production server
+2. Run: ./deploy-interactive.sh
+3. Follow the interactive prompts
+4. Access your application at the configured URL
+
+Quick Deploy
+============
+For fastest deployment:
+  ./quick-deploy.sh
+
+Manual Deploy
+=============
+For manual configuration:
+  1. cp backend/.env.example backend/.env
+  2. Edit backend/.env with your settings
+  3. docker compose -f docker-compose.prod.yml up -d
+
+Documentation
+=============
+- README-DEPLOYMENT.md           # Main deployment guide
+- docs/DEPLOYMENT_QUICK_START.md # Quick start guide
+- docs/PRODUCTION_DEPLOYMENT_READINESS.md  # Checklist
+- docs/DOCKER_NETWORKING_EXPLAINED.md      # Network setup
+- docs/HAPROXY_INTEGRATION_GUIDE.md        # Load balancer
+
+Verification
+============
+After deployment, verify with:
+  docker compose ps                    # Check containers
+  docker compose logs -f               # View logs
+  curl http://localhost:8000/health/   # Test backend
+
+Support
+=======
+For deployment issues, check:
+  1. Container logs: docker compose logs
+  2. Environment configuration: backend/.env
+  3. Documentation in docs/ directory
+
+Package Integrity
+=================
+Checksums generated: checksums.sha256
+Verify with: sha256sum -c checksums.sha256
+
+Errors During Creation
+======================
+Errors: 0
+
+
+Created by EDMS Production Package Creator v2.0
