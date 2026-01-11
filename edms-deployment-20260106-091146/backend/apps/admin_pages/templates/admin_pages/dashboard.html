@@ -1,0 +1,63 @@
+{% extends "admin_pages/base.html" %}
+
+{% block title %}EDMS Admin Dashboard{% endblock %}
+{% block heading %}📊 Administration Dashboard{% endblock %}
+{% block description %}System overview and quick access to administrative functions{% endblock %}
+
+{% block content %}
+<div class="stats-grid">
+    <div class="stat-card">
+        <div class="stat-number">{{ user_count }}</div>
+        <div class="stat-label">Total Users</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-number">{{ document_count }}</div>
+        <div class="stat-label">Documents</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-number">{{ workflow_count }}</div>
+        <div class="stat-label">Active Workflows</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-number">{{ audit_count }}</div>
+        <div class="stat-label">Audit Records</div>
+    </div>
+</div>
+
+<div class="integration-note">
+    <h3>🔗 Frontend Integration</h3>
+    <p>This admin dashboard is accessible through the main EDMS navigation:</p>
+    <ol>
+        <li><strong>Navigate to main EDMS</strong> → Click "Administration" in left sidebar</li>
+        <li><strong>Expand submenu</strong> → Access User Management, Settings, Scheduler Dashboard, and Audit Trail</li>
+        <li><strong>Scheduler Dashboard</strong> → Opens in new tab with full monitoring interface</li>
+    </ol>
+</div>
+
+<h3>📋 Quick Actions</h3>
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px; margin-top: 20px;">
+    <div style="background: #f8f9fa; padding: 20px; border-radius: 6px;">
+        <h4>👥 User Management</h4>
+        <p>Manage user accounts, roles, and permissions.</p>
+        <a href="/admin/users/" style="color: #007cba; text-decoration: none; font-weight: bold;">Manage Users →</a>
+    </div>
+    
+    <div style="background: #f8f9fa; padding: 20px; border-radius: 6px;">
+        <h4>🖥️ Scheduler Monitoring</h4>
+        <p>Monitor automated tasks and system health.</p>
+        <a href="/admin/scheduler/monitoring/dashboard/" target="_blank" style="color: #007cba; text-decoration: none; font-weight: bold;">Open Dashboard →</a>
+    </div>
+    
+    <div style="background: #f8f9fa; padding: 20px; border-radius: 6px;">
+        <h4>🛡️ Audit Trail</h4>
+        <p>View system activity and compliance logs.</p>
+        <a href="/admin/audit/" style="color: #007cba; text-decoration: none; font-weight: bold;">View Audit Trail →</a>
+    </div>
+    
+    <div style="background: #f8f9fa; padding: 20px; border-radius: 6px;">
+        <h4>⚙️ System Settings</h4>
+        <p>Configure system parameters and preferences.</p>
+        <a href="/admin/settings/" style="color: #007cba; text-decoration: none; font-weight: bold;">Manage Settings →</a>
+    </div>
+</div>
+{% endblock %}

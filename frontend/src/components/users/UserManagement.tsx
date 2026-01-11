@@ -158,7 +158,43 @@ const UserManagement: React.FC<UserManagementProps> = ({ className = '' }) => {
       setError(null);
       
     } catch (error: any) {
-      setError(error.response?.data?.detail || 'Failed to create user');
+      console.error('User creation error:', error.response?.data);
+      
+      // Handle different types of validation errors
+      let errorMessage = 'Failed to create user';
+      
+      if (error.response?.data) {
+        const errorData = error.response.data;
+        
+        // Handle password-specific errors
+        if (errorData.password) {
+          const passwordErrors = Array.isArray(errorData.password) 
+            ? errorData.password 
+            : [errorData.password];
+          errorMessage = `Password Error: ${passwordErrors.join(', ')}`;
+        }
+        // Handle non_field_errors (like password mismatch)
+        else if (errorData.non_field_errors) {
+          const nonFieldErrors = Array.isArray(errorData.non_field_errors)
+            ? errorData.non_field_errors
+            : [errorData.non_field_errors];
+          errorMessage = nonFieldErrors.join(', ');
+        }
+        // Handle other field errors
+        else if (typeof errorData === 'object') {
+          const firstError = Object.keys(errorData)[0];
+          const firstErrorMsg = Array.isArray(errorData[firstError])
+            ? errorData[firstError][0]
+            : errorData[firstError];
+          errorMessage = `${firstError}: ${firstErrorMsg}`;
+        }
+        // Handle string error messages
+        else if (errorData.detail) {
+          errorMessage = errorData.detail;
+        }
+      }
+      
+      setError(errorMessage);
     } finally {
       setOperationLoading(false);
     }
@@ -479,17 +515,28 @@ const UserManagement: React.FC<UserManagementProps> = ({ className = '' }) => {
                 <label className="block text-sm font-medium text-gray-700">Password</label>
                 <PasswordInput
                   required
-                  minLength={12}
+                  minLength={8}
                   className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
                   value={createUserForm.password}
                   onChange={(e) => setCreateUserForm({...createUserForm, password: e.target.value})}
                   placeholder="Enter secure password..."
                 />
-                <div className="mt-1 flex items-center text-xs text-gray-500">
-                  <svg className="w-4 h-4 mr-1 text-blue-500" fill="currentColor" viewBox="0 0 20 20">
-                    <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
-                  </svg>
-                  Password must be at least 12 characters long
+                <div className="mt-1 space-y-1">
+                  <div className="flex items-start text-xs text-gray-600">
+                    <svg className="w-4 h-4 mr-1 mt-0.5 text-blue-500 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+                    </svg>
+                    <div>
+                      <strong>Password Requirements:</strong>
+                      <ul className="list-disc list-inside mt-1 space-y-0.5">
+                        <li>At least 8 characters long</li>
+                        <li>Not too common (avoid "password123", "admin", etc.)</li>
+                        <li>Not entirely numeric</li>
+                        <li>Not too similar to username or email</li>
+                        <li>Mix of letters, numbers, and special characters recommended</li>
+                      </ul>
+                    </div>
+                  </div>
                 </div>
               </div>
               
@@ -655,17 +702,14 @@ const UserManagement: React.FC<UserManagementProps> = ({ className = '' }) => {
                 <label className="block text-sm font-medium text-gray-700">New Password</label>
                 <PasswordInput
                   required
-                  minLength={12}
+                  minLength={8}
                   className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
                   value={passwordResetForm.new_password}
                   onChange={(e) => setPasswordResetForm({...passwordResetForm, new_password: e.target.value})}
                   placeholder="Enter new secure password..."
                 />
-                <div className="mt-1 flex items-center text-xs text-gray-500">
-                  <svg className="w-4 h-4 mr-1 text-blue-500" fill="currentColor" viewBox="0 0 20 20">
-                    <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
-                  </svg>
-                  Password must be at least 12 characters long
+                <div className="mt-1 text-xs text-gray-600">
+                  <strong>Password Requirements:</strong> At least 8 characters, not too common, not entirely numeric
                 </div>
               </div>
               
@@ -673,7 +717,7 @@ const UserManagement: React.FC<UserManagementProps> = ({ className = '' }) => {
                 <label className="block text-sm font-medium text-gray-700">Confirm New Password</label>
                 <PasswordInput
                   required
-                  minLength={12}
+                  minLength={8}
                   className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
                   value={passwordResetForm.new_password_confirm}
                   onChange={(e) => setPasswordResetForm({...passwordResetForm, new_password_confirm: e.target.value})}

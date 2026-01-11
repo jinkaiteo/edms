@@ -75,7 +75,7 @@ const WorkflowInitiator: React.FC<WorkflowInitiatorProps> = ({
 
   const fetchDocumentTypes = async () => {
     try {
-      const response = await fetch('/api/v1/documents/types/', {
+      const response = await fetch('/api/v1/document-types/', {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('token')}`,
           'Content-Type': 'application/json',

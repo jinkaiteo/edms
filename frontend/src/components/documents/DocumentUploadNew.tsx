@@ -82,11 +82,11 @@ const DocumentUploadNew: React.FC = () => {
     try {
       
       // Load document types
-      const typesResponse = await apiService.get('/documents/types/');
+      const typesResponse = await apiService.get('/document-types/');
       setDocumentTypes(Array.isArray(typesResponse) ? typesResponse : typesResponse.results || []);
       
       // Load document sources
-      const sourcesResponse = await apiService.get('/documents/sources/');
+      const sourcesResponse = await apiService.get('/document-sources/');
       setDocumentSources(Array.isArray(sourcesResponse) ? sourcesResponse : sourcesResponse.results || []);
       
       // Load users for reviewer/approver assignment
@@ -238,7 +238,7 @@ const DocumentUploadNew: React.FC = () => {
       }
       
       
-      const response = await fetch('/api/v1/documents/documents/', {
+      const response = await fetch('/api/v1/documents/', {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,

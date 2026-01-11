@@ -1,0 +1,95 @@
+{% extends "admin_pages/base.html" %}
+
+{% block title %}User Management - EDMS Admin{% endblock %}
+{% block heading %}👥 User Management{% endblock %}
+{% block description %}Manage user accounts, roles, and permissions{% endblock %}
+
+{% block content %}
+<div class="integration-note">
+    <h3>🔗 API Integration Available</h3>
+    <p><strong>API Endpoint:</strong> <code>{{ api_endpoint }}</code></p>
+    <p>This interface can be enhanced with React components for full CRUD operations.</p>
+</div>
+
+<h3>📊 User Overview</h3>
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin: 20px 0;">
+    <div class="stat-card">
+        <div class="stat-number">{{ users|length }}</div>
+        <div class="stat-label">Total Users</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-number">{{ users|dictsort:"is_staff"|last|length|default:0 }}</div>
+        <div class="stat-label">Staff Users</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-number">{{ roles|length }}</div>
+        <div class="stat-label">Available Roles</div>
+    </div>
+</div>
+
+<h3>👤 User List</h3>
+<table>
+    <thead>
+        <tr>
+            <th>Username</th>
+            <th>Email</th>
+            <th>Full Name</th>
+            <th>Status</th>
+            <th>Last Login</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for user in users %}
+        <tr>
+            <td><strong>{{ user.username }}</strong></td>
+            <td>{{ user.email|default:"No email" }}</td>
+            <td>{{ user.get_full_name|default:"—" }}</td>
+            <td>
+                {% if user.is_superuser %}
+                    <span class="badge badge-warning">Superuser</span>
+                {% elif user.is_staff %}
+                    <span class="badge badge-info">Staff</span>
+                {% elif user.is_active %}
+                    <span class="badge badge-success">Active</span>
+                {% else %}
+                    <span class="badge">Inactive</span>
+                {% endif %}
+            </td>
+            <td>{{ user.last_login|date:"M d, Y H:i"|default:"Never" }}</td>
+        </tr>
+        {% empty %}
+        <tr>
+            <td colspan="5">No users found.</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+
+<h3>🔐 Available Roles</h3>
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 15px; margin-top: 20px;">
+    {% for role in roles %}
+    <div style="background: #f8f9fa; padding: 15px; border-radius: 6px; border-left: 4px solid #007cba;">
+        <h4 style="margin-top: 0;">{{ role.name }}</h4>
+        <p style="margin: 5px 0;"><strong>Module:</strong> {{ role.module }}</p>
+        <p style="margin: 5px 0;"><strong>Level:</strong> {{ role.permission_level|capfirst }}</p>
+        {% if role.description %}
+        <p style="margin: 10px 0 0 0; font-size: 14px; color: #666;">{{ role.description }}</p>
+        {% endif %}
+    </div>
+    {% empty %}
+    <div style="background: #f8f9fa; padding: 15px; border-radius: 6px;">
+        <p>No roles configured.</p>
+    </div>
+    {% endfor %}
+</div>
+
+<div style="margin-top: 30px; padding: 20px; background: #fff3cd; border-radius: 6px; border-left: 4px solid #ffc107;">
+    <h4 style="margin-top: 0; color: #856404;">💡 Enhancement Opportunities</h4>
+    <ul style="color: #856404;">
+        <li>Add user creation/editing forms</li>
+        <li>Implement role assignment interface</li>
+        <li>Add user activity monitoring</li>
+        <li>Create bulk user management tools</li>
+    </ul>
+</div>
+{% endblock %}

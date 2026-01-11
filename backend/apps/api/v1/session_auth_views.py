@@ -41,8 +41,12 @@ def session_login(request):
                 'success': True,
                 'user': {
                     'id': user.id,
+                    'uuid': str(user.uuid),
                     'username': user.username,
                     'email': user.email,
+                    'first_name': user.first_name,
+                    'last_name': user.last_name,
+                    'full_name': user.get_full_name(),
                     'is_staff': user.is_staff,
                     'is_superuser': user.is_superuser,
                     'is_active': user.is_active
@@ -72,8 +76,12 @@ def current_user(request):
         return JsonResponse({
             'user': {
                 'id': request.user.id,
+                'uuid': str(request.user.uuid),
                 'username': request.user.username,
                 'email': request.user.email,
+                'first_name': request.user.first_name,
+                'last_name': request.user.last_name,
+                'full_name': request.user.get_full_name(),
                 'is_staff': request.user.is_staff,
                 'is_superuser': request.user.is_superuser,
                 'is_active': request.user.is_active

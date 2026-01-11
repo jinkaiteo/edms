@@ -69,6 +69,7 @@ class LoginView(APIView):
                 return Response({
                     'message': 'Login successful',
                     'user': {
+                        'id': user.id,  # Primary key for database operations
                         'uuid': str(user.uuid),
                         'username': user.username,
                         'email': user.email,
@@ -76,7 +77,9 @@ class LoginView(APIView):
                         'last_name': user.last_name,
                         'is_staff': user.is_staff,
                         'is_superuser': user.is_superuser,
-                        'last_login': user.last_login
+                        'last_login': user.last_login,
+                        'full_name': user.get_full_name(),
+                        'is_active': user.is_active
                     },
                     'session_id': request.session.session_key
                 }, status=status.HTTP_200_OK)
@@ -170,6 +173,7 @@ class CurrentUserView(APIView):
         
         return Response({
             'user': {
+                'id': user.id,  # Primary key for database operations
                 'uuid': str(user.uuid),
                 'username': user.username,
                 'email': user.email,
@@ -178,6 +182,7 @@ class CurrentUserView(APIView):
                 'is_staff': user.is_staff,
                 'is_superuser': user.is_superuser,
                 'last_login': user.last_login,
+                'full_name': user.get_full_name(),
                 'date_joined': user.date_joined,
                 'is_active': user.is_active
             },

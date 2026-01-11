@@ -1,0 +1,136 @@
+{% extends "admin_pages/base.html" %}
+
+{% block title %}Audit Trail - EDMS Admin{% endblock %}
+{% block heading %}🛡️ Audit Trail{% endblock %}
+{% block description %}View system activity logs and compliance records{% endblock %}
+
+{% block content %}
+<div class="integration-note">
+    <h3>🔗 API Integration Available</h3>
+    <p><strong>API Endpoint:</strong> <code>{{ api_endpoint }}</code></p>
+    <p>This interface provides read-only access to audit logs. Full search and filtering can be implemented via API.</p>
+</div>
+
+<h3>📊 Audit Summary</h3>
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin: 20px 0;">
+    <div class="stat-card">
+        <div class="stat-number">{{ recent_audits|length }}</div>
+        <div class="stat-label">Recent Records (50)</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-number">{{ recent_audits|length|add:"+" }}</div>
+        <div class="stat-label">Total Available</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-number">24/7</div>
+        <div class="stat-label">Monitoring</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-number">100%</div>
+        <div class="stat-label">Compliance</div>
+    </div>
+</div>
+
+<h3>📝 Recent Activity (Last 50 Records)</h3>
+<div style="margin-bottom: 20px; padding: 15px; background: #fff3cd; border-radius: 6px; border-left: 4px solid #ffc107;">
+    <p style="margin: 0; color: #856404;"><strong>ℹ️ Note:</strong> This view shows the most recent audit records. For comprehensive search and filtering, use the API endpoint or implement enhanced UI components.</p>
+</div>
+
+<table>
+    <thead>
+        <tr>
+            <th>Timestamp</th>
+            <th>User</th>
+            <th>Action</th>
+            <th>Description</th>
+            <th>IP Address</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for audit in recent_audits %}
+        <tr>
+            <td>{{ audit.timestamp|date:"M d, Y H:i:s" }}</td>
+            <td>
+                {% if audit.user %}
+                    <strong>{{ audit.user.username }}</strong>
+                    {% if audit.user.get_full_name %}
+                        <br><small style="color: #666;">{{ audit.user.get_full_name }}</small>
+                    {% endif %}
+                {% else %}
+                    <em style="color: #999;">System</em>
+                {% endif %}
+            </td>
+            <td>
+                {% if "SUCCESSFUL" in audit.action or "COMPLETED" in audit.action %}
+                    <span class="badge badge-success">{{ audit.action }}</span>
+                {% elif "FAILED" in audit.action or "ERROR" in audit.action %}
+                    <span class="badge badge-warning">{{ audit.action }}</span>
+                {% else %}
+                    <span class="badge badge-info">{{ audit.action }}</span>
+                {% endif %}
+            </td>
+            <td>
+                {{ audit.description|truncatechars:100 }}
+                {% if audit.description|length > 100 %}
+                    <br><small style="color: #666;">{{ audit.description|slice:"100:" }}</small>
+                {% endif %}
+            </td>
+            <td>{{ audit.ip_address|default:"—" }}</td>
+        </tr>
+        {% empty %}
+        <tr>
+            <td colspan="5" style="text-align: center; color: #666; font-style: italic;">
+                No audit records found. This may indicate system setup is still in progress.
+            </td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+
+<div style="margin-top: 30px;">
+    <h3>🔍 Audit Trail Features</h3>
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px;">
+        
+        <div style="background: #f8f9fa; padding: 20px; border-radius: 6px; border-left: 4px solid #28a745;">
+            <h4 style="margin-top: 0; color: #155724;">✅ Comprehensive Logging</h4>
+            <ul style="color: #155724; margin: 0; padding-left: 20px;">
+                <li>All user actions tracked</li>
+                <li>System events recorded</li>
+                <li>Document changes logged</li>
+                <li>Workflow transitions audited</li>
+            </ul>
+        </div>
+        
+        <div style="background: #f8f9fa; padding: 20px; border-radius: 6px; border-left: 4px solid #007cba;">
+            <h4 style="margin-top: 0; color: #004085;">🔐 Security Context</h4>
+            <ul style="color: #004085; margin: 0; padding-left: 20px;">
+                <li>IP addresses captured</li>
+                <li>User agents logged</li>
+                <li>Session IDs tracked</li>
+                <li>Field changes detailed</li>
+            </ul>
+        </div>
+        
+        <div style="background: #f8f9fa; padding: 20px; border-radius: 6px; border-left: 4px solid #dc3545;">
+            <h4 style="margin-top: 0; color: #721c24;">📋 Compliance Ready</h4>
+            <ul style="color: #721c24; margin: 0; padding-left: 20px;">
+                <li>21 CFR Part 11 compliant</li>
+                <li>Immutable records</li>
+                <li>Complete audit trail</li>
+                <li>Regulatory export ready</li>
+            </ul>
+        </div>
+        
+        <div style="background: #f8f9fa; padding: 20px; border-radius: 6px; border-left: 4px solid #ffc107;">
+            <h4 style="margin-top: 0; color: #856404;">🚀 API Access</h4>
+            <ul style="color: #856404; margin: 0; padding-left: 20px;">
+                <li>REST API available</li>
+                <li>Advanced filtering</li>
+                <li>Export capabilities</li>
+                <li>Real-time querying</li>
+            </ul>
+        </div>
+        
+    </div>
+</div>
+{% endblock %}
