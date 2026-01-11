@@ -35,7 +35,8 @@ from apps.audit.models import (
     AuditTrail, SystemEvent, LoginAudit, UserSession, DatabaseChangeLog,
     ComplianceEvent, AuditEvent
 )
-from apps.backup.models import BackupJob, RestoreJob, BackupConfiguration
+# Backup module removed - using hybrid backup system (shell scripts + Celery)
+# Old backup models (BackupJob, RestoreJob, BackupConfiguration) no longer needed
 from apps.scheduler.models import ScheduledTask  # Handle carefully due to table issues
 from apps.security.models import PDFGenerationLog, DigitalSignature, SecurityEvent
 from apps.placeholders.models import DocumentTemplate, TemplatePlaceholder, DocumentGeneration, PlaceholderCache, PlaceholderDefinition

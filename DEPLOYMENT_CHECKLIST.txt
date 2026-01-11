@@ -1,0 +1,43 @@
+# EDMS Deployment Checklist
+
+## Stage 1: Local Testing
+[ ] Run ./test_local_deployment.sh
+[ ] Frontend accessible (http://localhost:3000)
+[ ] Backend accessible (http://localhost:8000)
+[ ] Admin panel works (admin/admin123)
+[ ] Create test users (author, reviewer, approver)
+[ ] Create and submit document for review
+[ ] Review and approve document
+[ ] Check effective date handling
+[ ] Verify audit trails
+[ ] Check Celery worker running
+[ ] Check Celery beat running
+[ ] No critical errors in logs
+
+## Stage 2: Staging Deployment
+[ ] Deploy to staging server
+[ ] All services start successfully
+[ ] Migrations apply cleanly
+[ ] Test with realistic data
+[ ] Test with multiple users
+[ ] Performance acceptable (< 2s loads)
+[ ] Background tasks running
+[ ] Monitor for 1-2 hours
+[ ] Stakeholder approval
+
+## Stage 3: Production Deployment
+[ ] Backup production database
+[ ] Verify backup file created
+[ ] Deploy to production
+[ ] All services running
+[ ] Migrations applied successfully
+[ ] Test with production data
+[ ] Monitor logs for 1 hour
+[ ] Check scheduled tasks
+[ ] Notify users of new version
+
+## Rollback Plan Ready
+[ ] Database backup location known
+[ ] Previous version commit ID noted
+[ ] Rollback commands tested
+[ ] Team aware of rollback procedure

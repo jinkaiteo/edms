@@ -20,7 +20,8 @@ from apps.users.models import Role, UserRole
 from apps.workflows.models import DocumentWorkflow
 from apps.audit.models import AuditTrail
 from apps.documents.models import Document
-from apps.backup.models import BackupJob, RestoreJob
+# Backup module removed - using hybrid backup system (shell scripts + Celery)
+# Old backup models (BackupJob, RestoreJob) no longer needed
 
 User = get_user_model()
 

@@ -37,7 +37,6 @@ INSTALLED_APPS = [
     'apps.audit',
     'apps.security',
     'apps.placeholders',
-    'apps.backup',
     'apps.settings',
     'apps.scheduler',
     'apps.api',

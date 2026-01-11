@@ -8,7 +8,7 @@ import AuditTrailViewer from '../components/audit/AuditTrailViewer.tsx';
 import Reports from '../components/reports/Reports.tsx';
 import LoadingSpinner from '../components/common/LoadingSpinner.tsx';
 import SchedulerStatusWidget from '../components/scheduler/SchedulerStatusWidget.tsx';
-import BackupManagement from '../components/backup/BackupManagement.tsx';
+// BackupManagement removed - backups now managed via CLI (see QUICK_START_BACKUP_RESTORE.md)
 import { useDashboardUpdates } from '../hooks/useDashboardUpdates.ts';
 import { DashboardStats } from '../types/api.ts';
 
@@ -54,7 +54,7 @@ const AdminDashboard: React.FC = () => {
   const adminQuickLinks = [
     { name: 'User Management', href: '/admin?tab=users', icon: '👥', description: 'Manage users, roles, and permissions' },
     { name: 'Placeholder Management', href: '/admin?tab=placeholders', icon: '🔧', description: 'Manage document placeholders' },
-    { name: 'Backup Management', href: '/admin?tab=backup', icon: '💾', description: 'Manage system backups and disaster recovery' },
+    // Backup Management removed - now managed via CLI (./scripts/backup-hybrid.sh)
     { name: 'Reports', href: '/admin?tab=reports', icon: '📊', description: 'Generate compliance reports' },
     { name: 'Scheduler Dashboard', href: '/admin?tab=scheduler', icon: '🖥️', description: 'Monitor automated tasks' },
     { name: 'Audit Trail', href: '/admin?tab=audit', icon: '📋', description: 'View system audit logs' },
@@ -312,7 +312,78 @@ const AdminDashboard: React.FC = () => {
       case 'placeholders':
         return <PlaceholderManagement />;
       case 'backup':
-        return <BackupManagement />;
+        // Backup management now handled via CLI - show instructions
+        return (
+          <div className="bg-white shadow rounded-lg p-6">
+            <h2 className="text-2xl font-semibold text-gray-900 mb-4">💾 Backup Management</h2>
+            <div className="bg-blue-50 border-l-4 border-blue-400 p-4 mb-4">
+              <div className="flex">
+                <div className="flex-shrink-0">
+                  <svg className="h-5 w-5 text-blue-400" viewBox="0 0 20 20" fill="currentColor">
+                    <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+                  </svg>
+                </div>
+                <div className="ml-3">
+                  <p className="text-sm text-blue-700">
+                    <strong>System backups are now managed via command line</strong> for better performance and reliability.
+                  </p>
+                </div>
+              </div>
+            </div>
+            
+            <div className="space-y-4">
+              <div>
+                <h3 className="text-lg font-medium text-gray-900 mb-2">📅 Automated Backups (Active)</h3>
+                <ul className="list-disc list-inside text-gray-700 space-y-1">
+                  <li><strong>Daily:</strong> 2:00 AM every day</li>
+                  <li><strong>Weekly:</strong> 3:00 AM every Sunday</li>
+                  <li><strong>Monthly:</strong> 4:00 AM on the 1st of each month</li>
+                </ul>
+              </div>
+              
+              <div>
+                <h3 className="text-lg font-medium text-gray-900 mb-2">⚡ Manual Operations</h3>
+                <div className="bg-gray-50 rounded p-4 font-mono text-sm">
+                  <p className="text-gray-600 mb-2"># Create backup (1 second):</p>
+                  <p className="text-gray-900">./scripts/backup-hybrid.sh</p>
+                  
+                  <p className="text-gray-600 mt-4 mb-2"># Restore from backup (9 seconds):</p>
+                  <p className="text-gray-900">./scripts/restore-hybrid.sh backups/backup_YYYYMMDD_HHMMSS.tar.gz</p>
+                  
+                  <p className="text-gray-600 mt-4 mb-2"># View backup logs:</p>
+                  <p className="text-gray-900">tail -f logs/backup.log</p>
+                  
+                  <p className="text-gray-600 mt-4 mb-2"># List backups:</p>
+                  <p className="text-gray-900">ls -lh backups/</p>
+                </div>
+              </div>
+              
+              <div>
+                <h3 className="text-lg font-medium text-gray-900 mb-2">📚 Documentation</h3>
+                <ul className="list-disc list-inside text-gray-700 space-y-1">
+                  <li><code className="bg-gray-100 px-2 py-1 rounded">QUICK_START_BACKUP_RESTORE.md</code> - 5-minute quickstart</li>
+                  <li><code className="bg-gray-100 px-2 py-1 rounded">CRON_BACKUP_SETUP_GUIDE.md</code> - Automation details</li>
+                  <li><code className="bg-gray-100 px-2 py-1 rounded">RESTORE_TEST_RESULTS.md</code> - Test verification</li>
+                </ul>
+              </div>
+              
+              <div className="bg-green-50 border-l-4 border-green-400 p-4">
+                <div className="flex">
+                  <div className="flex-shrink-0">
+                    <svg className="h-5 w-5 text-green-400" viewBox="0 0 20 20" fill="currentColor">
+                      <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                    </svg>
+                  </div>
+                  <div className="ml-3">
+                    <p className="text-sm text-green-700">
+                      <strong>System Status:</strong> Backups are running automatically. Next backup: Tonight at 2:00 AM
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        );
       case 'reports':
         return <Reports />;
       case 'scheduler':

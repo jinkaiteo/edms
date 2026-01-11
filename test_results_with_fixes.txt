@@ -1,0 +1,31 @@
+============================= test session starts ==============================
+platform linux -- Python 3.11.14, pytest-7.4.3, pluggy-1.6.0 -- /usr/local/bin/python
+cachedir: .pytest_cache
+django: version: 4.2.16, settings: edms.settings.production (from env)
+rootdir: /app
+configfile: pytest.ini
+plugins: cov-4.1.0, Faker-20.1.0, django-4.7.0
+collecting ... collected 54 items
+
+apps/workflows/tests/test_versioning_workflow.py::TestDocumentVersioning::test_create_major_version_from_effective_document FAILED [  1%]
+apps/workflows/tests/test_versioning_workflow.py::TestDocumentVersioning::test_create_minor_version_from_effective_document FAILED [  3%]
+apps/workflows/tests/test_versioning_workflow.py::TestDocumentVersioning::test_cannot_version_non_effective_document FAILED [  5%]
+apps/workflows/tests/test_versioning_workflow.py::TestDocumentVersioning::test_versioned_document_follows_full_workflow FAILED [  7%]
+apps/workflows/tests/test_versioning_workflow.py::TestDocumentVersioning::test_old_version_superseded_when_new_version_effective FAILED [  9%]
+apps/workflows/tests/test_versioning_workflow.py::TestDocumentVersioning::test_version_numbering_format FAILED [ 11%]
+apps/workflows/tests/test_versioning_workflow.py::TestDocumentVersioning::test_version_inherits_document_type_and_source FAILED [ 12%]
+apps/workflows/tests/test_versioning_workflow.py::TestDocumentVersioning::test_multiple_versions_chain FAILED [ 14%]
+apps/workflows/tests/test_versioning_workflow.py::TestDocumentVersioning::test_versioning_preserves_dependencies FAILED [ 16%]
+apps/workflows/tests/test_versioning_workflow.py::TestDocumentVersioning::test_cannot_create_version_without_reason FAILED [ 18%]
+apps/workflows/tests/test_versioning_workflow.py::TestDocumentVersioning::test_superseded_documents_are_read_only FAILED [ 20%]
+apps/workflows/tests/test_obsolescence_workflow.py::TestDocumentObsolescence::test_approver_can_mark_document_obsolete FAILED [ 22%]
+apps/workflows/tests/test_obsolescence_workflow.py::TestDocumentObsolescence::test_obsolescence_requires_reason FAILED [ 24%]
+apps/workflows/tests/test_obsolescence_workflow.py::TestDocumentObsolescence::test_scheduled_obsolescence_date FAILED [ 25%]
+apps/workflows/tests/test_obsolescence_workflow.py::TestDocumentObsolescence::test_immediate_obsolescence FAILED [ 27%]
+apps/workflows/tests/test_obsolescence_workflow.py::TestDocumentObsolescence::test_cannot_obsolete_non_effective_document FAILED [ 29%]
+apps/workflows/tests/test_obsolescence_workflow.py::TestDocumentObsolescence::test_author_cannot_mark_obsolete PASSED [ 31%]
+apps/workflows/tests/test_obsolescence_workflow.py::TestDocumentObsolescence::test_obsolete_documents_are_read_only PASSED [ 33%]
+apps/workflows/tests/test_termination_workflow.py::TestDocumentTermination::test_author_can_terminate_draft_document PASSED [ 35%]
+apps/workflows/tests/test_termination_workflow.py::TestDocumentTermination::test_author_can_terminate_under_review_document PASSED [ 37%]
+apps/workflows/tests/test_termination_workflow.py::TestDocumentTermination::test_author_can_terminate_pending_approval_document PASSED [ 38%]
+apps/workflows/tests/test_termination_workflow.py::TestDocumentTermination::test_termination_requires_reason 
