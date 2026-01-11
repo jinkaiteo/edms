@@ -50,6 +50,7 @@ class SimpleLoginView(APIView):
                     'success': True,
                     'message': 'Login successful',
                     'user': {
+                        'id': user.id,  # Primary key for database operations
                         'uuid': str(user.uuid),
                         'username': user.username,
                         'email': user.email,
@@ -57,7 +58,8 @@ class SimpleLoginView(APIView):
                         'last_name': user.last_name,
                         'is_staff': user.is_staff,
                         'is_superuser': user.is_superuser,
-                        'last_login': user.last_login.isoformat() if user.last_login else None
+                        'last_login': user.last_login.isoformat() if user.last_login else None,
+                        'full_name': user.get_full_name()
                     },
                     'session_id': request.session.session_key
                 }, status=status.HTTP_200_OK)
@@ -106,6 +108,7 @@ class SimpleCurrentUserView(APIView):
             return Response({
                 'authenticated': True,
                 'user': {
+                    'id': user.id,  # Primary key for database operations
                     'uuid': str(user.uuid),
                     'username': user.username,
                     'email': user.email,
@@ -114,7 +117,9 @@ class SimpleCurrentUserView(APIView):
                     'is_staff': user.is_staff,
                     'is_superuser': user.is_superuser,
                     'last_login': user.last_login.isoformat() if user.last_login else None,
-                    'date_joined': user.date_joined.isoformat()
+                    'date_joined': user.date_joined.isoformat(),
+                    'full_name': user.get_full_name(),
+                    'is_active': user.is_active
                 }
             }, status=status.HTTP_200_OK)
         else:
