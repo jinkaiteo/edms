@@ -313,51 +313,6 @@ const DocumentManagement: React.FC<DocumentManagementProps> = ({
               </p>
             </div>
             <div className="flex items-center space-x-3">
-              {/* View Mode Toggle */}
-              <div className="hidden lg:flex border border-gray-300 rounded-md">
-                <button
-                  onClick={() => setViewMode('full-list')}
-                  className={`px-3 py-2 text-sm font-medium ${
-                    viewMode === 'full-list' 
-                      ? 'bg-blue-600 text-white' 
-                      : 'text-gray-700 hover:bg-gray-50'
-                  }`}
-                  title="Full List View"
-                >
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 10h16M4 14h16M4 18h16" />
-                  </svg>
-                </button>
-                <button
-                  onClick={() => setViewMode('split')}
-                  className={`px-3 py-2 text-sm font-medium ${
-                    viewMode === 'split' 
-                      ? 'bg-blue-600 text-white' 
-                      : 'text-gray-700 hover:bg-gray-50'
-                  }`}
-                  title="Split View"
-                >
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 4v16m6-16v16M4 8h16M4 16h16" />
-                  </svg>
-                </button>
-                <button
-                  onClick={() => setViewMode('full-viewer')}
-                  className={`px-3 py-2 text-sm font-medium ${
-                    viewMode === 'full-viewer' 
-                      ? 'bg-blue-600 text-white' 
-                      : 'text-gray-700 hover:bg-gray-50'
-                  }`}
-                  title="Full Viewer"
-                  disabled={!selectedDocument}
-                >
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                  </svg>
-                </button>
-              </div>
-
               {/* Last Refresh Time */}
               {lastRefreshTime && (
                 <div className="flex items-center space-x-2 px-3 py-2 text-xs text-gray-500">
@@ -404,6 +359,51 @@ const DocumentManagement: React.FC<DocumentManagementProps> = ({
                   <span>📝 Create Document</span>
                 </button>
               )}
+
+              {/* View Mode Toggle */}
+              <div className="hidden lg:flex border border-gray-300 rounded-md">
+                <button
+                  onClick={() => setViewMode('full-list')}
+                  className={`px-3 py-2 text-sm font-medium ${
+                    viewMode === 'full-list' 
+                      ? 'bg-blue-600 text-white' 
+                      : 'text-gray-700 hover:bg-gray-50'
+                  }`}
+                  title="Full List View"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 10h16M4 14h16M4 18h16" />
+                  </svg>
+                </button>
+                <button
+                  onClick={() => setViewMode('split')}
+                  className={`px-3 py-2 text-sm font-medium ${
+                    viewMode === 'split' 
+                      ? 'bg-blue-600 text-white' 
+                      : 'text-gray-700 hover:bg-gray-50'
+                  }`}
+                  title="Split View"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 4v16m6-16v16M4 8h16M4 16h16" />
+                  </svg>
+                </button>
+                <button
+                  onClick={() => setViewMode('full-viewer')}
+                  className={`px-3 py-2 text-sm font-medium ${
+                    viewMode === 'full-viewer' 
+                      ? 'bg-blue-600 text-white' 
+                      : 'text-gray-700 hover:bg-gray-50'
+                  }`}
+                  title="Full Viewer"
+                  disabled={!selectedDocument}
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                  </svg>
+                </button>
+              </div>
             </div>
           </div>
         </div>
