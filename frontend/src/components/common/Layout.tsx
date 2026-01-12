@@ -31,6 +31,7 @@ import {
 import { useAuth } from '../../contexts/AuthContext.tsx';
 import { apiService } from '../../services/api.ts';
 import ChangePasswordModal from '../auth/ChangePasswordModal.tsx';
+import APP_CONFIG from '../../config/app.ts';
 // NotificationBell removed - counter moved to navigation item
 
 interface LayoutProps {
@@ -283,7 +284,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
             </button>
           </div>
           <div className="flex-shrink-0 flex items-center px-4">
-            <h1 className="text-xl font-bold text-gray-900">EDMS</h1>
+            <h1 className="text-xl font-bold text-gray-900">{APP_CONFIG.title}</h1>
           </div>
           <div className="mt-5 flex-1 h-0 overflow-y-auto">
             <nav className="px-2 space-y-1">
@@ -385,7 +386,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
           <div className="flex items-center flex-shrink-0 px-4 justify-between">
             {!sidebarCollapsed && (
               <>
-                <h1 className="text-xl font-bold text-gray-900">EDMS</h1>
+                <h1 className="text-xl font-bold text-gray-900">{APP_CONFIG.title}</h1>
                 <button
                   onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
                   className="p-1 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-md transition-colors"
@@ -397,7 +398,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
             )}
             {sidebarCollapsed && (
               <div className="w-full flex items-center justify-between">
-                <h1 className="text-xl font-bold text-gray-900">E</h1>
+                <h1 className="text-xl font-bold text-gray-900">{APP_CONFIG.title.charAt(0)}</h1>
                 <button
                   onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
                   className="p-1 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-md transition-colors"

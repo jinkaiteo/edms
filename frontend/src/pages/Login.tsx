@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext.tsx';
 import PasswordInput from '../components/common/PasswordInput.tsx';
+import APP_CONFIG from '../config/app.ts';
 
 const Login: React.FC = () => {
   const [username, setUsername] = useState('');
@@ -37,13 +38,13 @@ const Login: React.FC = () => {
       <div className="max-w-md w-full space-y-8">
         <div>
           <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
-            Sign in to EDMS
+            Sign in to {APP_CONFIG.title}
           </h2>
           <p className="mt-2 text-center text-sm text-gray-600">
-            Electronic Document Management System
+            {APP_CONFIG.fullName}
           </p>
           <p className="mt-1 text-center text-xs text-gray-500">
-            21 CFR Part 11 Compliant
+            {APP_CONFIG.compliance}
           </p>
         </div>
         <div className="bg-white p-8 rounded-lg shadow">

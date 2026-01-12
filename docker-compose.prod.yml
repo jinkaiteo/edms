@@ -194,11 +194,13 @@ services:
       target: production
       args:
         REACT_APP_API_URL: /api/v1
+        REACT_APP_TITLE: ${REACT_APP_TITLE:-EDMS}
     container_name: edms_prod_frontend
     ports:
       - "${FRONTEND_PORT:-3001}:80"  # Configurable port for HAProxy routing
     environment:
       - REACT_APP_API_URL=/api/v1
+      - REACT_APP_TITLE=${REACT_APP_TITLE:-EDMS}
       - NODE_ENV=production
     depends_on:
       backend:

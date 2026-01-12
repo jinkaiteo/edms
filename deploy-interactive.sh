@@ -272,6 +272,14 @@ collect_configuration() {
     SERVER_HOSTNAME=$(prompt_input "Server hostname (optional)" "edms-server")
     
     echo ""
+    print_step "Application Branding"
+    echo ""
+    print_info "Customize the application title shown throughout the interface."
+    echo ""
+    
+    APP_TITLE=$(prompt_input "Application title" "EDMS")
+    
+    echo ""
     print_step "Docker Port Configuration"
     echo ""
     print_info "These ports will be exposed on your host machine."
@@ -356,6 +364,9 @@ show_configuration_summary() {
     echo "  IP Address:       $SERVER_IP"
     echo "  Hostname:         $SERVER_HOSTNAME"
     echo ""
+    echo -e "${BOLD}Application Branding:${NC}"
+    echo "  App Title:        $APP_TITLE"
+    echo ""
     
     echo -e "${BOLD}Docker Ports:${NC}"
     echo "  Backend:          $BACKEND_PORT"
@@ -436,6 +447,12 @@ SECRET_KEY=$SECRET_KEY
 DEBUG=False
 ENVIRONMENT=production
 ALLOWED_HOSTS=$allowed_hosts
+
+# ==============================================================================
+# APPLICATION BRANDING
+# ==============================================================================
+
+REACT_APP_TITLE=$APP_TITLE
 
 # ==============================================================================
 # DOCKER PORT CONFIGURATION
