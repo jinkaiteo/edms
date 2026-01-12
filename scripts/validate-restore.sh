@@ -148,10 +148,6 @@ else
     error "Document count mismatch! Before: $PRE_DOCS, After: $POST_DOCS"
     ((FAIL_COUNT++))
 fi
-
-# Show document list
-echo "Restored documents:"
-docker compose -f "$COMPOSE_FILE" exec -T backend python manage.py shell -c "from apps.documents.models import Document; [print(f'  • {doc.document_number}: {doc.title} ({doc.status})') for doc in Document.objects.all()]" 2>&1 | tail -n +2 || echo "  (No documents)"
 echo ""
 
 # 2. User count
@@ -163,10 +159,6 @@ else
     error "User count mismatch! Before: $PRE_USERS, After: $POST_USERS"
     ((FAIL_COUNT++))
 fi
-
-# Show user list
-echo "Restored users:"
-docker compose -f "$COMPOSE_FILE" exec -T backend python manage.py shell -c "from django.contrib.auth import get_user_model; User = get_user_model(); [print(f'  • {user.username} ({user.email})') for user in User.objects.all()]" 2>&1 | tail -n +2 || echo "  (No users)"
 echo ""
 
 # 3. File count
