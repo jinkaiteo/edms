@@ -34,6 +34,7 @@ const DocumentManagement: React.FC<DocumentManagementProps> = ({
   const [uploadSuccess, setUploadSuccess] = useState<string | null>(null);
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [documentListRefresh, setDocumentListRefresh] = useState<number>(0);
+  const [lastRefreshTime, setLastRefreshTime] = useState<Date | null>(null);
 
   // Add event listener for clear selection only (document refresh handled separately)
   useEffect(() => {
@@ -83,6 +84,7 @@ const DocumentManagement: React.FC<DocumentManagementProps> = ({
           
           // CRITICAL: Also refresh the document list to show updated status
           setDocumentListRefresh(prev => prev + 1);
+          setLastRefreshTime(new Date());
           console.log('🔄 DocumentManagement: Document list refresh triggered after workflow action');
         } else {
           console.error('Failed to refresh document:', response.status);
@@ -104,6 +106,7 @@ const DocumentManagement: React.FC<DocumentManagementProps> = ({
         console.log('🔄 DocumentManagement: Document list refresh triggered by event:', newRefresh);
         return newRefresh;
       });
+      setLastRefreshTime(new Date());
       
       // If the updated document is currently selected, refresh it too
       if (selectedDocument && event.detail?.documentId === selectedDocument.uuid) {
@@ -355,11 +358,24 @@ const DocumentManagement: React.FC<DocumentManagementProps> = ({
                 </button>
               </div>
 
+              {/* Last Refresh Time */}
+              {lastRefreshTime && (
+                <div className="flex items-center space-x-2 px-3 py-2 text-xs text-gray-500">
+                  <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  <span>
+                    Last refreshed: {lastRefreshTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+                  </span>
+                </div>
+              )}
+
               {/* Manual Refresh Button */}
               <button
                 onClick={() => {
                   console.log('🔄 Manual refresh triggered by user');
                   setDocumentListRefresh(prev => prev + 1);
+                  setLastRefreshTime(new Date());
                   if (selectedDocument) {
                     handleDocumentRefresh();
                   }
