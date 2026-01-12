@@ -4,7 +4,9 @@
 # Restores database and media files from backup
 #
 
+# Exit on error, but allow us to handle specific errors
 set -e
+set -o pipefail
 
 # Load environment variables from .env file
 if [ -f .env ]; then
@@ -88,28 +90,50 @@ log "✅ Database restored"
 log "Step 3/4: Restoring media files..."
 if [ -f "$BACKUP_DATA_DIR/storage.tar.gz" ] && [ -s "$BACKUP_DATA_DIR/storage.tar.gz" ]; then
     # Extract and copy to container
-    docker compose -f "$COMPOSE_FILE" exec -T backend bash -c "rm -rf /app/storage && mkdir -p /app/storage" 2>/dev/null
-    cat "$BACKUP_DATA_DIR/storage.tar.gz" | docker compose -f "$COMPOSE_FILE" exec -T backend tar -xzf - -C /app
-    log "✅ Media files restored"
+    log "Preparing storage directory in container..."
+    if docker compose -f "$COMPOSE_FILE" exec -T backend bash -c "rm -rf /app/storage && mkdir -p /app/storage"; then
+        log "Extracting storage files to container..."
+        if cat "$BACKUP_DATA_DIR/storage.tar.gz" | docker compose -f "$COMPOSE_FILE" exec -T backend tar -xzf - -C /app; then
+            log "✅ Media files restored"
+        else
+            log "❌ ERROR: Failed to extract storage files to container"
+            rm -rf "$RESTORE_DIR"
+            exit 1
+        fi
+    else
+        log "❌ ERROR: Failed to prepare storage directory"
+        rm -rf "$RESTORE_DIR"
+        exit 1
+    fi
 else
     log "⚠️  No media files in backup"
 fi
 
+# Restart services first (before cleanup)
+log "Step 4/4: Restarting services..."
+if docker compose -f "$COMPOSE_FILE" restart backend frontend; then
+    log "✅ Services restarted"
+    log "Waiting for services to stabilize..."
+    sleep 5
+else
+    log "⚠️  WARNING: Failed to restart services, but continuing..."
+fi
+
 # Cleanup
-log "Step 4/4: Cleaning up..."
+log "Cleaning up temporary files..."
 rm -rf "$RESTORE_DIR"
 log "✅ Cleanup complete"
 
 # Summary
+log ""
 log "============================================"
-log "Restore completed successfully!"
+log "  Restore Completed Successfully!"
 log "============================================"
 log ""
-log "Restarting services..."
-docker compose -f "$COMPOSE_FILE" restart backend frontend
-
-log "✅ Services restarted"
+log "Next steps:"
+log "  1. Verify documents are restored"
+log "  2. Check uploaded files are accessible"
+log "  3. Test login with restored user credentials"
 log ""
-log "Restore complete! Please verify your application."
 
 exit 0
