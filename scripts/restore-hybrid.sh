@@ -6,6 +6,16 @@
 
 set -e
 
+# Load environment variables from .env file
+if [ -f .env ]; then
+    export $(grep -v '^#' .env | grep -v '^$' | xargs)
+fi
+
+# Use environment variables with fallbacks to defaults
+DB_USER="${DB_USER:-edms_user}"
+DB_NAME="${DB_NAME:-edms_db}"
+COMPOSE_FILE="${COMPOSE_FILE:-docker-compose.yml}"
+
 # Check arguments
 if [ $# -ne 1 ]; then
     echo "Usage: $0 <backup_file.tar.gz>"
@@ -66,8 +76,9 @@ fi
 
 # Restore database
 log "Step 2/4: Restoring database..."
-docker compose exec -T db pg_restore \
-    -U edms_user -d edms_db \
+log "Database: $DB_NAME (User: $DB_USER)"
+docker compose -f "$COMPOSE_FILE" exec -T db pg_restore \
+    -U "$DB_USER" -d "$DB_NAME" \
     --clean --if-exists \
     < "$BACKUP_DATA_DIR/database.dump" 2>&1 | grep -v "pg_restore: warning" | grep -v "ERROR:  role" || true
 
@@ -77,8 +88,8 @@ log "✅ Database restored"
 log "Step 3/4: Restoring media files..."
 if [ -f "$BACKUP_DATA_DIR/storage.tar.gz" ] && [ -s "$BACKUP_DATA_DIR/storage.tar.gz" ]; then
     # Extract and copy to container
-    docker compose exec -T backend bash -c "rm -rf /app/storage && mkdir -p /app/storage" 2>/dev/null
-    cat "$BACKUP_DATA_DIR/storage.tar.gz" | docker compose exec -T backend tar -xzf - -C /app
+    docker compose -f "$COMPOSE_FILE" exec -T backend bash -c "rm -rf /app/storage && mkdir -p /app/storage" 2>/dev/null
+    cat "$BACKUP_DATA_DIR/storage.tar.gz" | docker compose -f "$COMPOSE_FILE" exec -T backend tar -xzf - -C /app
     log "✅ Media files restored"
 else
     log "⚠️  No media files in backup"
@@ -95,7 +106,7 @@ log "Restore completed successfully!"
 log "============================================"
 log ""
 log "Restarting services..."
-docker compose restart backend frontend
+docker compose -f "$COMPOSE_FILE" restart backend frontend
 
 log "✅ Services restarted"
 log ""

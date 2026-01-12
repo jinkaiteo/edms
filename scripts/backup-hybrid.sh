@@ -6,22 +6,34 @@
 
 set -e
 
+# Load environment variables from .env file
+if [ -f .env ]; then
+    export $(grep -v '^#' .env | grep -v '^$' | xargs)
+fi
+
 # Configuration
 BACKUP_DIR="$(pwd)/backups"
 TIMESTAMP=$(date +%Y%m%d_%H%M%S)
 TEMP_DIR="$BACKUP_DIR/tmp_$TIMESTAMP"
+
+# Use environment variables with fallbacks to defaults
+DB_USER="${DB_USER:-edms_user}"
+DB_NAME="${DB_NAME:-edms_db}"
+COMPOSE_FILE="${COMPOSE_FILE:-docker-compose.yml}"
 
 log() { echo "[$(date '+%Y-%m-%d %H:%M:%S')] $1"; }
 
 log "============================================"
 log "EDMS Hybrid Backup - Starting"
 log "============================================"
+log "Database: $DB_NAME (User: $DB_USER)"
+log "Compose file: $COMPOSE_FILE"
 
 mkdir -p "$TEMP_DIR"
 
 # Step 1: Database backup (from db container)
 log "Step 1/4: Backing up database..."
-docker compose exec -T db pg_dump -U edms_user -d edms_db \
+docker compose -f "$COMPOSE_FILE" exec -T db pg_dump -U "$DB_USER" -d "$DB_NAME" \
     --format=custom \
     --compress=9 \
     > "$TEMP_DIR/database.dump"
@@ -37,7 +49,7 @@ fi
 
 # Step 2: Media files backup (from backend container)
 log "Step 2/4: Backing up media files..."
-docker compose exec -T backend tar -czf - -C /app storage 2>/dev/null > "$TEMP_DIR/storage.tar.gz"
+docker compose -f "$COMPOSE_FILE" exec -T backend tar -czf - -C /app storage 2>/dev/null > "$TEMP_DIR/storage.tar.gz"
 
 if [ -f "$TEMP_DIR/storage.tar.gz" ] && [ -s "$TEMP_DIR/storage.tar.gz" ]; then
     STORAGE_SIZE=$(du -h "$TEMP_DIR/storage.tar.gz" | cut -f1)
