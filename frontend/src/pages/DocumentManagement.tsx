@@ -376,16 +376,18 @@ const DocumentManagement: React.FC<DocumentManagementProps> = ({
                 <span>Refresh</span>
               </button>
 
-              {/* Create Document Button */}
-              <button
-                onClick={handleOpenCreateModal}
-                className="flex items-center space-x-2 px-4 py-2 bg-blue-600 border border-transparent rounded-md text-sm font-medium text-white hover:bg-blue-700 focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
-              >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-                </svg>
-                <span>📝 Create Document</span>
-              </button>
+              {/* Create Document Button - Only show on My Tasks page */}
+              {filterType === 'pending' && (
+                <button
+                  onClick={handleOpenCreateModal}
+                  className="flex items-center space-x-2 px-4 py-2 bg-blue-600 border border-transparent rounded-md text-sm font-medium text-white hover:bg-blue-700 focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                  </svg>
+                  <span>📝 Create Document</span>
+                </button>
+              )}
             </div>
           </div>
         </div>
