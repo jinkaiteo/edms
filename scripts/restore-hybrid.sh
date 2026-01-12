@@ -89,9 +89,9 @@ log "✅ Database restored"
 # Restore media files
 log "Step 3/4: Restoring media files..."
 if [ -f "$BACKUP_DATA_DIR/storage.tar.gz" ] && [ -s "$BACKUP_DATA_DIR/storage.tar.gz" ]; then
-    # Extract and copy to container
-    log "Preparing storage directory in container..."
-    if docker compose -f "$COMPOSE_FILE" exec -T backend bash -c "rm -rf /app/storage && mkdir -p /app/storage"; then
+    # Clear existing storage contents (not the directory itself, as it's a volume mount)
+    log "Clearing existing storage contents..."
+    if docker compose -f "$COMPOSE_FILE" exec -T backend bash -c "rm -rf /app/storage/* && mkdir -p /app/storage/documents /app/storage/media"; then
         log "Extracting storage files to container..."
         if cat "$BACKUP_DATA_DIR/storage.tar.gz" | docker compose -f "$COMPOSE_FILE" exec -T backend tar -xzf - -C /app; then
             log "✅ Media files restored"
@@ -101,7 +101,7 @@ if [ -f "$BACKUP_DATA_DIR/storage.tar.gz" ] && [ -s "$BACKUP_DATA_DIR/storage.ta
             exit 1
         fi
     else
-        log "❌ ERROR: Failed to prepare storage directory"
+        log "❌ ERROR: Failed to clear storage directory"
         rm -rf "$RESTORE_DIR"
         exit 1
     fi
