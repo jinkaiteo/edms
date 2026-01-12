@@ -150,13 +150,12 @@ else
 fi
 
 # Show document list
-DOCS_OUTPUT=$(docker compose -f "$COMPOSE_FILE" exec -T backend python manage.py shell -c "
+echo "Restored documents:"
+docker compose -f "$COMPOSE_FILE" exec -T backend python manage.py shell -c "
 from apps.documents.models import Document
-print('Restored documents:')
 for doc in Document.objects.all():
-    print(f'  • {doc.document_number}: {doc.title} ({doc.status})')
-" 2>&1 | grep -A 100 "Restored documents:" || echo "  (Unable to retrieve document list)")
-echo "$DOCS_OUTPUT"
+    print(f'  • {doc.document_number}: {doc.title} ({doc.status}')
+" 2>&1 | grep "•" || echo "  (No documents to display)"
 echo ""
 
 # 2. User count
@@ -170,14 +169,13 @@ else
 fi
 
 # Show user list
-USERS_OUTPUT=$(docker compose -f "$COMPOSE_FILE" exec -T backend python manage.py shell -c "
+echo "Restored users:"
+docker compose -f "$COMPOSE_FILE" exec -T backend python manage.py shell -c "
 from django.contrib.auth import get_user_model
 User = get_user_model()
-print('Restored users:')
 for user in User.objects.all():
     print(f'  • {user.username} ({user.email})')
-" 2>&1 | grep -A 100 "Restored users:" || echo "  (Unable to retrieve user list)")
-echo "$USERS_OUTPUT"
+" 2>&1 | grep "•" || echo "  (No users to display)"
 echo ""
 
 # 3. File count
