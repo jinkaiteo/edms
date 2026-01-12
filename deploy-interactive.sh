@@ -630,6 +630,108 @@ setup_storage_permissions() {
         print_success "Storage permissions set to 777"
     fi
     
+
+################################################################################
+# Backup Automation Setup
+################################################################################
+
+setup_backup_automation() {
+    print_header "Backup Automation Setup"
+    
+    echo ""
+    print_info "EDMS includes a hybrid backup system with:"
+    echo "  • Daily backups at 2:00 AM"
+    echo "  • Weekly backups on Sunday at 3:00 AM"
+    echo "  • Monthly backups on the 1st at 4:00 AM"
+    echo ""
+    print_info "Backup features:"
+    echo "  • 1-second backup time (pg_dump + tar)"
+    echo "  • 9-second restore time"
+    echo "  • Automatic retention (keeps last 7 backups)"
+    echo "  • Stored in: $SCRIPT_DIR/backups/"
+    echo ""
+    
+    read -p "$(echo -e "${BLUE}?${NC}") Set up automated backups now? [Y/n]: " setup_backups
+    setup_backups=${setup_backups:-y}
+    
+    if [[ "$setup_backups" =~ ^[Yy] ]]; then
+        echo ""
+        print_step "Setting up automated backup cron jobs..."
+        
+        # Check if backup script exists
+        if [ ! -f "$SCRIPT_DIR/scripts/backup-hybrid.sh" ]; then
+            print_error "Backup script not found: scripts/backup-hybrid.sh"
+            print_warning "Skipping backup automation"
+            return 1
+        fi
+        
+        # Make backup scripts executable
+        chmod +x "$SCRIPT_DIR/scripts/backup-hybrid.sh" 2>/dev/null || true
+        chmod +x "$SCRIPT_DIR/scripts/restore-hybrid.sh" 2>/dev/null || true
+        
+        # Create logs directory
+        mkdir -p "$SCRIPT_DIR/logs"
+        
+        # Create cron job entries
+        local cron_daily="0 2 * * * cd $SCRIPT_DIR && ./scripts/backup-hybrid.sh >> $SCRIPT_DIR/logs/backup.log 2>&1"
+        local cron_weekly="0 3 * * 0 cd $SCRIPT_DIR && ./scripts/backup-hybrid.sh >> $SCRIPT_DIR/logs/backup.log 2>&1"
+        local cron_monthly="0 4 1 * * cd $SCRIPT_DIR && ./scripts/backup-hybrid.sh >> $SCRIPT_DIR/logs/backup.log 2>&1"
+        
+        # Check if jobs already exist
+        if crontab -l 2>/dev/null | grep -q "backup-hybrid.sh"; then
+            print_warning "EDMS backup jobs already exist in crontab"
+            read -p "$(echo -e "${BLUE}?${NC}") Remove existing jobs and reinstall? [y/N]: " reinstall
+            if [[ "$reinstall" =~ ^[Yy] ]]; then
+                # Remove existing EDMS backup jobs
+                crontab -l 2>/dev/null | grep -v "backup-hybrid.sh" | crontab - 2>/dev/null || true
+                print_success "Existing jobs removed"
+            else
+                print_info "Keeping existing backup jobs"
+                return 0
+            fi
+        fi
+        
+        # Backup existing crontab
+        crontab -l > /tmp/crontab.backup 2>/dev/null || true
+        
+        # Add new jobs
+        (crontab -l 2>/dev/null; echo ""; echo "# EDMS Automated Backups"; echo "$cron_daily"; echo "$cron_weekly"; echo "$cron_monthly") | crontab -
+        
+        if [ $? -eq 0 ]; then
+            print_success "Automated backups configured successfully!"
+            echo ""
+            print_info "Backup Schedule:"
+            echo "  • Daily:   2:00 AM every day"
+            echo "  • Weekly:  3:00 AM every Sunday"
+            echo "  • Monthly: 4:00 AM on the 1st"
+            echo ""
+            print_info "Backup location: $SCRIPT_DIR/backups/"
+            print_info "Backup logs:     $SCRIPT_DIR/logs/backup.log"
+            echo ""
+            print_step "Testing manual backup..."
+            if bash "$SCRIPT_DIR/scripts/backup-hybrid.sh"; then
+                print_success "Manual backup test successful!"
+                local latest_backup=$(ls -t "$SCRIPT_DIR/backups/backup_"*.tar.gz 2>/dev/null | head -1)
+                if [ -n "$latest_backup" ]; then
+                    local backup_size=$(du -h "$latest_backup" | cut -f1)
+                    print_info "Latest backup: $(basename $latest_backup) ($backup_size)"
+                fi
+            else
+                print_warning "Manual backup test failed (non-critical)"
+            fi
+            echo ""
+        else
+            print_error "Failed to configure cron jobs"
+            return 1
+        fi
+    else
+        print_info "Skipping backup automation"
+        print_info "You can set up backups later with:"
+        echo "  ./scripts/setup-backup-cron.sh"
+    fi
+    
+    echo ""
+}
     echo ""
     print_step "Verifying storage structure..."
     ls -la "$SCRIPT_DIR/storage/"
@@ -1041,6 +1143,7 @@ main() {
     initialize_database || exit 1
     create_admin_user
     test_deployment
+    setup_backup_automation
     setup_haproxy
     show_final_summary
 }
