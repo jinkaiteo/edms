@@ -453,7 +453,7 @@ REDIS_PORT=$REDIS_PORT
 DB_NAME=$DB_NAME
 DB_USER=$DB_USER
 DB_PASSWORD=$DB_PASSWORD
-DB_HOST=postgres
+DB_HOST=db
 DB_PORT=5432
 
 # ==============================================================================
@@ -581,6 +581,61 @@ deploy_docker() {
     docker compose -f docker-compose.prod.yml ps
     
     echo ""
+
+################################################################################
+# Storage Directory Setup
+################################################################################
+
+setup_storage_permissions() {
+    print_header "Storage Directory Setup"
+    
+    print_step "Creating storage directories..."
+    echo ""
+    
+    # Create storage directories if they don't exist
+    mkdir -p "$SCRIPT_DIR/storage/documents"
+    mkdir -p "$SCRIPT_DIR/storage/media"
+    mkdir -p "$SCRIPT_DIR/logs"
+    
+    print_success "Storage directories created"
+    
+    echo ""
+    print_step "Detecting container user ID..."
+    
+    # Get the user ID that the backend container runs as
+    local container_uid=$(docker compose -f docker-compose.prod.yml exec -T backend id -u 2>/dev/null || echo "")
+    
+    if [ -n "$container_uid" ]; then
+        print_info "Backend container runs as UID: $container_uid"
+        
+        echo ""
+        print_step "Setting storage permissions for UID $container_uid..."
+        
+        # Set ownership to container user
+        sudo chown -R "$container_uid:$container_uid" "$SCRIPT_DIR/storage" 2>/dev/null || {
+            print_warning "Could not set ownership (may need sudo). Trying chmod only..."
+            sudo chmod -R 777 "$SCRIPT_DIR/storage"
+        }
+        
+        # Set permissions
+        sudo chmod -R 775 "$SCRIPT_DIR/storage"
+        
+        print_success "Storage permissions configured"
+        print_info "Ownership: UID $container_uid"
+        print_info "Permissions: 775 (rwxrwxr-x)"
+    else
+        print_warning "Could not detect container UID"
+        print_step "Setting permissive permissions (777)..."
+        sudo chmod -R 777 "$SCRIPT_DIR/storage"
+        print_success "Storage permissions set to 777"
+    fi
+    
+    echo ""
+    print_step "Verifying storage structure..."
+    ls -la "$SCRIPT_DIR/storage/"
+    
+    echo ""
+}
 }
 
 ################################################################################
@@ -982,6 +1037,7 @@ main() {
     
     create_env_file
     deploy_docker || exit 1
+    setup_storage_permissions || exit 1
     initialize_database || exit 1
     create_admin_user
     test_deployment
