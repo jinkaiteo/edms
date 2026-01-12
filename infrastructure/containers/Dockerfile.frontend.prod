@@ -23,7 +23,9 @@ WORKDIR /app
 
 # Accept build arguments for React environment variables
 ARG REACT_APP_API_URL=/api/v1
+ARG REACT_APP_TITLE=EDMS
 ENV REACT_APP_API_URL=${REACT_APP_API_URL}
+ENV REACT_APP_TITLE=${REACT_APP_TITLE}
 
 # Copy package files
 COPY frontend/package*.json ./
