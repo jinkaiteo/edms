@@ -1,7 +1,8 @@
 import React, { useState, useCallback, useEffect } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useSearchParams, useNavigate } from 'react-router-dom';
 import { Document, SearchFilters, DocumentType } from '../types/api';
 import Layout from '../components/common/Layout.tsx';
+import { useAuth } from '../contexts/AuthContext.tsx';
 // DocumentUpload removed - replaced with EDMS-compliant DocumentCreateModal
 import DocumentCreateModal from '../components/documents/DocumentCreateModal.tsx';
 import DocumentList from '../components/documents/DocumentList.tsx';
@@ -16,7 +17,17 @@ interface DocumentManagementProps {
 const DocumentManagement: React.FC<DocumentManagementProps> = ({ 
   filterType: propFilterType = 'all' 
 }) => {
+  const { user } = useAuth();
+  const navigate = useNavigate();
   const [searchParams] = useSearchParams();
+  
+  // Redirect to login if not authenticated
+  useEffect(() => {
+    if (!user) {
+      console.log('📄 DocumentManagement: No user found, redirecting to login');
+      navigate('/login', { replace: true });
+    }
+  }, [user, navigate]);
   
   // Get filter from URL query parameter or use prop as fallback
   const urlFilter = searchParams.get('filter') as 'pending' | 'approved' | 'archived' | 'obsolete' | null;
