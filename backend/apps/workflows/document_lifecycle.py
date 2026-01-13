@@ -1507,20 +1507,26 @@ Document Details:
         try:
             from apps.scheduler.notification_service import notification_service
             
+            # Get task type from the task object
+            task_type = getattr(task, 'task_type', 'Document Review')
+            priority = getattr(task, 'priority', 'Normal')
+            due_date = getattr(task, 'due_date', None)
+            task_data = getattr(task, 'task_data', {})
+            
             subject = f"New Task Assigned: {task_type}"
             message = f"""You have been assigned a new workflow task.
 
 Task: {task_type}
-Description: {task_type + " task"}
-Priority: {workflow_task.priority}
-Due Date: {workflow_task.due_date or 'Not specified'}
-Assigned by: {assigned_by.get_full_name()}
+Description: {task_type} task
+Priority: {priority}
+Due Date: {due_date or 'Not specified'}
+Assigned by: {assigned_by.get_full_name() or assigned_by.username}
 
 Please log into EDMS to complete this task:
 http://localhost:3000/my-tasks
 
 Document Details:
-- Number: {workflow_task.task_data.get('document_number', 'Unknown')}
+- Number: {task_data.get('document_number', 'Unknown')}
 """
             
             # Use the correct notification service method signature
