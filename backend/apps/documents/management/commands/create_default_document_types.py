@@ -47,9 +47,9 @@ class Command(BaseCommand):
                 'is_active': True
             },
             {
-                'code': 'WI',
+                'code': 'WIN',
                 'name': 'Work Instruction',
-                'numbering_prefix': 'WI',
+                'numbering_prefix': 'WIN',
                 'description': 'Detailed work instructions for specific tasks',
                 'template_required': False,
                 'approval_required': True,
