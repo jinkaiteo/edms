@@ -90,6 +90,28 @@ class Command(BaseCommand):
                 'retention_years': 7,
                 'is_active': True
             },
+            {
+                'code': 'PRO',
+                'name': 'Protocol',
+                'numbering_prefix': 'PRO',
+                'description': 'Study protocols and experimental procedures',
+                'template_required': False,
+                'approval_required': True,
+                'review_required': True,
+                'retention_years': 10,
+                'is_active': True
+            },
+            {
+                'code': 'RPT',
+                'name': 'Report',
+                'numbering_prefix': 'RPT',
+                'description': 'Technical reports and analysis documents',
+                'template_required': False,
+                'approval_required': True,
+                'review_required': True,
+                'retention_years': 7,
+                'is_active': True
+            },
         ]
         
         created_count = 0
@@ -143,7 +165,7 @@ class Command(BaseCommand):
         self.stdout.write(
             self.style.SUCCESS(
                 f'Completed! Created: {created_count}, Updated: {updated_count}, '
-                f'Unchanged: {6 - created_count - updated_count}'
+                f'Unchanged: {8 - created_count - updated_count}'
             )
         )
         self.stdout.write('')
