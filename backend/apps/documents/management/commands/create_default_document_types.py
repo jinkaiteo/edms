@@ -112,6 +112,17 @@ class Command(BaseCommand):
                 'retention_years': 7,
                 'is_active': True
             },
+            {
+                'code': 'MEM',
+                'name': 'Memo',
+                'numbering_prefix': 'MEM',
+                'description': 'Internal memos and communications',
+                'template_required': False,
+                'approval_required': False,
+                'review_required': False,
+                'retention_years': 3,
+                'is_active': True
+            },
         ]
         
         created_count = 0
@@ -165,7 +176,7 @@ class Command(BaseCommand):
         self.stdout.write(
             self.style.SUCCESS(
                 f'Completed! Created: {created_count}, Updated: {updated_count}, '
-                f'Unchanged: {8 - created_count - updated_count}'
+                f'Unchanged: {9 - created_count - updated_count}'
             )
         )
         self.stdout.write('')
