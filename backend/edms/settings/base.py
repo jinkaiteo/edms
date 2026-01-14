@@ -286,13 +286,13 @@ CSRF_TRUSTED_ORIGINS = [
 ]
 
 # File Upload Configuration
-FILE_UPLOAD_MAX_MEMORY_SIZE = 50 * 1024 * 1024  # 50MB
-DATA_UPLOAD_MAX_MEMORY_SIZE = 50 * 1024 * 1024  # 50MB
+FILE_UPLOAD_MAX_MEMORY_SIZE = 100 * 1024 * 1024  # 100MB
+DATA_UPLOAD_MAX_MEMORY_SIZE = 100 * 1024 * 1024  # 100MB
 
 # Document Processing Configuration
 DOCUMENT_PROCESSING = {
     'ALLOWED_EXTENSIONS': ['.docx', '.pdf', '.txt'],
-    'MAX_FILE_SIZE': 50 * 1024 * 1024,  # 50MB
+    'MAX_FILE_SIZE': 100 * 1024 * 1024,  # 100MB
     'ENABLE_OCR': True,
     'TESSERACT_CMD': config('TESSERACT_CMD', default='/usr/bin/tesseract'),
 }
