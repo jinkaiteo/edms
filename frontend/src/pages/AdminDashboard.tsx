@@ -52,12 +52,12 @@ const AdminDashboard: React.FC = () => {
 
   // Quick links to admin sections
   const adminQuickLinks = [
-    { name: 'User Management', href: '/admin?tab=users', icon: '👥', description: 'Manage users, roles, and permissions' },
-    { name: 'Placeholder Management', href: '/admin?tab=placeholders', icon: '🔧', description: 'Manage document placeholders' },
-    // Backup Management removed - now managed via CLI (./scripts/backup-hybrid.sh)
-    { name: 'Reports', href: '/admin?tab=reports', icon: '📊', description: 'Generate compliance reports' },
-    { name: 'Scheduler Dashboard', href: '/admin?tab=scheduler', icon: '🖥️', description: 'Monitor automated tasks' },
-    { name: 'Audit Trail', href: '/admin?tab=audit', icon: '📋', description: 'View system audit logs' },
+    { name: 'User Management', href: '/administration?tab=users', icon: '👥', description: 'Manage users, roles, and permissions' },
+    { name: 'Placeholder Management', href: '/administration?tab=placeholders', icon: '🔧', description: 'Manage document placeholders' },
+    { name: 'Backup Management', href: '/administration?tab=backup', icon: '💾', description: 'Manage system backups and restore' },
+    { name: 'Reports', href: '/administration?tab=reports', icon: '📊', description: 'Generate compliance reports' },
+    { name: 'Scheduler Dashboard', href: '/admin/scheduler', icon: '🖥️', description: 'Monitor automated tasks' },
+    { name: 'Audit Trail', href: '/administration?tab=audit', icon: '📋', description: 'View system audit logs' },
   ];
 
 
