@@ -269,6 +269,11 @@ const AdminDashboard: React.FC = () => {
       <div className="bg-white rounded-lg shadow-sm border border-gray-200">
         <div className="p-6">
           <h3 className="text-lg font-semibold text-gray-900 mb-4">Recent Admin Activities</h3>
+          {/* DEBUG INFO */}
+          {console.log('🎨 Rendering Recent Activities:', {
+            activityCount: dashboardStats.recent_activity?.length || 0,
+            firstActivity: dashboardStats.recent_activity?.[0]
+          })}
           <div className="space-y-3">
             {dashboardStats.recent_activity.length === 0 ? (
               <div className="flex items-center justify-center p-8 bg-gray-50 rounded-lg">

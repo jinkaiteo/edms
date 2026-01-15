@@ -51,6 +51,23 @@ export const useDashboardUpdates = (options: UseDashboardUpdatesOptions = {}) =>
       }
 
       const data = await response.json();
+      
+      // DEBUG: Log dashboard data structure
+      console.log('🔍 Dashboard Stats Received:', {
+        hasRecentActivity: !!data.recent_activity,
+        recentActivityLength: data.recent_activity?.length || 0,
+        firstActivity: data.recent_activity?.[0],
+        allKeys: Object.keys(data)
+      });
+      
+      if (data.recent_activity && data.recent_activity.length > 0) {
+        console.log('📋 Recent Activities:', data.recent_activity.map((a: any) => ({
+          title: a.title,
+          user: a.user,
+          icon: a.icon
+        })));
+      }
+      
       setDashboardStats(data);
       
       if (onUpdate) {
