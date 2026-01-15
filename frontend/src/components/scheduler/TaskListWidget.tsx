@@ -42,6 +42,9 @@ const TaskListWidget: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set());
+  const [selectedTask, setSelectedTask] = useState<Task | null>(null);
+  const [showDetailModal, setShowDetailModal] = useState(false);
+  const [triggeringTask, setTriggeringTask] = useState<string | null>(null);
 
   useEffect(() => {
     fetchTaskStatus();
@@ -71,6 +74,32 @@ const TaskListWidget: React.FC = () => {
       newExpanded.add(category);
     }
     setExpandedCategories(newExpanded);
+  };
+
+  const handleTaskClick = (task: Task) => {
+    setSelectedTask(task);
+    setShowDetailModal(true);
+  };
+
+  const handleManualTrigger = async (taskName: string) => {
+    if (!window.confirm(`Are you sure you want to manually trigger this task?\n\nTask: ${taskName}`)) {
+      return;
+    }
+
+    setTriggeringTask(taskName);
+    try {
+      await apiService.post('/scheduler/monitoring/manual-trigger/', {
+        task_name: taskName
+      });
+      alert(`Task triggered successfully: ${taskName}\n\nCheck the worker logs for execution status.`);
+      // Refresh data after trigger
+      fetchTaskStatus();
+    } catch (err: any) {
+      console.error('Failed to trigger task:', err);
+      alert(`Failed to trigger task: ${err.response?.data?.error || err.message}`);
+    } finally {
+      setTriggeringTask(null);
+    }
   };
 
   const getStatusColor = (status: string) => {
@@ -214,6 +243,7 @@ const TaskListWidget: React.FC = () => {
                       <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Last Run</th>
                       <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Next Run</th>
                       <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
+                      <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
                     </tr>
                   </thead>
                   <tbody className="bg-white divide-y divide-gray-200">
@@ -240,6 +270,25 @@ const TaskListWidget: React.FC = () => {
                             </div>
                           )}
                         </td>
+                        <td className="px-3 py-3">
+                          <div className="flex space-x-2">
+                            <button
+                              onClick={() => handleTaskClick(task)}
+                              className="text-blue-600 hover:text-blue-800 text-xs font-medium"
+                              title="View details"
+                            >
+                              📊 Details
+                            </button>
+                            <button
+                              onClick={() => handleManualTrigger(task.task_path)}
+                              disabled={triggeringTask === task.task_path}
+                              className="text-green-600 hover:text-green-800 text-xs font-medium disabled:text-gray-400"
+                              title="Manually trigger this task"
+                            >
+                              {triggeringTask === task.task_path ? '⏳ Triggering...' : '▶️ Run Now'}
+                            </button>
+                          </div>
+                        </td>
                       </tr>
                     ))}
                   </tbody>
@@ -254,8 +303,158 @@ const TaskListWidget: React.FC = () => {
       <div className="px-6 py-3 bg-gray-50 border-t border-gray-200 text-xs text-gray-500">
         Last updated: {new Date(data.timestamp).toLocaleString()} • Auto-refreshes every 30 seconds
       </div>
+
+      {/* Task Detail Modal */}
+      {showDetailModal && selectedTask && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full mx-4 max-h-[80vh] overflow-hidden">
+            <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
+              <h3 className="text-lg font-semibold text-gray-900">{selectedTask.name}</h3>
+              <button
+                onClick={() => setShowDetailModal(false)}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                ✕
+              </button>
+            </div>
+            
+            <div className="px-6 py-4 overflow-y-auto max-h-[60vh]">
+              {/* Task Information */}
+              <div className="space-y-4">
+                <div>
+                  <h4 className="text-sm font-medium text-gray-700 mb-2">Task Information</h4>
+                  <dl className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
+                    <dt className="text-gray-500">Category:</dt>
+                    <dd className="text-gray-900">{selectedTask.category}</dd>
+                    
+                    <dt className="text-gray-500">Schedule:</dt>
+                    <dd className="text-gray-900">{selectedTask.schedule}</dd>
+                    
+                    <dt className="text-gray-500">Task Path:</dt>
+                    <dd className="text-gray-900 text-xs font-mono break-all">{selectedTask.task_path}</dd>
+                    
+                    <dt className="text-gray-500">Registered:</dt>
+                    <dd className="text-gray-900">
+                      {selectedTask.is_registered ? '✅ Yes' : '❌ No'}
+                    </dd>
+                  </dl>
+                </div>
+
+                <div className="border-t pt-4">
+                  <h4 className="text-sm font-medium text-gray-700 mb-2">Description</h4>
+                  <p className="text-sm text-gray-600">{selectedTask.description}</p>
+                </div>
+
+                <div className="border-t pt-4">
+                  <h4 className="text-sm font-medium text-gray-700 mb-2">Execution Status</h4>
+                  <div className="space-y-2">
+                    <div className="flex justify-between items-center p-3 bg-gray-50 rounded">
+                      <span className="text-sm text-gray-600">Current Status:</span>
+                      <span className={`px-2 py-1 rounded text-xs font-medium ${getStatusColor(selectedTask.status)}`}>
+                        {getStatusIcon(selectedTask.status)} {selectedTask.status}
+                      </span>
+                    </div>
+                    
+                    <div className="flex justify-between items-center p-3 bg-gray-50 rounded">
+                      <span className="text-sm text-gray-600">Last Run:</span>
+                      <span className="text-sm text-gray-900">
+                        {selectedTask.last_run.relative_time}
+                        {selectedTask.last_run.timestamp && (
+                          <span className="text-xs text-gray-500 ml-2">
+                            ({new Date(selectedTask.last_run.timestamp).toLocaleString()})
+                          </span>
+                        )}
+                      </span>
+                    </div>
+                    
+                    <div className="flex justify-between items-center p-3 bg-gray-50 rounded">
+                      <span className="text-sm text-gray-600">Next Run:</span>
+                      <span className="text-sm text-gray-900">
+                        {selectedTask.next_run.relative_time}
+                        {selectedTask.next_run.timestamp && (
+                          <span className="text-xs text-gray-500 ml-2">
+                            ({new Date(selectedTask.next_run.timestamp).toLocaleString()})
+                          </span>
+                        )}
+                      </span>
+                    </div>
+
+                    {selectedTask.last_run.duration && (
+                      <div className="flex justify-between items-center p-3 bg-gray-50 rounded">
+                        <span className="text-sm text-gray-600">Last Duration:</span>
+                        <span className="text-sm text-gray-900">{selectedTask.last_run.duration}s</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {selectedTask.statistics && (
+                  <div className="border-t pt-4">
+                    <h4 className="text-sm font-medium text-gray-700 mb-2">Statistics (24 hours)</h4>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="p-3 bg-blue-50 rounded">
+                        <div className="text-2xl font-bold text-blue-600">
+                          {selectedTask.statistics.runs_24h ?? 'N/A'}
+                        </div>
+                        <div className="text-xs text-gray-600">Total Runs</div>
+                      </div>
+                      
+                      <div className="p-3 bg-green-50 rounded">
+                        <div className="text-2xl font-bold text-green-600">
+                          {selectedTask.statistics.success_rate !== null 
+                            ? `${selectedTask.statistics.success_rate.toFixed(0)}%` 
+                            : 'N/A'}
+                        </div>
+                        <div className="text-xs text-gray-600">Success Rate</div>
+                      </div>
+                      
+                      {selectedTask.statistics.avg_duration !== null && (
+                        <div className="p-3 bg-purple-50 rounded col-span-2">
+                          <div className="text-2xl font-bold text-purple-600">
+                            {selectedTask.statistics.avg_duration}s
+                          </div>
+                          <div className="text-xs text-gray-600">Average Duration</div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {!selectedTask.is_registered && (
+                  <div className="border-t pt-4">
+                    <div className="bg-red-50 border border-red-200 rounded p-3">
+                      <h4 className="text-sm font-medium text-red-800 mb-1">⚠️ Task Not Registered</h4>
+                      <p className="text-xs text-red-600">{selectedTask.status_message}</p>
+                      <p className="text-xs text-red-600 mt-1">
+                        This task won't execute until the Celery worker is restarted.
+                      </p>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <div className="px-6 py-4 border-t border-gray-200 flex justify-between">
+              <button
+                onClick={() => handleManualTrigger(selectedTask.task_path)}
+                disabled={triggeringTask === selectedTask.task_path || !selectedTask.is_registered}
+                className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 disabled:bg-gray-300 disabled:cursor-not-allowed text-sm"
+              >
+                {triggeringTask === selectedTask.task_path ? '⏳ Triggering...' : '▶️ Run Task Now'}
+              </button>
+              <button
+                onClick={() => setShowDetailModal(false)}
+                className="px-4 py-2 bg-gray-200 text-gray-700 rounded hover:bg-gray-300 text-sm"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
 
 export default TaskListWidget;
+
