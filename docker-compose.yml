@@ -83,7 +83,7 @@ services:
       - edms_network
     command: >
       sh -c "sleep 15 &&
-             celery -A edms worker -l info"
+             celery -A edms worker -l info -Q celery,scheduler,documents,workflows,maintenance"
 
   # Celery Beat (Scheduler)
   celery_beat:
