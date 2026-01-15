@@ -550,6 +550,156 @@ class Document(models.Model):
         terminable_statuses = ['DRAFT', 'PENDING_REVIEW', 'UNDER_REVIEW', 'PENDING_APPROVAL']
         return self.status in terminable_statuses
     
+    def get_family_versions(self):
+        """
+        Get all versions of this document's family.
+        
+        Returns all documents with the same base document number,
+        ordered by version (newest first).
+        """
+        import re
+        
+        # Extract base document number
+        base_number = re.sub(r'-v\d+\.\d+$', '', self.document_number)
+        
+        # Get all documents with this base number
+        family_documents = Document.objects.filter(
+            document_number__startswith=base_number
+        ).order_by('-version_major', '-version_minor')
+        
+        # Filter to only documents that match the base pattern exactly
+        # This prevents matching "SOP-2025-0001" with "SOP-2025-00010"
+        family_docs_filtered = []
+        for doc in family_documents:
+            doc_base = re.sub(r'-v\d+\.\d+$', '', doc.document_number)
+            if doc_base == base_number:
+                family_docs_filtered.append(doc)
+        
+        return family_docs_filtered
+    
+    def can_obsolete_family(self):
+        """
+        Check if this document's entire family can be obsoleted.
+        
+        Checks ALL versions (including SUPERSEDED) for active dependencies.
+        Returns validation result with details of blocking dependencies.
+        
+        Returns:
+            dict: {
+                'can_obsolete': bool,
+                'reason': str,
+                'blocking_dependencies': [
+                    {
+                        'version': str,
+                        'document_number': str,
+                        'status': str,
+                        'dependent_count': int,
+                        'dependents': [
+                            {
+                                'uuid': str,
+                                'document_number': str,
+                                'title': str,
+                                'status': str,
+                                'author': str
+                            }
+                        ]
+                    }
+                ]
+            }
+        """
+        from apps.documents.models import DocumentDependency
+        
+        # Get all versions of this family
+        all_versions = self.get_family_versions()
+        
+        blocking_dependencies = []
+        
+        # Check each version for dependencies
+        for version in all_versions:
+            # Get documents that depend on this version
+            dependencies = DocumentDependency.objects.filter(
+                depends_on=version,
+                is_active=True
+            ).select_related('document')
+            
+            # Filter to only EFFECTIVE or APPROVED_PENDING_EFFECTIVE dependents
+            active_dependents = [
+                dep.document for dep in dependencies
+                if dep.document.status in ['EFFECTIVE', 'APPROVED_PENDING_EFFECTIVE', 'APPROVED_AND_EFFECTIVE']
+            ]
+            
+            if active_dependents:
+                blocking_dependencies.append({
+                    'version': version.version_string,
+                    'document_number': version.document_number,
+                    'status': version.status,
+                    'dependent_count': len(active_dependents),
+                    'dependents': [
+                        {
+                            'uuid': str(dep.uuid),
+                            'document_number': dep.document_number,
+                            'title': dep.title,
+                            'status': dep.status,
+                            'author': dep.author.username if dep.author else None,
+                        }
+                        for dep in active_dependents
+                    ]
+                })
+        
+        if blocking_dependencies:
+            total_blocking = sum(bd['dependent_count'] for bd in blocking_dependencies)
+            
+            return {
+                'can_obsolete': False,
+                'reason': f'Cannot obsolete: {total_blocking} active document(s) depend on this family',
+                'blocking_dependencies': blocking_dependencies,
+                'affected_versions': len(blocking_dependencies)
+            }
+        
+        return {
+            'can_obsolete': True,
+            'reason': 'No active dependencies found on any version',
+            'blocking_dependencies': [],
+            'affected_versions': 0
+        }
+    
+    def get_family_dependency_summary(self):
+        """
+        Get a summary of all dependencies across the document family.
+        
+        Returns:
+            dict: Summary of dependencies for all versions
+        """
+        all_versions = self.get_family_versions()
+        
+        summary = {
+            'total_versions': len(all_versions),
+            'versions': []
+        }
+        
+        for version in all_versions:
+            # Get dependents (documents that depend on this version)
+            dependents = DocumentDependency.objects.filter(
+                depends_on=version,
+                is_active=True
+            ).select_related('document').count()
+            
+            # Get dependencies (documents this version depends on)
+            dependencies = DocumentDependency.objects.filter(
+                document=version,
+                is_active=True
+            ).select_related('depends_on').count()
+            
+            summary['versions'].append({
+                'version': version.version_string,
+                'document_number': version.document_number,
+                'status': version.status,
+                'dependents_count': dependents,
+                'dependencies_count': dependencies
+            })
+        
+        return summary
+    
     def terminate_document(self, terminated_by, reason=''):
         """Terminate document before it becomes effective."""
         if not self.can_terminate(terminated_by):
