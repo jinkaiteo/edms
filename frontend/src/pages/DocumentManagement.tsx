@@ -21,13 +21,8 @@ const DocumentManagement: React.FC<DocumentManagementProps> = ({
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   
-  // Redirect to login if not authenticated
-  useEffect(() => {
-    if (!user) {
-      console.log('📄 DocumentManagement: No user found, redirecting to login');
-      navigate('/login', { replace: true });
-    }
-  }, [user, navigate]);
+  // ProtectedRoute handles authentication - no need for redundant redirect here
+  // This was causing race conditions during page refresh
   
   // Get filter from URL query parameter or use prop as fallback
   const urlFilter = searchParams.get('filter') as 'pending' | 'approved' | 'archived' | 'obsolete' | null;

@@ -50,10 +50,12 @@ function AppContent() {
         <Route path="/notifications" element={<Notifications />} />
         {/* Audit trail moved to admin interface - route kept for direct access only */}
         <Route path="/audit-trail" element={<AuditTrail />} />
-        <Route path="/workflows" element={<Navigate to="/admin" replace />} />
-        <Route path="/users" element={<Navigate to="/admin" replace />} />
-        <Route path="/reports" element={<Navigate to="/admin" replace />} />
-        <Route path="/admin" element={<AdminDashboard />} />
+        <Route path="/workflows" element={<Navigate to="/administration" replace />} />
+        <Route path="/users" element={<Navigate to="/administration" replace />} />
+        <Route path="/reports" element={<Navigate to="/administration" replace />} />
+        <Route path="/administration" element={<AdminDashboard />} />
+        {/* Redirect old /admin route to avoid conflict with backend Django admin */}
+        <Route path="/admin" element={<Navigate to="/administration" replace />} />
       </Routes>
     </div>
   );

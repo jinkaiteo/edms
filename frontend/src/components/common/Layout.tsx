@@ -49,7 +49,7 @@ interface NavigationItem {
 }
 
 const Layout: React.FC<LayoutProps> = ({ children }) => {
-  const { user, authenticated, logout } = useAuth();
+  const { user, authenticated, loading, logout } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -146,17 +146,17 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
     const adminItems: NavigationItem[] = [
       { 
         name: 'Administration', 
-        href: '/admin', 
+        href: '/administration', 
         icon: Cog6ToothIcon, 
         roles: ['admin'],
         children: [
-          { name: 'User Management', href: '/admin?tab=users', icon: UserGroupIcon },
-          { name: 'Placeholder Management', href: '/admin?tab=placeholders', icon: DocumentTextIcon },
-          { name: 'Backup Management', href: '/admin?tab=backup', icon: ServerIcon },
-          { name: 'Reports', href: '/admin?tab=reports', icon: ChartBarIcon },
-          { name: 'Scheduler Dashboard', href: '/admin?tab=scheduler', icon: ComputerDesktopIcon },
-          { name: 'Audit Trail', href: '/admin?tab=audit', icon: ShieldCheckIcon },
-          // { name: 'System Settings', href: '/admin?tab=settings', icon: Cog6ToothIcon }, // Disabled - not yet implemented
+          { name: 'User Management', href: '/administration?tab=users', icon: UserGroupIcon },
+          { name: 'Placeholder Management', href: '/administration?tab=placeholders', icon: DocumentTextIcon },
+          { name: 'Backup Management', href: '/administration?tab=backup', icon: ServerIcon },
+          { name: 'Reports', href: '/administration?tab=reports', icon: ChartBarIcon },
+          { name: 'Scheduler Dashboard', href: '/admin/scheduler', icon: ComputerDesktopIcon },
+          { name: 'Audit Trail', href: '/administration?tab=audit', icon: ShieldCheckIcon },
+          // { name: 'System Settings', href: '/administration?tab=settings', icon: Cog6ToothIcon }, // Disabled - not yet implemented
         ]
       },
     ];
@@ -191,16 +191,16 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                         location.pathname.startsWith(item.href);
     const hasFilterParam = location.search.includes('filter=pending') || location.search.includes('filter=obsolete');
     
-    // "Document Library" should not be active if we're viewing filtered documents OR admin pages
-    if (item.href === '/' && (hasFilterParam || location.pathname.startsWith('/admin'))) {
+    // \"Document Library\" should not be active if we're viewing filtered documents OR admin pages
+    if (item.href === '/' && (hasFilterParam || location.pathname.startsWith('/administration'))) {
       return {
         ...item,
         current: false
       };
     }
     
-    // "Administration" should be active for all /admin paths
-    if (item.name === 'Administration' && location.pathname.startsWith('/admin')) {
+    // \"Administration\" should be active for all /administration paths
+    if (item.name === 'Administration' && location.pathname.startsWith('/administration')) {
       return {
         ...item,
         current: true
@@ -208,7 +208,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
     }
     
     // Other items should not be active when on admin pages
-    if (location.pathname.startsWith('/admin') && item.href !== '/admin') {
+    if (location.pathname.startsWith('/administration') && item.href !== '/administration') {
       return {
         ...item,
         current: false
@@ -255,8 +255,8 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
     
     // Clear current selection when expanding Administration submenu
     if (itemName === 'Administration') {
-      // Force navigation to admin route to clear other selections
-      navigate('/admin');
+      // Force navigation to administration route to clear other selections
+      navigate('/administration');
     }
   };
 
@@ -264,8 +264,22 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
     return expandedMenus[itemName] || false;
   };
 
+  // Show loading state while checking authentication
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mx-auto"></div>
+          <p className="mt-4 text-gray-600">Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Redirect to login if not authenticated (after loading completes)
   if (!authenticated) {
-    return <Outlet />;
+    navigate('/login');
+    return null;
   }
 
   return (
@@ -532,7 +546,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                 {(location.pathname === '/' || location.pathname === '/document-management') && location.search.includes('filter=pending') && 'My Tasks'}
                 {(location.pathname === '/' || location.pathname === '/document-management') && location.search.includes('filter=obsolete') && 'Obsolete Documents'}
                 {(location.pathname === '/' || location.pathname === '/document-management') && !location.search.includes('filter=') && 'Document Library'}
-                {location.pathname === '/admin' && 'Administration'}
+                {location.pathname === '/administration' && 'Administration'}
               </h2>
             </div>
             

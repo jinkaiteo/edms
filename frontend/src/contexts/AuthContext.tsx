@@ -80,6 +80,31 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     initializeAuth();
   }, []);
 
+  // Listen for unauthorized events from API service
+  useEffect(() => {
+    const handleUnauthorized = (event: Event) => {
+      const customEvent = event as CustomEvent;
+      console.warn('🔒 AuthContext: Received unauthorized event from API service');
+      console.log('Event detail:', customEvent.detail);
+      
+      // Clear auth state
+      setUser(null);
+      setAuthenticated(false);
+      
+      // Clear apiService auth
+      apiService.clearAuth();
+      
+      // Note: Don't redirect here - let ProtectedRoute handle navigation
+      // This prevents aggressive redirects during page refresh
+    };
+    
+    window.addEventListener('auth:unauthorized', handleUnauthorized);
+    
+    return () => {
+      window.removeEventListener('auth:unauthorized', handleUnauthorized);
+    };
+  }, []);
+
   const login = async (username: string, password: string) => {
     setLoading(true);
     

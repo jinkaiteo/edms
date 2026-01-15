@@ -147,8 +147,20 @@ class ApiService {
   }
 
   private handleUnauthorized(): void {
-    this.logout();
-    window.location.href = '/login';
+    // Don't automatically logout on 401 - dispatch event for AuthContext to handle gracefully
+    // This prevents aggressive logout during page refresh or race conditions
+    console.warn('⚠️ API Service: Received 401 Unauthorized - dispatching event to AuthContext');
+    
+    // Clear tokens only (don't call logout which makes API call)
+    this.token = null;
+    localStorage.removeItem('accessToken');
+    localStorage.removeItem('refreshToken');
+    
+    // Dispatch custom event for AuthContext to handle
+    // This allows React Router to handle navigation properly
+    window.dispatchEvent(new CustomEvent('auth:unauthorized', { 
+      detail: { message: 'Session expired or invalid token' }
+    }));
   }
 
   private handleError(error: AxiosError): ApiError {
