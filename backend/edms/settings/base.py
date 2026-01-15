@@ -36,6 +36,7 @@ THIRD_PARTY_APPS = [
     'drf_spectacular',
     'django_redis',
     'django_celery_beat',  # S3 Scheduler Module - Celery Beat integration
+    'django_celery_results',  # Track Celery task execution history for monitoring
 ]
 
 LOCAL_APPS = [
@@ -352,3 +353,12 @@ LOGGING = {
         },
     },
 }
+
+# Celery Results Backend - Store task execution history
+CELERY_RESULT_BACKEND = "django-db"
+CELERY_RESULT_EXTENDED = True
+CELERY_CACHE_BACKEND = "default"
+
+# Store task results for monitoring
+CELERY_RESULT_EXPIRES = 86400  # Keep results for 24 hours
+
