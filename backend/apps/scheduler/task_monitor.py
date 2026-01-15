@@ -63,6 +63,11 @@ class TaskMonitor:
             'category': 'Backups',
             'description': 'Performs database and file system backups'
         },
+        'apps.scheduler.celery_cleanup.cleanup_celery_results': {
+            'name': 'Cleanup Celery Results',
+            'category': 'System Maintenance',
+            'description': 'Cleans up old task execution records and REVOKED tasks'
+        },
     }
     
     def get_task_status(self):
@@ -175,8 +180,12 @@ class TaskMonitor:
             return self._get_last_run_from_inspect(task_name)
         
         try:
+            # Filter out REVOKED tasks - they're not meaningful executions
+            # Get the most recent ACTUAL execution (SUCCESS, FAILURE, RETRY)
             last_result = TaskResult.objects.filter(
                 task_name=task_name
+            ).exclude(
+                status='REVOKED'
             ).order_by('-date_done').first()
             
             if not last_result:
@@ -272,9 +281,12 @@ class TaskMonitor:
         try:
             since = timezone.now() - timedelta(hours=24)
             
+            # Exclude REVOKED tasks from statistics - they're not real executions
             results = TaskResult.objects.filter(
                 task_name=task_name,
                 date_done__gte=since
+            ).exclude(
+                status='REVOKED'
             )
             
             total_runs = results.count()

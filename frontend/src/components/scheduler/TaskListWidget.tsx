@@ -88,12 +88,16 @@ const TaskListWidget: React.FC = () => {
 
     setTriggeringTask(taskName);
     try {
-      await apiService.post('/scheduler/monitoring/manual-trigger/', {
-        task_name: taskName
+      // Convert hyphenated schedule name to underscore format expected by backend
+      const backendTaskName = taskName.replace(/-/g, '_');
+      const result = await apiService.post('/scheduler/monitoring/manual-trigger/', {
+        task_name: backendTaskName
       });
-      alert(`Task triggered successfully: ${taskName}\n\nCheck the worker logs for execution status.`);
-      // Refresh data after trigger
-      fetchTaskStatus();
+      
+      // Immediate feedback - refresh data to show new execution
+      await fetchTaskStatus();
+      
+      alert(`✅ Task executed successfully!\n\nTask: ${taskName}\nDuration: ${result.duration_seconds?.toFixed(2)}s\n\nThe dashboard has been refreshed.`);
     } catch (err: any) {
       console.error('Failed to trigger task:', err);
       alert(`Failed to trigger task: ${err.response?.data?.error || err.message}`);
@@ -280,12 +284,12 @@ const TaskListWidget: React.FC = () => {
                               📊 Details
                             </button>
                             <button
-                              onClick={() => handleManualTrigger(task.task_path)}
-                              disabled={triggeringTask === task.task_path}
+                              onClick={() => handleManualTrigger(task.schedule_name)}
+                              disabled={triggeringTask === task.schedule_name}
                               className="text-green-600 hover:text-green-800 text-xs font-medium disabled:text-gray-400"
                               title="Manually trigger this task"
                             >
-                              {triggeringTask === task.task_path ? '⏳ Triggering...' : '▶️ Run Now'}
+                              {triggeringTask === task.schedule_name ? '⏳ Triggering...' : '▶️ Run Now'}
                             </button>
                           </div>
                         </td>
@@ -436,11 +440,11 @@ const TaskListWidget: React.FC = () => {
 
             <div className="px-6 py-4 border-t border-gray-200 flex justify-between">
               <button
-                onClick={() => handleManualTrigger(selectedTask.task_path)}
-                disabled={triggeringTask === selectedTask.task_path || !selectedTask.is_registered}
+                onClick={() => handleManualTrigger(selectedTask.schedule_name)}
+                disabled={triggeringTask === selectedTask.schedule_name || !selectedTask.is_registered}
                 className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 disabled:bg-gray-300 disabled:cursor-not-allowed text-sm"
               >
-                {triggeringTask === selectedTask.task_path ? '⏳ Triggering...' : '▶️ Run Task Now'}
+                {triggeringTask === selectedTask.schedule_name ? '⏳ Triggering...' : '▶️ Run Task Now'}
               </button>
               <button
                 onClick={() => setShowDetailModal(false)}

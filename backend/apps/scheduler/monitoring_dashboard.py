@@ -17,12 +17,12 @@ from celery.events.state import State
 import json
 import logging
 
-from .automated_tasks import (
+from .tasks import (
     process_document_effective_dates,
     process_document_obsoletion_dates,
     check_workflow_timeouts,
     perform_system_health_check,
-    cleanup_workflow_tasks
+    cleanup_celery_results
 )
 from ..documents.models import Document
 from ..workflows.models import DocumentWorkflow
@@ -74,30 +74,13 @@ class SchedulerMonitoringService:
                 'icon': '🏥',
                 'celery_task': perform_system_health_check
             },
-            'cleanup_workflow_tasks': {
-                'name': 'Workflow Cleanup',
-                'description': 'Cleans up orphaned and obsolete workflow tasks',
-                'category': 'Maintenance',
-                'priority': 'LOW',
-                'icon': '🧹',
-                'celery_task': cleanup_workflow_tasks
-            },
-            # Backup System Tasks (S4 Module)
-            'run_scheduled_backup': {
-                'name': 'Scheduled Backup Execution',
-                'description': 'Execute scheduled database and file backups (daily/weekly/monthly)',
-                'category': 'Backup & Recovery',
-                'priority': 'CRITICAL',
-                'icon': '💾',
-                'celery_task': None  # Will be imported dynamically
-            },
-            'cleanup_old_backups': {
-                'name': 'Backup Retention Management',
-                'description': 'Remove old backups based on configured retention policies',
-                'category': 'Backup & Recovery',
+            'cleanup_celery_results': {
+                'name': 'Cleanup Celery Results',
+                'description': 'Cleans up old task execution records and REVOKED tasks from database',
+                'category': 'System Maintenance',
                 'priority': 'MEDIUM',
-                'icon': '🗑️',
-                'celery_task': None  # Will be imported dynamically
+                'icon': '🧹',
+                'celery_task': cleanup_celery_results
             }
         }
     
@@ -205,14 +188,22 @@ class SchedulerMonitoringService:
                     user_agent=getattr(user, '_current_user_agent', 'Manual Execution')
                 )
                 
-                # Execute the task
+                # Execute the task asynchronously so it gets saved to TaskResult
                 celery_task = task_info['celery_task']
                 
-                # Handle tasks that support dry_run parameter
-                if task_name == 'cleanup_workflow_tasks':
-                    result = celery_task.apply(kwargs={'dry_run': dry_run})
+                # Handle tasks that support parameters
+                if task_name == 'cleanup_celery_results':
+                    # This task supports days_to_keep and remove_revoked parameters
+                    async_result = celery_task.apply_async(kwargs={
+                        'days_to_keep': 7,
+                        'remove_revoked': True
+                    })
                 else:
-                    result = celery_task.apply()
+                    # Standard tasks with no parameters
+                    async_result = celery_task.apply_async()
+                
+                # Wait for the task to complete (with timeout)
+                result = async_result.get(timeout=30)
                 
                 end_time = timezone.now()
                 duration = (end_time - start_time).total_seconds()
@@ -224,9 +215,10 @@ class SchedulerMonitoringService:
                     description=f'Completed: {task_info["name"]}'[:200],
                     field_changes={
                         'task_name': task_name,
-                        'success': result.successful(),
+                        'task_id': async_result.id,
+                        'success': True,
                         'duration_seconds': duration,
-                        'result': result.result if result.successful() else str(result.result),
+                        'result': result,
                         'dry_run': dry_run
                     },
                     ip_address=getattr(user, '_current_ip', '127.0.0.1'),
@@ -234,12 +226,13 @@ class SchedulerMonitoringService:
                 )
                 
                 return {
-                    'success': result.successful(),
+                    'success': True,
                     'task_name': task_name,
                     'task_display_name': task_info['name'],
+                    'task_id': async_result.id,
                     'execution_time': start_time.isoformat(),
                     'duration_seconds': duration,
-                    'result': result.result if result.successful() else str(result.result),
+                    'result': result,
                     'dry_run': dry_run,
                     'executed_by': user.get_full_name() or user.username
                 }
