@@ -133,15 +133,29 @@ class Command(BaseCommand):
             numbering_prefix = type_data.pop('numbering_prefix')
             name = type_data.pop('name')
             
-            doc_type, created = DocumentType.objects.get_or_create(
-                code=code,
-                defaults={
-                    'name': name,
-                    'numbering_prefix': numbering_prefix,
-                    'created_by': system_user,
-                    **type_data
-                }
-            )
+            # Try to find existing by code or name (both are unique)
+            try:
+                doc_type = DocumentType.objects.get(code=code)
+                created = False
+            except DocumentType.DoesNotExist:
+                try:
+                    # Check if name exists with different code
+                    doc_type = DocumentType.objects.get(name=name)
+                    created = False
+                    # Update the code to match canonical
+                    if doc_type.code != code:
+                        doc_type.code = code
+                        doc_type.save()
+                except DocumentType.DoesNotExist:
+                    # Create new
+                    doc_type = DocumentType.objects.create(
+                        code=code,
+                        name=name,
+                        numbering_prefix=numbering_prefix,
+                        created_by=system_user,
+                        **type_data
+                    )
+                    created = True
             
             if created:
                 created_count += 1
