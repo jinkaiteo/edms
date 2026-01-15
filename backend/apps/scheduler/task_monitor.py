@@ -69,8 +69,7 @@ class TaskMonitor:
         """Get comprehensive status of all scheduled tasks"""
         try:
             # Get scheduled tasks from Celery Beat
-            from django.conf import settings
-            beat_schedule = getattr(settings, 'CELERY_BEAT_SCHEDULE', {})
+            beat_schedule = current_app.conf.beat_schedule or {}
             
             # Get registered tasks from workers
             inspect = current_app.control.inspect()
