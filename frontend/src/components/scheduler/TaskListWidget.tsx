@@ -4,7 +4,7 @@
  */
 
 import React, { useEffect, useState } from 'react';
-import apiService from '../../services/api';
+import apiService from '../../services/api.ts';
 
 interface TaskRun {
   timestamp: string | null;
