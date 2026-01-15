@@ -9,6 +9,7 @@ interface AuditTrailViewerProps {
 const AuditTrailViewer: React.FC<AuditTrailViewerProps> = ({ className = '' }) => {
   const [auditLogs, setAuditLogs] = useState<AuditTrail[]>([]);
   const [loading, setLoading] = useState(true);
+  const [totalCount, setTotalCount] = useState(0);
   const [filters, setFilters] = useState({
     search: '',
     action: '',
@@ -35,15 +36,10 @@ const AuditTrailViewer: React.FC<AuditTrailViewerProps> = ({ className = '' }) =
         // Get real audit trail data from backend API
         try {
           const response = await apiService.getAuditTrail(filters);
-          // Debug info removed to prevent errors
-          // setDebugInfo({
-          //   hasResults: !!(response.results),
-          //   hasData: !!(response.data), 
-          //   resultsLength: response.results?.length || 0,
-          //   dataLength: response.data?.length || 0,
-          //   count: response.count,
-          //   firstResult: response.results?.[0] || response.data?.[0]
-          // });
+          
+          // Extract total count from paginated response
+          const count = response.count || (response.results || response.data || []).length;
+          setTotalCount(count);
           
           // Transform API data to match frontend format (simplified)
           const auditData = (response.results || response.data || []).map((item: any, index: number) => ({
@@ -149,6 +145,13 @@ const AuditTrailViewer: React.FC<AuditTrailViewerProps> = ({ className = '' }) =
     setFilters(prev => ({ ...prev, [key]: value, page: 1 }));
   }, []);
 
+  const handlePageChange = useCallback((newPage: number) => {
+    setFilters(prev => ({ ...prev, page: newPage }));
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }, []);
+
+  const totalPages = Math.ceil(totalCount / filters.page_size);
+
   const getActionColor = (action: string): string => {
     const colors: Record<string, string> = {
       LOGIN_SUCCESS: 'bg-green-100 text-green-800',
@@ -225,7 +228,7 @@ const AuditTrailViewer: React.FC<AuditTrailViewerProps> = ({ className = '' }) =
             </p>
           </div>
           <div className="text-sm text-gray-500">
-            {auditLogs.length} {auditLogs.length === 1 ? 'entry' : 'entries'}
+            Showing {auditLogs.length} of {totalCount} {totalCount === 1 ? 'entry' : 'entries'}
           </div>
         </div>
 
@@ -353,6 +356,72 @@ const AuditTrailViewer: React.FC<AuditTrailViewerProps> = ({ className = '' }) =
             </div>
             <h3 className="text-lg font-medium text-gray-900 mb-1">No Audit Entries Found</h3>
             <p className="text-gray-500">No audit entries match your current filters.</p>
+          </div>
+        )}
+
+        {/* Pagination Controls */}
+        {totalPages > 1 && (
+          <div className="mt-6 flex items-center justify-between border-t border-gray-200 pt-4">
+            <div className="flex items-center space-x-2">
+              <span className="text-sm text-gray-700">
+                Page {filters.page} of {totalPages}
+              </span>
+            </div>
+            <div className="flex items-center space-x-2">
+              <button
+                onClick={() => handlePageChange(filters.page - 1)}
+                disabled={filters.page === 1}
+                className={`px-3 py-2 border rounded-md text-sm font-medium ${
+                  filters.page === 1
+                    ? 'border-gray-200 text-gray-400 cursor-not-allowed'
+                    : 'border-gray-300 text-gray-700 hover:bg-gray-50'
+                }`}
+              >
+                Previous
+              </button>
+              
+              {/* Page Numbers */}
+              <div className="flex space-x-1">
+                {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                  let pageNum;
+                  if (totalPages <= 5) {
+                    pageNum = i + 1;
+                  } else if (filters.page <= 3) {
+                    pageNum = i + 1;
+                  } else if (filters.page >= totalPages - 2) {
+                    pageNum = totalPages - 4 + i;
+                  } else {
+                    pageNum = filters.page - 2 + i;
+                  }
+                  
+                  return (
+                    <button
+                      key={pageNum}
+                      onClick={() => handlePageChange(pageNum)}
+                      className={`px-3 py-2 border rounded-md text-sm font-medium ${
+                        filters.page === pageNum
+                          ? 'bg-blue-600 border-blue-600 text-white'
+                          : 'border-gray-300 text-gray-700 hover:bg-gray-50'
+                      }`}
+                    >
+                      {pageNum}
+                    </button>
+                  );
+                })}
+              </div>
+              
+              <button
+                onClick={() => handlePageChange(filters.page + 1)}
+                disabled={filters.page === totalPages}
+                className={`px-3 py-2 border rounded-md text-sm font-medium ${
+                  filters.page === totalPages
+                    ? 'border-gray-200 text-gray-400 cursor-not-allowed'
+                    : 'border-gray-300 text-gray-700 hover:bg-gray-50'
+                }`}
+              >
+                Next
+              </button>
+            </div>
           </div>
         )}
 
