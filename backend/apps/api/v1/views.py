@@ -1010,10 +1010,30 @@ class DashboardStatsView(APIView):
             'DELETE': f"Document Deleted: {audit.object_representation}",
             'SIGN': f"Document Signed: {audit.object_representation}",
             'LOGIN': f"User Login: {audit.user_display_name}",
+            'LOGIN_SUCCESS': f"User Login: {audit.user_display_name}",
+            'LOGIN_FAILED': f"Failed Login Attempt: {audit.user_display_name}",
+            'LOGOUT': f"User Logout: {audit.user_display_name}",
             'WORKFLOW_COMPLETE': f"Workflow Completed: {audit.object_representation}",
-            'WORKFLOW_TRANSITION': f"Workflow Updated: {audit.object_representation}"
+            'WORKFLOW_TRANSITION': f"Workflow Updated: {audit.object_representation}",
+            'SYSTEM_HEALTH_CHECK': "System Health Check Performed",
+            'BACKUP_CREATED': "System Backup Created",
+            'BACKUP_RESTORED': "System Restored from Backup",
+            'USER_CREATED': f"User Created: {audit.object_representation}",
+            'USER_UPDATED': f"User Updated: {audit.object_representation}",
+            'USER_DELETED': f"User Deleted: {audit.object_representation}",
+            'PASSWORD_CHANGED': f"Password Changed: {audit.user_display_name}",
+            'PERMISSION_CHANGED': f"Permissions Changed: {audit.object_representation}",
+            'CONFIGURATION_UPDATED': "System Configuration Updated"
         }
-        return action_titles.get(audit.action, f"{audit.action}: {audit.object_representation}")
+        # Return title with description fallback if object_representation is Unknown
+        title = action_titles.get(audit.action)
+        if title:
+            return title
+        # Fallback: format action name nicely
+        if audit.object_representation and audit.object_representation != 'Unknown':
+            return f"{audit.action.replace('_', ' ').title()}: {audit.object_representation}"
+        else:
+            return audit.action.replace('_', ' ').title()
     
     def _get_activity_icon(self, action):
         """Get icon for activity type."""
@@ -1023,8 +1043,20 @@ class DashboardStatsView(APIView):
             'DELETE': '🗑️',
             'SIGN': '✍️',
             'LOGIN': '🔐',
+            'LOGIN_SUCCESS': '🔐',
+            'LOGIN_FAILED': '🚫',
+            'LOGOUT': '👋',
             'WORKFLOW_COMPLETE': '✅',
-            'WORKFLOW_TRANSITION': '🔄'
+            'WORKFLOW_TRANSITION': '🔄',
+            'SYSTEM_HEALTH_CHECK': '❤️',
+            'BACKUP_CREATED': '💾',
+            'BACKUP_RESTORED': '♻️',
+            'USER_CREATED': '👤',
+            'USER_UPDATED': '👤',
+            'USER_DELETED': '👤',
+            'PASSWORD_CHANGED': '🔑',
+            'PERMISSION_CHANGED': '🛡️',
+            'CONFIGURATION_UPDATED': '⚙️'
         }
         return icon_mapping.get(action, '📊')
     
@@ -1036,8 +1068,20 @@ class DashboardStatsView(APIView):
             'DELETE': 'bg-red-500',
             'SIGN': 'bg-purple-500',
             'LOGIN': 'bg-indigo-500',
+            'LOGIN_SUCCESS': 'bg-green-500',
+            'LOGIN_FAILED': 'bg-red-500',
+            'LOGOUT': 'bg-gray-500',
             'WORKFLOW_COMPLETE': 'bg-emerald-500',
-            'WORKFLOW_TRANSITION': 'bg-orange-500'
+            'WORKFLOW_TRANSITION': 'bg-orange-500',
+            'SYSTEM_HEALTH_CHECK': 'bg-green-500',
+            'BACKUP_CREATED': 'bg-blue-500',
+            'BACKUP_RESTORED': 'bg-orange-500',
+            'USER_CREATED': 'bg-green-500',
+            'USER_UPDATED': 'bg-blue-500',
+            'USER_DELETED': 'bg-red-500',
+            'PASSWORD_CHANGED': 'bg-yellow-500',
+            'PERMISSION_CHANGED': 'bg-purple-500',
+            'CONFIGURATION_UPDATED': 'bg-indigo-500'
         }
         return color_mapping.get(action, 'bg-gray-500')
 
