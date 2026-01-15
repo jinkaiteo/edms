@@ -657,7 +657,7 @@ class AuditTrailViewSet(viewsets.ReadOnlyModelViewSet):
     permission_classes = [permissions.IsAdminUser]
     pagination_class = StandardResultsSetPagination
     filter_backends = [DjangoFilterBackend, filters.OrderingFilter]
-    filterset_fields = ['action', 'object_type', 'user']
+    filterset_fields = ['action', 'user', 'module']  # Fixed: removed 'object_type' (doesn't exist), added 'module'
     ordering = ['-timestamp']
 
     @action(detail=False, methods=['get'])
