@@ -152,6 +152,100 @@ const AuditTrailViewer: React.FC<AuditTrailViewerProps> = ({ className = '' }) =
 
   const totalPages = Math.ceil(totalCount / filters.page_size);
 
+  const handleExportCSV = async () => {
+    try {
+      // Build query parameters from current filters
+      const params = new URLSearchParams();
+      if (filters.search) params.append('search', filters.search);
+      if (filters.action) params.append('action', filters.action);
+      if (filters.user) params.append('user', filters.user);
+      if (filters.object_type) params.append('object_type', filters.object_type);
+      if (filters.date_from) params.append('date_from', filters.date_from);
+      if (filters.date_to) params.append('date_to', filters.date_to);
+
+      // Get access token
+      const accessToken = localStorage.getItem('accessToken');
+      
+      // Fetch CSV file
+      const response = await fetch(`/api/v1/audit-trail/export_csv/?${params.toString()}`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error('Export failed');
+      }
+
+      // Get filename from Content-Disposition header
+      const contentDisposition = response.headers.get('Content-Disposition');
+      const filenameMatch = contentDisposition?.match(/filename="(.+)"/);
+      const filename = filenameMatch ? filenameMatch[1] : `audit_trail_${new Date().toISOString().slice(0, 10)}.csv`;
+
+      // Download file
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+    } catch (error) {
+      console.error('CSV export failed:', error);
+      alert('Failed to export CSV. Please try again.');
+    }
+  };
+
+  const handleExportPDF = async () => {
+    try {
+      // Build query parameters from current filters
+      const params = new URLSearchParams();
+      if (filters.search) params.append('search', filters.search);
+      if (filters.action) params.append('action', filters.action);
+      if (filters.user) params.append('user', filters.user);
+      if (filters.object_type) params.append('object_type', filters.object_type);
+      if (filters.date_from) params.append('date_from', filters.date_from);
+      if (filters.date_to) params.append('date_to', filters.date_to);
+
+      // Get access token
+      const accessToken = localStorage.getItem('accessToken');
+      
+      // Fetch PDF file
+      const response = await fetch(`/api/v1/audit-trail/export_pdf/?${params.toString()}`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error('Export failed');
+      }
+
+      // Get filename from Content-Disposition header
+      const contentDisposition = response.headers.get('Content-Disposition');
+      const filenameMatch = contentDisposition?.match(/filename="(.+)"/);
+      const filename = filenameMatch ? filenameMatch[1] : `audit_trail_${new Date().toISOString().slice(0, 10)}.pdf`;
+
+      // Download file
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+    } catch (error) {
+      console.error('PDF export failed:', error);
+      alert('Failed to export PDF. Please try again.');
+    }
+  };
+
   const getActionColor = (action: string): string => {
     const colors: Record<string, string> = {
       LOGIN_SUCCESS: 'bg-green-100 text-green-800',
@@ -428,16 +522,18 @@ const AuditTrailViewer: React.FC<AuditTrailViewerProps> = ({ className = '' }) =
         {/* Export Options */}
         <div className="mt-6 flex justify-end space-x-2">
           <button
-            onClick={() => alert('Export functionality will be implemented in the backend integration phase.')}
-            className="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50"
+            onClick={handleExportCSV}
+            disabled={loading}
+            className="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            Export CSV
+            📥 Export CSV
           </button>
           <button
-            onClick={() => alert('Export functionality will be implemented in the backend integration phase.')}
-            className="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50"
+            onClick={handleExportPDF}
+            disabled={loading}
+            className="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            Export PDF
+            📄 Export PDF
           </button>
         </div>
       </div>
