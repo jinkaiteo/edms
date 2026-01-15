@@ -163,11 +163,12 @@ const AuditTrailViewer: React.FC<AuditTrailViewerProps> = ({ className = '' }) =
       if (filters.date_from) params.append('date_from', filters.date_from);
       if (filters.date_to) params.append('date_to', filters.date_to);
 
-      // Get access token
+      // Get API base URL
+      const baseURL = apiService.getBaseURL();
       const accessToken = localStorage.getItem('accessToken');
       
-      // Fetch CSV file
-      const response = await fetch(`/api/v1/audit-trail/export_csv/?${params.toString()}`, {
+      // Fetch CSV file from backend (audit-trail is under /auth/ route)
+      const response = await fetch(`${baseURL}/auth/audit-trail/export_csv/?${params.toString()}`, {
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${accessToken}`,
@@ -210,11 +211,12 @@ const AuditTrailViewer: React.FC<AuditTrailViewerProps> = ({ className = '' }) =
       if (filters.date_from) params.append('date_from', filters.date_from);
       if (filters.date_to) params.append('date_to', filters.date_to);
 
-      // Get access token
+      // Get API base URL
+      const baseURL = apiService.getBaseURL();
       const accessToken = localStorage.getItem('accessToken');
       
-      // Fetch PDF file
-      const response = await fetch(`/api/v1/audit-trail/export_pdf/?${params.toString()}`, {
+      // Fetch PDF file from backend (audit-trail is under /auth/ route)
+      const response = await fetch(`${baseURL}/auth/audit-trail/export_pdf/?${params.toString()}`, {
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${accessToken}`,
