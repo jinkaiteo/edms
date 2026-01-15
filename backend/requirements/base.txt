@@ -25,6 +25,7 @@ Pillow==10.0.1
 
 # Background Tasks & Cache
 celery==5.3.4
+django-celery-results==2.5.1  # Track task execution history for monitoring
 redis==5.0.1
 django-redis==5.4.0
 

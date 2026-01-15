@@ -30,14 +30,53 @@ const MarkObsoleteModal: React.FC<MarkObsoleteModalProps> = ({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [dependencyError, setDependencyError] = useState<string | null>(null);
+  const [validationResult, setValidationResult] = useState<any>(null);
+  const [showValidationDetails, setShowValidationDetails] = useState(false);
 
   const hasDependencies = dependencies.length > 0;
 
   useEffect(() => {
     if (isOpen) {
-      checkDocumentDependencies();
+      checkFamilyObsolescenceValidation();
     }
   }, [isOpen, document.uuid]);
+
+  const checkFamilyObsolescenceValidation = async () => {
+    try {
+      setCheckingDependencies(true);
+      setDependencyError(null);
+      
+      // Use new family-wide validation endpoint
+      const response = await apiService.get(`/documents/documents/${document.uuid}/validate-obsolescence/`);
+      
+      setValidationResult(response);
+      
+      if (!response.can_obsolete) {
+        setDependencyError(response.reason);
+        // Map blocking dependencies to old format for UI compatibility
+        const blockingDeps = response.blocking_dependencies.flatMap((bd: any) => 
+          bd.dependents.map((dep: any) => ({
+            document_number: dep.document_number,
+            document_display: dep.document_number,
+            document_status: dep.status,
+            title: dep.title,
+            version: bd.version
+          }))
+        );
+        setDependencies(blockingDeps);
+      } else {
+        setDependencies([]);
+        setDependencyError(null);
+      }
+    } catch (err: any) {
+      console.error('Error validating obsolescence:', err);
+      setDependencyError('Failed to validate document obsolescence. Please try again.');
+      // Fallback to old dependency check
+      checkDocumentDependencies();
+    } finally {
+      setCheckingDependencies(false);
+    }
+  };
 
   const checkDocumentDependencies = async () => {
     try {

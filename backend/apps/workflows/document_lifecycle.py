@@ -1452,33 +1452,36 @@ Document Details:
 
     def _send_task_assignment_notification_safe(self, task, assigned_by: User, assignee: User):
         """Send notification when a task is assigned - safe version that doesn't affect transactions."""
-    try:
-        # Import notification service
-        from apps.scheduler.notification_service import notification_service
-        
-        # Create notification data
-        notification_data = {
-            'task_id': str(workflow_task.uuid),
-            'task_name': task_type,
-            'task_description': task_type + " task",
-            'document_number': workflow_task.task_data.get('document_number', 'Unknown'),
-            'document_uuid': workflow_task.task_data.get('document_uuid', ''),
-            'assigned_by': assigned_by.get_full_name(),
-            'due_date': workflow_task.due_date.isoformat() if workflow_task.due_date else None,
-            'priority': workflow_task.priority
-        }
-        
-        # Send the notification - just send email, don't store in database to avoid field type issues
-        from django.core.mail import send_mail
-        from django.conf import settings
-        
-        subject = f"New Task Assigned: {task_type}"
-        message = f"""You have been assigned a new workflow task.
+        try:
+            # Import notification service
+            from apps.scheduler.notification_service import notification_service
+            
+            # Get task details from the task parameter
+            task_type = getattr(task, 'task_type', 'Workflow Task')
+            
+            # Create notification data
+            notification_data = {
+                'task_id': str(task.uuid) if hasattr(task, 'uuid') else 'unknown',
+                'task_name': task_type,
+                'task_description': task_type + " task",
+                'document_number': task.task_data.get('document_number', 'Unknown') if hasattr(task, 'task_data') else 'Unknown',
+                'document_uuid': task.task_data.get('document_uuid', '') if hasattr(task, 'task_data') else '',
+                'assigned_by': assigned_by.get_full_name(),
+                'due_date': task.due_date.isoformat() if hasattr(task, 'due_date') and task.due_date else None,
+                'priority': getattr(task, 'priority', 'NORMAL')
+            }
+            
+            # Send the notification - just send email, don't store in database to avoid field type issues
+            from django.core.mail import send_mail
+            from django.conf import settings
+            
+            subject = f"New Task Assigned: {task_type}"
+            message = f"""You have been assigned a new workflow task.
 
 Task: {task_type}
 Description: {task_type + " task"}
-Priority: {workflow_task.priority}
-Due Date: {workflow_task.due_date or 'Not specified'}
+Priority: {notification_data['priority']}
+Due Date: {task.due_date or 'Not specified' if hasattr(task, 'due_date') else 'Not specified'}
 Assigned by: {assigned_by.get_full_name()}
 
 Please log into EDMS to complete this task:
@@ -1487,20 +1490,20 @@ http://localhost:3000/my-tasks
 Document Details:
 - Number: {notification_data['document_number']}
 """
-        
-        send_mail(
-            subject,
-            message,
-            getattr(settings, 'DEFAULT_FROM_EMAIL', 'noreply@edms-project.com'),
-            [assignee.email],
-            fail_silently=True
-        )
-        
-        print(f"📧 Sent task assignment notification to {assignee.username}")
-        
-    except Exception as e:
-        print(f"⚠️ Failed to send task assignment notification (non-critical): {e}")
-        # Don't re-raise - notification failures shouldn't break workflow transitions
+            
+            send_mail(
+                subject,
+                message,
+                getattr(settings, 'DEFAULT_FROM_EMAIL', 'noreply@edms-project.com'),
+                [assignee.email],
+                fail_silently=True
+            )
+            
+            print(f"📧 Sent task assignment notification to {assignee.username}")
+            
+        except Exception as e:
+            print(f"⚠️ Failed to send task assignment notification (non-critical): {e}")
+            # Don't re-raise - notification failures shouldn't break workflow transitions
     
     def _send_task_notification_simple(self, task, assigned_by: User, assignee: User):
         """Send simple email notification without database storage to avoid transaction issues."""

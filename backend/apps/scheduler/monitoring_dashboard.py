@@ -17,12 +17,12 @@ from celery.events.state import State
 import json
 import logging
 
-from .automated_tasks import (
+from .tasks import (
     process_document_effective_dates,
     process_document_obsoletion_dates,
     check_workflow_timeouts,
     perform_system_health_check,
-    cleanup_workflow_tasks
+    cleanup_celery_results
 )
 from ..documents.models import Document
 from ..workflows.models import DocumentWorkflow
@@ -74,30 +74,13 @@ class SchedulerMonitoringService:
                 'icon': '🏥',
                 'celery_task': perform_system_health_check
             },
-            'cleanup_workflow_tasks': {
-                'name': 'Workflow Cleanup',
-                'description': 'Cleans up orphaned and obsolete workflow tasks',
-                'category': 'Maintenance',
-                'priority': 'LOW',
-                'icon': '🧹',
-                'celery_task': cleanup_workflow_tasks
-            },
-            # Backup System Tasks (S4 Module)
-            'run_scheduled_backup': {
-                'name': 'Scheduled Backup Execution',
-                'description': 'Execute scheduled database and file backups (daily/weekly/monthly)',
-                'category': 'Backup & Recovery',
-                'priority': 'CRITICAL',
-                'icon': '💾',
-                'celery_task': None  # Will be imported dynamically
-            },
-            'cleanup_old_backups': {
-                'name': 'Backup Retention Management',
-                'description': 'Remove old backups based on configured retention policies',
-                'category': 'Backup & Recovery',
+            'cleanup_celery_results': {
+                'name': 'Cleanup Celery Results',
+                'description': 'Cleans up old task execution records and REVOKED tasks from database',
+                'category': 'System Maintenance',
                 'priority': 'MEDIUM',
-                'icon': '🗑️',
-                'celery_task': None  # Will be imported dynamically
+                'icon': '🧹',
+                'celery_task': cleanup_celery_results
             }
         }
     
@@ -205,14 +188,22 @@ class SchedulerMonitoringService:
                     user_agent=getattr(user, '_current_user_agent', 'Manual Execution')
                 )
                 
-                # Execute the task
+                # Execute the task asynchronously so it gets saved to TaskResult
                 celery_task = task_info['celery_task']
                 
-                # Handle tasks that support dry_run parameter
-                if task_name == 'cleanup_workflow_tasks':
-                    result = celery_task.apply(kwargs={'dry_run': dry_run})
+                # Handle tasks that support parameters
+                if task_name == 'cleanup_celery_results':
+                    # This task supports days_to_keep and remove_revoked parameters
+                    async_result = celery_task.apply_async(kwargs={
+                        'days_to_keep': 7,
+                        'remove_revoked': True
+                    })
                 else:
-                    result = celery_task.apply()
+                    # Standard tasks with no parameters
+                    async_result = celery_task.apply_async()
+                
+                # Wait for the task to complete (with timeout)
+                result = async_result.get(timeout=30)
                 
                 end_time = timezone.now()
                 duration = (end_time - start_time).total_seconds()
@@ -224,9 +215,10 @@ class SchedulerMonitoringService:
                     description=f'Completed: {task_info["name"]}'[:200],
                     field_changes={
                         'task_name': task_name,
-                        'success': result.successful(),
+                        'task_id': async_result.id,
+                        'success': True,
                         'duration_seconds': duration,
-                        'result': result.result if result.successful() else str(result.result),
+                        'result': result,
                         'dry_run': dry_run
                     },
                     ip_address=getattr(user, '_current_ip', '127.0.0.1'),
@@ -234,12 +226,13 @@ class SchedulerMonitoringService:
                 )
                 
                 return {
-                    'success': result.successful(),
+                    'success': True,
                     'task_name': task_name,
                     'task_display_name': task_info['name'],
+                    'task_id': async_result.id,
                     'execution_time': start_time.isoformat(),
                     'duration_seconds': duration,
-                    'result': result.result if result.successful() else str(result.result),
+                    'result': result,
                     'dry_run': dry_run,
                     'executed_by': user.get_full_name() or user.username
                 }
@@ -282,8 +275,27 @@ class SchedulerMonitoringService:
             # Check worker statistics
             stats = inspect.stats() or {}
             
+            # CRITICAL: Check registered tasks in workers
+            registered_tasks_by_worker = inspect.registered() or {}
+            
             worker_count = len(active_workers)
             beat_status = 'RUNNING' if scheduled_tasks else 'UNKNOWN'
+            
+            # Define critical tasks that MUST be registered
+            critical_tasks = [
+                'apps.scheduler.automated_tasks.process_document_effective_dates',
+                'apps.scheduler.automated_tasks.process_document_obsoletion_dates',
+                'apps.scheduler.automated_tasks.check_workflow_timeouts',
+                'apps.scheduler.automated_tasks.perform_system_health_check',
+            ]
+            
+            # Check if critical tasks are registered
+            all_registered_tasks = []
+            for worker_tasks in registered_tasks_by_worker.values():
+                all_registered_tasks.extend(worker_tasks)
+            
+            missing_tasks = [task for task in critical_tasks if task not in all_registered_tasks]
+            tasks_registered = len(missing_tasks) == 0
             
             return {
                 'worker_count': worker_count,
@@ -291,7 +303,11 @@ class SchedulerMonitoringService:
                 'beat_status': beat_status,
                 'active_workers': list(active_workers.keys()),
                 'scheduled_task_count': sum(len(tasks) for tasks in scheduled_tasks.values()),
-                'worker_stats': stats
+                'worker_stats': stats,
+                'tasks_registered': tasks_registered,
+                'missing_critical_tasks': missing_tasks,
+                'total_registered_tasks': len(set(all_registered_tasks)),
+                'registered_scheduler_tasks': len([t for t in all_registered_tasks if 'scheduler' in t])
             }
             
         except Exception as e:
@@ -300,6 +316,7 @@ class SchedulerMonitoringService:
                 'worker_count': 0,
                 'workers_active': False,
                 'beat_status': 'ERROR',
+                'tasks_registered': False,
                 'error': str(e)
             }
     
@@ -407,26 +424,56 @@ class SchedulerMonitoringService:
             'components': {}
         }
         
-        # Celery workers (30 points)
+        # Celery workers (20 points)
         workers_active = celery_status.get('workers_active', False)
         worker_count = celery_status.get('worker_count', 0)
-        worker_score = 30 if workers_active else 0
+        worker_score = 20 if workers_active else 0
         score += worker_score
         breakdown['components']['celery_workers'] = {
             'score': worker_score,
-            'max_score': 30,
+            'max_score': 20,
             'status': 'healthy' if workers_active else 'unhealthy',
             'details': f'{worker_count} active worker(s)',
             'recommendation': 'Working properly' if workers_active else 'Start Celery workers to enable task processing'
         }
         
-        # Beat scheduler (20 points)
+        # Task Registration (20 points) - CRITICAL NEW CHECK
+        tasks_registered = celery_status.get('tasks_registered', False)
+        missing_tasks = celery_status.get('missing_critical_tasks', [])
+        registered_scheduler_tasks = celery_status.get('registered_scheduler_tasks', 0)
+        
+        if tasks_registered and registered_scheduler_tasks > 0:
+            task_reg_score = 20
+            task_reg_status = 'healthy'
+            task_reg_details = f'{registered_scheduler_tasks} scheduler tasks registered'
+            task_reg_recommendation = 'All critical tasks registered and ready'
+        elif registered_scheduler_tasks > 0 and not tasks_registered:
+            task_reg_score = 10
+            task_reg_status = 'warning'
+            task_reg_details = f'{len(missing_tasks)} critical tasks missing'
+            task_reg_recommendation = f'Restart Celery worker to register: {", ".join([t.split(".")[-1] for t in missing_tasks])}'
+        else:
+            task_reg_score = 0
+            task_reg_status = 'critical'
+            task_reg_details = 'No scheduler tasks registered'
+            task_reg_recommendation = 'CRITICAL: Restart Celery worker immediately - automated processing disabled!'
+        
+        score += task_reg_score
+        breakdown['components']['task_registration'] = {
+            'score': task_reg_score,
+            'max_score': 20,
+            'status': task_reg_status,
+            'details': task_reg_details,
+            'recommendation': task_reg_recommendation
+        }
+        
+        # Beat scheduler (10 points)
         beat_status = celery_status.get('beat_status', 'UNKNOWN')
-        beat_score = 20 if beat_status == 'RUNNING' else 0
+        beat_score = 10 if beat_status == 'RUNNING' else 0
         score += beat_score
         breakdown['components']['beat_scheduler'] = {
             'score': beat_score,
-            'max_score': 20,
+            'max_score': 10,
             'status': 'healthy' if beat_status == 'RUNNING' else 'unhealthy',
             'details': f'Beat scheduler: {beat_status}',
             'recommendation': 'Scheduler running normally' if beat_status == 'RUNNING' else 'Start Celery Beat to enable scheduled tasks'
@@ -584,6 +631,17 @@ class SchedulerMonitoringService:
                 'message': 'No Celery workers are active - automated tasks will not execute',
                 'action': 'Check Celery worker containers and restart if necessary'
             })
+        
+        # CRITICAL: Check if tasks are registered
+        if not celery_status.get('tasks_registered', False):
+            missing_tasks = celery_status.get('missing_critical_tasks', [])
+            if missing_tasks:
+                task_names = ', '.join([t.split('.')[-1] for t in missing_tasks[:3]])
+                alerts.append({
+                    'level': 'CRITICAL',
+                    'message': f'Critical scheduler tasks not registered: {task_names}',
+                    'action': 'Restart Celery worker with: docker compose restart celery_worker celery_beat'
+                })
         
         if celery_status.get('beat_status') != 'RUNNING':
             alerts.append({

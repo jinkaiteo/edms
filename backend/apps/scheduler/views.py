@@ -213,7 +213,7 @@ def execute_task_api(request, task_id):
         task = ScheduledTask.objects.get(pk=task_id)
         
         # Import task functions
-        from .automated_tasks import (
+        from .tasks import (
             process_document_effective_dates,
             process_document_obsoletion_dates,
             perform_system_health_check,

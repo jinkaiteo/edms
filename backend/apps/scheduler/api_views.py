@@ -260,7 +260,7 @@ class SystemStatusViewSet(viewsets.ViewSet):
     def health(self, request):
         """Get system health status."""
         try:
-            from .automated_tasks import perform_system_health_check
+            from .tasks import perform_system_health_check
             
             # Get recent health check result
             result = perform_system_health_check.apply()

@@ -1,7 +1,8 @@
 # Production Docker Compose for EDMS
 # Optimized for production deployment with standardized workflow system
 
-version: '3.8'
+# Note: 'version' attribute is obsolete in Docker Compose v2+
+# Docker Compose now uses the file format automatically
 
 services:
   # PostgreSQL Database - Production Configuration

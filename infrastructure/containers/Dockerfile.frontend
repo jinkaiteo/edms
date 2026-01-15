@@ -20,6 +20,9 @@ RUN npm ci
 # Copy project files
 COPY . .
 
+# Note: Running as root for development to avoid permission issues with volume mounts
+# In production, this should be changed to run as non-root user
+
 # Expose port
 EXPOSE 3000
 

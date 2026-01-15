@@ -190,21 +190,13 @@ class DocumentViewSet(viewsets.ModelViewSet):
             queryset = self._get_latest_obsolete_documents()
             
         elif filter_type == 'obsolete':
-            # Show all documents with obsolete-related statuses
-            queryset = queryset.filter(
-                status__in=['OBSOLETE', 'SCHEDULED_FOR_OBSOLESCENCE', 'SUPERSEDED']
-            ).order_by('-updated_at')
+            # Show ONLY latest version of obsolete document families
+            # SUPERSEDED documents are grouped with their family, not shown separately
+            queryset = self._get_latest_obsolete_documents()
             
         elif filter_type == 'library':
-            # Show documents for Document Library: approved, effective, and pending obsolescence
-            queryset = queryset.filter(
-                status__in=[
-                    'APPROVED_PENDING_EFFECTIVE',
-                    'APPROVED_AND_EFFECTIVE', 
-                    'EFFECTIVE',
-                    'SCHEDULED_FOR_OBSOLESCENCE'
-                ]
-            ).order_by('-updated_at')
+            # Show ONLY latest version of each active document family
+            queryset = self._get_latest_library_documents()
             
         else:
             # Default: show all documents ordered by creation date
@@ -263,14 +255,53 @@ class DocumentViewSet(viewsets.ModelViewSet):
             'author', 'reviewer', 'approver', 'document_type', 'document_source'
         ).order_by('-created_at')
     
+    def _get_latest_library_documents(self):
+        """Return latest version of each active document family for Document Library"""
+        import re
+        
+        # Get all library-eligible documents
+        library_docs = Document.objects.filter(
+            status__in=[
+                'APPROVED_PENDING_EFFECTIVE',
+                'APPROVED_AND_EFFECTIVE', 
+                'EFFECTIVE',
+                'SCHEDULED_FOR_OBSOLESCENCE'
+            ]
+        ).select_related('author', 'reviewer', 'approver', 'document_type', 'document_source')
+        
+        # Group by base document number
+        document_families = {}
+        for doc in library_docs:
+            # Extract base number: "SOP-2025-0001-v01.00" → "SOP-2025-0001"
+            base_number = re.sub(r'-v\d+\.\d+$', '', doc.document_number)
+            
+            if base_number not in document_families:
+                document_families[base_number] = []
+            document_families[base_number].append(doc)
+        
+        # Get latest version from each family
+        latest_docs = []
+        for base_number, docs in document_families.items():
+            # Sort by version (major descending, then minor descending)
+            latest_doc = max(docs, key=lambda d: (d.version_major, d.version_minor))
+            latest_docs.append(latest_doc)
+        
+        # Convert to queryset and order by updated date
+        latest_ids = [doc.id for doc in latest_docs]
+        return Document.objects.filter(
+            id__in=latest_ids
+        ).select_related(
+            'author', 'reviewer', 'approver', 'document_type', 'document_source'
+        ).order_by('-updated_at')
+    
     def _get_latest_obsolete_documents(self):
         """Return latest obsolete version of each document family"""
         from django.db.models import Max
         import re
         
-        # Get all obsolete documents
+        # Get all obsolete documents (include SCHEDULED_FOR_OBSOLESCENCE)
         obsolete_docs = Document.objects.filter(
-            status='OBSOLETE'
+            status__in=['OBSOLETE', 'SCHEDULED_FOR_OBSOLESCENCE']
         ).select_related('author', 'reviewer', 'approver', 'document_type', 'document_source')
         
         # Group by base document number
@@ -730,6 +761,75 @@ class DocumentViewSet(viewsets.ModelViewSet):
                 {'error': f'Failed to process .docx document: {str(e)}'},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
+    
+    @action(detail=True, methods=['get'], url_path='family-versions')
+    def get_family_versions(self, request, uuid=None):
+        """
+        Get all versions of the document's family.
+        
+        Returns all documents in the same family (same base document number),
+        ordered by version (newest first).
+        """
+        document = self.get_object()
+        import re
+        
+        # Extract base document number
+        base_number = re.sub(r'-v\d+\.\d+$', '', document.document_number)
+        
+        # Get all documents with this base number
+        family_documents = Document.objects.filter(
+            document_number__startswith=base_number
+        ).select_related(
+            'author', 'reviewer', 'approver', 'document_type', 'document_source'
+        ).order_by('-version_major', '-version_minor')
+        
+        # Filter to only documents that match the base pattern
+        # This prevents matching "SOP-2025-0001" with "SOP-2025-00010"
+        family_docs_filtered = []
+        for doc in family_documents:
+            doc_base = re.sub(r'-v\d+\.\d+$', '', doc.document_number)
+            if doc_base == base_number:
+                family_docs_filtered.append(doc)
+        
+        # Serialize and return
+        serializer = DocumentListSerializer(
+            family_docs_filtered, 
+            many=True, 
+            context={'request': request}
+        )
+        
+        return Response({
+            'base_document_number': base_number,
+            'total_versions': len(family_docs_filtered),
+            'versions': serializer.data
+        })
+    
+    @action(detail=True, methods=['get'], url_path='validate-obsolescence')
+    def validate_obsolescence(self, request, uuid=None):
+        """
+        Validate if this document family can be obsoleted.
+        
+        Checks all versions for active dependencies and returns
+        detailed validation results.
+        """
+        document = self.get_object()
+        
+        # Get validation results
+        validation = document.can_obsolete_family()
+        
+        return Response(validation)
+    
+    @action(detail=True, methods=['get'], url_path='family-dependency-summary')
+    def get_family_dependency_summary(self, request, uuid=None):
+        """
+        Get dependency summary for all versions in the document family.
+        """
+        document = self.get_object()
+        
+        # Get dependency summary
+        summary = document.get_family_dependency_summary()
+        
+        return Response(summary)
     
     @action(detail=True, methods=['get'], url_path='download/official')
     def download_official_pdf(self, request, uuid=None):

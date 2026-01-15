@@ -7,7 +7,7 @@ import SystemSettings from '../components/settings/SystemSettings.tsx';
 import AuditTrailViewer from '../components/audit/AuditTrailViewer.tsx';
 import Reports from '../components/reports/Reports.tsx';
 import LoadingSpinner from '../components/common/LoadingSpinner.tsx';
-import SchedulerStatusWidget from '../components/scheduler/SchedulerStatusWidget.tsx';
+import TaskListWidget from '../components/scheduler/TaskListWidget.tsx';
 // BackupManagement removed - backups now managed via CLI (see QUICK_START_BACKUP_RESTORE.md)
 import { useDashboardUpdates } from '../hooks/useDashboardUpdates.ts';
 import { DashboardStats } from '../types/api.ts';
@@ -52,12 +52,12 @@ const AdminDashboard: React.FC = () => {
 
   // Quick links to admin sections
   const adminQuickLinks = [
-    { name: 'User Management', href: '/admin?tab=users', icon: '👥', description: 'Manage users, roles, and permissions' },
-    { name: 'Placeholder Management', href: '/admin?tab=placeholders', icon: '🔧', description: 'Manage document placeholders' },
-    // Backup Management removed - now managed via CLI (./scripts/backup-hybrid.sh)
-    { name: 'Reports', href: '/admin?tab=reports', icon: '📊', description: 'Generate compliance reports' },
-    { name: 'Scheduler Dashboard', href: '/admin?tab=scheduler', icon: '🖥️', description: 'Monitor automated tasks' },
-    { name: 'Audit Trail', href: '/admin?tab=audit', icon: '📋', description: 'View system audit logs' },
+    { name: 'User Management', href: '/administration?tab=users', icon: '👥', description: 'Manage users, roles, and permissions' },
+    { name: 'Placeholder Management', href: '/administration?tab=placeholders', icon: '🔧', description: 'Manage document placeholders' },
+    { name: 'Backup Management', href: '/administration?tab=backup', icon: '💾', description: 'Manage system backups and restore' },
+    { name: 'Reports', href: '/administration?tab=reports', icon: '📊', description: 'Generate compliance reports' },
+    { name: 'Scheduler Dashboard', href: '/admin/scheduler', icon: '🖥️', description: 'Monitor automated tasks' },
+    { name: 'Audit Trail', href: '/administration?tab=audit', icon: '📋', description: 'View system audit logs' },
   ];
 
 
@@ -229,7 +229,7 @@ const AdminDashboard: React.FC = () => {
             </h3>
           </div>
           <div className="p-4">
-            <SchedulerStatusWidget detailed={true} />
+            <TaskListWidget />
           </div>
         </div>
 
@@ -387,7 +387,7 @@ const AdminDashboard: React.FC = () => {
       case 'reports':
         return <Reports />;
       case 'scheduler':
-        return <SchedulerStatusWidget showDetails={true} />;
+        return <TaskListWidget />;
       case 'audit':
         return <AuditTrailViewer />;
       case 'settings':

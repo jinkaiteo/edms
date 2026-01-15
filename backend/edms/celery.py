@@ -28,7 +28,7 @@ app.autodiscover_tasks()
 app.conf.beat_schedule = {
     # S3 Document Effective Date Processing - runs every hour
     'process-document-effective-dates': {
-        'task': 'apps.scheduler.automated_tasks.process_document_effective_dates',
+        'task': 'apps.scheduler.tasks.process_document_effective_dates',
         'schedule': crontab(minute=0),  # Every hour at minute 0
         'options': {
             'expires': 3600,  # Task expires after 1 hour
@@ -38,7 +38,7 @@ app.conf.beat_schedule = {
     
     # S3 Document Obsoletion Processing - runs every hour  
     'process-document-obsoletion-dates': {
-        'task': 'apps.scheduler.automated_tasks.process_document_obsoletion_dates',
+        'task': 'apps.scheduler.tasks.process_document_obsoletion_dates',
         'schedule': crontab(minute=15),  # Every hour at minute 15
         'options': {
             'expires': 3600,
@@ -48,7 +48,7 @@ app.conf.beat_schedule = {
     
     # S3 Workflow Timeout Monitoring - runs every 4 hours
     'check-workflow-timeouts': {
-        'task': 'apps.scheduler.automated_tasks.check_workflow_timeouts',
+        'task': 'apps.scheduler.tasks.check_workflow_timeouts',
         'schedule': crontab(minute=0, hour='*/4'),  # Every 4 hours
         'options': {
             'expires': 7200,  # Task expires after 2 hours
@@ -58,7 +58,7 @@ app.conf.beat_schedule = {
     
     # S3 System Health Check - runs every 30 minutes
     'perform-system-health-check': {
-        'task': 'apps.scheduler.automated_tasks.perform_system_health_check',
+        'task': 'apps.scheduler.tasks.perform_system_health_check',
         'schedule': crontab(minute='*/30'),  # Every 30 minutes
         'options': {
             'expires': 1800,  # Task expires after 30 minutes
@@ -66,87 +66,44 @@ app.conf.beat_schedule = {
         }
     },
     
-    # S3 Notification Queue Processing - runs every 5 minutes
-    'process-notification-queue': {
-        'task': 'apps.scheduler.notification_service.process_notification_queue',
-        'schedule': crontab(minute='*/5'),  # Every 5 minutes
-        'options': {
-            'expires': 300,   # Task expires after 5 minutes
-            'priority': 9,    # Highest priority
-        }
-    },
+    # Note: Notification tasks disabled - not yet implemented
+    # These are placeholders that currently do nothing (process 0 notifications)
+    # Uncomment when notification system is ready:
+    #
+    # 'process-notification-queue': {
+    #     'task': 'apps.scheduler.notification_service.process_notification_queue',
+    #     'schedule': crontab(minute='*/5'),
+    # },
+    # 'send-daily-summary': {
+    #     'task': 'apps.scheduler.notification_service.send_daily_summary_notifications',
+    #     'schedule': crontab(hour=8, minute=0),
+    # },
     
-    # S3 Daily Summary Notifications - runs daily at 8 AM
-    'send-daily-summary': {
-        'task': 'apps.scheduler.notification_service.send_daily_summary_notifications',
-        'schedule': crontab(hour=8, minute=0),  # Daily at 8 AM
-        'options': {
-            'expires': 3600,  # Task expires after 1 hour
-            'priority': 7,    # High priority
-        }
-    },
+    # Note: Workflow cleanup tasks removed - WorkflowTask model no longer exists
+    # The cleanup_workflow_tasks function is now a no-op since WorkflowTask was
+    # replaced with document-filtering approach. No cleanup needed.
     
-    # S3 Workflow Task Cleanup - runs every 6 hours
-    'cleanup-workflow-tasks': {
-        'task': 'apps.scheduler.automated_tasks.cleanup_workflow_tasks',
-        'schedule': crontab(minute=0, hour='*/6'),  # 00:00, 06:00, 12:00, 18:00
-        'kwargs': {'dry_run': False},
+    # S4 Celery Results Cleanup - runs daily at 3 AM
+    'cleanup-celery-results': {
+        'task': 'apps.scheduler.celery_cleanup.cleanup_celery_results',
+        'schedule': crontab(minute=0, hour=3),  # Daily at 03:00
+        'kwargs': {'days_to_keep': 7, 'remove_revoked': True},
         'options': {
             'expires': 3600,  # Task expires after 1 hour
-            'priority': 6,    # Medium priority
+            'priority': 5,    # Low priority maintenance
         }
     },
     
-    # S3 Weekly Comprehensive Cleanup - runs Sundays at 2 AM
-    'weekly-comprehensive-cleanup': {
-        'task': 'apps.scheduler.automated_tasks.cleanup_workflow_tasks',
-        'schedule': crontab(minute=0, hour=2, day_of_week=0),  # Sunday 02:00
-        'kwargs': {'dry_run': False},
-        'options': {
-            'expires': 7200,  # Task expires after 2 hours
-            'priority': 5,    # Lower priority for weekly maintenance
-        }
-    },
-    
-    # Hybrid Backup System - Daily Backup - runs daily at 2 AM
-    'hybrid-backup-daily': {
-        'task': 'apps.core.tasks.run_hybrid_backup',
-        'schedule': crontab(minute=0, hour=2),  # Daily at 02:00
-        'options': {
-            'expires': 3600,  # Task expires after 1 hour
-            'priority': 9,    # Highest priority - critical infrastructure
-        }
-    },
-    
-    # Hybrid Backup System - Weekly Backup - runs Sundays at 3 AM
-    'hybrid-backup-weekly': {
-        'task': 'apps.core.tasks.run_hybrid_backup',
-        'schedule': crontab(minute=0, hour=3, day_of_week=0),  # Sunday 03:00
-        'options': {
-            'expires': 7200,  # Task expires after 2 hours
-            'priority': 8,    # High priority
-        }
-    },
-    
-    # Hybrid Backup System - Monthly Backup - runs 1st of month at 4 AM
-    'hybrid-backup-monthly': {
-        'task': 'apps.core.tasks.run_hybrid_backup',
-        'schedule': crontab(minute=0, hour=4, day_of_month=1),  # 1st of month at 04:00
-        'options': {
-            'expires': 10800,  # Task expires after 3 hours
-            'priority': 7,     # High priority
-        }
-    },
-    
-    # Note: Old backup cleanup task removed - implement simple file cleanup if needed
+    # Note: Backup tasks removed - handled by host-level cron jobs
+    # See: crontab -l for active backup schedule (daily, weekly, monthly)
 }
 
 # Task routing configuration
 app.conf.task_routes = {
     'apps.documents.tasks.*': {'queue': 'documents'},
     'apps.workflows.tasks.*': {'queue': 'workflows'},
-    'apps.scheduler.automated_tasks.cleanup_workflow_tasks': {'queue': 'maintenance'},
-    'apps.scheduler.automated_tasks.*': {'queue': 'scheduler'},
+    'apps.scheduler.tasks.cleanup_workflow_tasks': {'queue': 'maintenance'},
+    'apps.scheduler.tasks.*': {'queue': 'scheduler'},
     'apps.audit.tasks.*': {'queue': 'maintenance'},
 }
 
