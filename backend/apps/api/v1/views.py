@@ -694,7 +694,7 @@ class AuditTrailViewSet(viewsets.ReadOnlyModelViewSet):
                 entry.timestamp.strftime('%Y-%m-%d %H:%M:%S') if entry.timestamp else '',
                 entry.user.username if entry.user else 'System',
                 entry.action,
-                entry.object_type or '',
+                str(entry.content_type) if entry.content_type else '',  # Fixed: use content_type instead of object_type
                 entry.object_id or '',
                 entry.description or '',
                 entry.ip_address or '',
