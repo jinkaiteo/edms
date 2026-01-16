@@ -39,10 +39,13 @@ export const useDashboardUpdates = (options: UseDashboardUpdatesOptions = {}) =>
         throw new Error('No authentication token found');
       }
 
-      const response = await fetch('/api/v1/dashboard/stats/', {
+      const response = await fetch(`/api/v1/dashboard/stats/?_=${Date.now()}`, {
         headers: {
           'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/json',
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          'Pragma': 'no-cache',
+          'Expires': '0'
         }
       });
 
@@ -52,21 +55,11 @@ export const useDashboardUpdates = (options: UseDashboardUpdatesOptions = {}) =>
 
       const data = await response.json();
       
-      // DEBUG: Log dashboard data structure
-      console.log('🔍 Dashboard Stats Received:', {
-        hasRecentActivity: !!data.recent_activity,
-        recentActivityLength: data.recent_activity?.length || 0,
-        firstActivity: data.recent_activity?.[0],
-        allKeys: Object.keys(data)
+      console.log('📊 Dashboard API Data:', {
+        has_stat_cards: !!data.stat_cards,
+        stat_cards: data.stat_cards,
+        system_health: data.stat_cards?.system_health
       });
-      
-      if (data.recent_activity && data.recent_activity.length > 0) {
-        console.log('📋 Recent Activities:', data.recent_activity.map((a: any) => ({
-          title: a.title,
-          user: a.user,
-          icon: a.icon
-        })));
-      }
       
       setDashboardStats(data);
       

@@ -12,7 +12,6 @@ from drf_spectacular.views import (
     SpectacularAPIView, SpectacularRedocView, SpectacularSwaggerView
 )
 from apps.api.news_feed_views import my_documents, recent_notifications, system_status
-from apps.api import dashboard_api_views
 from apps.api.v1 import change_password_views, session_auth_views
 # my_tasks import removed - using document filters instead
 # task_views removed - using document filters instead
@@ -116,9 +115,7 @@ urlpatterns = [
     path('status/', APIStatusView.as_view(), name='api-status'),
     path('info/', APIInfoView.as_view(), name='api-info'),
     path('health/', APIHealthView.as_view(), name='api-health'),
-    path('dashboard/stats/', dashboard_api_views.get_dashboard_stats, name='dashboard-stats'),
-    path('dashboard/activity/', dashboard_api_views.get_recent_activity, name='dashboard-activity'),
-    path('dashboard/overview/', dashboard_api_views.get_dashboard_overview, name='dashboard-overview'),
+    # Dashboard endpoints removed - use /api/v1/dashboard/stats/ from edms/urls.py instead
     
     # Search analytics
     path('search/analytics/', SearchAnalyticsView.as_view(), name='search-analytics'),

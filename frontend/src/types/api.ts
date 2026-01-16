@@ -577,6 +577,27 @@ export interface ActivityItem {
 }
 
 export interface DashboardStats {
+  user_stats: {
+    total_documents: number;
+    pending_tasks: number;
+    my_documents: number;
+    action_required: number;
+  };
+  system_stats: {
+    total_documents: number;
+    active_workflows: number;
+    total_users: number;
+    system_status: string;
+  };
+  document_breakdown: Record<string, number>;
+  // New stat cards
+  stat_cards?: {
+    total_documents: number;
+    documents_needing_action: number;
+    active_users_24h: number;
+    system_health: 'healthy' | 'degraded' | 'down';
+  };
+  // Legacy fields
   total_documents: number;
   pending_reviews: number;
   active_workflows: number;
@@ -586,6 +607,8 @@ export interface DashboardStats {
   recent_activity: ActivityItem[];
   timestamp: string;
   cache_duration: number;
+  last_updated: string;
+  success: boolean;
 }
 
 // Notification types

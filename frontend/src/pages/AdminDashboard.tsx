@@ -52,12 +52,12 @@ const AdminDashboard: React.FC = () => {
 
   // Quick links to admin sections
   const adminQuickLinks = [
-    { name: 'User Management', href: '/administration?tab=users', icon: '👥', description: 'Manage users, roles, and permissions' },
-    { name: 'Placeholder Management', href: '/administration?tab=placeholders', icon: '🔧', description: 'Manage document placeholders' },
-    { name: 'Backup Management', href: '/administration?tab=backup', icon: '💾', description: 'Manage system backups and restore' },
-    { name: 'Reports', href: '/administration?tab=reports', icon: '📊', description: 'Generate compliance reports' },
-    { name: 'Scheduler Dashboard', href: '/admin/scheduler', icon: '🖥️', description: 'Monitor automated tasks' },
-    { name: 'Audit Trail', href: '/administration?tab=audit', icon: '📋', description: 'View system audit logs' },
+    { name: 'User Management', href: '/administration?tab=users', icon: '👥', description: 'Manage users, roles, and permissions', external: false },
+    { name: 'Placeholder Management', href: '/administration?tab=placeholders', icon: '🔧', description: 'Manage document placeholders', external: false },
+    { name: 'Backup Management', href: '/administration?tab=backup', icon: '💾', description: 'Manage system backups and restore', external: false },
+    { name: 'Reports', href: '/administration?tab=reports', icon: '📊', description: 'Generate compliance reports', external: false },
+    { name: 'Scheduler Dashboard', href: '/administration?tab=scheduler', icon: '🖥️', description: 'Monitor automated tasks', external: false },
+    { name: 'Audit Trail', href: '/administration?tab=audit', icon: '📋', description: 'View system audit logs', external: false },
   ];
 
 
@@ -151,75 +151,102 @@ const AdminDashboard: React.FC = () => {
         </div>
       </div>
 
-      {/* Quick Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+      {/* Quick Stats Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
+        {/* Card 1: Total Documents */}
+        <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200 hover:shadow-md transition-shadow">
           <div className="flex items-center">
             <div className="flex-shrink-0">
-              <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center">
-                <span className="text-green-600 text-lg">👥</span>
+              <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
+                <span className="text-blue-600 text-2xl">📄</span>
               </div>
             </div>
-            <div className="ml-5 w-0 flex-1">
-              <dl>
-                <dt className="text-sm font-medium text-gray-500 truncate">Active Users</dt>
-                <dd className="text-lg font-medium text-gray-900">{dashboardStats.active_users}</dd>
-              </dl>
+            <div className="ml-4 flex-1">
+              <dt className="text-sm font-medium text-gray-500 truncate">Total Documents</dt>
+              <dd className="text-2xl font-bold text-gray-900 mt-1">
+                {dashboardStats.stat_cards?.total_documents ?? 0}
+              </dd>
             </div>
           </div>
         </div>
 
-        <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+        {/* Card 2: Documents Needing Action */}
+        <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200 hover:shadow-md transition-shadow">
           <div className="flex items-center">
             <div className="flex-shrink-0">
-              <div className="w-8 h-8 bg-purple-100 rounded-full flex items-center justify-center">
-                <span className="text-purple-600 text-lg">🔄</span>
+              <div className="w-12 h-12 bg-orange-100 rounded-lg flex items-center justify-center">
+                <span className="text-orange-600 text-2xl">✅</span>
               </div>
             </div>
-            <div className="ml-5 w-0 flex-1">
-              <dl>
-                <dt className="text-sm font-medium text-gray-500 truncate">Active Workflows</dt>
-                <dd className="text-lg font-medium text-gray-900">{dashboardStats.active_workflows}</dd>
-              </dl>
+            <div className="ml-4 flex-1">
+              <dt className="text-sm font-medium text-gray-500 truncate">Docs Needing Action</dt>
+              <dd className="text-2xl font-bold text-gray-900 mt-1">
+                {dashboardStats.stat_cards?.documents_needing_action ?? 0}
+              </dd>
             </div>
           </div>
         </div>
 
-        <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+        {/* Card 3: Active Users (24h) */}
+        <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200 hover:shadow-md transition-shadow">
           <div className="flex items-center">
             <div className="flex-shrink-0">
-              <div className="w-8 h-8 bg-orange-100 rounded-full flex items-center justify-center">
-                <span className="text-orange-600 text-lg">🔧</span>
+              <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
+                <span className="text-green-600 text-2xl">👥</span>
               </div>
             </div>
-            <div className="ml-5 w-0 flex-1">
-              <dl>
-                <dt className="text-sm font-medium text-gray-500 truncate">Placeholders</dt>
-                <dd className="text-lg font-medium text-gray-900">{dashboardStats.placeholders}</dd>
-              </dl>
+            <div className="ml-4 flex-1">
+              <dt className="text-sm font-medium text-gray-500 truncate">Active Users (24h)</dt>
+              <dd className="text-2xl font-bold text-gray-900 mt-1">
+                {dashboardStats.stat_cards?.active_users_24h ?? 0}
+              </dd>
             </div>
           </div>
         </div>
 
-        <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+        {/* Card 4: System Health */}
+        <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200 hover:shadow-md transition-shadow">
           <div className="flex items-center">
             <div className="flex-shrink-0">
-              <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
-                <span className="text-blue-600 text-lg">📋</span>
+              <div className={`w-12 h-12 rounded-lg flex items-center justify-center ${
+                dashboardStats.stat_cards?.system_health === 'healthy' 
+                  ? 'bg-green-100' 
+                  : dashboardStats.stat_cards?.system_health === 'degraded'
+                  ? 'bg-yellow-100'
+                  : 'bg-red-100'
+              }`}>
+                <span className={`text-2xl ${
+                  dashboardStats.stat_cards?.system_health === 'healthy'
+                    ? 'text-green-600'
+                    : dashboardStats.stat_cards?.system_health === 'degraded'
+                    ? 'text-yellow-600'
+                    : 'text-red-600'
+                }`}>
+                  {dashboardStats.stat_cards?.system_health === 'healthy' ? '⚡' : 
+                   dashboardStats.stat_cards?.system_health === 'degraded' ? '⚠️' : '❌'}
+                </span>
               </div>
             </div>
-            <div className="ml-5 w-0 flex-1">
-              <dl>
-                <dt className="text-sm font-medium text-gray-500 truncate">Audit Entries (24h)</dt>
-                <dd className="text-lg font-medium text-gray-900">{dashboardStats.audit_entries_24h}</dd>
-              </dl>
+            <div className="ml-4 flex-1">
+              <dt className="text-sm font-medium text-gray-500 truncate">System Health</dt>
+              <dd className={`text-2xl font-bold mt-1 ${
+                dashboardStats.stat_cards?.system_health === 'healthy'
+                  ? 'text-green-600'
+                  : dashboardStats.stat_cards?.system_health === 'degraded'
+                  ? 'text-yellow-600'
+                  : 'text-red-600'
+              }`}>
+                {dashboardStats.stat_cards?.system_health === 'healthy' ? 'Healthy' : 
+                 dashboardStats.stat_cards?.system_health === 'degraded' ? 'Degraded' : 
+                 dashboardStats.stat_cards?.system_health ? 'Issues' : 'Loading...'}
+              </dd>
             </div>
           </div>
         </div>
       </div>
 
       {/* System Status Dashboard */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Scheduler Status Widget */}
         <div className="bg-white rounded-lg shadow-sm border border-gray-200">
           <div className="p-4 border-b border-gray-200">
@@ -245,63 +272,41 @@ const AdminDashboard: React.FC = () => {
           <div className="p-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {adminQuickLinks.map((link) => (
-                <Link
-                  key={link.name}
-                  to={link.href}
-                  className="flex items-center justify-between p-4 bg-gray-50 hover:bg-blue-50 rounded-lg transition-colors border border-gray-200 hover:border-blue-300"
-                >
-                  <div className="flex items-center">
-                    <span className="text-2xl mr-3">{link.icon}</span>
-                    <div className="text-left">
-                      <div className="font-medium text-gray-900">{link.name}</div>
-                      <div className="text-sm text-gray-500">{link.description}</div>
+                link.external ? (
+                  <a
+                    key={link.name}
+                    href={link.href}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center justify-between p-4 bg-gray-50 hover:bg-blue-50 rounded-lg transition-colors border border-gray-200 hover:border-blue-300"
+                  >
+                    <div className="flex items-center">
+                      <span className="text-2xl mr-3">{link.icon}</span>
+                      <div className="text-left">
+                        <div className="font-medium text-gray-900">{link.name}</div>
+                        <div className="text-sm text-gray-500">{link.description}</div>
+                      </div>
                     </div>
-                  </div>
-                  <span className="text-gray-400">→</span>
-                </Link>
+                    <span className="text-gray-400">↗</span>
+                  </a>
+                ) : (
+                  <Link
+                    key={link.name}
+                    to={link.href}
+                    className="flex items-center justify-between p-4 bg-gray-50 hover:bg-blue-50 rounded-lg transition-colors border border-gray-200 hover:border-blue-300"
+                  >
+                    <div className="flex items-center">
+                      <span className="text-2xl mr-3">{link.icon}</span>
+                      <div className="text-left">
+                        <div className="font-medium text-gray-900">{link.name}</div>
+                        <div className="text-sm text-gray-500">{link.description}</div>
+                      </div>
+                    </div>
+                    <span className="text-gray-400">→</span>
+                  </Link>
+                )
               ))}
             </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Recent Activity */}
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200">
-        <div className="p-6">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">Recent Admin Activities</h3>
-          {/* DEBUG INFO */}
-          {console.log('🎨 Rendering Recent Activities:', {
-            activityCount: dashboardStats.recent_activity?.length || 0,
-            firstActivity: dashboardStats.recent_activity?.[0]
-          })}
-          <div className="space-y-3">
-            {dashboardStats.recent_activity.length === 0 ? (
-              <div className="flex items-center justify-center p-8 bg-gray-50 rounded-lg">
-                <div className="text-center">
-                  <div className="w-12 h-12 mx-auto mb-3 bg-gray-200 rounded-full flex items-center justify-center">
-                    <span className="text-gray-400 text-xl">📊</span>
-                  </div>
-                  <p className="text-sm text-gray-500">No recent admin activities</p>
-                  <p className="text-xs text-gray-400 mt-1">Activities will appear when administrators perform system changes</p>
-                </div>
-              </div>
-            ) : (
-              dashboardStats.recent_activity.map((activity, index) => (
-                <div key={activity.id} className="flex items-center space-x-3 p-3 bg-gray-50 rounded-lg">
-                  <div className="flex-shrink-0">
-                    <div className={`w-8 h-8 rounded-full flex items-center justify-center ${activity.iconColor}`}>
-                      <span className="text-white">{activity.icon}</span>
-                    </div>
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm text-gray-900">{activity.title}</p>
-                    <p className="text-xs text-gray-500">
-                      by {activity.user} • {new Date(activity.timestamp).toLocaleString()}
-                    </p>
-                  </div>
-                </div>
-              ))
-            )}
           </div>
         </div>
       </div>
@@ -316,6 +321,16 @@ const AdminDashboard: React.FC = () => {
         return <UserManagement />;
       case 'placeholders':
         return <PlaceholderManagement />;
+      case 'scheduler':
+        return (
+          <div className="bg-white shadow rounded-lg p-6">
+            <h2 className="text-2xl font-semibold text-gray-900 mb-6 flex items-center">
+              <span className="mr-2">🖥️</span>
+              Scheduler Dashboard
+            </h2>
+            <TaskListWidget />
+          </div>
+        );
       case 'backup':
         // Backup management now handled via CLI - show instructions
         return (

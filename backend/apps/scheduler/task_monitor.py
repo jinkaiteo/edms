@@ -23,22 +23,22 @@ class TaskMonitor:
     
     # Define critical tasks and their categories
     TASK_DEFINITIONS = {
-        'apps.scheduler.automated_tasks.process_document_effective_dates': {
+        'apps.scheduler.tasks.process_document_effective_dates': {
             'name': 'Process Effective Dates',
             'category': 'Document Processing',
             'description': 'Auto-activates documents that reached their effective date'
         },
-        'apps.scheduler.automated_tasks.process_document_obsoletion_dates': {
+        'apps.scheduler.tasks.process_document_obsoletion_dates': {
             'name': 'Process Obsolescence Dates',
             'category': 'Document Processing',
             'description': 'Auto-obsoletes documents that reached their obsolescence date'
         },
-        'apps.scheduler.automated_tasks.check_workflow_timeouts': {
+        'apps.scheduler.tasks.check_workflow_timeouts': {
             'name': 'Check Workflow Timeouts',
             'category': 'Workflow Management',
             'description': 'Monitors workflows for timeouts and sends escalations'
         },
-        'apps.scheduler.automated_tasks.perform_system_health_check': {
+        'apps.scheduler.tasks.perform_system_health_check': {
             'name': 'System Health Check',
             'category': 'System Maintenance',
             'description': 'Performs comprehensive system health validation'

@@ -154,7 +154,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
           { name: 'Placeholder Management', href: '/administration?tab=placeholders', icon: DocumentTextIcon },
           { name: 'Backup Management', href: '/administration?tab=backup', icon: ServerIcon },
           { name: 'Reports', href: '/administration?tab=reports', icon: ChartBarIcon },
-          { name: 'Scheduler Dashboard', href: '/admin/scheduler', icon: ComputerDesktopIcon },
+          { name: 'Scheduler Dashboard', href: '/administration?tab=scheduler', icon: ComputerDesktopIcon },
           { name: 'Audit Trail', href: '/administration?tab=audit', icon: ShieldCheckIcon },
           // { name: 'System Settings', href: '/administration?tab=settings', icon: Cog6ToothIcon }, // Disabled - not yet implemented
         ]

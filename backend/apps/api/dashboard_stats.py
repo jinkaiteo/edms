@@ -64,6 +64,25 @@ class DashboardStatsView(APIView):
                 
                 recent_activities = cursor.fetchall()
                 
+                # Calculate stat cards data INSIDE the with block
+                # 1. Total Documents - already have it
+                # 2. Documents Needing Action
+                cursor.execute("""
+                    SELECT COUNT(*) FROM documents 
+                    WHERE status IN ('PENDING_REVIEW', 'PENDING_APPROVAL', 'UNDER_REVIEW')
+                """)
+                documents_needing_action = cursor.fetchone()[0]
+                
+                # 3. Active Users (24h) - users who logged in within last 24 hours
+                cursor.execute("""
+                    SELECT COUNT(DISTINCT user_id) FROM login_audit 
+                    WHERE timestamp >= %s AND success = true
+                """, [twenty_four_hours_ago])
+                active_users_24h = cursor.fetchone()[0]
+                
+            # 4. System Health (outside cursor block is fine)
+            system_health = 'healthy'  # If we got here, system is operational
+            
             activity_list = []
             for audit in recent_activities:
                 activity_item = {
@@ -86,6 +105,13 @@ class DashboardStatsView(APIView):
                 'placeholders': placeholders_count,
                 'audit_entries_24h': audit_entries_24h,
                 'recent_activity': activity_list,
+                # New stat cards
+                'stat_cards': {
+                    'total_documents': total_documents_count,
+                    'documents_needing_action': documents_needing_action,
+                    'active_users_24h': active_users_24h,
+                    'system_health': system_health
+                },
                 'timestamp': timezone.now().isoformat(),
                 'cache_duration': 300  # 5 minutes cache suggestion
             })
