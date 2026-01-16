@@ -565,7 +565,8 @@ class DocumentViewSet(viewsets.ModelViewSet):
                     depends_on=latest_effective,
                     dependency_type=dep.dependency_type,
                     created_by=user,
-                    notes=f"Auto-copied from v{source_document.version_major}.{source_document.version_minor} (resolved to latest effective)"
+                    description=f"Auto-copied from v{source_document.version_major}.{source_document.version_minor} (resolved to latest effective)",
+                    is_critical=dep.is_critical
                 )
             else:
                 # Fallback: copy as-is if no effective version found
@@ -574,7 +575,8 @@ class DocumentViewSet(viewsets.ModelViewSet):
                     depends_on=depends_on_doc,
                     dependency_type=dep.dependency_type,
                     created_by=user,
-                    notes=f"Auto-copied from v{source_document.version_major}.{source_document.version_minor}"
+                    description=f"Auto-copied from v{source_document.version_major}.{source_document.version_minor}",
+                    is_critical=dep.is_critical
                 )
     
     def _find_latest_effective_version(self, base_doc_number):
