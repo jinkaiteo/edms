@@ -134,13 +134,16 @@ class SchedulerMonitoringService:
         """
         Manually execute a scheduled task with full audit trail.
         
+        MODIFIED: Returns immediately after queuing task (fire-and-forget pattern).
+        Task execution status can be checked via Celery results or dashboard refresh.
+        
         Args:
             task_name: Name of the task to execute
             user: User requesting the execution
             dry_run: Whether to perform a dry run (for applicable tasks)
         
         Returns:
-            Execution result with status and details
+            Task queuing result with task_id for status tracking
         """
         if task_name not in self.available_tasks:
             return {
@@ -152,113 +155,95 @@ class SchedulerMonitoringService:
         task_info = self.available_tasks[task_name]
         
         try:
-            with transaction.atomic():
-                # Create audit record for manual execution
-                start_time = timezone.now()
-                
-                # Get an existing user for audit trail
-                from django.contrib.auth import get_user_model
-                User = get_user_model()
-                if not user or not user.is_authenticated:
-                    # Use the first available staff user or admin user
-                    user = User.objects.filter(is_staff=True, is_active=True).first()
-                    if not user:
-                        # If no staff users exist, use any active user
-                        user = User.objects.filter(is_active=True).first()
-                    if not user:
-                        # If no users exist at all, create a minimal system user
-                        user = User.objects.create(
-                            username='admin',
-                            email='admin@edms.local',
-                            is_staff=True,
-                            is_active=True
-                        )
-                
-                AuditTrail.objects.create(
-                    user=user,
-                    action='TASK_EXECUTION_STARTED',
-                    description=f'Manual execution: {task_info["name"]}'[:200],
-                    field_changes={
-                        'task_name': task_name,
-                        'task_description': task_info['description'],
-                        'dry_run': dry_run,
-                        'execution_time': start_time.isoformat()
-                    },
-                    ip_address=getattr(user, '_current_ip', '127.0.0.1'),
-                    user_agent=getattr(user, '_current_user_agent', 'Manual Execution')
-                )
-                
-                # Execute the task asynchronously so it gets saved to TaskResult
-                celery_task = task_info['celery_task']
-                
-                # Handle tasks that support parameters
-                if task_name == 'cleanup_celery_results':
-                    # This task supports days_to_keep and remove_revoked parameters
-                    async_result = celery_task.apply_async(kwargs={
-                        'days_to_keep': 7,
-                        'remove_revoked': True
-                    })
-                else:
-                    # Standard tasks with no parameters
-                    async_result = celery_task.apply_async()
-                
-                # Wait for the task to complete (with timeout)
-                result = async_result.get(timeout=30)
-                
-                end_time = timezone.now()
-                duration = (end_time - start_time).total_seconds()
-                
-                # Create completion audit record
-                AuditTrail.objects.create(
-                    user=user,
-                    action='TASK_EXECUTION_COMPLETED',
-                    description=f'Completed: {task_info["name"]}'[:200],
-                    field_changes={
-                        'task_name': task_name,
-                        'task_id': async_result.id,
-                        'success': True,
-                        'duration_seconds': duration,
-                        'result': result,
-                        'dry_run': dry_run
-                    },
-                    ip_address=getattr(user, '_current_ip', '127.0.0.1'),
-                    user_agent=getattr(user, '_current_user_agent', 'Manual Execution')
-                )
-                
-                return {
-                    'success': True,
-                    'task_name': task_name,
-                    'task_display_name': task_info['name'],
-                    'task_id': async_result.id,
-                    'execution_time': start_time.isoformat(),
-                    'duration_seconds': duration,
-                    'result': result,
-                    'dry_run': dry_run,
-                    'executed_by': user.get_full_name() or user.username
-                }
-                
-        except Exception as e:
-            logger.error(f"Failed to execute task {task_name}: {str(e)}")
+            # Get an existing user for audit trail
+            from django.contrib.auth import get_user_model
+            User = get_user_model()
+            if not user or not user.is_authenticated:
+                # Use the first available staff user or admin user
+                user = User.objects.filter(is_staff=True, is_active=True).first()
+                if not user:
+                    # If no staff users exist, use any active user
+                    user = User.objects.filter(is_active=True).first()
+                if not user:
+                    # If no users exist at all, create a minimal system user
+                    user = User.objects.create(
+                        username='admin',
+                        email='admin@edms.local',
+                        is_staff=True,
+                        is_active=True
+                    )
             
-            # Create error audit record
+            start_time = timezone.now()
+            
+            # Create audit record for manual execution
             AuditTrail.objects.create(
                 user=user,
-                action='TASK_EXECUTION_FAILED',
-                description=f'Failed: {task_info["name"]} - {str(e)}'[:200],
+                action='TASK_EXECUTION_STARTED',
+                description=f'Manual execution: {task_info["name"]}'[:200],
                 field_changes={
                     'task_name': task_name,
-                    'error': str(e),
-                    'dry_run': dry_run
+                    'task_description': task_info['description'],
+                    'dry_run': dry_run,
+                    'execution_time': start_time.isoformat()
                 },
                 ip_address=getattr(user, '_current_ip', '127.0.0.1'),
                 user_agent=getattr(user, '_current_user_agent', 'Manual Execution')
             )
             
+            # Execute the task asynchronously
+            celery_task = task_info['celery_task']
+            
+            # Handle tasks that support parameters
+            if task_name == 'cleanup_celery_results':
+                # This task supports days_to_keep and remove_revoked parameters
+                async_result = celery_task.apply_async(kwargs={
+                    'days_to_keep': 7,
+                    'remove_revoked': True
+                })
+            else:
+                # Standard tasks with no parameters
+                async_result = celery_task.apply_async()
+            
+            # Return immediately with task_id instead of waiting (fire-and-forget)
+            # This prevents timeout issues and provides better UX
+            logger.info(f"Task {task_name} queued successfully with ID: {async_result.id}")
+            
+            return {
+                'success': True,
+                'task_name': task_name,
+                'task_display_name': task_info['name'],
+                'task_id': async_result.id,
+                'execution_time': start_time.isoformat(),
+                'status': 'queued',
+                'message': 'Task queued successfully. Check task list for execution results.',
+                'executed_by': user.get_full_name() or user.username
+            }
+                
+        except Exception as e:
+            logger.error(f"Failed to queue task {task_name}: {str(e)}")
+            
+            # Create error audit record
+            try:
+                AuditTrail.objects.create(
+                    user=user,
+                    action='TASK_EXECUTION_FAILED',
+                    description=f'Failed to queue: {task_info["name"]} - {str(e)}'[:200],
+                    field_changes={
+                        'task_name': task_name,
+                        'error': str(e),
+                        'dry_run': dry_run
+                    },
+                    ip_address=getattr(user, '_current_ip', '127.0.0.1'),
+                    user_agent=getattr(user, '_current_user_agent', 'Manual Execution')
+                )
+            except Exception as audit_error:
+                logger.error(f"Failed to create audit record: {str(audit_error)}")
+            
             return {
                 'success': False,
                 'task_name': task_name,
                 'error': str(e),
-                'executed_by': user.get_full_name() or user.username
+                'executed_by': user.get_full_name() or user.username if user else 'Unknown'
             }
     
     def _check_celery_workers(self):

@@ -94,13 +94,25 @@ const TaskListWidget: React.FC = () => {
         task_name: backendTaskName
       });
       
-      // Immediate feedback - refresh data to show new execution
-      await fetchTaskStatus();
-      
-      alert(`✅ Task executed successfully!\n\nTask: ${taskName}\nDuration: ${result.duration_seconds?.toFixed(2)}s\n\nThe dashboard has been refreshed.`);
+      // Check if task was queued successfully
+      if (result.success) {
+        alert(
+          `✅ Task queued successfully!\n\n` +
+          `Task: ${taskName}\n` +
+          `Task ID: ${result.task_id}\n` +
+          `Status: ${result.status}\n\n` +
+          `The task is now running in the background. ` +
+          `The dashboard will update automatically when it completes.`
+        );
+        
+        // Refresh after a short delay to show updated status
+        setTimeout(() => fetchTaskStatus(), 2000);
+      } else {
+        alert(`❌ Failed to queue task: ${result.error || 'Unknown error'}`);
+      }
     } catch (err: any) {
       console.error('Failed to trigger task:', err);
-      alert(`Failed to trigger task: ${err.response?.data?.error || err.message}`);
+      alert(`❌ Failed to trigger task: ${err.response?.data?.error || err.message}`);
     } finally {
       setTriggeringTask(null);
     }
