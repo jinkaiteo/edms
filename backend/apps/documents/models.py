@@ -646,6 +646,40 @@ class Document(models.Model):
                     ]
                 })
         
+        # Check if there's a newer version that's not OBSOLETE/SUPERSEDED
+        # If so, this version should be SUPERSEDED, not OBSOLETE
+        import re
+        base_number = re.sub(r'-v\d+\.\d+$', '', self.document_number)
+        newer_versions = Document.objects.filter(
+            document_number__startswith=base_number,
+            version_major__gte=self.version_major
+        ).exclude(
+            status__in=['OBSOLETE', 'SUPERSEDED', 'TERMINATED']
+        ).exclude(
+            uuid=self.uuid
+        )
+        
+        # Filter to ensure version is actually higher
+        truly_newer = []
+        for doc in newer_versions:
+            if (doc.version_major > self.version_major or 
+                (doc.version_major == self.version_major and doc.version_minor > self.version_minor)):
+                truly_newer.append(doc)
+        
+        if truly_newer:
+            newest = max(truly_newer, key=lambda d: (d.version_major, d.version_minor))
+            return {
+                'can_obsolete': False,
+                'reason': f'Cannot obsolete: A newer version exists ({newest.document_number} v{newest.version_major}.{newest.version_minor}). This document should be marked as SUPERSEDED instead.',
+                'blocking_dependencies': [],
+                'newer_version': {
+                    'uuid': str(newest.uuid),
+                    'document_number': newest.document_number,
+                    'version': f'{newest.version_major}.{newest.version_minor}',
+                    'status': newest.status
+                }
+            }
+        
         if blocking_dependencies:
             total_blocking = sum(bd['dependent_count'] for bd in blocking_dependencies)
             

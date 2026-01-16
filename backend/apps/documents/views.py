@@ -195,8 +195,10 @@ class DocumentViewSet(viewsets.ModelViewSet):
             queryset = self._get_latest_obsolete_documents()
             
         elif filter_type == 'library':
-            # Show ONLY latest version of each active document family
-            queryset = self._get_latest_library_documents()
+            # Show ALL versions of active document families (frontend will group them)
+            queryset = queryset.filter(
+                status__in=['EFFECTIVE', 'APPROVED_PENDING_EFFECTIVE', 'SCHEDULED_FOR_OBSOLESCENCE', 'SUPERSEDED']
+            ).order_by('-updated_at')
             
         else:
             # Default: show all documents ordered by creation date
@@ -207,12 +209,13 @@ class DocumentViewSet(viewsets.ModelViewSet):
                     Q(author=user) |
                     Q(reviewer=user) |
                     Q(approver=user) |
-                    # Show approved/effective documents to all authenticated users
+                    # Show approved/effective documents to all authenticated users (including SUPERSEDED for family grouping)
                     Q(status__in=[
                         'APPROVED_AND_EFFECTIVE',
                         'EFFECTIVE',
                         'APPROVED_PENDING_EFFECTIVE',
-                        'SCHEDULED_FOR_OBSOLESCENCE'
+                        'SCHEDULED_FOR_OBSOLESCENCE',
+                        'SUPERSEDED'  # Include SUPERSEDED so frontend can show document families
                     ])
                 ).distinct()
             
@@ -514,6 +517,9 @@ class DocumentViewSet(viewsets.ModelViewSet):
                 is_controlled=document.is_controlled,
             )
             
+            # Copy dependencies to new version (smart copying with latest effective version resolution)
+            self._copy_dependencies_smart(document, new_document, request.user)
+            
             # Log version creation
             log_document_access(
                 document=new_document,
@@ -533,6 +539,58 @@ class DocumentViewSet(viewsets.ModelViewSet):
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    
+    def _copy_dependencies_smart(self, source_document, target_document, user):
+        """
+        Smart dependency copying for upversioning.
+        Copies dependencies but automatically resolves to latest EFFECTIVE version of each dependency.
+        """
+        from apps.documents.models import DocumentDependency
+        import re
+        
+        source_dependencies = DocumentDependency.objects.filter(document=source_document)
+        
+        for dep in source_dependencies:
+            # Get the base document number of the dependency
+            depends_on_doc = dep.depends_on
+            base_number = re.sub(r'-v\d+\.\d+$', '', depends_on_doc.document_number)
+            
+            # Find the latest EFFECTIVE version of this document family
+            latest_effective = self._find_latest_effective_version(base_number)
+            
+            if latest_effective:
+                # Create dependency pointing to latest effective version
+                DocumentDependency.objects.create(
+                    document=target_document,
+                    depends_on=latest_effective,
+                    dependency_type=dep.dependency_type,
+                    created_by=user,
+                    notes=f"Auto-copied from v{source_document.version_major}.{source_document.version_minor} (resolved to latest effective)"
+                )
+            else:
+                # Fallback: copy as-is if no effective version found
+                DocumentDependency.objects.create(
+                    document=target_document,
+                    depends_on=depends_on_doc,
+                    dependency_type=dep.dependency_type,
+                    created_by=user,
+                    notes=f"Auto-copied from v{source_document.version_major}.{source_document.version_minor}"
+                )
+    
+    def _find_latest_effective_version(self, base_doc_number):
+        """
+        Find the latest EFFECTIVE version of a document family.
+        Returns None if no effective version exists.
+        """
+        from apps.documents.models import Document
+        
+        # Find all documents with this base number that are EFFECTIVE
+        effective_docs = Document.objects.filter(
+            document_number__startswith=base_doc_number,
+            status='EFFECTIVE'
+        ).order_by('-version_major', '-version_minor')
+        
+        return effective_docs.first() if effective_docs.exists() else None
     
     @action(detail=True, methods=['get'], url_path='download/original')
     def download_original(self, request, uuid=None):
