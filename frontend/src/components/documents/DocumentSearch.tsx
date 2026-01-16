@@ -169,36 +169,7 @@ const DocumentSearch: React.FC<DocumentSearchProps> = ({
   };
 
   // Context-aware quick filters - using actual DB values
-  const getQuickFilters = () => {
-    switch (filterContext) {
-      case 'library':
-        return [
-          { label: 'Effective Documents', onClick: () => updateFilter('status', ['EFFECTIVE']), color: 'green' },
-          { label: 'Drafts', onClick: () => updateFilter('status', ['DRAFT']), color: 'gray' },
-          { label: 'Pending Actions', onClick: () => updateFilter('status', ['PENDING_REVIEW', 'PENDING_APPROVAL']), color: 'yellow' },
-          { label: 'Pending Effective', onClick: () => updateFilter('status', ['APPROVED_PENDING_EFFECTIVE']), color: 'blue' },
-          { label: 'Policies Only', onClick: () => updateFilter('document_type', ['Policy']), color: 'purple' },
-          { label: 'SOPs Only', onClick: () => updateFilter('document_type', ['Work Instructions']), color: 'indigo' },
-        ];
-      case 'tasks':
-        return [
-          { label: 'Policies Only', onClick: () => updateFilter('document_type', ['Policy']), color: 'purple' },
-          { label: 'SOPs Only', onClick: () => updateFilter('document_type', ['Work Instructions']), color: 'indigo' },
-          { label: 'Procedures Only', onClick: () => updateFilter('document_type', ['Procedures']), color: 'blue' },
-          { label: 'Forms Only', onClick: () => updateFilter('document_type', ['Forms and Templates']), color: 'green' },
-        ];
-      case 'obsolete':
-        return [
-          { label: 'Superseded', onClick: () => updateFilter('status', ['SUPERSEDED']), color: 'orange' },
-          { label: 'Terminated', onClick: () => updateFilter('status', ['TERMINATED']), color: 'red' },
-          { label: 'Scheduled for Obsolescence', onClick: () => updateFilter('status', ['SCHEDULED_FOR_OBSOLESCENCE']), color: 'yellow' },
-          { label: 'Policies Only', onClick: () => updateFilter('document_type', ['Policy']), color: 'purple' },
-          { label: 'SOPs Only', onClick: () => updateFilter('document_type', ['Work Instructions']), color: 'indigo' },
-        ];
-      default:
-        return [];
-    }
-  };
+  // Quick filters removed per user request
 
   return (
     <div className={`bg-white rounded-lg shadow-sm border border-gray-200 ${className}`}>
@@ -469,33 +440,7 @@ const DocumentSearch: React.FC<DocumentSearchProps> = ({
           </div>
         )}
 
-        {/* Context-Aware Quick Filters */}
-        <div className="mt-4">
-          <div className="flex flex-wrap gap-2">
-            {getQuickFilters().map((filter, index) => {
-              const colorMap: Record<string, string> = {
-                green: 'bg-green-100 text-green-800 hover:bg-green-200',
-                gray: 'bg-gray-100 text-gray-800 hover:bg-gray-200',
-                yellow: 'bg-yellow-100 text-yellow-800 hover:bg-yellow-200',
-                blue: 'bg-blue-100 text-blue-800 hover:bg-blue-200',
-                purple: 'bg-purple-100 text-purple-800 hover:bg-purple-200',
-                indigo: 'bg-indigo-100 text-indigo-800 hover:bg-indigo-200',
-                orange: 'bg-orange-100 text-orange-800 hover:bg-orange-200',
-                red: 'bg-red-100 text-red-800 hover:bg-red-200'
-              };
-              
-              return (
-                <button
-                  key={index}
-                  onClick={filter.onClick}
-                  className={`px-3 py-1 text-xs font-medium rounded-full ${colorMap[filter.color]}`}
-                >
-                  {filter.label}
-                </button>
-              );
-            })}
-          </div>
-        </div>
+        {/* Quick filters removed */}
       </div>
     </div>
   );

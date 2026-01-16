@@ -781,6 +781,57 @@ docker compose up -d backend
 **Prevention**: After adding new Python files (models, views, management commands), always rebuild the Docker image. Code changes to existing files can hot-reload, but new files require image rebuild.
 
 **Efficient Pattern**: Create a rebuild script that stops service → rebuilds image → restarts service → waits for health check.
+
+## Backend API Multiple View Files Pattern
+
+### Always Check Which View File Is Actually Being Called
+
+**Problem Pattern**: When multiple view files exist with similar names (e.g., `dashboard_api_views.py` and `dashboard_stats.py`), you may edit the wrong file and wonder why changes don't take effect.
+
+**Example from session**:
+- Edited `dashboard_api_views.py` extensively, added stat_cards logic
+- Backend kept returning old data structure
+- Added debug logging - nothing appeared in logs
+- Spent 18 iterations debugging before discovering URL routing used `dashboard_stats.py` instead
+
+**Root Cause**: URL configuration pointed to a different view file than expected.
+
+**Solution**:
+```bash
+# 1. First check which view is actually being called
+grep -r "dashboard/stats" backend/edms/urls.py backend/apps/api/urls.py
+
+# 2. Check URL patterns to find actual view
+python manage.py show_urls | grep dashboard
+# OR
+from django.urls import get_resolver
+# Inspect actual routing
+
+# 3. Then edit the CORRECT file
+```
+
+**Prevention**: Before editing views for an API endpoint, always verify which file the URL routing actually calls. Don't assume based on file names.
+
+## Backend Filter Logic and Frontend Display
+
+### Verify Backend API Returns Data Before Debugging Frontend
+
+**Problem Pattern**: Frontend not displaying data → immediately debug frontend code → turns out backend filtered the data out.
+
+**Example from session**:
+- Frontend document list not showing POL-2026-0001 v1.0 (SUPERSEDED)
+- Family grouping code was correct
+- Issue: Backend `library` filter only returned latest version, filtered out SUPERSEDED
+- Also: Default query excluded SUPERSEDED status from allowed statuses
+
+**Debugging Steps**:
+1. Check browser network tab - is API returning the data?
+2. Check backend filter logic for that endpoint
+3. Check backend queryset for status exclusions
+4. THEN debug frontend display logic
+
+**Prevention**: When frontend doesn't display expected data, check backend API response FIRST before debugging frontend components. Use browser DevTools Network tab or `curl` to inspect actual API responses.
+
 ## Docker Container Rebuild Pattern
 
 ### Python Code Changes Require Image Rebuild, Not Just Restart

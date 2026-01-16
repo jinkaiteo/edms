@@ -43,8 +43,8 @@ const DocumentList: React.FC<DocumentListProps> = ({
   const [sortBy, setSortBy] = useState<'title' | 'created_at' | 'status' | 'document_type'>('created_at');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
-  // Smart default: show inactive documents by default on Obsolete Documents page
-  const [showInactive, setShowInactive] = useState(filterType === 'obsolete');
+  // Hide inactive documents EXCEPT on Obsolete Documents page
+  const showInactive = filterType === 'obsolete';
 
   // Helper function to extract base document number (remove version suffix)
   const getBaseDocumentNumber = (documentNumber: string): string => {
@@ -313,22 +313,6 @@ const DocumentList: React.FC<DocumentListProps> = ({
             <h3 className="text-lg font-medium text-gray-900">Documents</h3>
             
             <div className="flex items-center space-x-4">
-              {/* Show Inactive Documents Toggle */}
-              <label className="flex items-center space-x-2 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={filterType === 'obsolete' ? !showInactive : showInactive}
-                  onChange={(e) => setShowInactive(filterType === 'obsolete' ? !e.target.checked : e.target.checked)}
-                  className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 focus:ring-2"
-                />
-                <span className="text-sm font-medium text-gray-700">
-                  {filterType === 'obsolete' 
-                    ? `Hide Obsolete (${documents.filter(doc => doc.status === 'OBSOLETE' || doc.status === 'TERMINATED').length})`
-                    : `Show Inactive (${documents.filter(doc => doc.status === 'OBSOLETE' || doc.status === 'TERMINATED').length})`
-                  }
-                </span>
-              </label>
-              
               {/* Sort dropdown */}
               <select
                 value={sortBy + '-' + sortOrder}
@@ -337,7 +321,7 @@ const DocumentList: React.FC<DocumentListProps> = ({
                   setSortBy(field as typeof sortBy);
                   setSortOrder(order as 'asc' | 'desc');
                 }}
-                className="border border-gray-300 rounded-md px-3 py-2 text-sm"
+                className="border border-gray-300 rounded-md px-3 py-2 pr-8 text-sm bg-white"
               >
                 <option value="created_at-desc">Newest First</option>
                 <option value="created_at-asc">Oldest First</option>
@@ -369,10 +353,7 @@ const DocumentList: React.FC<DocumentListProps> = ({
 
         {filteredDocuments.length === 0 ? (
           <div className="text-center py-8 text-gray-500">
-            {filterType === 'obsolete' 
-              ? (showInactive ? 'No obsolete documents found.' : 'No scheduled documents found. Toggle "Hide Obsolete" to see all obsolete documents.')
-              : (showInactive ? 'No documents found.' : 'No active documents found. Toggle "Show Inactive" to see obsolete and terminated documents.')
-            }
+            No documents found.
           </div>
         ) : viewMode === 'list' ? (
           // Grouped list view with version history
