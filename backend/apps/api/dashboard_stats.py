@@ -28,12 +28,15 @@ class DashboardStatsView(APIView):
                 cursor.execute("SELECT COUNT(*) FROM users WHERE is_active = true")
                 active_users_count = cursor.fetchone()[0]
                 
-                # Active workflows count
-                cursor.execute("SELECT COUNT(*) FROM workflow_instances WHERE is_active = true")
+                # Active workflows count - FIXED: use correct table name
+                cursor.execute("""
+                    SELECT COUNT(*) FROM document_workflows 
+                    WHERE is_terminated = false
+                """)
                 active_workflows_count = cursor.fetchone()[0]
                 
-                # Placeholders count
-                cursor.execute("SELECT COUNT(*) FROM placeholder_definitions")
+                # Placeholders count - FIXED: use correct table name
+                cursor.execute("SELECT COUNT(*) FROM placeholders")
                 placeholders_count = cursor.fetchone()[0]
                 
                 # Audit entries in last 24 hours
@@ -49,9 +52,10 @@ class DashboardStatsView(APIView):
                 total_documents_count = cursor.fetchone()[0]
                 
                 # Pending reviews count (documents in review state)
-                cursor.execute(
-                    "SELECT COUNT(*) FROM workflow_instances WHERE state ILIKE '%review%' AND is_active = true"
-                )
+                cursor.execute("""
+                    SELECT COUNT(*) FROM documents 
+                    WHERE status IN ('PENDING_REVIEW', 'UNDER_REVIEW')
+                """)
                 pending_reviews_count = cursor.fetchone()[0]
                 
                 # Recent activity (last 5 audit entries)
@@ -117,9 +121,11 @@ class DashboardStatsView(APIView):
             })
             
         except Exception as e:
+            import traceback
             return Response({
                 'error': 'Failed to fetch dashboard statistics',
                 'detail': str(e),
+                'traceback': traceback.format_exc(),
                 'fallback_data': {
                     'total_documents': 0,
                     'pending_reviews': 0,
@@ -128,6 +134,12 @@ class DashboardStatsView(APIView):
                     'placeholders': 0,
                     'audit_entries_24h': 0,
                     'recent_activity': [],
+                    'stat_cards': {
+                        'total_documents': 0,
+                        'documents_needing_action': 0,
+                        'active_users_24h': 0,
+                        'system_health': 'unknown'
+                    },
                     'timestamp': timezone.now().isoformat(),
                     'cache_duration': 0
                 }
