@@ -365,6 +365,93 @@ class Command(BaseCommand):
                 'data_source': 'COMPUTED',
                 'source_field': 'DIGITAL_SIGNATURE',
                 'default_value': 'This document has been electronically processed and validated by the Electronic Document Management System (EDMS). For verification, contact your system administrator.'
+            },
+            
+            # Additional placeholders to reach 32 total
+            {
+                'name': 'DOC_DESCRIPTION',
+                'display_name': 'Document Description',
+                'description': 'Document description or summary',
+                'placeholder_type': 'DOCUMENT',
+                'data_source': 'DOCUMENT_MODEL',
+                'source_field': 'description',
+                'default_value': ''
+            },
+            {
+                'name': 'AUTHOR_EMAIL',
+                'display_name': 'Author Email',
+                'description': 'Document author email address',
+                'placeholder_type': 'USER',
+                'data_source': 'USER_MODEL',
+                'source_field': 'email',
+                'default_value': ''
+            },
+            {
+                'name': 'REVIEWER_EMAIL',
+                'display_name': 'Reviewer Email',
+                'description': 'Document reviewer email address',
+                'placeholder_type': 'USER',
+                'data_source': 'USER_MODEL',
+                'source_field': 'email',
+                'default_value': ''
+            },
+            {
+                'name': 'APPROVER_EMAIL',
+                'display_name': 'Approver Email',
+                'description': 'Document approver email address',
+                'placeholder_type': 'USER',
+                'data_source': 'USER_MODEL',
+                'source_field': 'email',
+                'default_value': ''
+            },
+            {
+                'name': 'CREATED_DATE_LONG',
+                'display_name': 'Created Date (Long)',
+                'description': 'Document creation date (long format)',
+                'placeholder_type': 'DATE',
+                'data_source': 'DOCUMENT_MODEL',
+                'source_field': 'created_at',
+                'default_value': '',
+                'format_string': '%B %d, %Y'
+            },
+            {
+                'name': 'APPROVAL_DATE_LONG',
+                'display_name': 'Approval Date (Long)',
+                'description': 'Document approval date (long format)',
+                'placeholder_type': 'DATE',
+                'data_source': 'DOCUMENT_MODEL',
+                'source_field': 'approval_date',
+                'default_value': '',
+                'format_string': '%B %d, %Y'
+            },
+            {
+                'name': 'EFFECTIVE_DATE_LONG',
+                'display_name': 'Effective Date (Long)',
+                'description': 'Document effective date (long format)',
+                'placeholder_type': 'DATE',
+                'data_source': 'DOCUMENT_MODEL',
+                'source_field': 'effective_date',
+                'default_value': '',
+                'format_string': '%B %d, %Y'
+            },
+            {
+                'name': 'DOWNLOAD_DATETIME',
+                'display_name': 'Download DateTime',
+                'description': 'Current download date and time',
+                'placeholder_type': 'DATE',
+                'data_source': 'COMPUTED',
+                'source_field': 'NOW',
+                'default_value': '',
+                'format_string': '%Y-%m-%d %H:%M:%S'
+            },
+            {
+                'name': 'FILE_NAME',
+                'display_name': 'File Name',
+                'description': 'Original file name',
+                'placeholder_type': 'DOCUMENT',
+                'data_source': 'DOCUMENT_MODEL',
+                'source_field': 'file_name',
+                'default_value': ''
             }
         ]
         
