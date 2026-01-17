@@ -146,6 +146,7 @@ services:
       --loglevel=warning
       --concurrency=4
       --max-tasks-per-child=1000
+      -Q celery,scheduler,documents,workflows,maintenance
 
   # Celery Beat - Production Configuration
   celery_beat:
