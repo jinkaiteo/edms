@@ -840,6 +840,16 @@ initialize_database() {
     fi
     
     echo ""
+    print_step "Initializing placeholders (32 standard placeholders)..."
+    echo ""
+    
+    if docker compose -f docker-compose.prod.yml exec -T backend python manage.py setup_placeholders; then
+        print_success "Placeholders initialized (32 placeholders for document annotation)"
+    else
+        print_warning "Placeholder initialization had warnings (may already exist)"
+    fi
+    
+    echo ""
     print_step "Initializing workflow defaults..."
     echo ""
     
@@ -857,6 +867,49 @@ initialize_database() {
         print_success "Test user roles assigned (author01, reviewer01, approver01)"
     else
         print_warning "Role assignment had warnings (may already exist)"
+    fi
+    
+    echo ""
+    print_step "Initializing Celery Beat scheduler (5 automated tasks)..."
+    echo ""
+    
+    if docker compose -f docker-compose.prod.yml exec -T backend python manage.py shell -c "
+from django_celery_beat.models import PeriodicTask, CrontabSchedule
+from edms.celery import app
+
+beat_schedule = app.conf.beat_schedule
+created_count = 0
+
+for name, config in beat_schedule.items():
+    task_path = config['task']
+    schedule_config = config['schedule']
+    
+    if hasattr(schedule_config, 'minute'):
+        crontab, _ = CrontabSchedule.objects.get_or_create(
+            minute=str(schedule_config.minute),
+            hour=str(schedule_config.hour),
+            day_of_week=str(schedule_config.day_of_week),
+            day_of_month=str(schedule_config.day_of_month),
+            month_of_year=str(schedule_config.month_of_year),
+        )
+        
+        task, was_created = PeriodicTask.objects.get_or_create(
+            name=name,
+            defaults={
+                'task': task_path,
+                'crontab': crontab,
+                'enabled': True
+            }
+        )
+        
+        if was_created:
+            created_count += 1
+
+print(f'Scheduler initialized: {created_count} new tasks created, {PeriodicTask.objects.count()} total')
+"; then
+        print_success "Celery Beat scheduler initialized (automated tasks: effective dates, obsoletion, health checks)"
+    else
+        print_warning "Scheduler initialization had warnings (tasks may already exist)"
     fi
     
     echo ""
