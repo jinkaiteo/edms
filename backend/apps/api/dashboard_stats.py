@@ -35,8 +35,8 @@ class DashboardStatsView(APIView):
                 """)
                 active_workflows_count = cursor.fetchone()[0]
                 
-                # Placeholders count - FIXED: use correct table name
-                cursor.execute("SELECT COUNT(*) FROM placeholders")
+                # Placeholders count - FIXED: use correct table name for production
+                cursor.execute("SELECT COUNT(*) FROM placeholder_definitions")
                 placeholders_count = cursor.fetchone()[0]
                 
                 # Audit entries in last 24 hours
