@@ -94,6 +94,26 @@ app.conf.beat_schedule = {
         }
     },
     
+    # S2 Data Integrity Checks - runs daily at 2 AM
+    'run-daily-integrity-check': {
+        'task': 'apps.audit.integrity_tasks.run_daily_integrity_check',
+        'schedule': crontab(minute=0, hour=2),  # Daily at 02:00
+        'options': {
+            'expires': 3600,  # Task expires after 1 hour
+            'priority': 7,    # High priority compliance
+        }
+    },
+    
+    # S2 Audit Trail Checksum Verification - runs weekly on Sunday at 1 AM
+    'verify-audit-trail-checksums': {
+        'task': 'apps.audit.integrity_tasks.verify_audit_trail_checksums',
+        'schedule': crontab(minute=0, hour=1, day_of_week=0),  # Weekly Sunday at 01:00
+        'options': {
+            'expires': 7200,  # Task expires after 2 hours
+            'priority': 7,    # High priority compliance
+        }
+    },
+    
     # Note: Backup tasks removed - handled by host-level cron jobs
     # See: crontab -l for active backup schedule (daily, weekly, monthly)
 }

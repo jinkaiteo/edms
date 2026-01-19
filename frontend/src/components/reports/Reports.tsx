@@ -7,7 +7,7 @@ interface ComplianceReport {
   id: string;
   uuid: string;
   name: string;
-  report_type: 'CFR_PART_11' | 'USER_ACTIVITY' | 'DOCUMENT_LIFECYCLE' | 'ACCESS_CONTROL' | 'SECURITY_EVENTS' | 'SYSTEM_CHANGES' | 'SIGNATURE_VERIFICATION' | 'DATA_INTEGRITY' | 'CUSTOM';
+  report_type: 'CFR_PART_11' | 'USER_ACTIVITY' | 'DOCUMENT_LIFECYCLE' | 'ACCESS_CONTROL' | 'SECURITY_EVENTS' | 'SYSTEM_CHANGES' | 'DATA_INTEGRITY' | 'CUSTOM';
   description: string;
   date_from: string;
   date_to: string;
@@ -53,63 +53,73 @@ const Reports: React.FC<ReportsProps> = ({ className = '' }) => {
   });
   const { user } = useAuth();
 
-  // Available report types
+  // Available report types with data availability status
   const reportTypes = [
     {
       value: 'CFR_PART_11',
       label: '21 CFR Part 11 Compliance',
       description: 'Comprehensive compliance report for FDA regulations',
       icon: '📋',
-      color: 'bg-blue-500'
+      color: 'bg-blue-500',
+      dataStatus: 'partial' // Has audit trail data
     },
     {
       value: 'USER_ACTIVITY',
       label: 'User Activity Report',
       description: 'Detailed user login and activity tracking',
       icon: '👥',
-      color: 'bg-green-500'
+      color: 'bg-green-500',
+      dataStatus: 'partial' // Has audit data but no login tracking yet
     },
     {
       value: 'DOCUMENT_LIFECYCLE',
       label: 'Document Lifecycle Report',
       description: 'Document creation, modification, and approval tracking',
       icon: '📄',
-      color: 'bg-purple-500'
+      color: 'bg-purple-500',
+      dataStatus: 'ready' // Has document data
     },
     {
       value: 'ACCESS_CONTROL',
       label: 'Access Control Report',
       description: 'User permissions and role assignment tracking',
       icon: '🔐',
-      color: 'bg-orange-500'
+      color: 'bg-orange-500',
+      dataStatus: 'limited' // No role assignment data yet
     },
     {
       value: 'SECURITY_EVENTS',
       label: 'Security Events Report',
       description: 'Security incidents and access violations',
       icon: '🛡️',
-      color: 'bg-red-500'
+      color: 'bg-red-500',
+      dataStatus: 'limited' // Will populate with usage
     },
     {
       value: 'SYSTEM_CHANGES',
       label: 'System Changes Report',
       description: 'Configuration and system modification tracking',
       icon: '⚙️',
-      color: 'bg-gray-500'
+      color: 'bg-gray-500',
+      dataStatus: 'limited' // Minimal system change data
     },
-    {
-      value: 'SIGNATURE_VERIFICATION',
-      label: 'Digital Signature Report',
-      description: 'Electronic signature validation and integrity',
-      icon: '✍️',
-      color: 'bg-indigo-500'
-    },
+    // Digital Signature Report removed - not implemented
+    // Uncomment when digital signature module is complete:
+    // {
+    //   value: 'SIGNATURE_VERIFICATION',
+    //   label: 'Digital Signature Report',
+    //   description: 'Electronic signature validation and integrity',
+    //   icon: '✍️',
+    //   color: 'bg-indigo-500',
+    //   dataStatus: 'not-implemented'
+    // },
     {
       value: 'DATA_INTEGRITY',
       label: 'Data Integrity Report',
       description: 'Database integrity checks and validation results',
       icon: '🔍',
-      color: 'bg-teal-500'
+      color: 'bg-teal-500',
+      dataStatus: 'setup-required' // Needs scheduled checks
     }
   ];
 
@@ -306,30 +316,58 @@ const Reports: React.FC<ReportsProps> = ({ className = '' }) => {
 
       {/* Quick Report Types Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        {reportTypes.map((reportType) => (
-          <div
-            key={reportType.value}
-            className="bg-white p-6 rounded-lg shadow-sm border border-gray-200 hover:border-blue-200 cursor-pointer transition-colors"
-            onClick={() => {
-              setSelectedReportType(reportType.value);
-              setShowGenerateModal(true);
-            }}
-          >
-            <div className="flex items-center">
-              <div className={`w-10 h-10 ${reportType.color} rounded-lg flex items-center justify-center text-white text-lg`}>
-                {reportType.icon}
+        {reportTypes.map((reportType) => {
+          // Data availability badge
+          const getDataBadge = (status: string) => {
+            switch (status) {
+              case 'ready':
+                return { text: 'Ready', color: 'bg-green-100 text-green-800', icon: '✓' };
+              case 'partial':
+                return { text: 'Partial Data', color: 'bg-yellow-100 text-yellow-800', icon: '⚠' };
+              case 'limited':
+                return { text: 'Limited Data', color: 'bg-orange-100 text-orange-800', icon: '◐' };
+              case 'setup-required':
+                return { text: 'Setup Required', color: 'bg-blue-100 text-blue-800', icon: '⚙' };
+              default:
+                return { text: 'Available', color: 'bg-gray-100 text-gray-800', icon: '●' };
+            }
+          };
+
+          const badge = getDataBadge(reportType.dataStatus || 'available');
+
+          return (
+            <div
+              key={reportType.value}
+              className="bg-white p-6 rounded-lg shadow-sm border border-gray-200 hover:border-blue-200 cursor-pointer transition-colors relative"
+              onClick={() => {
+                setSelectedReportType(reportType.value);
+                setShowGenerateModal(true);
+              }}
+            >
+              {/* Data Status Badge */}
+              <div className="absolute top-2 right-2">
+                <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${badge.color}`}>
+                  <span className="mr-1">{badge.icon}</span>
+                  {badge.text}
+                </span>
               </div>
-              <div className="ml-4 flex-1 min-w-0">
-                <p className="text-sm font-medium text-gray-900 truncate">
-                  {reportType.label}
-                </p>
-                <p className="text-xs text-gray-500">
-                  Click to generate
-                </p>
+
+              <div className="flex items-center">
+                <div className={`w-10 h-10 ${reportType.color} rounded-lg flex items-center justify-center text-white text-lg`}>
+                  {reportType.icon}
+                </div>
+                <div className="ml-4 flex-1 min-w-0 pr-20">
+                  <p className="text-sm font-medium text-gray-900 truncate">
+                    {reportType.label}
+                  </p>
+                  <p className="text-xs text-gray-500">
+                    Click to generate
+                  </p>
+                </div>
               </div>
             </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
 
       {/* Error Display */}
