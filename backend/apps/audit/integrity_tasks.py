@@ -77,29 +77,40 @@ def run_daily_integrity_check():
     
     try:
         # Verify document files exist and checksums match
-        documents = Document.objects.filter(is_active=True)
+        documents = Document.objects.filter(is_active=True).exclude(file_path='')
         total_docs = documents.count()
         missing_files = 0
         checksum_mismatches = 0
+        verified = 0
         
         for doc in documents[:100]:  # Check first 100 for performance
-            # Check if file exists
             if doc.file_path:
                 import os
                 if not os.path.exists(doc.file_path):
                     missing_files += 1
+                elif doc.file_checksum:
+                    # Actually verify checksum
+                    try:
+                        if doc.verify_file_integrity():
+                            verified += 1
+                        else:
+                            checksum_mismatches += 1
+                            print(f"  ⚠️  Checksum mismatch: {doc.document_number}")
+                    except Exception as e:
+                        print(f"  ⚠️  Error verifying {doc.document_number}: {e}")
         
         doc_check.status = 'PASSED' if (missing_files == 0 and checksum_mismatches == 0) else 'FAILED'
         doc_check.findings = {
             'total_documents': total_docs,
             'checked_documents': min(100, total_docs),
+            'verified': verified,
             'missing_files': missing_files,
             'checksum_mismatches': checksum_mismatches
         }
         doc_check.completed_at = timezone.now()
         doc_check.save()
         
-        print(f"  ✓ Document check: {doc_check.status} ({total_docs} documents, {missing_files} missing)")
+        print(f"  ✓ Document check: {doc_check.status} ({verified} verified, {missing_files} missing, {checksum_mismatches} mismatches)")
         
     except Exception as e:
         doc_check.status = 'FAILED'
