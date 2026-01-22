@@ -1,0 +1,132 @@
+═══════════════════════════════════════════════════════════════
+  STAGING SERVER DEPLOYMENT - COPY & PASTE COMMANDS
+  Scheduler Timeout Fix - Commit: 79d75df
+═══════════════════════════════════════════════════════════════
+
+📋 STEP 1: SSH to Your Staging Server
+──────────────────────────────────────────────────────────────
+ssh user@your-staging-server
+# Replace with your actual credentials
+
+
+📋 STEP 2: Navigate to Project Directory
+──────────────────────────────────────────────────────────────
+cd /home/edms/edms
+# Or: cd ~/edms
+# Or whatever your project path is
+
+
+📋 STEP 3: Pull Latest Changes
+──────────────────────────────────────────────────────────────
+git fetch origin
+git pull origin main
+
+
+📋 STEP 4: Verify Commit
+──────────────────────────────────────────────────────────────
+git log --oneline -1
+# Should show: 79d75df fix(scheduler): Replace synchronous task execution...
+
+
+📋 STEP 5: Deploy (Rebuild Containers)
+──────────────────────────────────────────────────────────────
+docker compose down
+docker compose build backend frontend
+docker compose up -d
+sleep 20
+
+
+📋 STEP 6: Verify Services
+──────────────────────────────────────────────────────────────
+docker compose ps
+# All services should show "Up" status
+
+
+📋 STEP 7: Test the Fix
+──────────────────────────────────────────────────────────────
+time curl -X POST http://localhost:8000/api/v1/scheduler/monitoring/manual-trigger/ \
+  -H "Content-Type: application/json" \
+  -d '{"task_name": "perform_system_health_check"}'
+
+# Expected: Response in <1 second with "success": true
+
+
+═══════════════════════════════════════════════════════════════
+  ALTERNATIVE: ONE-COMMAND DEPLOYMENT
+═══════════════════════════════════════════════════════════════
+
+# Copy the quick deployment script to staging server:
+scp staging_deploy_quick.sh user@staging-server:/home/edms/edms/
+
+# Then SSH and run:
+ssh user@staging-server
+cd /home/edms/edms
+./staging_deploy_quick.sh
+
+
+═══════════════════════════════════════════════════════════════
+  VERIFICATION CHECKLIST
+═══════════════════════════════════════════════════════════════
+
+✅ All 6 containers running (docker compose ps)
+✅ Git commit is 79d75df (git log --oneline -1)
+✅ Manual trigger responds in <1 second
+✅ API returns "success": true with task_id
+✅ No timeout errors
+✅ Task executes in background
+
+Test in browser:
+1. Open: http://staging-server/admin/dashboard
+2. Click: Scheduled Tasks widget
+3. Click: ▶️ Run Now on any task
+4. See: Instant success message (not 30-second wait)
+
+
+═══════════════════════════════════════════════════════════════
+  MONITORING COMMANDS (Run on Staging Server)
+═══════════════════════════════════════════════════════════════
+
+# Watch backend logs
+docker logs edms_backend --tail=100 -f
+
+# Watch celery worker logs
+docker logs edms_celery_worker --tail=100 -f
+
+# Check for errors
+docker logs edms_backend --tail=100 | grep ERROR
+
+# Verify task execution
+docker logs edms_celery_worker --tail=50 | grep succeeded
+
+
+═══════════════════════════════════════════════════════════════
+  ROLLBACK (If Needed)
+═══════════════════════════════════════════════════════════════
+
+git reset --hard 8b0bef2
+docker compose down
+docker compose build backend frontend
+docker compose up -d
+
+
+═══════════════════════════════════════════════════════════════
+  EXPECTED RESULTS
+═══════════════════════════════════════════════════════════════
+
+Before Fix:
+  Response Time: 30+ seconds → TIMEOUT ❌
+  
+After Fix:
+  Response Time: <1 second → SUCCESS ✅
+  Task Status: "queued" → Executes in background
+  User Experience: Instant feedback → No waiting
+
+
+═══════════════════════════════════════════════════════════════
+  DEPLOYMENT COMPLETE!
+═══════════════════════════════════════════════════════════════
+
+Estimated Time: 5-10 minutes
+Downtime: ~2-3 minutes during rebuild
+
+Questions? See: STAGING_DEPLOYMENT_GUIDE.md

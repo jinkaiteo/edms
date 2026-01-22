@@ -10,7 +10,9 @@ interface Document {
   document_type_display?: string;
   description?: string;
   status: string;
+  author?: number;
   author_display?: string;
+  author_username?: string;
   created_at: string;
   file_size?: number;
   version_string?: string;
@@ -156,6 +158,12 @@ const DocumentList: React.FC<DocumentListProps> = ({
     return selectedDocument.uuid === document.uuid || 
            (selectedDocument.id && document.id && selectedDocument.id === document.id);
   };
+
+  // Helper function to check if document belongs to logged-in user
+  const isMyDocument = (document: Document) => {
+    if (!user || !document.author) return false;
+    return user.id === document.author;
+  };;
 
 
   // Fetch documents
@@ -380,9 +388,16 @@ const DocumentList: React.FC<DocumentListProps> = ({
                         <div className="flex items-center space-x-3 mb-2">
                           <span className="text-2xl">{getStatusIcon(currentVersion.status)}</span>
                           <div className="flex-1 min-w-0">
-                            <h4 className="text-sm font-medium text-gray-900 truncate">
-                              {currentVersion.title}
-                            </h4>
+                            <div className="flex items-center gap-2">
+                              <h4 className="text-sm font-medium text-gray-900 truncate">
+                                {currentVersion.title}
+                              </h4>
+                              {isMyDocument(currentVersion) && (
+                                <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800 flex-shrink-0" title="You are the author">
+                                  👤 Mine
+                                </span>
+                              )}
+                            </div>
                             <p className="text-sm text-gray-500">
                               {getBaseDocumentNumber(currentVersion.document_number)} • {currentVersion.document_type_display || 
                                (currentVersion.document_type && typeof currentVersion.document_type === 'object' 
@@ -504,9 +519,16 @@ const DocumentList: React.FC<DocumentListProps> = ({
                   <div className="space-y-3">
                     <div className="flex items-center justify-between">
                       <span className="text-3xl">{getStatusIcon(document.status)}</span>
-                      <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(document.status)}`}>
-                        {document.status.replace(/_/g, ' ')}
-                      </span>
+                      <div className="flex items-center gap-2">
+                        {isMyDocument(document) && (
+                          <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800" title="You are the author">
+                            👤 Mine
+                          </span>
+                        )}
+                        <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(document.status)}`}>
+                          {document.status.replace(/_/g, ' ')}
+                        </span>
+                      </div>
                     </div>
                     <div>
                       <h4 className="text-sm font-medium text-gray-900 line-clamp-2 mb-1">

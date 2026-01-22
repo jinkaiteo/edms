@@ -173,13 +173,23 @@ class DocumentViewSet(viewsets.ModelViewSet):
         if filter_type == 'my_tasks':
             # Show documents where user has pending tasks
             from django.db import models
-            queryset = queryset.filter(
-                models.Q(author=self.request.user) |
-                models.Q(reviewer=self.request.user) |
-                models.Q(approver=self.request.user)
-            ).filter(
-                status__in=['DRAFT', 'PENDING_REVIEW', 'UNDER_REVIEW', 'REVIEWED', 'PENDING_APPROVAL']
-            ).order_by('-created_at')
+            
+            if is_admin:
+                # Admin sees ALL tasks from ALL users for oversight and monitoring
+                queryset = queryset.filter(
+                    status__in=['DRAFT', 'PENDING_REVIEW', 'UNDER_REVIEW', 'REVIEWED', 'PENDING_APPROVAL']
+                )
+            else:
+                # Regular users see only their own tasks
+                queryset = queryset.filter(
+                    models.Q(author=self.request.user) |
+                    models.Q(reviewer=self.request.user) |
+                    models.Q(approver=self.request.user)
+                ).filter(
+                    status__in=['DRAFT', 'PENDING_REVIEW', 'UNDER_REVIEW', 'REVIEWED', 'PENDING_APPROVAL']
+                )
+            
+            queryset = queryset.order_by('-created_at')
             
         elif filter_type == 'approved_latest':
             # Show latest approved versions only (grouped by base document number)
@@ -196,6 +206,8 @@ class DocumentViewSet(viewsets.ModelViewSet):
             
         elif filter_type == 'library':
             # Show ALL versions of active document families (frontend will group them)
+            # Status filter applies to BOTH admin and regular users to ensure only
+            # families with approved versions appear in the library
             queryset = queryset.filter(
                 status__in=['EFFECTIVE', 'APPROVED_PENDING_EFFECTIVE', 'SCHEDULED_FOR_OBSOLESCENCE', 'SUPERSEDED']
             ).order_by('-updated_at')

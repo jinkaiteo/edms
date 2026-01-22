@@ -1020,3 +1020,114 @@ grep -r "Generated:" backend/apps/
 ```
 
 Each file may have its own timestamp method that needs updating.
+
+## Admin Filter Implementation and Business Logic vs Access Control
+
+### Distinguish Business Logic Filters from Access Control Filters
+When implementing admin bypass for filters, carefully analyze whether the filter represents **business logic** (what belongs in this view) or **access control** (who can see this data).
+
+**Problem Pattern from session:**
+- Implemented admin bypass for "Document Library" filter
+- Admin started seeing DRAFT documents in the library
+- This was incorrect: Document Library = published documents for EVERYONE
+
+**Root Cause:**
+The "Document Library" filter defines what a "library" means (published/approved documents), not who can access it. This is business logic, not access control.
+
+**Solution Pattern:**
+```python
+# WRONG - Admin bypass applied to business logic filter
+elif filter_type == 'library':
+    if not is_admin:
+        queryset = queryset.filter(status__in=['EFFECTIVE', ...])
+    # Admin sees ALL documents (breaks library concept)
+
+# CORRECT - Business logic filter applies to everyone
+elif filter_type == 'library':
+    # Library = published documents for EVERYONE (admin AND users)
+    queryset = queryset.filter(status__in=['EFFECTIVE', ...])
+```
+
+**Decision Framework:**
+
+**Apply Admin Bypass When:**
+- Filter controls **who sees what** (access control)
+- Purpose: Monitoring, oversight, system management
+- Example: "My Tasks" → Admin sees ALL users' tasks
+
+**Do NOT Apply Admin Bypass When:**
+- Filter defines **what the view represents** (business logic)
+- Purpose: Consistent view for all users
+- Example: "Document Library" → Published docs for everyone
+
+**Analysis Questions:**
+1. Does this filter define the **meaning** of the view? (business logic)
+2. Or does it control **access** to data? (access control)
+3. Would admin need a **different view** for oversight? (use separate view)
+4. Should admin see the **same thing as users** here? (no bypass)
+
+**From this session:**
+- ✅ "My Tasks" filter: Access control → Admin bypass appropriate
+- ❌ "Document Library" filter: Business logic → Admin bypass inappropriate
+- ✅ "Default View" (no filter): Access control → Admin sees ALL documents
+
+**Prevention:**
+Before implementing admin bypass, ask: "Does this filter define what this view IS, or does it control who can see it?"
+
+## Frontend Property Mapping for Document Features
+
+### Check API Response Structure Before Implementing Frontend Features
+When adding frontend features that depend on backend data (like document ownership indicators), always verify the exact property names returned by the API first.
+
+**Problem Pattern from session:**
+- Assumed API returns `author_id` for document author
+- Implemented `isMyDocument()` using `document.author_id`
+- Had to correct to `document.author` after checking serializer
+
+**Root Cause:**
+Django REST Framework serializers often return related objects by their primary key field name (`author`), not `author_id`.
+
+**Solution Pattern:**
+```bash
+# FIRST: Check actual API response
+docker compose exec backend python manage.py shell -c "
+from apps.documents.models import Document
+from apps.documents.serializers import DocumentListSerializer
+doc = Document.objects.first()
+serializer = DocumentListSerializer(doc)
+print(serializer.data.keys())  # See actual field names
+"
+
+# THEN: Implement frontend with correct field names
+```
+
+**Common Django Serializer Patterns:**
+- **Foreign Key**: Field name is `author`, not `author_id`
+- **Display Fields**: Often includes `author_display`, `author_username`
+- **Nested Objects**: May return full object or just ID based on serializer config
+
+**From this session:**
+```typescript
+// WRONG - Assumed naming
+interface Document {
+  author_id?: number;  // Doesn't exist in API
+}
+const isMyDocument = (doc) => user.id === doc.author_id;
+
+// CORRECT - Actual API fields
+interface Document {
+  author?: number;         // User ID
+  author_display?: string; // Display name
+  author_username?: string;// Username
+}
+const isMyDocument = (doc) => user.id === doc.author;
+```
+
+**Prevention:**
+1. Check serializer field names in backend first
+2. Test API response with curl or Django shell
+3. Update TypeScript interfaces to match actual API
+4. Don't assume field naming conventions
+
+This saves multiple correction iterations and prevents runtime errors.
+

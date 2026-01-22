@@ -870,7 +870,7 @@ initialize_database() {
     fi
     
     echo ""
-    print_step "Initializing Celery Beat scheduler (5 automated tasks)..."
+    print_step "Initializing Celery Beat scheduler (7 automated tasks)..."
     echo ""
     
     if docker compose -f docker-compose.prod.yml exec -T backend python manage.py shell -c "
@@ -907,7 +907,7 @@ for name, config in beat_schedule.items():
 
 print(f'Scheduler initialized: {created_count} new tasks created, {PeriodicTask.objects.count()} total')
 "; then
-        print_success "Celery Beat scheduler initialized (automated tasks: effective dates, obsoletion, health checks)"
+        print_success "Celery Beat scheduler initialized (7 tasks: document lifecycle, workflow monitoring, health checks, data integrity)"
     else
         print_warning "Scheduler initialization had warnings (tasks may already exist)"
     fi

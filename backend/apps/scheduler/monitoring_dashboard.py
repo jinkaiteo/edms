@@ -24,6 +24,10 @@ from .tasks import (
     perform_system_health_check,
     cleanup_celery_results
 )
+from ..audit.integrity_tasks import (
+    run_daily_integrity_check,
+    verify_audit_trail_checksums
+)
 from ..documents.models import Document
 from ..workflows.models import DocumentWorkflow
 from ..audit.models import AuditTrail
@@ -81,6 +85,22 @@ class SchedulerMonitoringService:
                 'priority': 'MEDIUM',
                 'icon': '🧹',
                 'celery_task': cleanup_celery_results
+            },
+            'run_daily_integrity_check': {
+                'name': 'Daily Integrity Check',
+                'description': 'Verifies document file checksums and audit trail consistency for compliance',
+                'category': 'Compliance & Data Integrity',
+                'priority': 'HIGH',
+                'icon': '🔐',
+                'celery_task': run_daily_integrity_check
+            },
+            'verify_audit_trail_checksums': {
+                'name': 'Verify Audit Trail Checksums',
+                'description': 'Cryptographically verifies audit trail integrity hashes to detect tampering',
+                'category': 'Compliance & Data Integrity',
+                'priority': 'HIGH',
+                'icon': '🔒',
+                'celery_task': verify_audit_trail_checksums
             }
         }
     
