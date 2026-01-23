@@ -1178,60 +1178,6 @@ error_handler() {
 trap 'error_handler $LINENO' ERR
 
 ################################################################################
-# Main Execution
-################################################################################
-
-main() {
-    clear
-    
-    # Banner
-    echo -e "${BOLD}${CYAN}"
-    echo "  ╔═══════════════════════════════════════════════════════════════╗"
-    echo "  ║                                                               ║"
-    echo "  ║     EDMS Interactive Deployment Script                       ║"
-    echo "  ║     Enterprise Document Management System                    ║"
-    echo "  ║                                                               ║"
-    echo "  ║     Version 1.0 - Internal Network Deployment                ║"
-    echo "  ║                                                               ║"
-    echo "  ╚═══════════════════════════════════════════════════════════════╝"
-    echo -e "${NC}"
-    echo ""
-    
-    print_info "This script will guide you through deploying EDMS."
-    print_info "Estimated time: 10-20 minutes"
-    echo ""
-    
-    if ! prompt_yes_no "Ready to begin?" "y"; then
-        print_info "Deployment cancelled."
-        exit 0
-    fi
-    
-    # Execute deployment steps
-    preflight_checks
-    collect_configuration
-    show_configuration_summary
-    
-    echo ""
-    if ! prompt_yes_no "Proceed with deployment?" "y"; then
-        print_info "Deployment cancelled."
-        exit 0
-    fi
-    
-    create_env_file
-    configure_email_optional
-    deploy_docker || exit 1
-    setup_storage_permissions || exit 1
-    initialize_database || exit 1
-    create_admin_user
-    test_deployment
-    setup_backup_automation
-    setup_haproxy
-    show_final_summary
-}
-
-# Run main function
-main "$@"
-################################################################################
 # EMAIL CONFIGURATION (OPTIONAL)
 ################################################################################
 
@@ -1411,4 +1357,59 @@ PYEOF
     
     echo ""
 }
+
+################################################################################
+# Main Execution
+################################################################################
+
+main() {
+    clear
+    
+    # Banner
+    echo -e "${BOLD}${CYAN}"
+    echo "  ╔═══════════════════════════════════════════════════════════════╗"
+    echo "  ║                                                               ║"
+    echo "  ║     EDMS Interactive Deployment Script                       ║"
+    echo "  ║     Enterprise Document Management System                    ║"
+    echo "  ║                                                               ║"
+    echo "  ║     Version 1.0 - Internal Network Deployment                ║"
+    echo "  ║                                                               ║"
+    echo "  ╚═══════════════════════════════════════════════════════════════╝"
+    echo -e "${NC}"
+    echo ""
+    
+    print_info "This script will guide you through deploying EDMS."
+    print_info "Estimated time: 10-20 minutes"
+    echo ""
+    
+    if ! prompt_yes_no "Ready to begin?" "y"; then
+        print_info "Deployment cancelled."
+        exit 0
+    fi
+    
+    # Execute deployment steps
+    preflight_checks
+    collect_configuration
+    show_configuration_summary
+    
+    echo ""
+    if ! prompt_yes_no "Proceed with deployment?" "y"; then
+        print_info "Deployment cancelled."
+        exit 0
+    fi
+    
+    create_env_file
+    configure_email_optional
+    deploy_docker || exit 1
+    setup_storage_permissions || exit 1
+    initialize_database || exit 1
+    create_admin_user
+    test_deployment
+    setup_backup_automation
+    setup_haproxy
+    show_final_summary
+}
+
+# Run main function
+main "$@"
 
