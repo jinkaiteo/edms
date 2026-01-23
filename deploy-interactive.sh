@@ -507,10 +507,16 @@ CSRF_COOKIE_HTTPONLY=True
 CSRF_COOKIE_SAMESITE=Lax
 
 # ==============================================================================
-# EMAIL CONFIGURATION (Phase 2)
+# EMAIL CONFIGURATION
 # ==============================================================================
 
 EMAIL_BACKEND=django.core.mail.backends.console.EmailBackend
+EMAIL_HOST=localhost
+EMAIL_PORT=587
+EMAIL_USE_TLS=True
+EMAIL_HOST_USER=
+EMAIL_HOST_PASSWORD=
+DEFAULT_FROM_EMAIL=noreply@edms-system.local
 
 # ==============================================================================
 # LOGGING & MONITORING
@@ -1212,6 +1218,7 @@ main() {
     fi
     
     create_env_file
+    configure_email_optional
     deploy_docker || exit 1
     setup_storage_permissions || exit 1
     initialize_database || exit 1
@@ -1224,3 +1231,184 @@ main() {
 
 # Run main function
 main "$@"
+################################################################################
+# EMAIL CONFIGURATION (OPTIONAL)
+################################################################################
+
+configure_email_optional() {
+    print_section "Email Notifications Configuration (Optional)"
+    
+    echo ""
+    echo "Email notifications enable the system to send alerts for:"
+    echo "  • Task assignments (review/approval)"
+    echo "  • Document status changes (effective/obsolete)"
+    echo "  • Workflow timeouts"
+    echo "  • Periodic review reminders"
+    echo ""
+    echo "Without email configuration, notifications will be printed to console logs."
+    echo ""
+    
+    read -p "Would you like to configure email notifications now? (y/N): " configure_email
+    
+    if [[ ! "$configure_email" =~ ^[Yy]$ ]]; then
+        print_info "Email configuration skipped"
+        print_info "You can configure later by editing backend/.env"
+        print_info "See backend/.env.example for configuration examples"
+        return 0
+    fi
+    
+    echo ""
+    echo "Select email provider:"
+    echo "  1) Gmail (smtp.gmail.com)"
+    echo "  2) Microsoft 365 / Outlook (smtp.office365.com)"
+    echo "  3) Custom SMTP server"
+    echo "  4) Skip (configure later)"
+    echo ""
+    read -p "Choice (1-4): " email_provider
+    
+    case $email_provider in
+        1)
+            print_step "Configuring Gmail SMTP"
+            echo ""
+            echo "Note: Gmail requires an App Password (not your regular password)"
+            echo "Create one at: https://myaccount.google.com/apppasswords"
+            echo ""
+            
+            read -p "Gmail address: " email_user
+            read -sp "Gmail app password (16 characters): " email_pass
+            echo ""
+            
+            # Validate input
+            if [[ -z "$email_user" ]] || [[ -z "$email_pass" ]]; then
+                print_error "Email address and password are required"
+                return 1
+            fi
+            
+            # Update .env file
+            sed -i "s|^EMAIL_BACKEND=.*|EMAIL_BACKEND=django.core.mail.backends.smtp.EmailBackend|" backend/.env
+            sed -i "s|^EMAIL_HOST=.*|EMAIL_HOST=smtp.gmail.com|" backend/.env
+            sed -i "s|^EMAIL_PORT=.*|EMAIL_PORT=587|" backend/.env
+            sed -i "s|^EMAIL_USE_TLS=.*|EMAIL_USE_TLS=True|" backend/.env
+            sed -i "s|^EMAIL_HOST_USER=.*|EMAIL_HOST_USER=$email_user|" backend/.env
+            sed -i "s|^EMAIL_HOST_PASSWORD=.*|EMAIL_HOST_PASSWORD=$email_pass|" backend/.env
+            sed -i "s|^DEFAULT_FROM_EMAIL=.*|DEFAULT_FROM_EMAIL=\"EDMS System <$email_user>\"|" backend/.env
+            
+            print_success "Gmail SMTP configured"
+            ;;
+            
+        2)
+            print_step "Configuring Microsoft 365 / Outlook SMTP"
+            echo ""
+            echo "Note: Microsoft 365 requires an App Password"
+            echo "Create one at: https://account.microsoft.com/security"
+            echo ""
+            
+            read -p "Microsoft 365 email address: " email_user
+            read -sp "App password: " email_pass
+            echo ""
+            
+            # Validate input
+            if [[ -z "$email_user" ]] || [[ -z "$email_pass" ]]; then
+                print_error "Email address and password are required"
+                return 1
+            fi
+            
+            # Update .env file
+            sed -i "s|^EMAIL_BACKEND=.*|EMAIL_BACKEND=django.core.mail.backends.smtp.EmailBackend|" backend/.env
+            sed -i "s|^EMAIL_HOST=.*|EMAIL_HOST=smtp.office365.com|" backend/.env
+            sed -i "s|^EMAIL_PORT=.*|EMAIL_PORT=587|" backend/.env
+            sed -i "s|^EMAIL_USE_TLS=.*|EMAIL_USE_TLS=True|" backend/.env
+            sed -i "s|^EMAIL_HOST_USER=.*|EMAIL_HOST_USER=$email_user|" backend/.env
+            sed -i "s|^EMAIL_HOST_PASSWORD=.*|EMAIL_HOST_PASSWORD=$email_pass|" backend/.env
+            sed -i "s|^DEFAULT_FROM_EMAIL=.*|DEFAULT_FROM_EMAIL=\"EDMS System <$email_user>\"|" backend/.env
+            
+            print_success "Microsoft 365 SMTP configured"
+            ;;
+            
+        3)
+            print_step "Configuring Custom SMTP"
+            echo ""
+            
+            read -p "SMTP host: " smtp_host
+            read -p "SMTP port (default 587): " smtp_port
+            smtp_port=${smtp_port:-587}
+            read -p "Use TLS? (Y/n): " use_tls
+            use_tls=${use_tls:-Y}
+            read -p "SMTP username: " email_user
+            read -sp "SMTP password: " email_pass
+            echo ""
+            read -p "From email address: " from_email
+            
+            # Validate input
+            if [[ -z "$smtp_host" ]] || [[ -z "$email_user" ]] || [[ -z "$email_pass" ]]; then
+                print_error "SMTP host, username, and password are required"
+                return 1
+            fi
+            
+            # Determine TLS setting
+            if [[ "$use_tls" =~ ^[Nn]$ ]]; then
+                use_tls_value="False"
+            else
+                use_tls_value="True"
+            fi
+            
+            # Update .env file
+            sed -i "s|^EMAIL_BACKEND=.*|EMAIL_BACKEND=django.core.mail.backends.smtp.EmailBackend|" backend/.env
+            sed -i "s|^EMAIL_HOST=.*|EMAIL_HOST=$smtp_host|" backend/.env
+            sed -i "s|^EMAIL_PORT=.*|EMAIL_PORT=$smtp_port|" backend/.env
+            sed -i "s|^EMAIL_USE_TLS=.*|EMAIL_USE_TLS=$use_tls_value|" backend/.env
+            sed -i "s|^EMAIL_HOST_USER=.*|EMAIL_HOST_USER=$email_user|" backend/.env
+            sed -i "s|^EMAIL_HOST_PASSWORD=.*|EMAIL_HOST_PASSWORD=$email_pass|" backend/.env
+            sed -i "s|^DEFAULT_FROM_EMAIL=.*|DEFAULT_FROM_EMAIL=\"EDMS System <$from_email>\"|" backend/.env
+            
+            print_success "Custom SMTP configured"
+            ;;
+            
+        4|*)
+            print_info "Email configuration skipped"
+            print_info "You can configure later by editing backend/.env"
+            return 0
+            ;;
+    esac
+    
+    # Offer to test email
+    echo ""
+    read -p "Would you like to test email configuration now? (y/N): " test_email
+    
+    if [[ "$test_email" =~ ^[Yy]$ ]]; then
+        read -p "Send test email to: " test_recipient
+        
+        if [[ -n "$test_recipient" ]]; then
+            print_step "Sending test email..."
+            
+            # Start containers temporarily if not running
+            docker compose up -d backend redis postgres
+            sleep 10
+            
+            # Send test email
+            docker compose exec -T backend python manage.py shell <<PYEOF
+from django.core.mail import send_mail
+from django.conf import settings
+
+try:
+    send_mail(
+        'EDMS Email Test',
+        'This is a test email from your EDMS deployment. If you received this, email notifications are configured correctly!',
+        settings.DEFAULT_FROM_EMAIL,
+        ['$test_recipient'],
+        fail_silently=False,
+    )
+    print("✅ Test email sent successfully!")
+except Exception as e:
+    print(f"❌ Failed to send test email: {e}")
+PYEOF
+            
+            echo ""
+            print_info "Check the inbox for $test_recipient"
+            read -p "Press Enter to continue..."
+        fi
+    fi
+    
+    echo ""
+}
+
