@@ -1206,7 +1206,7 @@ configure_email_optional() {
     
     if [[ ! "$configure_email" =~ ^[Yy]$ ]]; then
         print_info "Email configuration skipped"
-        print_info "You can configure later by editing backend/.env"
+        print_info "You can configure later by editing .env"
         print_info "See backend/.env.example for configuration examples"
         return 0
     fi
@@ -1239,13 +1239,13 @@ configure_email_optional() {
             fi
             
             # Update .env file
-            sed -i "s|^EMAIL_BACKEND=.*|EMAIL_BACKEND=django.core.mail.backends.smtp.EmailBackend|" backend/.env
-            sed -i "s|^EMAIL_HOST=.*|EMAIL_HOST=smtp.gmail.com|" backend/.env
-            sed -i "s|^EMAIL_PORT=.*|EMAIL_PORT=587|" backend/.env
-            sed -i "s|^EMAIL_USE_TLS=.*|EMAIL_USE_TLS=True|" backend/.env
-            sed -i "s|^EMAIL_HOST_USER=.*|EMAIL_HOST_USER=$email_user|" backend/.env
-            sed -i "s|^EMAIL_HOST_PASSWORD=.*|EMAIL_HOST_PASSWORD=$email_pass|" backend/.env
-            sed -i "s|^DEFAULT_FROM_EMAIL=.*|DEFAULT_FROM_EMAIL=\"EDMS System <$email_user>\"|" backend/.env
+            sed -i "s|^EMAIL_BACKEND=.*|EMAIL_BACKEND=django.core.mail.backends.smtp.EmailBackend|" "$ENV_FILE"
+            sed -i "s|^EMAIL_HOST=.*|EMAIL_HOST=smtp.gmail.com|" "$ENV_FILE"
+            sed -i "s|^EMAIL_PORT=.*|EMAIL_PORT=587|" "$ENV_FILE"
+            sed -i "s|^EMAIL_USE_TLS=.*|EMAIL_USE_TLS=True|" "$ENV_FILE"
+            sed -i "s|^EMAIL_HOST_USER=.*|EMAIL_HOST_USER=$email_user|" "$ENV_FILE"
+            sed -i "s|^EMAIL_HOST_PASSWORD=.*|EMAIL_HOST_PASSWORD=$email_pass|" "$ENV_FILE"
+            sed -i "s|^DEFAULT_FROM_EMAIL=.*|DEFAULT_FROM_EMAIL=\"EDMS System <$email_user>\"|" "$ENV_FILE"
             
             print_success "Gmail SMTP configured"
             ;;
@@ -1268,13 +1268,13 @@ configure_email_optional() {
             fi
             
             # Update .env file
-            sed -i "s|^EMAIL_BACKEND=.*|EMAIL_BACKEND=django.core.mail.backends.smtp.EmailBackend|" backend/.env
-            sed -i "s|^EMAIL_HOST=.*|EMAIL_HOST=smtp.office365.com|" backend/.env
-            sed -i "s|^EMAIL_PORT=.*|EMAIL_PORT=587|" backend/.env
-            sed -i "s|^EMAIL_USE_TLS=.*|EMAIL_USE_TLS=True|" backend/.env
-            sed -i "s|^EMAIL_HOST_USER=.*|EMAIL_HOST_USER=$email_user|" backend/.env
-            sed -i "s|^EMAIL_HOST_PASSWORD=.*|EMAIL_HOST_PASSWORD=$email_pass|" backend/.env
-            sed -i "s|^DEFAULT_FROM_EMAIL=.*|DEFAULT_FROM_EMAIL=\"EDMS System <$email_user>\"|" backend/.env
+            sed -i "s|^EMAIL_BACKEND=.*|EMAIL_BACKEND=django.core.mail.backends.smtp.EmailBackend|" "$ENV_FILE"
+            sed -i "s|^EMAIL_HOST=.*|EMAIL_HOST=smtp.office365.com|" "$ENV_FILE"
+            sed -i "s|^EMAIL_PORT=.*|EMAIL_PORT=587|" "$ENV_FILE"
+            sed -i "s|^EMAIL_USE_TLS=.*|EMAIL_USE_TLS=True|" "$ENV_FILE"
+            sed -i "s|^EMAIL_HOST_USER=.*|EMAIL_HOST_USER=$email_user|" "$ENV_FILE"
+            sed -i "s|^EMAIL_HOST_PASSWORD=.*|EMAIL_HOST_PASSWORD=$email_pass|" "$ENV_FILE"
+            sed -i "s|^DEFAULT_FROM_EMAIL=.*|DEFAULT_FROM_EMAIL=\"EDMS System <$email_user>\"|" "$ENV_FILE"
             
             print_success "Microsoft 365 SMTP configured"
             ;;
@@ -1307,20 +1307,20 @@ configure_email_optional() {
             fi
             
             # Update .env file
-            sed -i "s|^EMAIL_BACKEND=.*|EMAIL_BACKEND=django.core.mail.backends.smtp.EmailBackend|" backend/.env
-            sed -i "s|^EMAIL_HOST=.*|EMAIL_HOST=$smtp_host|" backend/.env
-            sed -i "s|^EMAIL_PORT=.*|EMAIL_PORT=$smtp_port|" backend/.env
-            sed -i "s|^EMAIL_USE_TLS=.*|EMAIL_USE_TLS=$use_tls_value|" backend/.env
-            sed -i "s|^EMAIL_HOST_USER=.*|EMAIL_HOST_USER=$email_user|" backend/.env
-            sed -i "s|^EMAIL_HOST_PASSWORD=.*|EMAIL_HOST_PASSWORD=$email_pass|" backend/.env
-            sed -i "s|^DEFAULT_FROM_EMAIL=.*|DEFAULT_FROM_EMAIL=\"EDMS System <$from_email>\"|" backend/.env
+            sed -i "s|^EMAIL_BACKEND=.*|EMAIL_BACKEND=django.core.mail.backends.smtp.EmailBackend|" "$ENV_FILE"
+            sed -i "s|^EMAIL_HOST=.*|EMAIL_HOST=$smtp_host|" "$ENV_FILE"
+            sed -i "s|^EMAIL_PORT=.*|EMAIL_PORT=$smtp_port|" "$ENV_FILE"
+            sed -i "s|^EMAIL_USE_TLS=.*|EMAIL_USE_TLS=$use_tls_value|" "$ENV_FILE"
+            sed -i "s|^EMAIL_HOST_USER=.*|EMAIL_HOST_USER=$email_user|" "$ENV_FILE"
+            sed -i "s|^EMAIL_HOST_PASSWORD=.*|EMAIL_HOST_PASSWORD=$email_pass|" "$ENV_FILE"
+            sed -i "s|^DEFAULT_FROM_EMAIL=.*|DEFAULT_FROM_EMAIL=\"EDMS System <$from_email>\"|" "$ENV_FILE"
             
             print_success "Custom SMTP configured"
             ;;
             
         4|*)
             print_info "Email configuration skipped"
-            print_info "You can configure later by editing backend/.env"
+            print_info "You can configure later by editing .env"
             return 0
             ;;
     esac
