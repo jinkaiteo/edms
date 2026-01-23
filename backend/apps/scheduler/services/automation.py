@@ -277,29 +277,34 @@ class DocumentAutomationService:
             for workflow in active_workflows:
                 try:
                     # Check if workflow is overdue
-                    if workflow.due_date and workflow.due_date < timezone.now().date():
-                        days_overdue = (timezone.now().date() - workflow.due_date).days
+                    if workflow.due_date:
+                        # Convert due_date to date if it's datetime
+                        due_date = workflow.due_date.date() if hasattr(workflow.due_date, 'date') else workflow.due_date
+                        today = timezone.now().date()
                         
-                        results['timeout_count'] += 1
-                        results['overdue_workflows'].append({
-                            'workflow_id': workflow.id,
-                            'document_number': workflow.document.document_number,
-                            'document_title': workflow.document.title,
-                            'workflow_type': workflow.workflow_type,
-                            'current_state': workflow.current_state.name,
-                            'due_date': workflow.due_date.isoformat(),
-                            'days_overdue': days_overdue,
-                            'current_assignee': workflow.current_assignee.get_full_name() if workflow.current_assignee else None
-                        })
-                        
-                        # Send notification for severely overdue workflows
-                        if days_overdue > 7:  # More than a week overdue
-                            try:
-                                notification_service.send_workflow_timeout_notification(workflow, days_overdue)
-                                results['notification_count'] += 1
-                                logger.info(f"Sent timeout notification for workflow {workflow.id}")
-                            except Exception as e:
-                                logger.warning(f"Failed to send timeout notification for workflow {workflow.id}: {e}")
+                        if due_date < today:
+                            days_overdue = (today - due_date).days
+                            
+                            results['timeout_count'] += 1
+                            results['overdue_workflows'].append({
+                                'workflow_id': workflow.id,
+                                'document_number': workflow.document.document_number,
+                                'document_title': workflow.document.title,
+                                'workflow_type': workflow.workflow_type,
+                                'current_state': workflow.current_state.name,
+                                'due_date': due_date.isoformat(),
+                                'days_overdue': days_overdue,
+                                'current_assignee': workflow.current_assignee.get_full_name() if workflow.current_assignee else None
+                            })
+                            
+                            # Send notification for severely overdue workflows
+                            if days_overdue > 7:  # More than a week overdue
+                                try:
+                                    notification_service.send_workflow_timeout_notification(workflow, days_overdue)
+                                    results['notification_count'] += 1
+                                    logger.info(f"Sent timeout notification for workflow {workflow.id}")
+                                except Exception as e:
+                                    logger.warning(f"Failed to send timeout notification for workflow {workflow.id}: {e}")
                             
                 except Exception as e:
                     logger.error(f"Error checking workflow timeout for {workflow.id}: {str(e)}")

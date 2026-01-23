@@ -156,7 +156,14 @@ class PeriodicReviewService:
                 notification_count += 1
                 
                 # TODO: Send email notification when SMTP is configured
-                # notification_service.send_periodic_review_email(user, document, workflow)
+                # Send email notification to document owner
+                from ..notification_service import notification_service
+                try:
+                    notification_service.send_task_email(user, 'Periodic Review', document)
+                    results['notifications_created'] += 1
+                    logger.info(f"Sent periodic review notification to {user.email} for document {document.document_number}")
+                except Exception as e:
+                    logger.warning(f"Failed to send periodic review notification: {e}")
                 
             except Exception as e:
                 logger.error(f"Failed to log notification for {user.username}: {str(e)}")

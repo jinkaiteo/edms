@@ -13,6 +13,7 @@ from django.shortcuts import get_object_or_404
 from django.contrib.auth import get_user_model
 from apps.documents.models import Document
 from .document_lifecycle import get_document_lifecycle_service
+from apps.scheduler.notification_service import notification_service
 import traceback
 import logging
 
@@ -198,6 +199,15 @@ def submit_for_review_enhanced(request, document_id):
             # Refresh document to get updated status
             document.refresh_from_db()
             logger.info(f"Document status after submit: {document.status}")
+            
+            # Send email notification to reviewer
+            try:
+                logger.info(f"Sending email notification to reviewer: {reviewer.email}")
+                notification_service.send_task_email(reviewer, 'Review', document)
+                logger.info(f"✅ Email notification sent successfully to {reviewer.email}")
+            except Exception as email_error:
+                logger.error(f"Failed to send email notification: {str(email_error)}")
+                # Don't fail the workflow if email fails
             
             return Response({
                 'success': True,

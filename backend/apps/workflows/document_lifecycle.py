@@ -252,7 +252,7 @@ class DocumentLifecycleService:
             # Review approved - transition to REVIEWED state for author to route to approval
             success = self._transition_workflow(
                 workflow=workflow,
-                to_state_code='REVIEWED',
+                to_state_code='REVIEW_COMPLETED',
                 user=user,
                 comment=comment,
                 assignee=document.author  # Return to author to select approver
@@ -332,7 +332,7 @@ class DocumentLifecycleService:
             raise ValidationError("Only document author can route for approval")
         
         # Validate current state
-        if workflow.current_state.code != 'REVIEWED':
+        if workflow.current_state.code != 'REVIEW_COMPLETED':
             raise ValidationError(f"Cannot route for approval from state: {workflow.current_state.code}")
         
         # Assign approver and route
@@ -949,7 +949,7 @@ class DocumentLifecycleService:
                 
             # Check if newer version is in development/review
             if related_doc.status in [
-                'DRAFT', 'PENDING_REVIEW', 'UNDER_REVIEW', 'REVIEWED',
+                'DRAFT', 'PENDING_REVIEW', 'UNDER_REVIEW', 'REVIEW_COMPLETED',
                 'PENDING_APPROVAL', 'UNDER_APPROVAL', 'APPROVED'
             ]:
                 version_str = f"v{related_doc.version_major}.{related_doc.version_minor}"
@@ -1623,7 +1623,7 @@ Document Details:
             task_type_map = {
                 'PENDING_REVIEW': 'REVIEW',
                 'PENDING_APPROVAL': 'APPROVE', 
-                'REVIEWED': 'REVIEW'
+                'REVIEW_COMPLETED': 'REVIEW'
             }
             
             task_type = task_type_map.get(to_state.code, 'REVIEW')
@@ -1767,7 +1767,7 @@ Document Details:
             actions.append('start_review')
         elif state == 'UNDER_REVIEW':
             actions.extend(['complete_review', 'reject_to_draft'])
-        elif state == 'REVIEWED':
+        elif state == 'REVIEW_COMPLETED':
             actions.append('route_for_approval')
         elif state == 'PENDING_APPROVAL':
             if 'OBSOLETE' in workflow.workflow_type:

@@ -81,7 +81,7 @@ states = [
     ('DRAFT', 'Draft'),
     ('PENDING_REVIEW', 'Pending Review'),
     ('UNDER_REVIEW', 'Under Review'),
-    ('REVIEWED', 'Reviewed'),
+    ('REVIEW_COMPLETED', 'Review Completed'),
     ('PENDING_APPROVAL', 'Pending Approval'),
     ('UNDER_APPROVAL', 'Under Approval'),
     ('APPROVED_PENDING_EFFECTIVE', 'Approved - Pending Effective'),

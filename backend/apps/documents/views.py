@@ -180,7 +180,7 @@ class DocumentViewSet(PeriodicReviewMixin, viewsets.ModelViewSet):
             if is_admin:
                 # Admin sees ALL tasks from ALL users for oversight and monitoring
                 queryset = queryset.filter(
-                    status__in=['DRAFT', 'PENDING_REVIEW', 'UNDER_REVIEW', 'REVIEWED', 'PENDING_APPROVAL']
+                    status__in=['DRAFT', 'PENDING_REVIEW', 'UNDER_REVIEW', 'REVIEW_COMPLETED', 'PENDING_APPROVAL']
                 )
             else:
                 # Regular users see only their own tasks
@@ -189,7 +189,7 @@ class DocumentViewSet(PeriodicReviewMixin, viewsets.ModelViewSet):
                     models.Q(reviewer=self.request.user) |
                     models.Q(approver=self.request.user)
                 ).filter(
-                    status__in=['DRAFT', 'PENDING_REVIEW', 'UNDER_REVIEW', 'REVIEWED', 'PENDING_APPROVAL']
+                    status__in=['DRAFT', 'PENDING_REVIEW', 'UNDER_REVIEW', 'REVIEW_COMPLETED', 'PENDING_APPROVAL']
                 )
             
             queryset = queryset.order_by('-created_at')

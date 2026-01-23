@@ -14,6 +14,7 @@ from django.shortcuts import get_object_or_404
 from .models import Document
 from apps.workflows.services import get_simple_workflow_service
 from apps.users.permissions import CanManageDocuments
+from apps.scheduler.notification_service import notification_service
 
 
 @api_view(['GET', 'POST'])
@@ -77,8 +78,16 @@ def document_workflow_endpoint(request, uuid):
                         result = workflow_service.submit_for_review(document, request.user, comment)
                     else:
                         raise e
+                
+                # Send notification to reviewer after successful submission
+                if result and document.reviewer:
+                    notification_service.send_task_email(document.reviewer, 'Review', document)
+            
             elif action == 'start_review':
                 result = workflow_service.start_review(document, request.user, comment)
+                # Send notification to reviewer
+                if result and document.reviewer:
+                    notification_service.send_task_email(document.reviewer, 'Review', document)
             elif action == 'complete_review':
                 approved = request.data.get('approved', True)
                 result = workflow_service.complete_review(document, request.user, approved, comment)
@@ -98,6 +107,9 @@ def document_workflow_endpoint(request, uuid):
                     }, status=status.HTTP_400_BAD_REQUEST)
                 
                 result = workflow_service.route_for_approval(document, request.user, approver, comment)
+                # Send notification to approver
+                if result:
+                    notification_service.send_task_email(approver, 'Approval', document)
             elif action == 'approve_document' or action == 'approve':
                 effective_date = request.data.get('effective_date')
                 if not effective_date:
@@ -123,6 +135,34 @@ def document_workflow_endpoint(request, uuid):
                     document, request.user, effective_date, comment, 
                     approved, review_period_months
                 )
+                # Send notification to document author about approval
+                if result and document.author:
+                    # Check if document is immediately effective or scheduled
+                    from datetime import date
+                    if document.effective_date and document.effective_date <= date.today():
+                        notification_service.send_document_effective_notification(document)
+                    else:
+                        # Document approved but not yet effective
+                        from django.core.mail import send_mail
+                        from django.conf import settings
+                        send_mail(
+                            f'Document Approved: {document.document_number}',
+                            f'''Your document has been approved and will become effective on {document.effective_date}.
+
+Document: {document.document_number} - {document.title}
+Approved by: {request.user.get_full_name()}
+Effective Date: {document.effective_date}
+{f"Next Review: {document.next_review_date}" if document.next_review_date else ""}
+
+The document will automatically become effective on the scheduled date.
+
+---
+EDMS - Electronic Document Management System
+''',
+                            settings.DEFAULT_FROM_EMAIL,
+                            [document.author.email],
+                            fail_silently=True,
+                        )
             # make_effective action removed - documents become effective automatically
             # via scheduler or immediately upon approval based on effective_date
             elif action == 'terminate_workflow':
