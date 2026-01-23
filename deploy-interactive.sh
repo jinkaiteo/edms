@@ -1337,7 +1337,11 @@ configure_email_optional() {
             
             # Start containers temporarily if not running
             docker compose up -d backend redis db
-            sleep 10
+            
+            # Restart backend to load new .env settings
+            print_info "Restarting backend to load email configuration..."
+            docker compose restart backend
+            sleep 15
             
             # Send test email
             docker compose exec -T backend python manage.py shell <<PYEOF
