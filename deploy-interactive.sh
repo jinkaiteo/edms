@@ -1336,7 +1336,7 @@ configure_email_optional() {
             print_step "Sending test email..."
             
             # Start containers temporarily if not running
-            docker compose up -d backend redis postgres
+            docker compose up -d backend redis db
             sleep 10
             
             # Send test email
