@@ -22,7 +22,8 @@ from .tasks import (
     process_document_obsoletion_dates,
     check_workflow_timeouts,
     perform_system_health_check,
-    cleanup_celery_results
+    cleanup_celery_results,
+    process_periodic_reviews
 )
 from ..audit.integrity_tasks import (
     run_daily_integrity_check,
@@ -77,6 +78,14 @@ class SchedulerMonitoringService:
                 'priority': 'LOW',
                 'icon': '🏥',
                 'celery_task': perform_system_health_check
+            },
+            'process_periodic_reviews': {
+                'name': 'Periodic Review Processing',
+                'description': 'Checks for documents requiring periodic review and creates review workflows',
+                'category': 'Document Lifecycle',
+                'priority': 'HIGH',
+                'icon': '🔄',
+                'celery_task': process_periodic_reviews
             },
             'cleanup_celery_results': {
                 'name': 'Cleanup Celery Results',

@@ -115,7 +115,14 @@ def document_workflow_endpoint(request, uuid):
                             'error': 'Invalid effective_date format. Use YYYY-MM-DD'
                         }, status=status.HTTP_400_BAD_REQUEST)
                 
-                result = workflow_service.approve_document(document, request.user, effective_date, comment)
+                # Get approved flag and review_period_months for periodic review
+                approved = request.data.get('approved', True)
+                review_period_months = request.data.get('review_period_months')
+                
+                result = workflow_service.approve_document(
+                    document, request.user, effective_date, comment, 
+                    approved, review_period_months
+                )
             # make_effective action removed - documents become effective automatically
             # via scheduler or immediately upon approval based on effective_date
             elif action == 'terminate_workflow':

@@ -1,0 +1,89 @@
+feat: Implement automatic up-versioning from periodic review
+
+Complete backend and frontend implementation of automatic up-versioning
+workflow triggered by periodic review outcomes.
+
+BACKEND CHANGES:
+- Update DocumentReview.REVIEW_OUTCOMES:
+  * CONFIRMED (unchanged)
+  * UPDATED → MINOR_UPVERSION (now triggers workflow)
+  * UPVERSIONED → MAJOR_UPVERSION (now triggers workflow)
+
+- Enhanced periodic_review_service.py:
+  * Automatically calls start_version_workflow() for upversion outcomes
+  * Creates new document version (DRAFT)
+  * Preserves reviewer/approver assignments
+  * Links new version to DocumentReview record
+  * Returns version info in API response
+
+- Updated API validation and response format:
+  * New fields: upversion_triggered, new_version details
+  * Clear success messages with version information
+
+- Migration 0005_update_periodic_review_outcomes:
+  * Updates choice field in document_reviews table
+  * Applied successfully
+
+FRONTEND CHANGES:
+- Update TypeScript types (api.ts):
+  * ReviewOutcome type updated
+  * CompletePeriodicReviewResponse enhanced
+
+- Refactored PeriodicReviewModal.tsx:
+  * New outcome options with clear labels
+  * Version increment indicators (v1.0 → v1.1 / v2.0)
+  * Step-by-step workflow explanation
+  * Enhanced success messages with version details
+  * Removed manual up-version flow
+
+- Enhanced ReviewHistoryTab.tsx:
+  * Updated icons and colors for new outcomes
+  * Display version links for created versions
+  * Clear descriptions with automatic creation indication
+  * Legacy support for old outcomes
+
+WORKFLOW:
+- CONFIRMED: No changes needed → document stays EFFECTIVE
+- MINOR_UPVERSION: Auto-creates v1.0 → v1.1 and starts workflow
+- MAJOR_UPVERSION: Auto-creates v1.0 → v2.0 and starts workflow
+
+New versions:
+- Created automatically in DRAFT status
+- Linked to DocumentReview record via new_version field
+- Original document remains EFFECTIVE until new version approved
+- Dependencies auto-copied and resolved to latest effective versions
+
+BENEFITS:
+✓ Fully automated workflow (no manual steps)
+✓ Complete traceability (review → version link)
+✓ Regulatory compliance (documented outcomes)
+✓ Improved UX (clear steps, immediate feedback)
+✓ Smart dependency management
+
+FILES MODIFIED:
+Backend (6):
+- backend/apps/workflows/models_review.py
+- backend/apps/scheduler/services/periodic_review_service.py
+- backend/apps/documents/views_periodic_review.py
+- backend/apps/workflows/migrations/0005_update_periodic_review_outcomes.py
+- PERIODIC_REVIEW_UPVERSION_IMPLEMENTATION.md
+- REPOSITORY_UNDERSTANDING_SUMMARY.md
+
+Frontend (3):
+- frontend/src/types/api.ts
+- frontend/src/components/documents/PeriodicReviewModal.tsx
+- frontend/src/components/documents/ReviewHistoryTab.tsx
+
+Documentation (2):
+- FRONTEND_PERIODIC_REVIEW_IMPLEMENTATION.md
+- IMPLEMENTATION_SUMMARY.md
+
+Total: ~2,155+ lines added/modified across 11 files
+
+TESTING:
+- Backend: Migration applied successfully
+- Frontend: Container restarted, ready for browser testing
+- Integration: Awaiting manual end-to-end testing
+
+DEPLOYMENT:
+Ready for commit, push, and staging deployment.

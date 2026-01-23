@@ -101,6 +101,12 @@ export interface Document {
   current_workflow?: WorkflowInstance;
   is_controlled?: boolean;         // API provides this field
   requires_training?: boolean;     // API provides this field
+  // Periodic Review fields
+  review_period_months?: number;
+  last_review_date?: string;
+  next_review_date?: string;
+  last_reviewed_by?: number;
+  last_reviewed_by_display?: string;
 }
 
 export interface DocumentType {
@@ -621,4 +627,66 @@ export interface Notification {
   read: boolean;
   action_url?: string;
   action_text?: string;
+}
+// ============================================================================
+// Periodic Review Types
+// ============================================================================
+
+export type ReviewOutcome = 'CONFIRMED' | 'UPVERSION_REQUIRED';
+
+export interface DocumentReview {
+  uuid: string;
+  review_date: string;
+  reviewed_by: {
+    id: number;
+    username: string;
+    full_name: string;
+  };
+  outcome: ReviewOutcome;
+  outcome_display: string;
+  comments: string;
+  next_review_date: string;
+  new_version?: {
+    uuid: string;
+    document_number: string;
+  };
+}
+
+export interface CompletePeriodicReviewRequest {
+  outcome: ReviewOutcome;
+  comments: string;
+  next_review_months?: number;
+}
+
+export interface CompletePeriodicReviewResponse {
+  message: string;
+  success: boolean;
+  review_id: number;
+  review_uuid: string;
+  outcome: ReviewOutcome;
+  next_review_date: string;
+  document_updated: boolean;
+  upversion_triggered: boolean;
+  new_version?: {
+    uuid: string;
+    document_number: string;
+    version: string;
+    status: string;
+    workflow_id?: number;
+  };
+}
+
+export interface InitiatePeriodicReviewResponse {
+  message: string;
+  workflow_id: number;
+  workflow_uuid: string;
+  notifications_sent: number;
+  due_date: string;
+}
+
+export interface ReviewHistoryResponse {
+  document_uuid: string;
+  document_number: string;
+  review_count: number;
+  reviews: DocumentReview[];
 }

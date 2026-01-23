@@ -348,7 +348,8 @@ class DocumentLifecycleService:
         )
 
     def approve_document(self, document: Document, user: User, 
-                        effective_date: date, comment: str = '', approved: bool = True) -> bool:
+                        effective_date: date, comment: str = '', approved: bool = True,
+                        review_period_months: int = None) -> bool:
         """
         Approve document with required effective date (PENDING_APPROVAL → APPROVED_PENDING_EFFECTIVE or APPROVED_AND_EFFECTIVE).
         
@@ -384,6 +385,18 @@ class DocumentLifecycleService:
         # Set effective date and approval date
         document.effective_date = effective_date
         document.approval_date = timezone.now()
+        
+        # Set periodic review schedule if provided
+        if review_period_months is not None and review_period_months > 0:
+            document.review_period_months = review_period_months
+            # Calculate next review date from effective date
+            from dateutil.relativedelta import relativedelta
+            document.next_review_date = effective_date + relativedelta(months=review_period_months)
+        else:
+            # No periodic review required
+            document.review_period_months = None
+            document.next_review_date = None
+        
         document.save()
 
         # Determine target state based on effective date

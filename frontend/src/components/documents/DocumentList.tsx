@@ -23,7 +23,7 @@ interface DocumentListProps {
   onDocumentSelect?: (document: Document) => void;
   refreshTrigger?: number; // Add refresh trigger prop
   selectedDocument?: Document | null; // Add selected document prop
-  filterType?: 'pending' | 'approved' | 'archived' | 'obsolete';
+  filterType?: 'pending' | 'approved' | 'archived' | 'obsolete' | 'periodic_review';
   searchQuery?: string; // Add search query prop
   searchFilters?: any; // Add search filters prop
 }
@@ -179,6 +179,7 @@ const DocumentList: React.FC<DocumentListProps> = ({
                            filterType === 'pending' ? 'my_tasks' :
                            filterType === 'archived' ? 'archived' :
                            filterType === 'obsolete' ? 'obsolete' :
+                           filterType === 'periodic_review' ? 'periodic_review' :
                            filterType === 'all' ? 'library' : '';
         
         // ADMIN OVERRIDE: For admins/superusers, default to no filter (see all documents)

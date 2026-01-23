@@ -23,6 +23,10 @@ import {
   AutocompleteSuggestion,
   ElectronicSignature,
   SignatureRequest,
+  InitiatePeriodicReviewResponse,
+  CompletePeriodicReviewRequest,
+  CompletePeriodicReviewResponse,
+  ReviewHistoryResponse,
   DocumentTemplate,
   PlaceholderDefinition,
   SystemConfiguration,
@@ -657,6 +661,58 @@ class ApiService {
   // Dashboard Statistics
   async getDashboardStats(): Promise<DashboardStats> {
     const response = await this.client.get<DashboardStats>('/dashboard/stats/');
+    return response.data;
+  }
+
+  // ============================================================================
+  // Periodic Review API Methods
+  // ============================================================================
+
+  /**
+   * Initiate periodic review for a document
+   * POST /api/v1/documents/{uuid}/initiate-periodic-review/
+   */
+  async initiatePeriodicReview(documentUuid: string): Promise<InitiatePeriodicReviewResponse> {
+    const response = await this.client.post<InitiatePeriodicReviewResponse>(
+      `/documents/documents/${documentUuid}/initiate-periodic-review/`
+    );
+    return response.data;
+  }
+
+  /**
+   * Complete periodic review for a document
+   * POST /api/v1/documents/{uuid}/complete-periodic-review/
+   */
+  async completePeriodicReview(
+    documentUuid: string,
+    data: CompletePeriodicReviewRequest
+  ): Promise<CompletePeriodicReviewResponse> {
+    const response = await this.client.post<CompletePeriodicReviewResponse>(
+      `/documents/documents/${documentUuid}/complete-periodic-review/`,
+      data
+    );
+    return response.data;
+  }
+
+  /**
+   * Get periodic review history for a document
+   * GET /api/v1/documents/{uuid}/review-history/
+   */
+  async getReviewHistory(documentUuid: string): Promise<ReviewHistoryResponse> {
+    const response = await this.client.get<ReviewHistoryResponse>(
+      `/documents/documents/${documentUuid}/review-history/`
+    );
+    return response.data;
+  }
+
+  /**
+   * Get documents under periodic review (filter=periodic_review)
+   * GET /api/v1/documents/?filter=periodic_review
+   */
+  async getPeriodicReviewDocuments(params?: any): Promise<ListResponse<Document>> {
+    const response = await this.client.get<ListResponse<Document>>('/documents/', {
+      params: { filter: 'periodic_review', ...params }
+    });
     return response.data;
   }
 }

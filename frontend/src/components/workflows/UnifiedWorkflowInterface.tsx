@@ -25,6 +25,8 @@ const UnifiedWorkflowInterface: React.FC<UnifiedWorkflowInterfaceProps> = ({
   const [decision, setDecision] = useState<'approve' | 'reject'>('approve');
   const [comment, setComment] = useState<string>('');
   const [effectiveDate, setEffectiveDate] = useState<string>('');
+  const [reviewPeriodMonths, setReviewPeriodMonths] = useState<number>(12);
+  const [requiresReview, setRequiresReview] = useState<boolean>(true);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
@@ -216,6 +218,11 @@ const UnifiedWorkflowInterface: React.FC<UnifiedWorkflowInterfaceProps> = ({
       // Add effective_date for approval workflows (include dummy date for rejections to bypass backend validation)
       if (mode === 'approval') {
         requestBody.effective_date = decision === 'approve' ? effectiveDate : new Date().toISOString().split('T')[0];
+        
+        // Add review period for approvals
+        if (decision === 'approve') {
+          requestBody.review_period_months = requiresReview ? reviewPeriodMonths : null;
+        }
       }
       
       console.log('📤 Request body:', requestBody);
@@ -383,23 +390,83 @@ const UnifiedWorkflowInterface: React.FC<UnifiedWorkflowInterfaceProps> = ({
           </p>
         </div>
 
-        {/* Effective Date Section - Only show for approval workflow when approving */}
+        {/* Effective Date and Review Period Section - Only show for approval workflow when approving */}
         {mode === 'approval' && decision === 'approve' && (
-          <div className="space-y-2">
-            <label className="block text-sm font-semibold text-gray-900">
-              📅 Effective Date *
-            </label>
-            <input
-              type="date"
-              value={effectiveDate}
-              onChange={(e) => setEffectiveDate(e.target.value)}
-              min={new Date().toISOString().split('T')[0]}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-              disabled={loading}
-            />
-            <p className="text-xs text-gray-500">
-              Select when this document should become effective. Defaults to today's date.
-            </p>
+          <div className="space-y-4">
+            {/* Effective Date */}
+            <div className="space-y-2">
+              <label className="block text-sm font-semibold text-gray-900">
+                📅 Effective Date *
+              </label>
+              <input
+                type="date"
+                value={effectiveDate}
+                onChange={(e) => setEffectiveDate(e.target.value)}
+                min={new Date().toISOString().split('T')[0]}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                disabled={loading}
+              />
+              <p className="text-xs text-gray-500">
+                Select when this document should become effective. Defaults to today's date.
+              </p>
+            </div>
+
+            {/* Periodic Review Configuration */}
+            <div className="space-y-3 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+              <div className="flex items-center justify-between">
+                <label className="text-sm font-semibold text-gray-900">
+                  🔄 Periodic Review Required
+                </label>
+                <button
+                  type="button"
+                  onClick={() => setRequiresReview(!requiresReview)}
+                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                    requiresReview ? 'bg-blue-600' : 'bg-gray-300'
+                  }`}
+                  disabled={loading}
+                >
+                  <span
+                    className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                      requiresReview ? 'translate-x-6' : 'translate-x-1'
+                    }`}
+                  />
+                </button>
+              </div>
+              
+              {requiresReview && (
+                <div className="space-y-2">
+                  <label className="block text-sm font-medium text-gray-700">
+                    Review Interval
+                  </label>
+                  <select
+                    value={reviewPeriodMonths}
+                    onChange={(e) => setReviewPeriodMonths(parseInt(e.target.value))}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white"
+                    disabled={loading}
+                  >
+                    <option value={6}>Every 6 months</option>
+                    <option value={12}>Annual (12 months)</option>
+                    <option value={18}>Every 18 months</option>
+                    <option value={24}>Biennial (24 months)</option>
+                    <option value={36}>Every 3 years</option>
+                  </select>
+                  <p className="text-xs text-gray-600">
+                    Document will require periodic review for regulatory compliance.
+                    {requiresReview && reviewPeriodMonths && (
+                      <span className="block mt-1 font-medium text-blue-700">
+                        Next review due: {new Date(new Date(effectiveDate || new Date()).getTime() + reviewPeriodMonths * 30 * 24 * 60 * 60 * 1000).toLocaleDateString()}
+                      </span>
+                    )}
+                  </p>
+                </div>
+              )}
+              
+              {!requiresReview && (
+                <p className="text-xs text-gray-600">
+                  ℹ️ No periodic review will be scheduled. This is typically used for reference documents or documents with indefinite validity.
+                </p>
+              )}
+            </div>
           </div>
         )}
 

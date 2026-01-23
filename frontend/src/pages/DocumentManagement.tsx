@@ -11,7 +11,7 @@ import DocumentSearch from '../components/documents/DocumentSearch.tsx';
 import { triggerBadgeRefresh } from '../utils/badgeRefresh.ts';
 
 interface DocumentManagementProps {
-  filterType?: 'pending' | 'approved' | 'archived' | 'obsolete';
+  filterType?: 'pending' | 'approved' | 'archived' | 'obsolete' | 'periodic_review';
 }
 
 const DocumentManagement: React.FC<DocumentManagementProps> = ({ 
@@ -25,7 +25,7 @@ const DocumentManagement: React.FC<DocumentManagementProps> = ({
   // This was causing race conditions during page refresh
   
   // Get filter from URL query parameter or use prop as fallback
-  const urlFilter = searchParams.get('filter') as 'pending' | 'approved' | 'archived' | 'obsolete' | null;
+  const urlFilter = searchParams.get('filter') as 'pending' | 'approved' | 'archived' | 'obsolete' | 'periodic_review' | null;
   const filterType = urlFilter || propFilterType;
   
   console.log('📄 DocumentManagement: URL filter:', urlFilter);
@@ -259,7 +259,7 @@ const DocumentManagement: React.FC<DocumentManagementProps> = ({
                 onSearch={handleSearch}
                 onFilterChange={handleFilterChange}
                 documentTypes={documentTypes}
-                filterContext={filterType === 'pending' ? 'tasks' : filterType === 'obsolete' ? 'obsolete' : 'library'}
+                filterContext={filterType === 'pending' ? 'tasks' : filterType === 'obsolete' ? 'obsolete' : filterType === 'periodic_review' ? 'periodic_review' : 'library'}
               />
               <DocumentList
                 onDocumentSelect={handleDocumentSelect}
@@ -309,12 +309,14 @@ const DocumentManagement: React.FC<DocumentManagementProps> = ({
                 {filterType === 'pending' ? 'My Tasks' :
                  filterType === 'obsolete' ? 'Obsolete Documents' :
                  filterType === 'archived' ? 'Archived Documents' :
+                 filterType === 'periodic_review' ? 'Periodic Reviews' :
                  'Document Library'}
               </h1>
               <p className="text-gray-600 mt-2">
                 {filterType === 'pending' ? 'Documents requiring your action and review' :
                  filterType === 'obsolete' ? 'View obsolete, superseded, and scheduled for obsolescence documents' :
                  filterType === 'archived' ? 'View archived document versions and terminated workflows' :
+                 filterType === 'periodic_review' ? 'Documents requiring periodic review for regulatory compliance' :
                  'Manage, upload, and review documents in your EDMS system'}
               </p>
             </div>

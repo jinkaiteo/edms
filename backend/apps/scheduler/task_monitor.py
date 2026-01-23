@@ -25,22 +25,27 @@ class TaskMonitor:
     TASK_DEFINITIONS = {
         'apps.scheduler.tasks.process_document_effective_dates': {
             'name': 'Process Effective Dates',
-            'category': 'Document Processing',
+            'category': 'Document Lifecycle',
             'description': 'Auto-activates documents that reached their effective date'
         },
         'apps.scheduler.tasks.process_document_obsoletion_dates': {
             'name': 'Process Obsolescence Dates',
-            'category': 'Document Processing',
+            'category': 'Document Lifecycle',
             'description': 'Auto-obsoletes documents that reached their obsolescence date'
+        },
+        'apps.scheduler.tasks.process_periodic_reviews': {
+            'name': 'Periodic Review Processing',
+            'category': 'Document Lifecycle',
+            'description': 'Checks for documents requiring periodic review and creates review workflows'
         },
         'apps.scheduler.tasks.check_workflow_timeouts': {
             'name': 'Check Workflow Timeouts',
-            'category': 'Workflow Management',
+            'category': 'Workflow Monitoring',
             'description': 'Monitors workflows for timeouts and sends escalations'
         },
         'apps.scheduler.tasks.perform_system_health_check': {
             'name': 'System Health Check',
-            'category': 'System Maintenance',
+            'category': 'System Monitoring',
             'description': 'Performs comprehensive system health validation'
         },
         'apps.scheduler.automated_tasks.cleanup_workflow_tasks': {

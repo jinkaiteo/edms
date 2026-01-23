@@ -249,6 +249,9 @@ class DocumentListSerializer(serializers.ModelSerializer):
     # Add obsolescence user display name
     obsoleted_by_display = serializers.SerializerMethodField()
     
+    # Add periodic review user display name
+    last_reviewed_by_display = serializers.CharField(source='last_reviewed_by.get_full_name', read_only=True, allow_null=True)
+    
     # Add dependency information
     dependencies = serializers.SerializerMethodField()
     dependents = serializers.SerializerMethodField()
@@ -266,6 +269,8 @@ class DocumentListSerializer(serializers.ModelSerializer):
             'file_name', 'file_path', 'file_size',
             # Add obsolescence information
             'obsolescence_date', 'obsolescence_reason', 'obsoleted_by', 'obsoleted_by_display',
+            # Add periodic review fields
+            'review_period_months', 'last_review_date', 'next_review_date', 'last_reviewed_by', 'last_reviewed_by_display',
             # Add dependency information
             'dependencies', 'dependents'
         ]
@@ -337,6 +342,8 @@ class DocumentDetailSerializer(serializers.ModelSerializer):
             'reason_for_change', 'change_summary', 'supersedes',
             # Add obsolescence information
             'obsolescence_date', 'obsolescence_reason', 'obsoleted_by',
+            # Add periodic review fields
+            'review_period_months', 'last_review_date', 'next_review_date', 'last_reviewed_by',
             'is_active', 'requires_training', 'is_controlled',
             'dependencies', 'dependents', 'comments', 'attachments', 'versions',
             'can_edit', 'can_review', 'can_approve', 'metadata'

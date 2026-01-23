@@ -40,6 +40,7 @@ from .serializers import (
 )
 from .filters import DocumentFilter
 from .utils import log_document_access, create_document_export
+from .views_periodic_review import PeriodicReviewMixin
 
 
 class DocumentTypeViewSet(viewsets.ModelViewSet):
@@ -98,12 +99,14 @@ class DocumentSourceViewSet(viewsets.ModelViewSet):
         return super().get_queryset().filter(is_active=True)
 
 
-class DocumentViewSet(viewsets.ModelViewSet):
+class DocumentViewSet(PeriodicReviewMixin, viewsets.ModelViewSet):
     """
     ViewSet for managing documents.
     
     Provides comprehensive document management with workflow
     operations, version control, and access logging.
+    
+    Includes periodic review endpoints via PeriodicReviewMixin.
     """
     
     queryset = Document.objects.all()
@@ -211,6 +214,34 @@ class DocumentViewSet(viewsets.ModelViewSet):
             queryset = queryset.filter(
                 status__in=['EFFECTIVE', 'APPROVED_PENDING_EFFECTIVE', 'SCHEDULED_FOR_OBSOLESCENCE', 'SUPERSEDED']
             ).order_by('-updated_at')
+            
+        elif filter_type == 'periodic_review':
+            # Show documents under periodic review where user is a stakeholder
+            from apps.workflows.models import DocumentWorkflow
+            
+            if is_admin:
+                # Admin sees ALL documents under periodic review
+                periodic_review_workflows = DocumentWorkflow.objects.filter(
+                    workflow_type='PERIODIC_REVIEW',
+                    is_terminated=False
+                ).values_list('document_id', flat=True)
+                
+                queryset = queryset.filter(id__in=periodic_review_workflows)
+            else:
+                # Regular users see periodic reviews where they're stakeholders
+                queryset = queryset.filter(
+                    Q(author=user) | Q(reviewer=user) | Q(approver=user)
+                )
+                
+                # Get workflows for periodic review
+                periodic_review_workflows = DocumentWorkflow.objects.filter(
+                    workflow_type='PERIODIC_REVIEW',
+                    is_terminated=False
+                ).values_list('document_id', flat=True)
+                
+                queryset = queryset.filter(id__in=periodic_review_workflows)
+            
+            queryset = queryset.order_by('-updated_at')
             
         else:
             # Default: show all documents ordered by creation date
@@ -1064,7 +1095,6 @@ class DocumentViewSet(viewsets.ModelViewSet):
                     # Headers
                     if section.header:
                         for paragraph in section.header.paragraphs:
-                            if paragraph.text.strip():
                                 all_text_parts.append(paragraph.text)
                     
                     # Footers
@@ -1072,8 +1102,6 @@ class DocumentViewSet(viewsets.ModelViewSet):
                         for paragraph in section.footer.paragraphs:
                             if paragraph.text.strip():
                                 all_text_parts.append(paragraph.text)
-                
-                text_content = '\n'.join(all_text_parts)
                 
                 # Get available placeholders
                 available_placeholders = list(annotation_processor.get_available_placeholders().keys())
@@ -1096,7 +1124,6 @@ class DocumentViewSet(viewsets.ModelViewSet):
                     'file_size': uploaded_file.size,
                     'total_placeholders_available': len(available_placeholders)
                 })
-                
                 return Response(analysis_result)
                 
             finally:

@@ -152,6 +152,34 @@ def cleanup_celery_results(days_to_keep: int = 7, remove_revoked: bool = True):
 
 
 # ============================================================================
+# Periodic Review Tasks
+# ============================================================================
+
+@shared_task
+def process_periodic_reviews():
+    """
+    Check for documents that need periodic review.
+    
+    Celery task wrapper that delegates to PeriodicReviewService.
+    Runs daily via Celery Beat.
+    """
+    try:
+        from .services.periodic_review_service import get_periodic_review_service
+        periodic_review_service = get_periodic_review_service()
+        
+        results = periodic_review_service.process_periodic_reviews()
+        logger.info(
+            f"Periodic review check completed: "
+            f"{results['workflows_created']} workflows created, "
+            f"{results['notifications_created']} notifications sent"
+        )
+        return results
+    except Exception as e:
+        logger.error(f"Periodic review processing failed: {str(e)}")
+        raise
+
+
+# ============================================================================
 # Backward Compatibility Exports
 # ============================================================================
 # These are imported by monitoring_dashboard.py for manual triggering
@@ -163,4 +191,5 @@ __all__ = [
     'perform_system_health_check',
     'cleanup_workflow_tasks',
     'cleanup_celery_results',
+    'process_periodic_reviews',
 ]

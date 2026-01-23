@@ -132,6 +132,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
     const baseItems: NavigationItem[] = [
       { name: 'Document Library', href: '/', icon: DocumentArrowUpIcon },
       { name: 'My Tasks', href: '/?filter=pending', icon: ClipboardDocumentListIcon, badge: documentCount },
+      { name: 'Periodic Reviews', href: '/?filter=periodic_review', icon: ClipboardDocumentListIcon },
       { name: 'Obsolete Documents', href: '/?filter=obsolete', icon: DocumentTextIcon },
     ];
     
@@ -189,7 +190,9 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
     // For other items, check if pathname matches and no conflicting query params  
     const isPathMatch = (item.href === '/' && (location.pathname === '/' || location.pathname === '/document-management')) ||
                         location.pathname.startsWith(item.href);
-    const hasFilterParam = location.search.includes('filter=pending') || location.search.includes('filter=obsolete');
+    const hasFilterParam = location.search.includes('filter=pending') || 
+                          location.search.includes('filter=obsolete') ||
+                          location.search.includes('filter=periodic_review');
     
     // \"Document Library\" should not be active if we're viewing filtered documents OR admin pages
     if (item.href === '/' && (hasFilterParam || location.pathname.startsWith('/administration'))) {

@@ -66,6 +66,16 @@ app.conf.beat_schedule = {
         }
     },
     
+    # Periodic Review Processing - runs daily at 9 AM
+    'process-periodic-reviews': {
+        'task': 'apps.scheduler.tasks.process_periodic_reviews',
+        'schedule': crontab(hour=9, minute=0),  # Daily at 9:00 AM
+        'options': {
+            'expires': 7200,  # Task expires after 2 hours
+            'priority': 7,    # High priority
+        }
+    },
+    
     # Note: Notification tasks disabled - not yet implemented
     # These are placeholders that currently do nothing (process 0 notifications)
     # Uncomment when notification system is ready:

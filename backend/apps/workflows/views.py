@@ -75,12 +75,14 @@ class SimpleDocumentWorkflowAPIView(APIView):
             elif action_type == 'approve_document':
                 approved = request.data.get('approved', True)
                 effective_date = request.data.get('effective_date')
+                review_period_months = request.data.get('review_period_months')
                 
                 # APPROVAL REJECTION DEBUG LOGS
                 print(f"🔥 APPROVAL DEBUG: action_type = {action_type}")
                 print(f"🔥 APPROVAL DEBUG: raw request.data = {request.data}")
                 print(f"🔥 APPROVAL DEBUG: approved = {approved} (type: {type(approved)})")
                 print(f"🔥 APPROVAL DEBUG: effective_date = {effective_date}")
+                print(f"🔥 APPROVAL DEBUG: review_period_months = {review_period_months}")
                 print(f"🔥 APPROVAL DEBUG: comment = {comment}")
                 print(f"🔥 APPROVAL DEBUG: user = {request.user.username}")
                 print(f"🔥 APPROVAL DEBUG: document = {document.document_number}")
@@ -88,7 +90,7 @@ class SimpleDocumentWorkflowAPIView(APIView):
                 
                 # Call the enhanced approve_document method
                 print(f"🔥 APPROVAL DEBUG: Calling approve_document with approved={approved}")
-                result = lifecycle_service.approve_document(document, request.user, effective_date, comment, approved)
+                result = lifecycle_service.approve_document(document, request.user, effective_date, comment, approved, review_period_months)
                 print(f"🔥 APPROVAL DEBUG: approve_document result = {result}")
             elif action_type == 'make_effective':
                 result = lifecycle_service.make_effective(document, request.user, comment)

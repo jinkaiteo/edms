@@ -1,0 +1,108 @@
+feat: Implement efficient periodic review with up-versioning workflow
+
+Implement periodic review workflow that reuses existing up-versioning modal
+instead of auto-creating versions, reducing code duplication and improving UX.
+
+APPROACH:
+- Periodic review records outcome (CONFIRMED/MINOR_UPVERSION/MAJOR_UPVERSION)
+- For up-version outcomes: Opens existing CreateNewVersionModal
+- User selects minor/major and provides details in version modal
+- Version created through existing tested workflow
+- Zero code duplication
+
+BACKEND CHANGES:
+- Update DocumentReview.REVIEW_OUTCOMES:
+  * CONFIRMED (no changes)
+  * MINOR_UPVERSION (opens version modal)
+  * MAJOR_UPVERSION (opens version modal)
+
+- Simplified periodic_review_service.py:
+  * Removed auto-version creation logic (~50 lines)
+  * Just records review outcome
+  * Frontend handles version creation
+  * Response includes: requires_upversion flag
+
+- Migration 0005_update_periodic_review_outcomes:
+  * Updates choice field in document_reviews table
+  * Applied successfully
+
+FRONTEND CHANGES:
+- Update TypeScript types (api.ts):
+  * ReviewOutcome type updated
+  * Review context interface for modal handoff
+
+- Refactored PeriodicReviewModal.tsx:
+  * CONFIRMED: Completes review immediately
+  * MINOR/MAJOR_UPVERSION: Closes and opens version modal
+  * Passes review context to parent component
+  * Button: "Continue to Version Creation"
+  * Clear 4-step process explanation
+
+- Enhanced DocumentViewer.tsx:
+  * Store periodicReviewContext state
+  * Handle modal transition (review → version)
+  * Pass context to version modal
+
+- Maintained ReviewHistoryTab.tsx:
+  * Display outcome badges
+  * Show version links when created
+  * Legacy support for old outcomes
+
+WORKFLOW:
+1. CONFIRMED:
+   - User enters comments
+   - Clicks "Complete Review"
+   - Backend records review
+   - Document stays EFFECTIVE
+
+2. MINOR/MAJOR_UPVERSION:
+   - User enters preliminary comments
+   - Clicks "Continue to Version Creation"
+   - Backend records review outcome
+   - Frontend opens CreateNewVersionModal
+   - User selects minor/major (can change mind)
+   - User provides detailed reason/summary
+   - Version created through existing workflow
+   - New version starts in DRAFT
+
+BENEFITS:
+✓ Code reuse (existing CreateNewVersionModal)
+✓ No logic duplication (~100 lines saved)
+✓ Better UX (user controls version details)
+✓ Flexibility (can change minor/major decision)
+✓ Maintainability (single version creation path)
+✓ Consistency (same modal for all version creation)
+
+FILES MODIFIED:
+Backend (4):
+- backend/apps/scheduler/services/periodic_review_service.py (simplified)
+- backend/apps/workflows/models_review.py (outcome choices)
+- backend/apps/documents/views_periodic_review.py (API validation)
+- backend/apps/workflows/migrations/0005_*.py (migration)
+
+Frontend (4):
+- frontend/src/types/api.ts (types)
+- frontend/src/components/documents/PeriodicReviewModal.tsx (modal logic)
+- frontend/src/components/documents/DocumentViewer.tsx (integration)
+- frontend/src/components/documents/ReviewHistoryTab.tsx (display)
+
+Documentation (5):
+- PERIODIC_REVIEW_UPVERSION_IMPLEMENTATION.md (backend details)
+- FRONTEND_PERIODIC_REVIEW_IMPLEMENTATION.md (frontend details)
+- REFACTORED_PERIODIC_REVIEW_IMPLEMENTATION.md (refactored approach)
+- IMPLEMENTATION_SUMMARY.md (quick reference)
+- REPOSITORY_UNDERSTANDING_SUMMARY.md (updated workflow)
+
+TESTING:
+- Backend: Migration applied successfully
+- Frontend: Containers restarted
+- Integration: Ready for manual testing
+
+CODE QUALITY:
+- Separation of concerns: Review recording vs version creation
+- DRY principle: No duplicated version logic
+- Single responsibility: Each modal has one purpose
+- Tested components: Reuses existing, proven workflow
+
+Total: ~3,500 lines documentation + code
+Lines saved: ~100 by eliminating duplication

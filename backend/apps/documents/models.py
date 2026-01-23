@@ -290,6 +290,34 @@ class Document(models.Model):
     review_due_date = models.DateField(null=True, blank=True, db_index=True)
     obsolete_date = models.DateField(null=True, blank=True)
     
+    # Periodic Review fields (added for regulatory compliance)
+    review_period_months = models.PositiveIntegerField(
+        null=True,
+        blank=True,
+        default=None,
+        help_text='Number of months between periodic reviews (null if no periodic review required)'
+    )
+    last_review_date = models.DateField(
+        null=True,
+        blank=True,
+        db_index=True,
+        help_text='Date of the most recent periodic review'
+    )
+    next_review_date = models.DateField(
+        null=True,
+        blank=True,
+        db_index=True,
+        help_text='Scheduled date for next periodic review'
+    )
+    last_reviewed_by = models.ForeignKey(
+        User,
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name='last_reviewed_documents',
+        help_text='User who completed the most recent periodic review'
+    )
+    
     # Obsolescence workflow fields
     obsolescence_date = models.DateField(null=True, blank=True, db_index=True, 
                                         help_text="Scheduled date for document obsolescence")

@@ -1,6 +1,23 @@
 """
 Simple Workflow Models for EDMS.
 
+Includes:
+- DocumentWorkflow: Main workflow tracking
+- DocumentState: Workflow state definitions  
+- DocumentTransition: State transition history
+- WorkflowType: Workflow type definitions
+
+Note: DocumentReview model is in models_review.py
+"""
+
+# Import DocumentReview for convenience
+from .models_review import DocumentReview
+
+__all__ = ['DocumentWorkflow', 'DocumentState', 'DocumentTransition', 'WorkflowType', 'DocumentReview']
+
+"""
+Original docstring:
+
 Contains only the essential models for the Simple Workflow approach:
 - DocumentState
 - DocumentWorkflow  

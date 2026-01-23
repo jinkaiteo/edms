@@ -8,6 +8,7 @@ import AdminDashboard from './pages/AdminDashboard.tsx';
 // MyTasksStandalone removed - using document filters instead
 import AuditTrail from './pages/AuditTrail.tsx';
 import Notifications from './pages/Notifications.tsx';
+// PeriodicReviewList removed - using filter parameter instead (/?filter=periodic_review)
 // Removed problematic standalone pages - functionality integrated into AdminDashboard
 import { AuthProvider } from './contexts/AuthContext.tsx';
 import { EnhancedAuthProvider } from './contexts/EnhancedAuthContext.tsx';
@@ -48,6 +49,7 @@ function AppContent() {
         <Route path="/archived-documents" element={<Navigate to="/?filter=archived" replace />} />
         <Route path="/obsolete-documents" element={<Navigate to="/?filter=obsolete" replace />} />
         <Route path="/notifications" element={<Notifications />} />
+        {/* Periodic Review - using filter parameter: /?filter=periodic_review */}
         {/* Audit trail moved to admin interface - route kept for direct access only */}
         <Route path="/audit-trail" element={<AuditTrail />} />
         <Route path="/workflows" element={<Navigate to="/administration" replace />} />

@@ -11,6 +11,7 @@ import TerminateDocumentModal from './TerminateDocumentModal.tsx';
 import DownloadActionMenu from './DownloadActionMenu.tsx';
 import DocumentCreateModal from './DocumentCreateModal.tsx';
 import WorkflowHistory from '../workflows/WorkflowHistory.tsx';
+import PeriodicReviewModal from './PeriodicReviewModal.tsx';
 import { useAuth } from '../../contexts/AuthContext.tsx';
 import apiService from '../../services/api.ts';
 
@@ -70,6 +71,12 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({
   const [showViewReviewStatus, setShowViewReviewStatus] = useState(false);
   const [showTerminateModal, setShowTerminateModal] = useState(false);
   const [isTerminating, setIsTerminating] = useState(false);
+  const [showPeriodicReviewModal, setShowPeriodicReviewModal] = useState(false);
+  const [periodicReviewContext, setPeriodicReviewContext] = useState<{
+    outcome: string;
+    comments: string;
+    nextReviewMonths: number;
+  } | null>(null);
   
   // Auth context for role-based visibility
   const { authenticated, user } = useAuth();
@@ -238,6 +245,11 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({
       case 'terminate_document':
         // EDMS Terminate Document: Open terminate modal
         setShowTerminateModal(true);
+        return;
+      
+      case 'complete_periodic_review':
+        // Periodic Review: Open periodic review modal
+        setShowPeriodicReviewModal(true);
         return;
         
       default:
@@ -782,6 +794,16 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({
 
       case 'EFFECTIVE':
         // Document is approved and currently effective
+        // Show Periodic Review button if document needs review
+        if (document.next_review_date && new Date(document.next_review_date) <= new Date()) {
+          actions.push({
+            key: 'complete_periodic_review',
+            label: '📋 Complete Periodic Review',
+            color: 'orange',
+            description: 'Complete periodic review for regulatory compliance'
+          });
+        }
+        
         // Allow all authenticated users to initiate up-versioning (approval required anyway)
         actions.push({
           key: 'create_new_version',
@@ -1009,6 +1031,32 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({
                       <div>
                         <dt className="text-sm font-medium text-gray-500">Effective Date</dt>
                         <dd className="text-sm text-gray-900 mt-1">{formatDate(document.effective_date)}</dd>
+                      </div>
+                    )}
+                    <div>
+                      <dt className="text-sm font-medium text-gray-500">Next Review Date</dt>
+                      <dd className="text-sm text-gray-900 mt-1">
+                        {document.next_review_date ? (
+                          <>
+                            {formatDate(document.next_review_date)}
+                            {new Date(document.next_review_date) < new Date() && (
+                              <span className="ml-2 text-red-600 text-xs font-medium">(Overdue)</span>
+                            )}
+                          </>
+                        ) : (
+                          <span className="text-gray-500">None</span>
+                        )}
+                      </dd>
+                    </div>
+                    {document.last_review_date && (
+                      <div>
+                        <dt className="text-sm font-medium text-gray-500">Last Review Date</dt>
+                        <dd className="text-sm text-gray-900 mt-1">
+                          {formatDate(document.last_review_date)}
+                          {document.last_reviewed_by_display && (
+                            <span className="text-xs text-gray-500"> by {document.last_reviewed_by_display}</span>
+                          )}
+                        </dd>
                       </div>
                     )}
                   </div>
@@ -1480,9 +1528,32 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({
       {showCreateNewVersionModal && document && (
         <CreateNewVersionModal
           isOpen={showCreateNewVersionModal}
-          onClose={() => setShowCreateNewVersionModal(false)}
+          onClose={() => {
+            setShowCreateNewVersionModal(false);
+            setPeriodicReviewContext(null); // Clear stored comments
+          }}
           document={document}
-          onVersionCreated={handleVersionCreated}
+          onVersionCreated={async (newDocument: any) => {
+            // If this was triggered by periodic review, complete the review now
+            if (periodicReviewContext) {
+              try {
+                await apiService.completePeriodicReview(document.uuid, {
+                  outcome: periodicReviewContext.outcome,
+                  comments: periodicReviewContext.comments,
+                  next_review_months: periodicReviewContext.nextReviewMonths
+                });
+                console.log('✅ Periodic review completed with outcome:', periodicReviewContext.outcome);
+                alert('✅ Periodic review completed successfully!\n\nOutcome: ' + periodicReviewContext.outcome + '\nNew version created: ' + (newDocument?.document_number || 'created'));
+              } catch (error) {
+                console.error('Failed to complete periodic review:', error);
+                alert('⚠️ Version created but failed to complete periodic review. Please contact administrator.');
+              }
+              setPeriodicReviewContext(null); // Clear stored context
+            }
+            
+            // Call original success handler
+            handleVersionCreated(newDocument);
+          }}
         />
       )}
 
@@ -1528,6 +1599,25 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({
           documentNumber={document.document_number}
           documentTitle={document.title}
           isLoading={isTerminating}
+        />
+      )}
+
+      {/* Periodic Review Modal */}
+      {showPeriodicReviewModal && document && (
+        <PeriodicReviewModal
+          isOpen={showPeriodicReviewModal}
+          onClose={() => setShowPeriodicReviewModal(false)}
+          document={document}
+          onSuccess={async () => {
+            setShowPeriodicReviewModal(false);
+            await forceRefreshDocumentState();
+          }}
+          onUpversion={(reviewContext) => {
+            // Store review context and open version creation modal
+            setPeriodicReviewContext(reviewContext);
+            setShowPeriodicReviewModal(false);
+            setShowCreateNewVersionModal(true);
+          }}
         />
       )}
     </div>
