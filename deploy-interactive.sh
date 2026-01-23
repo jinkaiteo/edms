@@ -67,6 +67,14 @@ print_step() {
     echo -e "${MAGENTA}▶${NC} $1"
 }
 
+print_section() {
+    echo ""
+    echo -e "${BOLD}${CYAN}═══════════════════════════════════════════════════════════════${NC}"
+    echo -e "${BOLD}${CYAN}  $1${NC}"
+    echo -e "${BOLD}${CYAN}═══════════════════════════════════════════════════════════════${NC}"
+    echo ""
+}
+
 prompt_yes_no() {
     local prompt="$1"
     local default="${2:-n}"
