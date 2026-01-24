@@ -580,7 +580,11 @@ EOF
 deploy_docker() {
     print_header "Docker Deployment"
     
-    print_step "Building Docker images..."
+    # Enable BuildKit for better build performance
+    export DOCKER_BUILDKIT=1
+    export COMPOSE_DOCKER_CLI_BUILD=1
+    
+    print_step "Building Docker images with BuildKit..."
     echo ""
     
     cd "$SCRIPT_DIR"
