@@ -86,7 +86,6 @@ services:
     command: >
       sh -c "echo 'Starting production backend...' &&
              python manage.py migrate --run-syncdb &&
-             python manage.py collectstatic --noinput &&
              python manage.py loaddata initial_users.json || true &&
              echo 'Backend setup complete, starting server...' &&
              gunicorn edms.wsgi:application --bind 0.0.0.0:8000 --workers 4 --timeout 120 --keep-alive 2 --max-requests 1000 --max-requests-jitter 50 --access-logfile - --error-logfile -"

@@ -789,19 +789,7 @@ initialize_database() {
     fi
     
     echo ""
-    print_step "Collecting static files..."
-    echo ""
-    
-    # Fix permissions on staticfiles directory before collecting
-    docker compose -f docker-compose.prod.yml exec -T backend chown -R www-data:www-data /app/staticfiles 2>/dev/null || true
-    docker compose -f docker-compose.prod.yml exec -T backend chmod -R 755 /app/staticfiles 2>/dev/null || true
-    
-    if docker compose -f docker-compose.prod.yml exec -T backend python manage.py collectstatic --noinput; then
-        print_success "Static files collected"
-    else
-        print_warning "Failed to collect static files (non-critical, continuing...)"
-    fi
-    
+    print_info "Static files pre-collected in Docker image (skipping collection)"
     echo ""
     print_step "Creating default roles..."
     echo ""
