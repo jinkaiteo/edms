@@ -289,7 +289,7 @@ def send_daily_health_report():
         from django.contrib.auth import get_user_model
         from django.utils import timezone
         from apps.documents.models import Document
-        from apps.workflows.models import Workflow
+        from apps.workflows.models import WorkflowInstance
         
         User = get_user_model()
         
@@ -321,11 +321,11 @@ def send_daily_health_report():
         new_documents_today = Document.objects.filter(created_date__gte=today_start).count()
         
         # Workflow statistics
-        active_workflows = Workflow.objects.filter(is_terminated=False).count()
+        active_workflows = WorkflowInstance.objects.filter(is_terminated=False).count()
         
         # Overdue workflows (simplified check - workflows older than 7 days)
         seven_days_ago = now - timezone.timedelta(days=7)
-        overdue_workflows = Workflow.objects.filter(
+        overdue_workflows = WorkflowInstance.objects.filter(
             is_terminated=False,
             created_at__lt=seven_days_ago
         ).count()
