@@ -318,7 +318,7 @@ def send_daily_health_report():
         effective_documents = Document.objects.filter(status='EFFECTIVE').count()
         
         # New documents today
-        new_documents_today = Document.objects.filter(created_date__gte=today_start).count()
+        new_documents_today = Document.objects.filter(created_at__gte=today_start).count()
         
         # Workflow statistics
         active_workflows = WorkflowInstance.objects.filter(is_terminated=False).count()
