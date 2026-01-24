@@ -1338,9 +1338,9 @@ configure_email_optional() {
             # Start containers temporarily if not running
             docker compose up -d backend redis db
             
-            # Restart backend to load new .env settings
-            print_info "Restarting backend to load email configuration..."
-            docker compose restart backend
+            # Recreate backend to load new .env settings
+            print_info "Reloading backend with new email configuration..."
+            docker compose up -d --force-recreate --no-deps backend
             sleep 15
             
             # Send test email
