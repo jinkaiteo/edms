@@ -321,13 +321,14 @@ def send_daily_health_report():
         new_documents_today = Document.objects.filter(created_at__gte=today_start).count()
         
         # Workflow statistics
-        active_workflows = WorkflowInstance.objects.filter(is_terminated=False).count()
+        active_workflows = WorkflowInstance.objects.filter(is_completed=False, is_active=True).count()
         
         # Overdue workflows (simplified check - workflows older than 7 days)
         seven_days_ago = now - timezone.timedelta(days=7)
         overdue_workflows = WorkflowInstance.objects.filter(
-            is_terminated=False,
-            created_at__lt=seven_days_ago
+            is_completed=False,
+            is_active=True,
+            started_at__lt=seven_days_ago
         ).count()
         
         # Build email content
