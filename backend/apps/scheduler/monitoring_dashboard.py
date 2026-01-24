@@ -23,7 +23,9 @@ from .tasks import (
     check_workflow_timeouts,
     perform_system_health_check,
     cleanup_celery_results,
-    process_periodic_reviews
+    process_periodic_reviews,
+    send_daily_health_report,
+    send_test_email_to_self
 )
 from ..audit.integrity_tasks import (
     run_daily_integrity_check,
@@ -110,6 +112,22 @@ class SchedulerMonitoringService:
                 'priority': 'HIGH',
                 'icon': '🔒',
                 'celery_task': verify_audit_trail_checksums
+            },
+            'send_daily_health_report': {
+                'name': 'Send Daily Health Report',
+                'description': 'Sends comprehensive system health report to all admin users',
+                'category': 'Email Notifications',
+                'priority': 'MEDIUM',
+                'icon': '📊',
+                'celery_task': send_daily_health_report
+            },
+            'send_test_email_to_self': {
+                'name': 'Send Test Email',
+                'description': 'Sends test email to all admin users to verify email configuration',
+                'category': 'Email Notifications',
+                'priority': 'LOW',
+                'icon': '📧',
+                'celery_task': send_test_email_to_self
             }
         }
     
