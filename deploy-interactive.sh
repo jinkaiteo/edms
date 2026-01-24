@@ -1247,6 +1247,13 @@ configure_email_optional() {
             sed -i "s|^EMAIL_HOST_PASSWORD=.*|EMAIL_HOST_PASSWORD=$email_pass|" "$ENV_FILE"
             sed -i "s|^DEFAULT_FROM_EMAIL=.*|DEFAULT_FROM_EMAIL=$email_user|" "$ENV_FILE"
             
+            # Verify .env file is valid (no spaces in keys)
+            if grep -q '^[A-Z_]*[[:space:]][^=]*=' "$ENV_FILE"; then
+                print_error "Invalid .env format detected. Cleaning up..."
+                # Remove any lines with spaces in keys
+                sed -i '/^[A-Z_]*[[:space:]][^=]*=/d' "$ENV_FILE"
+            fi
+            
             print_success "Gmail SMTP configured"
             ;;
             
@@ -1275,6 +1282,13 @@ configure_email_optional() {
             sed -i "s|^EMAIL_HOST_USER=.*|EMAIL_HOST_USER=$email_user|" "$ENV_FILE"
             sed -i "s|^EMAIL_HOST_PASSWORD=.*|EMAIL_HOST_PASSWORD=$email_pass|" "$ENV_FILE"
             sed -i "s|^DEFAULT_FROM_EMAIL=.*|DEFAULT_FROM_EMAIL=$email_user|" "$ENV_FILE"
+            
+            # Verify .env file is valid (no spaces in keys)
+            if grep -q '^[A-Z_]*[[:space:]][^=]*=' "$ENV_FILE"; then
+                print_error "Invalid .env format detected. Cleaning up..."
+                # Remove any lines with spaces in keys
+                sed -i '/^[A-Z_]*[[:space:]][^=]*=/d' "$ENV_FILE"
+            fi
             
             print_success "Microsoft 365 SMTP configured"
             ;;
@@ -1314,6 +1328,13 @@ configure_email_optional() {
             sed -i "s|^EMAIL_HOST_USER=.*|EMAIL_HOST_USER=$email_user|" "$ENV_FILE"
             sed -i "s|^EMAIL_HOST_PASSWORD=.*|EMAIL_HOST_PASSWORD=$email_pass|" "$ENV_FILE"
             sed -i "s|^DEFAULT_FROM_EMAIL=.*|DEFAULT_FROM_EMAIL=$from_email|" "$ENV_FILE"
+            
+            # Verify .env file is valid (no spaces in keys)
+            if grep -q '^[A-Z_]*[[:space:]][^=]*=' "$ENV_FILE"; then
+                print_error "Invalid .env format detected. Cleaning up..."
+                # Remove any lines with spaces in keys
+                sed -i '/^[A-Z_]*[[:space:]][^=]*=/d' "$ENV_FILE"
+            fi
             
             print_success "Custom SMTP configured"
             ;;
