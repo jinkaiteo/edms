@@ -63,6 +63,9 @@ class SystemHealthService:
             # Memory and performance check
             health_results['checks']['performance'] = self._check_performance()
             
+            # Email notification system check
+            health_results['checks']['email_system'] = self._check_email_system()
+            
             # Determine overall status
             failed_checks = [name for name, result in health_results['checks'].items() if not result['healthy']]
             
@@ -174,6 +177,134 @@ class SystemHealthService:
                 'memory_usage': 60.0,  # Placeholder
                 'disk_usage': 45.0   # Placeholder
             }
+        except Exception as e:
+            return {
+                'healthy': False,
+                'error': str(e)
+            }
+    
+    def _check_email_system(self) -> Dict[str, Any]:
+        """Check email notification system health."""
+        try:
+            from django.conf import settings
+            import smtplib
+            
+            email_health = {
+                'healthy': True,
+                'warnings': [],
+                'errors': []
+            }
+            
+            # 1. Check SMTP configuration
+            email_backend = settings.EMAIL_BACKEND
+            email_health['backend'] = email_backend
+            
+            if 'console' in email_backend.lower():
+                email_health['healthy'] = False
+                email_health['errors'].append('Console backend active - emails not being sent!')
+                email_health['smtp_configured'] = False
+            else:
+                email_health['smtp_configured'] = True
+                email_health['smtp_host'] = f"{settings.EMAIL_HOST}:{settings.EMAIL_PORT}"
+            
+            # 2. Test SMTP connection (only if SMTP configured)
+            if email_health['smtp_configured']:
+                try:
+                    server = smtplib.SMTP(settings.EMAIL_HOST, settings.EMAIL_PORT, timeout=5)
+                    server.starttls()
+                    server.login(settings.EMAIL_HOST_USER, settings.EMAIL_HOST_PASSWORD)
+                    server.quit()
+                    email_health['smtp_connection'] = True
+                except Exception as e:
+                    email_health['healthy'] = False
+                    email_health['smtp_connection'] = False
+                    email_health['errors'].append(f'SMTP connection failed: {str(e)}')
+            
+            # 3. Check recent email task activity (last 24 hours)
+            try:
+                from django_celery_results.models import TaskResult
+                cutoff = timezone.now() - timedelta(hours=24)
+                
+                email_tasks = TaskResult.objects.filter(
+                    task_name__icontains='email',
+                    date_done__gte=cutoff
+                )
+                
+                sent_count = email_tasks.filter(status='SUCCESS').count()
+                failed_count = email_tasks.filter(status='FAILURE').count()
+                
+                email_health['emails_sent_24h'] = sent_count
+                email_health['emails_failed_24h'] = failed_count
+                
+                # Calculate failure rate
+                total = sent_count + failed_count
+                if total > 0:
+                    failure_rate = (failed_count / total) * 100
+                    email_health['failure_rate'] = round(failure_rate, 2)
+                    
+                    # Warning if failure rate > 10%
+                    if failure_rate > 10:
+                        email_health['warnings'].append(f'High email failure rate: {failure_rate:.1f}%')
+                    
+                    # Error if failure rate > 50%
+                    if failure_rate > 50:
+                        email_health['healthy'] = False
+                        email_health['errors'].append(f'Critical email failure rate: {failure_rate:.1f}%')
+                else:
+                    email_health['failure_rate'] = 0.0
+                
+                # Warning if many failures
+                if failed_count > 20:
+                    email_health['warnings'].append(f'{failed_count} email failures in last 24h')
+                
+            except Exception as e:
+                email_health['warnings'].append(f'Could not check email task history: {str(e)}')
+            
+            # 4. Check users with email addresses
+            try:
+                users_with_email = User.objects.filter(
+                    email__isnull=False
+                ).exclude(email='').count()
+                total_users = User.objects.count()
+                
+                email_health['users_with_email'] = users_with_email
+                email_health['total_users'] = total_users
+                
+                if users_with_email == 0:
+                    email_health['warnings'].append('No users have email addresses configured')
+                elif users_with_email < total_users * 0.5:
+                    email_health['warnings'].append(f'Only {users_with_email}/{total_users} users have email addresses')
+            
+            except Exception as e:
+                email_health['warnings'].append(f'Could not check user emails: {str(e)}')
+            
+            # 5. Check Celery worker status (for async email sending)
+            try:
+                from celery import current_app
+                inspect = current_app.control.inspect()
+                registered = inspect.registered()
+                
+                if registered:
+                    # Check if email tasks are registered
+                    all_tasks = []
+                    for worker_tasks in registered.values():
+                        all_tasks.extend(worker_tasks)
+                    
+                    email_task_registered = any('email' in task.lower() for task in all_tasks)
+                    email_health['celery_worker_active'] = True
+                    email_health['email_tasks_registered'] = email_task_registered
+                    
+                    if not email_task_registered:
+                        email_health['warnings'].append('Email tasks not registered in Celery workers')
+                else:
+                    email_health['celery_worker_active'] = False
+                    email_health['warnings'].append('No active Celery workers detected')
+            
+            except Exception as e:
+                email_health['warnings'].append(f'Could not check Celery status: {str(e)}')
+            
+            return email_health
+            
         except Exception as e:
             return {
                 'healthy': False,
