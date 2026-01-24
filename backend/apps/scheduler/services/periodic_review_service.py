@@ -155,18 +155,52 @@ class PeriodicReviewService:
                 )
                 notification_count += 1
                 
-                # TODO: Send email notification when SMTP is configured
-                # Send email notification to document owner
-                from ..notification_service import notification_service
+                # Send email notification
+                from django.core.mail import send_mail
+                from django.conf import settings
+                
                 try:
-                    notification_service.send_task_email(user, 'Periodic Review', document)
-                    results['notifications_created'] += 1
-                    logger.info(f"Sent periodic review notification to {user.email} for document {document.document_number}")
+                    subject = f"Periodic Review Due: {document.document_number}"
+                    message = f"""
+Periodic Review Required
+
+Document: {document.document_number} - {document.title}
+Current Version: v{document.version_major}.{document.version_minor:02d}
+Status: {document.status}
+
+Review Period: {document.periodic_review_period} months
+Last Review: {document.last_reviewed_date.strftime('%Y-%m-%d') if document.last_reviewed_date else 'Never'}
+Next Review Due: {document.next_review_date.strftime('%Y-%m-%d') if document.next_review_date else 'Now'}
+
+ACTION REQUIRED:
+This document requires a periodic review to ensure it remains current and accurate.
+
+Review Process:
+1. Log into EDMS
+2. Navigate to the document  
+3. Review the content for accuracy and relevance
+4. Create a new version if changes are needed, or
+5. Confirm the document is still valid
+
+Access EDMS: http://localhost:3000/document-management
+
+---
+This is an automated notification from the EDMS system.
+                    """.strip()
+                    
+                    send_mail(
+                        subject,
+                        message,
+                        settings.DEFAULT_FROM_EMAIL,
+                        [user.email],
+                        fail_silently=False
+                    )
+                    logger.info(f"✅ Sent periodic review notification email to {user.email} for {document.document_number}")
                 except Exception as e:
-                    logger.warning(f"Failed to send periodic review notification: {e}")
+                    logger.warning(f"❌ Failed to send periodic review notification email: {e}")
                 
             except Exception as e:
-                logger.error(f"Failed to log notification for {user.username}: {str(e)}")
+                logger.error(f"Failed to notify {user.username}: {str(e)}")
         
         return notification_count
     
