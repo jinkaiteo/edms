@@ -73,6 +73,11 @@ class TaskMonitor:
             'category': 'System Maintenance',
             'description': 'Cleans up old task execution records and REVOKED tasks'
         },
+        'apps.scheduler.tasks.send_test_email_to_self': {
+            'name': 'Send Test Email',
+            'category': 'Email Notifications',
+            'description': 'Sends test email to all admin users to verify email configuration'
+        },
     }
     
     def get_task_status(self):
@@ -88,7 +93,7 @@ class TaskMonitor:
             for worker_tasks in registered_tasks_by_worker.values():
                 all_registered_tasks.update(worker_tasks)
             
-            # Build task list
+            # Build task list from beat_schedule
             tasks = []
             for schedule_name, schedule_config in beat_schedule.items():
                 task_path = schedule_config.get('task')
@@ -99,6 +104,30 @@ class TaskMonitor:
                     all_registered_tasks
                 )
                 tasks.append(task_info)
+            
+            # Also include PeriodicTask database records (for manual-trigger tasks)
+            try:
+                from django_celery_beat.models import PeriodicTask
+                db_tasks = PeriodicTask.objects.filter(enabled=True).exclude(
+                    name__in=[t['schedule_name'] for t in tasks]  # Avoid duplicates
+                )
+                for db_task in db_tasks:
+                    # Create schedule config from database task
+                    schedule_config = {
+                        'task': db_task.task,
+                        'schedule': None,  # Database tasks may have crontab/interval
+                        'options': {}
+                    }
+                    task_info = self._get_task_info(
+                        db_task.name,
+                        db_task.task,
+                        schedule_config,
+                        all_registered_tasks,
+                        is_manual=True  # Flag as manual-trigger task
+                    )
+                    tasks.append(task_info)
+            except Exception as e:
+                logger.warning(f"Could not load PeriodicTask database tasks: {e}")
             
             # Group by category
             tasks_by_category = {}
@@ -143,12 +172,12 @@ class TaskMonitor:
                 'tasks_by_category': {}
             }
     
-    def _get_task_info(self, schedule_name, task_path, schedule_config, registered_tasks):
+    def _get_task_info(self, schedule_name, task_path, schedule_config, registered_tasks, is_manual=False):
         """Get detailed information about a single task"""
         task_def = self.TASK_DEFINITIONS.get(task_path, {
             'name': schedule_name,
-            'category': 'Other',
-            'description': 'Scheduled task'
+            'category': 'Manual Tasks' if is_manual else 'Other',
+            'description': 'Manual trigger task' if is_manual else 'Scheduled task'
         })
         
         # Get execution history

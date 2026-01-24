@@ -185,19 +185,31 @@ class SchedulerMonitoringService:
         Task execution status can be checked via Celery results or dashboard refresh.
         
         Args:
-            task_name: Name of the task to execute
+            task_name: Name of the task to execute (can be schedule_name or task key)
             user: User requesting the execution
             dry_run: Whether to perform a dry run (for applicable tasks)
         
         Returns:
             Task queuing result with task_id for status tracking
         """
-        if task_name not in self.available_tasks:
+        # Map display names to task keys
+        task_name_mapping = {
+            'Send_Test_Email': 'send_test_email_to_self',
+            'Send Test Email': 'send_test_email_to_self',
+        }
+        
+        # Use mapping if available, otherwise use task_name directly
+        actual_task_name = task_name_mapping.get(task_name, task_name)
+        
+        if actual_task_name not in self.available_tasks:
             return {
                 'success': False,
                 'error': f'Unknown task: {task_name}',
                 'available_tasks': list(self.available_tasks.keys())
             }
+        
+        # Use the mapped task name for the rest of the function
+        task_name = actual_task_name
         
         task_info = self.available_tasks[task_name]
         

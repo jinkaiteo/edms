@@ -66,7 +66,8 @@ INTERNAL_IPS = [
 # Database - use PostgreSQL from base settings (no override needed)
 
 # Email backend for development (console)
-EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
+# Use EMAIL_BACKEND from .env file (set in base.py)
+# EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'  # Override removed to allow SMTP testing
 
 # Static files serving
 STATICFILES_STORAGE = 'django.contrib.staticfiles.storage.StaticFilesStorage'

@@ -9,7 +9,7 @@ const SystemSettings: React.FC<SystemSettingsProps> = ({ className = '' }) => {
   const [settings, setSettings] = useState<SystemConfiguration[]>([]);
   const [features, setFeatures] = useState<FeatureToggle[]>([]);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<'general' | 'security' | 'features' | 'appearance' | 'notifications'>('general');
+  const [activeTab, setActiveTab] = useState<'general' | 'security' | 'features' | 'appearance' | 'notifications'>('notifications'); // Default to the only working tab
   const [hasChanges, setHasChanges] = useState(false);
 
   // Mock settings data
@@ -359,9 +359,9 @@ const SystemSettings: React.FC<SystemSettingsProps> = ({ className = '' }) => {
         {/* Header */}
         <div className="flex justify-between items-center mb-6">
           <div>
-            <h3 className="text-lg font-semibold text-gray-900">System Settings</h3>
+            <h3 className="text-lg font-semibold text-gray-900">Email Notifications</h3>
             <p className="text-sm text-gray-500">
-              Configure system-wide settings and feature toggles
+              Configure email notifications and view notification types
             </p>
           </div>
           {hasChanges && (
@@ -386,11 +386,12 @@ const SystemSettings: React.FC<SystemSettingsProps> = ({ className = '' }) => {
         <div className="border-b border-gray-200 mb-6">
           <nav className="flex space-x-8" aria-label="Tabs">
             {[
-              { key: 'general', label: 'General' },
-              { key: 'security', label: 'Security' },
-              { key: 'features', label: 'Features' },
-              { key: 'appearance', label: 'Appearance' },
-              { key: 'notifications', label: 'Notifications' }
+              // Hide non-implemented tabs - only show Notifications (fully functional)
+              // { key: 'general', label: 'General' }, // Not implemented
+              // { key: 'security', label: 'Security' }, // Not implemented
+              // { key: 'features', label: 'Features' }, // Not implemented
+              // { key: 'appearance', label: 'Appearance' }, // Not implemented
+              { key: 'notifications', label: 'Notifications' } // ✅ Fully functional
             ].map((tab) => (
               <button
                 key={tab.key}
@@ -576,27 +577,86 @@ DEFAULT_FROM_EMAIL="EDMS System <your-email@company.com>"`}
                 </div>
               </div>
 
+              {/* Email Notification Types - Merged from emails tab */}
               <div className="border-t pt-6">
-                <h4 className="text-md font-semibold text-gray-900 mb-3">Active Notification Types</h4>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <h4 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+                  <span className="mr-2">🔄</span>
+                  Workflow Notifications (6 Types)
+                </h4>
+                <div className="space-y-3 mb-6">
                   {[
-                    { name: 'Task Assignment', desc: 'When documents need review/approval' },
-                    { name: 'Document Effective', desc: 'When documents become active' },
-                    { name: 'Document Obsolete', desc: 'When documents are obsoleted' },
-                    { name: 'Workflow Timeout', desc: 'When tasks are overdue' },
-                    { name: 'Daily Health Report', desc: 'System status report (7 AM daily)' },
-                    { name: 'Periodic Reviews', desc: 'When periodic reviews are due' },
+                    { event: 'Submit for Review', recipient: 'Reviewer', subject: 'New Task Assigned: REVIEW', when: 'Author submits document' },
+                    { event: 'Review Approved', recipient: 'Author', subject: 'Review Approved - Action Required', when: 'Reviewer approves document' },
+                    { event: 'Review Rejected', recipient: 'Author', subject: 'Review Rejected - Revision Required', when: 'Reviewer rejects document' },
+                    { event: 'Route for Approval', recipient: 'Approver', subject: 'New Task Assigned: APPROVE', when: 'Author routes to approver' },
+                    { event: 'Document Approved', recipient: 'Author', subject: 'Document Approved', when: 'Approver approves document' },
+                    { event: 'Approval Rejected', recipient: 'Author', subject: 'Document Approval Rejected', when: 'Approver rejects document' },
                   ].map((notif, index) => (
-                    <div key={index} className="flex items-start p-3 bg-white border border-gray-200 rounded-lg">
-                      <svg className="w-5 h-5 text-green-500 mt-0.5 mr-3 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
-                        <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                      </svg>
-                      <div>
-                        <p className="text-sm font-medium text-gray-900">{notif.name}</p>
-                        <p className="text-xs text-gray-500">{notif.desc}</p>
+                    <div key={index} className="flex items-start p-3 bg-gray-50 rounded-lg border border-gray-200">
+                      <div className="flex-shrink-0 mr-3">
+                        <div className="w-8 h-8 bg-green-100 text-green-600 rounded-full flex items-center justify-center text-sm font-semibold">
+                          {index + 1}
+                        </div>
+                      </div>
+                      <div className="flex-1">
+                        <h5 className="text-sm font-semibold text-gray-900">{notif.event}</h5>
+                        <p className="text-xs text-gray-600 mt-1">
+                          <strong>When:</strong> {notif.when}<br />
+                          <strong>Recipient:</strong> {notif.recipient}<br />
+                          <strong>Subject:</strong> {notif.subject}
+                        </p>
                       </div>
                     </div>
                   ))}
+                </div>
+
+                <h4 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+                  <span className="mr-2">🤖</span>
+                  Automated System Notifications (6 Types)
+                </h4>
+                <div className="space-y-3">
+                  {[
+                    { event: 'Document Becomes Effective', recipient: 'Author', subject: 'Document Now Effective', when: 'Scheduled effective date arrives' },
+                    { event: 'Scheduled for Obsolescence', recipient: 'Author & Stakeholders', subject: 'Document Scheduled for Obsolescence', when: 'Obsolescence is scheduled' },
+                    { event: 'Document Becomes Obsolete', recipient: 'Author & Stakeholders', subject: 'Document Now Obsolete', when: 'Obsolescence date arrives' },
+                    { event: 'Document Superseded', recipient: 'Users of old version', subject: 'Document Superseded', when: 'New version replaces old' },
+                    { event: 'Workflow Timeout', recipient: 'Current Assignee', subject: 'Overdue Workflow', when: 'Task is overdue' },
+                    { event: 'Daily Health Report', recipient: 'All Admins', subject: 'EDMS Daily Health Report', when: 'Every day at 7:00 AM' },
+                  ].map((notif, index) => (
+                    <div key={index} className="flex items-start p-3 bg-gray-50 rounded-lg border border-gray-200">
+                      <div className="flex-shrink-0 mr-3">
+                        <div className="w-8 h-8 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center text-sm font-semibold">
+                          {index + 1}
+                        </div>
+                      </div>
+                      <div className="flex-1">
+                        <h5 className="text-sm font-semibold text-gray-900">{notif.event}</h5>
+                        <p className="text-xs text-gray-600 mt-1">
+                          <strong>When:</strong> {notif.when}<br />
+                          <strong>Recipient:</strong> {notif.recipient}<br />
+                          <strong>Subject:</strong> {notif.subject}
+                        </p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Troubleshooting Section */}
+              <div className="border-t pt-6">
+                <h4 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+                  <span className="mr-2">🔧</span>
+                  Troubleshooting
+                </h4>
+                <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                  <h5 className="text-sm font-semibold text-yellow-900 mb-2">Not Receiving Emails?</h5>
+                  <ul className="text-sm text-yellow-800 space-y-2 ml-4 list-disc">
+                    <li><strong>Check Spam Folder:</strong> Gmail often flags system emails as spam</li>
+                    <li><strong>Verify Email Address:</strong> Ensure your user profile has a valid email</li>
+                    <li><strong>Check SMTP Configuration:</strong> Review the configuration steps above</li>
+                    <li><strong>Test Email Delivery:</strong> Use the "Send Test Email" task in Scheduler</li>
+                    <li><strong>Contact Administrator:</strong> If issues persist, contact your system admin</li>
+                  </ul>
                 </div>
               </div>
             </div>

@@ -26,7 +26,8 @@ import {
   ServerIcon,
   ChevronLeftIcon,
   ChevronDoubleLeftIcon,
-  ChevronDoubleRightIcon
+  ChevronDoubleRightIcon,
+  EnvelopeIcon
 } from '@heroicons/react/24/outline';
 import { useAuth } from '../../contexts/AuthContext.tsx';
 import { apiService } from '../../services/api.ts';
@@ -153,6 +154,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
         children: [
           { name: 'User Management', href: '/administration?tab=users', icon: UserGroupIcon },
           { name: 'Placeholder Management', href: '/administration?tab=placeholders', icon: DocumentTextIcon },
+          { name: 'Email Notifications', href: '/administration?tab=notifications', icon: EnvelopeIcon },
           { name: 'Backup Management', href: '/administration?tab=backup', icon: ServerIcon },
           { name: 'Reports', href: '/administration?tab=reports', icon: ChartBarIcon },
           { name: 'Scheduler Dashboard', href: '/administration?tab=scheduler', icon: ComputerDesktopIcon },
