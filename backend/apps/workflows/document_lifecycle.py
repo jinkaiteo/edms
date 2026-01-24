@@ -1093,7 +1093,7 @@ ACTION REQUIRED:
 Please update any references to use the new document version.
 The old version is no longer valid and should not be used.
 
-Access the new document in EDMS: http://localhost:3000/document-management
+Access the new document in EDMS: {settings.FRONTEND_URL}/document-management
 
 ---
 This is an automated notification from the EDMS system.
@@ -1133,7 +1133,7 @@ You will receive another notification when the document becomes effective.
 
 Until the effective date, the document is not yet available for use.
 
-Access EDMS: http://localhost:3000/document-management
+Access EDMS: {settings.FRONTEND_URL}/document-management
 
 ---
 This is an automated notification from the EDMS system.
@@ -1182,7 +1182,7 @@ as it progresses through the review and approval workflow.
 The previous version ({old_document.document_number}) will remain EFFECTIVE until the new 
 version is approved and becomes effective.
 
-Access EDMS: http://localhost:3000/document-management
+Access EDMS: {settings.FRONTEND_URL}/document-management
 
 ---
 This is an automated notification from the EDMS system.
@@ -1586,7 +1586,7 @@ Due Date: {due_date_str}
 Assigned by: {assigned_by.get_full_name()}
 
 Please log into EDMS to complete this task:
-http://localhost:3000/my-tasks
+{settings.FRONTEND_URL}/my-tasks
 
 Document Details:
 - Number: {task_metadata.get('document_number', 'N/A')}
@@ -1652,7 +1652,7 @@ Due Date: {task.due_date or 'Not specified' if hasattr(task, 'due_date') else 'N
 Assigned by: {assigned_by.get_full_name()}
 
 Please log into EDMS to complete this task:
-http://localhost:3000/my-tasks
+{settings.FRONTEND_URL}/my-tasks
 
 Document Details:
 - Number: {notification_data['document_number']}
@@ -1709,7 +1709,7 @@ Due Date: {due_date or 'Not specified'}
 Assigned by: {assigned_by.get_full_name() or assigned_by.username}
 
 Please log into EDMS to complete this task:
-http://localhost:3000/my-tasks
+{settings.FRONTEND_URL}/my-tasks
 
 Document Details:
 - Number: {task_data.get('document_number', 'Unknown')}

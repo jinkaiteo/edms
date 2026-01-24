@@ -182,7 +182,7 @@ Review Process:
 4. Create a new version if changes are needed, or
 5. Confirm the document is still valid
 
-Access EDMS: http://localhost:3000/document-management
+Access EDMS: {settings.FRONTEND_URL}/document-management
 
 ---
 This is an automated notification from the EDMS system.

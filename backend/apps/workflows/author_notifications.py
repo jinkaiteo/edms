@@ -72,7 +72,7 @@ You need to route this document for final approval. Please:
 3. Select an approver for the document
 4. Route the document for approval
 
-Access EDMS: http://localhost:3000/my-tasks
+Access EDMS: {settings.FRONTEND_URL}/my-tasks
 
 This document cannot proceed without your action to route it for approval.
                     """.strip()
@@ -100,7 +100,7 @@ REQUIRED ACTIONS:
 3. Address all concerns raised in the review
 4. Resubmit the document for review when ready
 
-Access EDMS: http://localhost:3000/my-tasks
+Access EDMS: {settings.FRONTEND_URL}/my-tasks
 
 The document has been returned to DRAFT status for revision.
                     """.strip()
@@ -190,7 +190,7 @@ Your document has been successfully approved and is now part of the controlled d
 
 {'The document will automatically become effective on the scheduled date.' if effective_date and effective_date > timezone.now().date() else 'The document is immediately available for use.'}
 
-Access EDMS: http://localhost:3000/document-management
+Access EDMS: {settings.FRONTEND_URL}/document-management
 
 Congratulations on the successful completion of your document workflow!
                     """.strip()
@@ -217,7 +217,7 @@ REQUIRED ACTIONS:
 3. Consider if a new review cycle is needed
 4. Resubmit when ready
 
-Access EDMS: http://localhost:3000/my-tasks
+Access EDMS: {settings.FRONTEND_URL}/my-tasks
 
 The document has been returned to DRAFT status for revision.
                     """.strip()
