@@ -94,6 +94,7 @@ services:
       interval: 30s
       timeout: 10s
       retries: 3
+      start_period: 60s  # Allow time for migrations to complete before health checks
 
   # Celery Worker - Production Configuration
   celery_worker:
