@@ -1245,7 +1245,7 @@ configure_email_optional() {
             sed -i "s|^EMAIL_USE_TLS=.*|EMAIL_USE_TLS=True|" "$ENV_FILE"
             sed -i "s|^EMAIL_HOST_USER=.*|EMAIL_HOST_USER=$email_user|" "$ENV_FILE"
             sed -i "s|^EMAIL_HOST_PASSWORD=.*|EMAIL_HOST_PASSWORD=$email_pass|" "$ENV_FILE"
-            sed -i "s|^DEFAULT_FROM_EMAIL=.*|DEFAULT_FROM_EMAIL=\"EDMS System <$email_user>\"|" "$ENV_FILE"
+            sed -i "s|^DEFAULT_FROM_EMAIL=.*|DEFAULT_FROM_EMAIL=$email_user|" "$ENV_FILE"
             
             print_success "Gmail SMTP configured"
             ;;
@@ -1274,7 +1274,7 @@ configure_email_optional() {
             sed -i "s|^EMAIL_USE_TLS=.*|EMAIL_USE_TLS=True|" "$ENV_FILE"
             sed -i "s|^EMAIL_HOST_USER=.*|EMAIL_HOST_USER=$email_user|" "$ENV_FILE"
             sed -i "s|^EMAIL_HOST_PASSWORD=.*|EMAIL_HOST_PASSWORD=$email_pass|" "$ENV_FILE"
-            sed -i "s|^DEFAULT_FROM_EMAIL=.*|DEFAULT_FROM_EMAIL=\"EDMS System <$email_user>\"|" "$ENV_FILE"
+            sed -i "s|^DEFAULT_FROM_EMAIL=.*|DEFAULT_FROM_EMAIL=$email_user|" "$ENV_FILE"
             
             print_success "Microsoft 365 SMTP configured"
             ;;
@@ -1313,7 +1313,7 @@ configure_email_optional() {
             sed -i "s|^EMAIL_USE_TLS=.*|EMAIL_USE_TLS=$use_tls_value|" "$ENV_FILE"
             sed -i "s|^EMAIL_HOST_USER=.*|EMAIL_HOST_USER=$email_user|" "$ENV_FILE"
             sed -i "s|^EMAIL_HOST_PASSWORD=.*|EMAIL_HOST_PASSWORD=$email_pass|" "$ENV_FILE"
-            sed -i "s|^DEFAULT_FROM_EMAIL=.*|DEFAULT_FROM_EMAIL=\"EDMS System <$from_email>\"|" "$ENV_FILE"
+            sed -i "s|^DEFAULT_FROM_EMAIL=.*|DEFAULT_FROM_EMAIL=$from_email|" "$ENV_FILE"
             
             print_success "Custom SMTP configured"
             ;;
