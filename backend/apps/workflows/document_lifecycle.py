@@ -1529,6 +1529,22 @@ Document Details:
             due_date = getattr(task, 'due_date', None)
             task_data = getattr(task, 'task_data', {})
             
+            # Skip notification for states handled by author notification service
+            # This prevents duplicate emails to the author
+            action_required = task_data.get('action_required', '')
+            
+            # REVIEW_COMPLETED: author_notification_service sends detailed email
+            # No need for generic "New Task Assigned" email
+            if action_required == 'REVIEW_COMPLETED':
+                print(f"⏭️ Skipping generic task notification for {action_required} - author notification service handles this")
+                return
+            
+            # DRAFT (rejection): author_notification_service sends detailed email
+            # No need for generic task email
+            if action_required == 'DRAFT':
+                print(f"⏭️ Skipping generic task notification for rejection - author notification service handles this")
+                return
+            
             subject = f"New Task Assigned: {task_type}"
             message = f"""You have been assigned a new workflow task.
 
