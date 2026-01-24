@@ -682,6 +682,9 @@ class DocumentLifecycleService:
                 workflow.workflow_type = upversion_type.workflow_type
                 workflow.save()
             
+            # Send upversion started notification
+            self._send_upversion_started_notification(new_document, existing_document, user)
+            
             return {
                 'new_document': new_document,
                 'workflow': workflow,
@@ -1147,6 +1150,55 @@ This is an automated notification from the EDMS system.
             print(f"📧 Scheduled effective notification sent to {document.author.email}")
         except Exception as e:
             print(f"❌ Failed to send scheduled effective notification: {e}")
+    
+    def _send_upversion_started_notification(self, new_document: Document, old_document: Document, user: User):
+        """Send notification when document upversion/revision process is started."""
+        from django.core.mail import send_mail
+        from django.conf import settings
+        
+        subject = f"New Document Version Created: {new_document.document_number}"
+        message = f"""
+New Document Version Created - Review Workflow Started
+
+New Version: {new_document.document_number} v{new_document.version_major}.{new_document.version_minor:02d} - {new_document.title}
+Previous Version: {old_document.document_number} v{old_document.version_major}.{old_document.version_minor:02d}
+Status: DRAFT (In Review Workflow)
+
+Created by: {user.get_full_name()}
+Created Date: {timezone.now().strftime('%Y-%m-%d %H:%M')}
+
+Reason for Change: {new_document.reason_for_change or 'Not specified'}
+Change Summary: {new_document.change_summary or 'Not specified'}
+
+NEXT STEPS:
+1. The new version is now in DRAFT status
+2. It will go through the standard review and approval workflow
+3. Reviewer: {new_document.reviewer.get_full_name() if new_document.reviewer else 'Not assigned'}
+4. Approver: {new_document.approver.get_full_name() if new_document.approver else 'Not assigned'}
+
+The new version will be routed for review automatically. You will receive notifications
+as it progresses through the review and approval workflow.
+
+The previous version ({old_document.document_number}) will remain EFFECTIVE until the new 
+version is approved and becomes effective.
+
+Access EDMS: http://localhost:3000/document-management
+
+---
+This is an automated notification from the EDMS system.
+        """.strip()
+        
+        try:
+            send_mail(
+                subject,
+                message,
+                settings.DEFAULT_FROM_EMAIL,
+                [new_document.author.email],
+                fail_silently=False
+            )
+            print(f"📧 Upversion started notification sent to {new_document.author.email}")
+        except Exception as e:
+            print(f"❌ Failed to send upversion started notification: {e}")
 
     def approve_obsolescence(self, document: Document, user: User,
                             comment: str = '') -> bool:
