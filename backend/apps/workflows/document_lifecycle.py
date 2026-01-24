@@ -431,6 +431,11 @@ class DocumentLifecycleService:
                     effective_date=effective_date
                 )
                 print(f"✅ Author notification sent for approval completion: {notification_sent}")
+                
+                # If scheduled for future effective date, send additional notification
+                if target_state == 'APPROVED_PENDING_EFFECTIVE':
+                    self._send_scheduled_effective_notification(document, user, effective_date)
+                    
             except Exception as e:
                 print(f"❌ Failed to send author notification: {e}")
                 import traceback
@@ -717,6 +722,9 @@ class DocumentLifecycleService:
                     comment=f'Superseded by {new_document.document_number}',
                     assignee=None
                 )
+            
+            # Send superseded notification
+            self._send_superseded_notification(old_document, new_document, user)
         
         return True
     
@@ -1014,10 +1022,22 @@ class DocumentLifecycleService:
             Please ensure any references to this document are updated.
             """
         
-        # Send notifications (placeholder for actual notification system)
+        # Send actual email notifications
+        from django.core.mail import send_mail
+        from django.conf import settings
+        
         for recipient in recipients:
-            print(f"📧 Notification sent to {recipient.email}: {subject}")
-            # TODO: Integrate with actual email/notification system
+            try:
+                send_mail(
+                    subject,
+                    message.strip(),
+                    settings.DEFAULT_FROM_EMAIL,
+                    [recipient.email],
+                    fail_silently=False
+                )
+                print(f"📧 Email sent to {recipient.email}: {subject}")
+            except Exception as e:
+                print(f"❌ Failed to send email to {recipient.email}: {e}")
         
         # Log notification activity
         print(f"📋 Obsolescence notifications sent: {len(recipients)} recipients")
@@ -1045,6 +1065,88 @@ class DocumentLifecycleService:
         # TODO: Add department-based notification logic if needed
         
         return list(recipients)
+    
+    def _send_superseded_notification(self, old_document: Document, new_document: Document, user: User):
+        """Send notification when document is superseded by new version."""
+        from django.core.mail import send_mail
+        from django.conf import settings
+        
+        recipients = self._get_obsolescence_notification_recipients(old_document)
+        
+        subject = f"Document Superseded: {old_document.document_number} replaced by {new_document.document_number}"
+        message = f"""
+Document Superseded - New Version Available
+
+Old Document: {old_document.document_number} v{old_document.version_major}.{old_document.version_minor:02d} - {old_document.title}
+Status: SUPERSEDED
+
+New Document: {new_document.document_number} v{new_document.version_major}.{new_document.version_minor:02d} - {new_document.title}
+Status: EFFECTIVE
+
+Superseded by: {user.get_full_name()}
+Date: {timezone.now().strftime('%Y-%m-%d')}
+
+ACTION REQUIRED:
+Please update any references to use the new document version.
+The old version is no longer valid and should not be used.
+
+Access the new document in EDMS: http://localhost:3000/document-management
+
+---
+This is an automated notification from the EDMS system.
+        """.strip()
+        
+        for recipient in recipients:
+            try:
+                send_mail(
+                    subject,
+                    message,
+                    settings.DEFAULT_FROM_EMAIL,
+                    [recipient.email],
+                    fail_silently=False
+                )
+                print(f"📧 Superseded notification sent to {recipient.email}")
+            except Exception as e:
+                print(f"❌ Failed to send superseded notification to {recipient.email}: {e}")
+    
+    def _send_scheduled_effective_notification(self, document: Document, user: User, effective_date: date):
+        """Send notification when document is approved with future effective date."""
+        from django.core.mail import send_mail
+        from django.conf import settings
+        
+        subject = f"Document Scheduled to Become Effective: {document.document_number}"
+        message = f"""
+Document Approved - Scheduled for Effectiveness
+
+Document: {document.document_number} v{document.version_major}.{document.version_minor:02d} - {document.title}
+Current Status: APPROVED (Pending Effective Date)
+Scheduled Effective Date: {effective_date.strftime('%Y-%m-%d')}
+
+Approved by: {user.get_full_name()}
+Approval Date: {timezone.now().strftime('%Y-%m-%d')}
+
+Your document has been approved and will automatically become effective on {effective_date.strftime('%Y-%m-%d')}.
+You will receive another notification when the document becomes effective.
+
+Until the effective date, the document is not yet available for use.
+
+Access EDMS: http://localhost:3000/document-management
+
+---
+This is an automated notification from the EDMS system.
+        """.strip()
+        
+        try:
+            send_mail(
+                subject,
+                message,
+                settings.DEFAULT_FROM_EMAIL,
+                [document.author.email],
+                fail_silently=False
+            )
+            print(f"📧 Scheduled effective notification sent to {document.author.email}")
+        except Exception as e:
+            print(f"❌ Failed to send scheduled effective notification: {e}")
 
     def approve_obsolescence(self, document: Document, user: User,
                             comment: str = '') -> bool:

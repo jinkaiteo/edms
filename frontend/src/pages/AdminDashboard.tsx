@@ -55,6 +55,7 @@ const AdminDashboard: React.FC = () => {
     { name: 'User Management', href: '/administration?tab=users', icon: '👥', description: 'Manage users, roles, and permissions', external: false },
     { name: 'Placeholder Management', href: '/administration?tab=placeholders', icon: '🔧', description: 'Manage document placeholders', external: false },
     { name: 'Backup Management', href: '/administration?tab=backup', icon: '💾', description: 'Manage system backups and restore', external: false },
+    { name: 'Email Notifications', href: '/administration?tab=emails', icon: '📧', description: 'View email notification guide', external: false },
     { name: 'Reports', href: '/administration?tab=reports', icon: '📊', description: 'Generate compliance reports', external: false },
     { name: 'Scheduler Dashboard', href: '/administration?tab=scheduler', icon: '🖥️', description: 'Monitor automated tasks', external: false },
     { name: 'Audit Trail', href: '/administration?tab=audit', icon: '📋', description: 'View system audit logs', external: false },
@@ -408,6 +409,125 @@ const AdminDashboard: React.FC = () => {
         return <Reports />;
       case 'scheduler':
         return <TaskListWidget />;
+      case 'emails':
+        return (
+          <div className="bg-white shadow rounded-lg p-6">
+            <h2 className="text-2xl font-semibold text-gray-900 mb-6 flex items-center">
+              <span className="mr-2">📧</span>
+              Email Notifications Guide
+            </h2>
+            
+            <div className="space-y-6">
+              {/* Introduction */}
+              <div className="bg-blue-50 border-l-4 border-blue-400 p-4">
+                <div className="flex">
+                  <div className="flex-shrink-0">
+                    <svg className="h-5 w-5 text-blue-400" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+                    </svg>
+                  </div>
+                  <div className="ml-3">
+                    <p className="text-sm text-blue-700">
+                      The EDMS system sends automated email notifications for various workflow and document events.
+                      This guide explains what emails are sent and when.
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Workflow Notifications */}
+              <div>
+                <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+                  <span className="mr-2">🔄</span>
+                  Workflow Notifications
+                </h3>
+                <div className="space-y-3">
+                  {[
+                    { event: 'Submit for Review', recipient: 'Reviewer', subject: 'New Task Assigned: REVIEW', when: 'Author submits document' },
+                    { event: 'Review Approved', recipient: 'Author', subject: 'Review Approved - Action Required', when: 'Reviewer approves document' },
+                    { event: 'Review Rejected', recipient: 'Author', subject: 'Review Rejected - Revision Required', when: 'Reviewer rejects document' },
+                    { event: 'Route for Approval', recipient: 'Approver', subject: 'New Task Assigned: APPROVE', when: 'Author routes to approver' },
+                    { event: 'Document Approved', recipient: 'Author', subject: 'Document Approved', when: 'Approver approves document' },
+                    { event: 'Approval Rejected', recipient: 'Author', subject: 'Document Approval Rejected', when: 'Approver rejects document' },
+                  ].map((notif, index) => (
+                    <div key={index} className="flex items-start p-3 bg-gray-50 rounded-lg border border-gray-200">
+                      <div className="flex-shrink-0 mr-3">
+                        <div className="w-8 h-8 bg-green-100 text-green-600 rounded-full flex items-center justify-center text-sm font-semibold">
+                          {index + 1}
+                        </div>
+                      </div>
+                      <div className="flex-1">
+                        <h4 className="text-sm font-semibold text-gray-900">{notif.event}</h4>
+                        <p className="text-xs text-gray-600 mt-1">
+                          <strong>When:</strong> {notif.when}<br />
+                          <strong>Recipient:</strong> {notif.recipient}<br />
+                          <strong>Subject:</strong> {notif.subject}
+                        </p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Automated System Notifications */}
+              <div>
+                <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+                  <span className="mr-2">🤖</span>
+                  Automated System Notifications
+                </h3>
+                <div className="space-y-3">
+                  {[
+                    { event: 'Document Becomes Effective', recipient: 'Author', subject: 'Document Now Effective', when: 'Scheduled effective date arrives' },
+                    { event: 'Scheduled for Obsolescence', recipient: 'Author & Stakeholders', subject: 'Document Scheduled for Obsolescence', when: 'Obsolescence is scheduled' },
+                    { event: 'Document Becomes Obsolete', recipient: 'Author & Stakeholders', subject: 'Document Now Obsolete', when: 'Obsolescence date arrives' },
+                    { event: 'Document Superseded', recipient: 'Users of old version', subject: 'Document Superseded', when: 'New version replaces old' },
+                    { event: 'Workflow Timeout', recipient: 'Current Assignee', subject: 'Overdue Workflow', when: 'Task is overdue' },
+                    { event: 'Daily Health Report', recipient: 'All Admins', subject: 'EDMS Daily Health Report', when: 'Every day at 7:00 AM' },
+                  ].map((notif, index) => (
+                    <div key={index} className="flex items-start p-3 bg-gray-50 rounded-lg border border-gray-200">
+                      <div className="flex-shrink-0 mr-3">
+                        <div className="w-8 h-8 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center text-sm font-semibold">
+                          {index + 1}
+                        </div>
+                      </div>
+                      <div className="flex-1">
+                        <h4 className="text-sm font-semibold text-gray-900">{notif.event}</h4>
+                        <p className="text-xs text-gray-600 mt-1">
+                          <strong>When:</strong> {notif.when}<br />
+                          <strong>Recipient:</strong> {notif.recipient}<br />
+                          <strong>Subject:</strong> {notif.subject}
+                        </p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Test and Configuration */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                  <h4 className="text-sm font-semibold text-yellow-900 mb-2 flex items-center">
+                    <span className="mr-2">🧪</span>Test Email
+                  </h4>
+                  <p className="text-xs text-yellow-700 mb-3">
+                    Go to Scheduler Dashboard → "Send Test Email" → Click "Run Now"
+                  </p>
+                </div>
+                <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
+                  <h4 className="text-sm font-semibold text-gray-900 mb-2 flex items-center">
+                    <span className="mr-2">⚙️</span>Configuration
+                  </h4>
+                  <p className="text-xs text-gray-600 mb-2">
+                    Settings → Notifications tab
+                  </p>
+                  <a href="/admin-dashboard?tab=settings" className="text-xs text-blue-600 hover:text-blue-800">
+                    Go to Email Configuration →
+                  </a>
+                </div>
+              </div>
+            </div>
+          </div>
+        );
       case 'audit':
         return <AuditTrailViewer />;
       case 'settings':
