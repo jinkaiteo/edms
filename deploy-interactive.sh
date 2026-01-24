@@ -1347,18 +1347,48 @@ configure_email_optional() {
             docker compose exec -T backend python manage.py shell <<PYEOF
 from django.core.mail import send_mail
 from django.conf import settings
+import traceback
+
+print("Sending test email...")
+print(f"From: {settings.DEFAULT_FROM_EMAIL}")
+print(f"To: $test_recipient")
+print(f"SMTP Host: {settings.EMAIL_HOST}:{settings.EMAIL_PORT}")
+print("")
 
 try:
-    send_mail(
-        'EDMS Email Test',
-        'This is a test email from your EDMS deployment. If you received this, email notifications are configured correctly!',
+    result = send_mail(
+        'EDMS Email Test - Deployment Verification',
+        '''This is a test email from your EDMS deployment.
+
+If you received this email, it confirms:
+✅ Email configuration is correct
+✅ SMTP connection is working
+✅ Email notifications are operational
+
+You can safely delete this email.
+
+---
+EDMS Deployment Test Email''',
         settings.DEFAULT_FROM_EMAIL,
         ['$test_recipient'],
         fail_silently=False,
     )
     print("✅ Test email sent successfully!")
+    print(f"   Result code: {result}")
+    print("")
+    print("NOTE: Email delivery may take 30-60 seconds.")
+    print("      Check spam/junk folder if not received.")
 except Exception as e:
-    print(f"❌ Failed to send test email: {e}")
+    print(f"❌ Failed to send test email!")
+    print(f"   Error: {e}")
+    print("")
+    print("Troubleshooting:")
+    print("1. Verify email credentials in .env file")
+    print("2. Check SMTP host and port are correct")
+    print("3. Ensure app password is used (not account password)")
+    print("4. Verify 2FA is enabled on email account")
+    print("")
+    traceback.print_exc()
 PYEOF
             
             echo ""

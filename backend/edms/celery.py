@@ -76,18 +76,19 @@ app.conf.beat_schedule = {
         }
     },
     
-    # Note: Notification tasks disabled - not yet implemented
-    # These are placeholders that currently do nothing (process 0 notifications)
-    # Uncomment when notification system is ready:
-    #
-    # 'process-notification-queue': {
-    #     'task': 'apps.scheduler.notification_service.process_notification_queue',
-    #     'schedule': crontab(minute='*/5'),
-    # },
-    # 'send-daily-summary': {
-    #     'task': 'apps.scheduler.notification_service.send_daily_summary_notifications',
-    #     'schedule': crontab(hour=8, minute=0),
-    # },
+    # Email Notification Tasks - enabled
+    # Daily health report sent to all admin users
+    'send-daily-health-report': {
+        'task': 'apps.scheduler.tasks.send_daily_health_report',
+        'schedule': crontab(hour=7, minute=0),  # Daily at 7:00 AM
+        'options': {
+            'expires': 3600,  # Task expires after 1 hour
+            'priority': 6,    # Medium priority
+        }
+    },
+    
+    # Note: send_test_email_to_self is manual-trigger only
+    # Available in scheduler UI but not scheduled automatically
     
     # Note: Workflow cleanup tasks removed - WorkflowTask model no longer exists
     # The cleanup_workflow_tasks function is now a no-op since WorkflowTask was

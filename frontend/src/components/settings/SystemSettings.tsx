@@ -408,7 +408,200 @@ const SystemSettings: React.FC<SystemSettingsProps> = ({ className = '' }) => {
         </div>
 
         {/* Tab Content */}
-        {activeTab === 'features' ? (
+        {activeTab === 'notifications' ? (
+          <div className="space-y-6">
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-6">
+              <div className="flex items-start">
+                <svg className="w-6 h-6 text-blue-600 mt-0.5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <div className="flex-1">
+                  <h4 className="text-lg font-semibold text-blue-900 mb-2">Email Notification Configuration</h4>
+                  <p className="text-sm text-blue-800 mb-4">
+                    Email notifications are configured via environment variables on the server. 
+                    To change email settings, you'll need SSH/terminal access to the server.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <div className="space-y-6">
+              <div>
+                <h4 className="text-md font-semibold text-gray-900 mb-4 flex items-center">
+                  <span className="flex items-center justify-center w-8 h-8 bg-blue-100 text-blue-600 rounded-full mr-3 text-sm font-bold">1</span>
+                  Access the Server
+                </h4>
+                <div className="ml-11 bg-gray-50 rounded-lg p-4 border border-gray-200">
+                  <p className="text-sm text-gray-700 mb-3">Connect to your server via SSH:</p>
+                  <code className="block bg-gray-900 text-green-400 px-4 py-3 rounded text-sm font-mono">
+                    ssh user@your-server-address
+                  </code>
+                </div>
+              </div>
+
+              <div>
+                <h4 className="text-md font-semibold text-gray-900 mb-4 flex items-center">
+                  <span className="flex items-center justify-center w-8 h-8 bg-blue-100 text-blue-600 rounded-full mr-3 text-sm font-bold">2</span>
+                  Edit the Environment File
+                </h4>
+                <div className="ml-11 bg-gray-50 rounded-lg p-4 border border-gray-200">
+                  <p className="text-sm text-gray-700 mb-3">Navigate to the EDMS directory and edit the .env file:</p>
+                  <code className="block bg-gray-900 text-green-400 px-4 py-3 rounded text-sm font-mono mb-3">
+                    cd /path/to/edms<br/>
+                    nano .env
+                  </code>
+                  <p className="text-sm text-gray-600 mt-2">
+                    <strong>Note:</strong> Use <code className="bg-gray-200 px-1 py-0.5 rounded">vim</code> or your preferred text editor if nano is not available.
+                  </p>
+                </div>
+              </div>
+
+              <div>
+                <h4 className="text-md font-semibold text-gray-900 mb-4 flex items-center">
+                  <span className="flex items-center justify-center w-8 h-8 bg-blue-100 text-blue-600 rounded-full mr-3 text-sm font-bold">3</span>
+                  Update Email Configuration
+                </h4>
+                <div className="ml-11 space-y-4">
+                  <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
+                    <h5 className="font-medium text-gray-900 mb-2">Email Settings to Configure:</h5>
+                    <div className="space-y-3 text-sm">
+                      <div>
+                        <code className="text-blue-600 font-mono">EMAIL_BACKEND</code>
+                        <p className="text-gray-600 ml-4">Should be: <code className="bg-gray-200 px-1 rounded">django.core.mail.backends.smtp.EmailBackend</code></p>
+                      </div>
+                      <div>
+                        <code className="text-blue-600 font-mono">EMAIL_HOST</code>
+                        <p className="text-gray-600 ml-4">SMTP server address (e.g., smtp.gmail.com, smtp.office365.com)</p>
+                      </div>
+                      <div>
+                        <code className="text-blue-600 font-mono">EMAIL_PORT</code>
+                        <p className="text-gray-600 ml-4">Typically: <code className="bg-gray-200 px-1 rounded">587</code> (TLS) or <code className="bg-gray-200 px-1 rounded">465</code> (SSL)</p>
+                      </div>
+                      <div>
+                        <code className="text-blue-600 font-mono">EMAIL_USE_TLS</code>
+                        <p className="text-gray-600 ml-4">Set to: <code className="bg-gray-200 px-1 rounded">True</code> for port 587</p>
+                      </div>
+                      <div>
+                        <code className="text-blue-600 font-mono">EMAIL_HOST_USER</code>
+                        <p className="text-gray-600 ml-4">Your email address (e.g., notifications@company.com)</p>
+                      </div>
+                      <div>
+                        <code className="text-blue-600 font-mono">EMAIL_HOST_PASSWORD</code>
+                        <p className="text-gray-600 ml-4">⚠️ Use app password (not your regular password)</p>
+                      </div>
+                      <div>
+                        <code className="text-blue-600 font-mono">DEFAULT_FROM_EMAIL</code>
+                        <p className="text-gray-600 ml-4">Display name and email (e.g., "EDMS System &lt;notifications@company.com&gt;")</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                    <div className="flex items-start">
+                      <svg className="w-5 h-5 text-yellow-600 mt-0.5 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                      </svg>
+                      <div className="flex-1">
+                        <h5 className="font-medium text-yellow-900 mb-1">Important: Use App Passwords</h5>
+                        <p className="text-sm text-yellow-800 mb-2">
+                          Gmail and Microsoft 365 require app-specific passwords when 2FA is enabled:
+                        </p>
+                        <ul className="text-sm text-yellow-800 space-y-1 ml-4 list-disc">
+                          <li><strong>Gmail:</strong> Create at <a href="https://myaccount.google.com/apppasswords" target="_blank" rel="noopener noreferrer" className="underline">https://myaccount.google.com/apppasswords</a></li>
+                          <li><strong>Microsoft 365:</strong> Create at <a href="https://account.microsoft.com/security" target="_blank" rel="noopener noreferrer" className="underline">https://account.microsoft.com/security</a></li>
+                        </ul>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
+                    <h5 className="font-medium text-gray-900 mb-2">Example Configuration:</h5>
+                    <pre className="bg-gray-900 text-green-400 px-4 py-3 rounded text-xs font-mono overflow-x-auto">
+{`# Gmail Example
+EMAIL_BACKEND=django.core.mail.backends.smtp.EmailBackend
+EMAIL_HOST=smtp.gmail.com
+EMAIL_PORT=587
+EMAIL_USE_TLS=True
+EMAIL_HOST_USER=your-email@gmail.com
+EMAIL_HOST_PASSWORD=your-16-char-app-password
+DEFAULT_FROM_EMAIL="EDMS System <your-email@gmail.com>"
+
+# Microsoft 365 Example
+EMAIL_BACKEND=django.core.mail.backends.smtp.EmailBackend
+EMAIL_HOST=smtp.office365.com
+EMAIL_PORT=587
+EMAIL_USE_TLS=True
+EMAIL_HOST_USER=your-email@company.com
+EMAIL_HOST_PASSWORD=your-app-password
+DEFAULT_FROM_EMAIL="EDMS System <your-email@company.com>"`}
+                    </pre>
+                  </div>
+                </div>
+              </div>
+
+              <div>
+                <h4 className="text-md font-semibold text-gray-900 mb-4 flex items-center">
+                  <span className="flex items-center justify-center w-8 h-8 bg-blue-100 text-blue-600 rounded-full mr-3 text-sm font-bold">4</span>
+                  Restart the Backend Service
+                </h4>
+                <div className="ml-11 bg-gray-50 rounded-lg p-4 border border-gray-200">
+                  <p className="text-sm text-gray-700 mb-3">After saving changes, restart the backend to apply new settings:</p>
+                  <code className="block bg-gray-900 text-green-400 px-4 py-3 rounded text-sm font-mono">
+                    docker compose restart backend celery_worker celery_beat
+                  </code>
+                  <p className="text-sm text-gray-600 mt-3">
+                    This will restart all services that send email notifications.
+                  </p>
+                </div>
+              </div>
+
+              <div>
+                <h4 className="text-md font-semibold text-gray-900 mb-4 flex items-center">
+                  <span className="flex items-center justify-center w-8 h-8 bg-blue-100 text-blue-600 rounded-full mr-3 text-sm font-bold">5</span>
+                  Test Email Configuration
+                </h4>
+                <div className="ml-11 bg-gray-50 rounded-lg p-4 border border-gray-200">
+                  <p className="text-sm text-gray-700 mb-3">Test email delivery using the scheduler:</p>
+                  <ol className="text-sm text-gray-700 space-y-2 ml-4 list-decimal">
+                    <li>Go to <strong>Admin Dashboard → Scheduler tab</strong></li>
+                    <li>Find the <strong>"Send Test Email"</strong> task</li>
+                    <li>Click <strong>"Run Now"</strong> to trigger manually</li>
+                    <li>Check your admin user email inbox</li>
+                  </ol>
+                  <div className="mt-4 p-3 bg-green-50 border border-green-200 rounded">
+                    <p className="text-sm text-green-800">
+                      ✅ If you receive the test email, configuration is successful!
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="border-t pt-6">
+                <h4 className="text-md font-semibold text-gray-900 mb-3">Active Notification Types</h4>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  {[
+                    { name: 'Task Assignment', desc: 'When documents need review/approval' },
+                    { name: 'Document Effective', desc: 'When documents become active' },
+                    { name: 'Document Obsolete', desc: 'When documents are obsoleted' },
+                    { name: 'Workflow Timeout', desc: 'When tasks are overdue' },
+                    { name: 'Daily Health Report', desc: 'System status report (7 AM daily)' },
+                    { name: 'Periodic Reviews', desc: 'When periodic reviews are due' },
+                  ].map((notif, index) => (
+                    <div key={index} className="flex items-start p-3 bg-white border border-gray-200 rounded-lg">
+                      <svg className="w-5 h-5 text-green-500 mt-0.5 mr-3 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                      </svg>
+                      <div>
+                        <p className="text-sm font-medium text-gray-900">{notif.name}</p>
+                        <p className="text-xs text-gray-500">{notif.desc}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+        ) : activeTab === 'features' ? (
           <div className="space-y-4">
             <h4 className="text-md font-medium text-gray-900 mb-4">Feature Toggles</h4>
             {features.map((feature) => (
