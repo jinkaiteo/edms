@@ -78,11 +78,14 @@ git log --oneline -5
 # e36b2af feat: Add optimized deployment script (deploy-interactive-fast.sh)
 ```
 
-### 4. Run Optimized Deployment Script
+### 4. Run Deployment Script
 
 ```bash
-# Use the optimized deployment script
-./deploy-interactive-fast.sh
+# Use the stable, working deployment script
+./deploy-interactive.sh
+
+# Note: deploy-interactive-fast.sh exists but may have timing issues
+# Use deploy-interactive.sh for reliable deployment
 ```
 
 ### 5. Deployment Script Prompts
