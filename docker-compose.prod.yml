@@ -183,7 +183,7 @@ services:
         REACT_APP_TITLE: ${REACT_APP_TITLE:-EDMS}
     container_name: edms_prod_frontend
     ports:
-      - "${FRONTEND_PORT:-3001}:80"  # Configurable port for HAProxy routing
+      - "${FRONTEND_PORT:-3001}:3000"  # Map to port 3000 (React dev server)
     environment:
       - REACT_APP_API_URL=/api/v1
       - REACT_APP_TITLE=${REACT_APP_TITLE:-EDMS}
@@ -195,10 +195,11 @@ services:
       - edms_prod_network
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:80"]
+      test: ["CMD-SHELL", "wget -q --spider http://localhost:3000 || exit 1"]
       interval: 30s
       timeout: 10s
       retries: 3
+      start_period: 60s
 
   # Nginx Load Balancer/Reverse Proxy (Optional)
   # nginx:
