@@ -363,5 +363,10 @@ CELERY_RESULT_EXTENDED = True
 CELERY_CACHE_BACKEND = "default"
 
 # Store task results for monitoring
-CELERY_RESULT_EXPIRES = 86400  # Keep results for 24 hours
+# Set to None to disable built-in celery.backend_cleanup task
+# We use our own cleanup-celery-results task which:
+# - Keeps results for 7 days (vs 24 hours)
+# - Removes REVOKED tasks
+# - Provides detailed statistics
+CELERY_RESULT_EXPIRES = None  # Cleanup handled by our custom task
 
