@@ -133,8 +133,8 @@ prompt_password() {
         read -s -p "$(echo -e "${CYAN}?${NC} Confirm password: ")" password_confirm
         echo ""
         if [ "$password" = "$password_confirm" ]; then
-            # Remove any newlines from password
-            echo "$password" | tr -d '\n'
+            # Return password without newlines
+            printf '%s' "$password"
             break
         else
             echo "Passwords do not match. Please try again."
