@@ -2699,23 +2699,50 @@ class DocumentWorkflowView(APIView):
                 status=status.HTTP_403_FORBIDDEN
             )
         
-        document.status = 'DRAFT'
-        document.save()
+        # Use the proper workflow for rejection to ensure notifications are sent
+        from apps.workflows.document_lifecycle import document_lifecycle_service
+        from apps.workflows.author_notifications import author_notification_service
         
-        # Add rejection comment
-        DocumentComment.objects.create(
-            document=document,
-            author=request.user,
-            comment_type='REJECTION',
-            subject='Document rejected',
-            content=comment or 'Document rejected',
-            requires_response=True
-        )
-        
-        return Response(
-            {'message': 'Document rejected'},
-            status=status.HTTP_200_OK
-        )
+        try:
+            # Determine if this is a review rejection or approval rejection
+            is_review_rejection = document.can_review(request.user)
+            
+            if is_review_rejection:
+                # Review rejection - use complete_review with approved=False
+                success = document_lifecycle_service.complete_review(
+                    document=document,
+                    user=request.user,
+                    approved=False,
+                    comment=comment or 'Document rejected'
+                )
+            else:
+                # Approval rejection - use complete_approval with approved=False
+                success = document_lifecycle_service.complete_approval(
+                    document=document,
+                    user=request.user,
+                    approved=False,
+                    comment=comment or 'Document rejected'
+                )
+            
+            if not success:
+                return Response(
+                    {'error': 'Failed to reject document'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            
+            return Response(
+                {'message': 'Document rejected and author notified'},
+                status=status.HTTP_200_OK
+            )
+            
+        except Exception as e:
+            print(f"❌ Rejection failed: {e}")
+            import traceback
+            traceback.print_exc()
+            return Response(
+                {'error': f'Failed to reject document: {str(e)}'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
     
     def _make_effective(self, document, request, comment):
         """Make document effective."""
