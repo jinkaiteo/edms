@@ -916,13 +916,15 @@ print(f'Scheduler initialized: {created_count} new tasks created, {PeriodicTask.
     fi
     
     echo ""
-    print_step "Removing unwanted celery.backend_cleanup task..."
+    print_step "Disabling auto-created celery.backend_cleanup task..."
     echo ""
     
-    if docker compose -f docker-compose.prod.yml exec -T backend python manage.py remove_backend_cleanup; then
-        print_success "Removed celery.backend_cleanup task (we use cleanup-celery-results instead)"
+    # Note: This task is auto-created by django-celery-results and recreates itself if deleted
+    # So we disable it instead
+    if docker compose -f docker-compose.prod.yml exec -T backend python manage.py disable_backend_cleanup; then
+        print_success "Disabled celery.backend_cleanup task (we use cleanup-celery-results instead)"
     else
-        print_warning "Cleanup task removal had warnings (may not exist)"
+        print_warning "Cleanup task disable had warnings (may not exist yet)"
     fi
     
     echo ""
