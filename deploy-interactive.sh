@@ -872,7 +872,7 @@ initialize_database() {
     fi
     
     echo ""
-    print_step "Initializing Celery Beat scheduler (7 automated tasks)..."
+    print_step "Initializing Celery Beat scheduler (9 automated tasks)..."
     echo ""
     
     if docker compose -f docker-compose.prod.yml exec -T backend python manage.py shell -c "
@@ -909,9 +909,19 @@ for name, config in beat_schedule.items():
 
 print(f'Scheduler initialized: {created_count} new tasks created, {PeriodicTask.objects.count()} total')
 "; then
-        print_success "Celery Beat scheduler initialized (7 tasks: document lifecycle, workflow monitoring, health checks, data integrity)"
+        print_success "Celery Beat scheduler initialized (9 tasks: document lifecycle, workflow monitoring, health checks, data integrity, periodic reviews)"
     else
         print_warning "Scheduler initialization had warnings (tasks may already exist)"
+    fi
+    
+    echo ""
+    print_step "Creating 'Send Test Email' task for email testing..."
+    echo ""
+    
+    if docker compose -f docker-compose.prod.yml exec -T backend python manage.py create_email_test_task; then
+        print_success "Email test task created (manual trigger only)"
+    else
+        print_warning "Email test task creation had warnings (may already exist)"
     fi
     
     echo ""
