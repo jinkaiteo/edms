@@ -121,23 +121,23 @@ prompt_password() {
     
     while true; do
         read -s -p "$(echo -e "${CYAN}?${NC} $prompt: ")" password
-        echo ""
+        echo "" >&2  # Redirect newline to stderr
         if [ -z "$password" ]; then
-            echo "Password cannot be empty."
+            echo "Password cannot be empty." >&2  # Redirect error to stderr
             continue
         fi
         if [ ${#password} -lt 12 ]; then
-            echo "Password must be at least 12 characters."
+            echo "Password must be at least 12 characters." >&2  # Redirect error to stderr
             continue
         fi
         read -s -p "$(echo -e "${CYAN}?${NC} Confirm password: ")" password_confirm
-        echo ""
+        echo "" >&2  # Redirect newline to stderr
         if [ "$password" = "$password_confirm" ]; then
-            # Return password without newlines
+            # Return password without newlines (to stdout only)
             printf '%s' "$password"
             break
         else
-            echo "Passwords do not match. Please try again."
+            echo "Passwords do not match. Please try again." >&2  # Redirect error to stderr
         fi
     done
 }
