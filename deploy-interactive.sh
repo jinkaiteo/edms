@@ -493,7 +493,8 @@ REDIS_PASSWORD=
 # ==============================================================================
 
 CELERY_BROKER_URL=redis://redis:6379/0
-CELERY_RESULT_BACKEND=redis://redis:6379/0
+# CELERY_RESULT_BACKEND is configured in settings/base.py as django-db
+# DO NOT set it here to avoid overriding the settings
 CELERY_ALWAYS_EAGER=False
 
 # ==============================================================================
@@ -915,14 +916,73 @@ print(f'Scheduler initialized: {created_count} new tasks created, {PeriodicTask.
     fi
     
     echo ""
+    print_step "Removing unwanted celery.backend_cleanup task..."
+    echo ""
+    
+    if docker compose -f docker-compose.prod.yml exec -T backend python manage.py remove_backend_cleanup; then
+        print_success "Removed celery.backend_cleanup task (we use cleanup-celery-results instead)"
+    else
+        print_warning "Cleanup task removal had warnings (may not exist)"
+    fi
+    
+    echo ""
     print_step "Creating 'Send Test Email' task for email testing..."
     echo ""
     
-    if docker compose -f docker-compose.prod.yml exec -T backend python manage.py create_email_test_task; then
-        print_success "Email test task created (manual trigger only)"
-    else
-        print_warning "Email test task creation had warnings (may already exist)"
-    fi
+    docker compose -f docker-compose.prod.yml exec -T backend python manage.py shell -c "
+from django_celery_beat.models import PeriodicTask, CrontabSchedule
+
+# Create crontab that never runs (Feb 31)
+crontab, _ = CrontabSchedule.objects.get_or_create(
+    minute='0',
+    hour='0',
+    day_of_month='31',
+    month_of_year='2',
+    day_of_week='*',
+)
+
+# Create task
+task, created = PeriodicTask.objects.get_or_create(
+    name='Send Test Email',
+    defaults={
+        'task': 'apps.scheduler.tasks.send_test_email_to_self',
+        'crontab': crontab,
+        'enabled': True,
+    }
+)
+
+if created:
+    print('✅ Send Test Email task created')
+else:
+    print('✓ Send Test Email task already exists')
+
+print(f'Total periodic tasks: {PeriodicTask.objects.count()}')
+"
+    
+    print_success "Email test task configured (manual trigger only)"
+    
+    echo ""
+    print_step "Verifying Celery configuration..."
+    echo ""
+    
+    docker compose -f docker-compose.prod.yml exec -T backend python -c "
+from celery import current_app
+from django.conf import settings
+
+django_setting = settings.CELERY_RESULT_BACKEND
+celery_actual = current_app.conf.result_backend
+beat_scheduler = current_app.conf.beat_scheduler
+
+print(f'Django CELERY_RESULT_BACKEND: {django_setting}')
+print(f'Celery result_backend: {celery_actual}')
+print(f'Beat scheduler: {beat_scheduler}')
+
+if celery_actual == 'django-db':
+    print('✅ Celery is correctly using django-db backend')
+else:
+    print(f'⚠️  WARNING: Celery is using {celery_actual} instead of django-db')
+    print('   Tasks will execute but results may not persist correctly')
+"
     
     echo ""
 }
