@@ -1695,8 +1695,14 @@ Document Details:
             
             # DRAFT (rejection): author_notification_service sends detailed email
             # No need for generic task email
-            if action_required == 'DRAFT':
+            if action_required == 'DRAFT' or task_type == 'Revise Document':
                 print(f"⏭️ Skipping generic task notification for rejection - author notification service handles this")
+                return
+            
+            # Also skip if going back to DRAFT state (rejection scenario)
+            # The author_notification_service.notify_author_review_completed() handles rejection emails
+            if 'rejected' in task_type.lower() or 'revision' in task_type.lower():
+                print(f"⏭️ Skipping task notification for rejection/revision - dedicated notification already sent")
                 return
             
             subject = f"New Task Assigned: {task_type}"
