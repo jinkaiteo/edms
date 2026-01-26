@@ -9,6 +9,7 @@ from typing import List, Optional
 from django.utils import timezone
 from django.contrib.auth import get_user_model
 from django.db import transaction
+from django.conf import settings
 
 from .models import WorkflowNotification, DocumentWorkflow
 # WorkflowTask removed - using document filters instead
@@ -44,7 +45,11 @@ class AuthorNotificationService:
             with transaction.atomic():
                 workflow = self._get_active_workflow(document)
                 if not workflow:
+                    print(f"❌ notify_author_review_completed: No active workflow found for document {document.document_number}")
                     return False
+                
+                print(f"✅ notify_author_review_completed: Found workflow {workflow.id} for document {document.document_number}")
+                print(f"   approved={approved}, reviewer={reviewer.username}")
                 
                 # Create notification
                 if approved:
