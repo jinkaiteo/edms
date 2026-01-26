@@ -1415,15 +1415,15 @@ configure_email_optional() {
             print_step "Sending test email..."
             
             # Start containers temporarily if not running
-            docker compose up -d backend redis db
+            docker compose -f docker-compose.prod.yml up -d backend redis db
             
             # Recreate backend to load new .env settings
             print_info "Reloading backend with new email configuration..."
-            docker compose up -d --force-recreate --no-deps backend
+            docker compose -f docker-compose.prod.yml up -d --force-recreate --no-deps backend
             sleep 15
             
             # Send test email
-            docker compose exec -T backend python manage.py shell <<PYEOF
+            docker compose -f docker-compose.prod.yml exec -T backend python manage.py shell <<PYEOF
 from django.core.mail import send_mail
 from django.conf import settings
 import traceback
