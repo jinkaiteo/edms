@@ -9,6 +9,8 @@ services:
   db:
     image: postgres:18
     container_name: edms_prod_db
+    env_file:
+      - .env  # Load database credentials from .env file
     environment:
       POSTGRES_DB: ${DB_NAME:-edms_prod_db}
       POSTGRES_USER: ${DB_USER:-edms_prod_user}
