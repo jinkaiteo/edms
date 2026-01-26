@@ -45,7 +45,7 @@ print_warning() {
 
 print_step "Step 1: Backing up current PeriodicTask state..."
 
-docker compose exec backend python manage.py shell <<'PYEOF'
+docker compose exec -T backend python manage.py shell <<'PYEOF'
 from django_celery_beat.models import PeriodicTask
 import json
 
@@ -67,15 +67,15 @@ echo ""
 
 print_step "Step 2: Checking if setup_periodic_tasks command exists..."
 
-if docker compose exec backend python manage.py help setup_periodic_tasks >/dev/null 2>&1; then
+if docker compose exec -T backend python manage.py help setup_periodic_tasks >/dev/null 2>&1; then
     print_success "Command exists"
 else
     print_warning "Command not found - creating it now..."
     
     # Create the management command
-    docker compose exec backend sh -c "mkdir -p apps/scheduler/management/commands"
+    docker compose exec -T backend sh -c "mkdir -p apps/scheduler/management/commands"
     
-    docker compose exec backend sh -c 'cat > apps/scheduler/management/commands/setup_periodic_tasks.py << "PYEOF"
+    docker compose exec -T backend sh -c 'cat > apps/scheduler/management/commands/setup_periodic_tasks.py << "PYEOF"
 """
 Management command to sync CELERY_BEAT_SCHEDULE to database
 """
@@ -181,7 +181,7 @@ echo ""
 
 print_step "Step 3: Syncing tasks from settings to database..."
 
-docker compose exec backend python manage.py setup_periodic_tasks
+docker compose exec -T backend python manage.py setup_periodic_tasks
 
 print_success "Tasks synced to database"
 echo ""
@@ -192,7 +192,7 @@ echo ""
 
 print_step "Step 4: Verifying tasks in database..."
 
-docker compose exec backend python manage.py shell <<'PYEOF'
+docker compose exec -T backend python manage.py shell <<'PYEOF'
 from django_celery_beat.models import PeriodicTask
 
 tasks = PeriodicTask.objects.all()
@@ -243,7 +243,7 @@ print_step "Step 6: Verifying Celery Beat configuration..."
 docker compose logs celery_beat --tail=30 | grep -i "database" || echo "No database-related logs found"
 
 echo ""
-docker compose exec backend python manage.py shell <<'PYEOF'
+docker compose exec -T backend python manage.py shell <<'PYEOF'
 from django.conf import settings
 
 print("\n=== CELERY BEAT SCHEDULER ===")
@@ -267,7 +267,7 @@ echo ""
 
 print_step "Step 7: Triggering test task to verify tracking..."
 
-docker compose exec backend python manage.py shell <<'PYEOF'
+docker compose exec -T backend python manage.py shell <<'PYEOF'
 from apps.scheduler.tasks import send_test_email
 import time
 
@@ -316,7 +316,7 @@ echo "Fix Complete - Summary"
 echo "=========================================="
 echo ""
 
-docker compose exec backend python manage.py shell <<'PYEOF'
+docker compose exec -T backend python manage.py shell <<'PYEOF'
 from django_celery_beat.models import PeriodicTask
 from django_celery_results.models import TaskResult
 

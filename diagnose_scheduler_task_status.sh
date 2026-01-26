@@ -64,11 +64,11 @@ docker compose ps
 
 echo ""
 echo "Checking Celery Beat health:"
-docker compose exec celery_beat sh -c "ps aux | grep celery" || print_warning "Celery Beat process check failed"
+docker compose exec -T celery_beat sh -c "ps aux | grep celery" || print_warning "Celery Beat process check failed"
 
 echo ""
 echo "Checking Celery Worker health:"
-docker compose exec celery_worker sh -c "ps aux | grep celery" || print_warning "Celery Worker process check failed"
+docker compose exec -T celery_worker sh -c "ps aux | grep celery" || print_warning "Celery Worker process check failed"
 
 ################################################################################
 # 2. Celery Beat Schedule Check
@@ -77,7 +77,7 @@ docker compose exec celery_worker sh -c "ps aux | grep celery" || print_warning 
 print_header "2. Celery Beat Schedule Configuration"
 
 echo "Checking if Celery Beat schedule is configured..."
-docker compose exec backend python manage.py shell <<'PYEOF'
+docker compose exec -T backend python manage.py shell <<'PYEOF'
 from django.conf import settings
 import json
 
@@ -104,7 +104,7 @@ PYEOF
 print_header "3. Django Celery Beat Database Check"
 
 echo "Checking PeriodicTask entries in database..."
-docker compose exec backend python manage.py shell <<'PYEOF'
+docker compose exec -T backend python manage.py shell <<'PYEOF'
 from django_celery_beat.models import PeriodicTask, IntervalSchedule, CrontabSchedule
 from datetime import datetime
 
@@ -147,7 +147,7 @@ PYEOF
 print_header "4. Task Execution History (django-celery-results)"
 
 echo "Checking if tasks have been executed..."
-docker compose exec backend python manage.py shell <<'PYEOF'
+docker compose exec -T backend python manage.py shell <<'PYEOF'
 from django_celery_results.models import TaskResult
 from datetime import datetime, timedelta
 
@@ -188,11 +188,11 @@ PYEOF
 print_header "5. Celery Beat Scheduler File Check"
 
 echo "Checking if celerybeat-schedule file exists..."
-docker compose exec celery_beat sh -c "ls -la /tmp/celerybeat-schedule 2>/dev/null || echo 'File not found'" || print_warning "Cannot access celerybeat-schedule file"
+docker compose exec -T celery_beat sh -c "ls -la /tmp/celerybeat-schedule 2>/dev/null || echo 'File not found'" || print_warning "Cannot access celerybeat-schedule file"
 
 echo ""
 echo "Checking Celery worker state DB..."
-docker compose exec celery_worker sh -c "ls -la /tmp/celery_worker_state 2>/dev/null || echo 'File not found'" || print_warning "Cannot access worker state file"
+docker compose exec -T celery_worker sh -c "ls -la /tmp/celery_worker_state 2>/dev/null || echo 'File not found'" || print_warning "Cannot access worker state file"
 
 ################################################################################
 # 6. Configuration Mismatch Check
@@ -201,7 +201,7 @@ docker compose exec celery_worker sh -c "ls -la /tmp/celery_worker_state 2>/dev/
 print_header "6. Configuration Mismatch Detection"
 
 echo "Checking if tasks are configured in settings vs database..."
-docker compose exec backend python manage.py shell <<'PYEOF'
+docker compose exec -T backend python manage.py shell <<'PYEOF'
 from django.conf import settings
 from django_celery_beat.models import PeriodicTask
 
@@ -269,7 +269,7 @@ docker compose logs celery_worker --tail=50
 print_header "9. Manual Task Trigger Test"
 
 echo "Testing manual task execution..."
-docker compose exec backend python manage.py shell <<'PYEOF'
+docker compose exec -T backend python manage.py shell <<'PYEOF'
 from apps.scheduler.tasks import send_test_email
 from celery import current_app
 import time
@@ -307,7 +307,7 @@ PYEOF
 print_header "10. Scheduler Dashboard Data Source Check"
 
 echo "Checking what data source the scheduler dashboard uses..."
-docker compose exec backend python manage.py shell <<'PYEOF'
+docker compose exec -T backend python manage.py shell <<'PYEOF'
 from apps.scheduler.monitoring_dashboard import get_task_status
 from django_celery_beat.models import PeriodicTask
 
@@ -342,7 +342,7 @@ PYEOF
 print_header "DIAGNOSTIC SUMMARY"
 
 echo "Collecting diagnosis results..."
-docker compose exec backend python manage.py shell <<'PYEOF'
+docker compose exec -T backend python manage.py shell <<'PYEOF'
 from django_celery_beat.models import PeriodicTask
 from django_celery_results.models import TaskResult
 from django.conf import settings
@@ -383,11 +383,11 @@ if has_settings_schedule and db_tasks_count == 0:
 print("\n=== RECOMMENDED ACTIONS ===\n")
 
 print("1. Create/sync periodic tasks to database:")
-print("   docker compose exec backend python manage.py setup_periodic_tasks")
+print("   docker compose exec -T backend python manage.py setup_periodic_tasks")
 print()
 
 print("2. Verify tasks are in database:")
-print("   docker compose exec backend python manage.py shell -c \"from django_celery_beat.models import PeriodicTask; print(PeriodicTask.objects.count())\"")
+print("   docker compose exec -T backend python manage.py shell -c \"from django_celery_beat.models import PeriodicTask; print(PeriodicTask.objects.count())\"")
 print()
 
 print("3. Restart Celery Beat to pick up changes:")
@@ -412,7 +412,7 @@ echo "2. Follow the recommended actions"
 echo "3. Re-run this script after applying fixes to verify"
 echo ""
 echo "Common fixes:"
-echo "  - Run: docker compose exec backend python manage.py setup_periodic_tasks"
+echo "  - Run: docker compose exec -T backend python manage.py setup_periodic_tasks"
 echo "  - Restart: docker compose restart celery_beat celery_worker"
 echo "  - Check: Visit /admin/scheduler/monitoring/ after 5 minutes"
 echo ""
