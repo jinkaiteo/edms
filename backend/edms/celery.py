@@ -160,6 +160,10 @@ app.conf.update(
     # Error handling
     task_reject_on_worker_lost=True,
     task_acks_late=True,
+    
+    # Disable automatic celery.backend_cleanup task
+    # We have our own cleanup-celery-results scheduled task
+    beat_schedule_filename=None,  # Prevent celery from adding default tasks
 )
 
 @app.task(bind=True)
