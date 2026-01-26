@@ -110,13 +110,21 @@ Access EDMS: {settings.FRONTEND_URL}/my-tasks
 The document has been returned to DRAFT status for revision.
                     """.strip()
                 
-                # Send notification
-                notification_success = notification_service.send_immediate_notification(
-                    recipients=[document.author],
-                    subject=subject,
-                    message=message,
-                    notification_type=notification_type
-                )
+                # Send notification via email
+                from django.core.mail import send_mail
+                try:
+                    send_mail(
+                        subject=subject,
+                        message=message,
+                        from_email=settings.DEFAULT_FROM_EMAIL,
+                        recipient_list=[document.author.email],
+                        fail_silently=False
+                    )
+                    notification_success = True
+                    print(f"✅ Rejection email sent to {document.author.email}: {subject}")
+                except Exception as email_error:
+                    notification_success = False
+                    print(f"❌ Failed to send rejection email: {email_error}")
                 
                 # Create workflow notification record  
                 try:
@@ -227,13 +235,21 @@ Access EDMS: {settings.FRONTEND_URL}/my-tasks
 The document has been returned to DRAFT status for revision.
                     """.strip()
                 
-                # Send notification
-                notification_success = notification_service.send_immediate_notification(
-                    recipients=[document.author],
-                    subject=subject,
-                    message=message,
-                    notification_type=notification_type
-                )
+                # Send notification via email
+                from django.core.mail import send_mail
+                try:
+                    send_mail(
+                        subject=subject,
+                        message=message,
+                        from_email=settings.DEFAULT_FROM_EMAIL,
+                        recipient_list=[document.author.email],
+                        fail_silently=False
+                    )
+                    notification_success = True
+                    print(f"✅ Rejection email sent to {document.author.email}: {subject}")
+                except Exception as email_error:
+                    notification_success = False
+                    print(f"❌ Failed to send rejection email: {email_error}")
                 
                 # Create workflow notification record
                 WorkflowNotification.objects.create(
