@@ -164,6 +164,11 @@ app.conf.update(
     # Disable automatic celery.backend_cleanup task
     # We have our own cleanup-celery-results scheduled task
     beat_schedule_filename=None,  # Prevent celery from adding default tasks
+    
+    # Disable django-celery-results automatic cleanup task
+    # We use our own cleanup-celery-results task instead
+    result_backend_always_retry=True,
+    result_backend_max_retries=None,
 )
 
 @app.task(bind=True)
