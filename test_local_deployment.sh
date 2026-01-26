@@ -1,198 +1,121 @@
 #!/bin/bash
-# Local Deployment Test Script - Fixed version
+# Quick local deployment test
+
 set -e
 
-echo "=========================================="
-echo "🧪 EDMS Local Deployment Test"
-echo "=========================================="
+echo "════════════════════════════════════════════════════════════════"
+echo "  Local Deployment Test"
+echo "════════════════════════════════════════════════════════════════"
 echo ""
 
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
-NC='\033[0m'
+# Clean slate
+echo "1. Cleaning up..."
+docker compose -f docker-compose.prod.yml down -v 2>/dev/null || true
+rm -f .env
 
-# Step 1: Stop ALL containers completely
-echo "Step 1: Stopping all containers..."
-docker compose down -v
-sleep 2
-echo -e "${GREEN}✓ Containers stopped${NC}"
+# Run deployment script (non-interactive test mode)
+echo ""
+echo "2. Running deployment script..."
+
+# Set test defaults
+export DB_NAME="edms_test_db"
+export DB_USER="edms_test_user"  
+export DB_PASSWORD="test_password_123"
+export SECRET_KEY="test-secret-key-$(date +%s)"
+export ADMIN_USERNAME="admin"
+export ADMIN_PASSWORD="admin123"
+
+# Create minimal .env for testing
+cat > .env << ENVFILE
+SECRET_KEY=$SECRET_KEY
+DEBUG=False
+ALLOWED_HOSTS=localhost,127.0.0.1,0.0.0.0
+
+# Database
+DB_NAME=$DB_NAME
+DB_USER=$DB_USER
+DB_PASSWORD=$DB_PASSWORD
+DB_HOST=db
+DB_PORT=5432
+
+# Redis
+REDIS_URL=redis://redis:6379/1
+REDIS_PASSWORD=
+
+# Celery
+CELERY_BROKER_URL=redis://redis:6379/0
+
+# Email
+EMAIL_BACKEND=django.core.mail.backends.console.EmailBackend
+EMAIL_HOST=localhost
+EMAIL_PORT=587
+EMAIL_USE_TLS=True
+EMAIL_HOST_USER=
+EMAIL_HOST_PASSWORD=
+DEFAULT_FROM_EMAIL=noreply@edms-test.local
+
+# Encryption
+EDMS_MASTER_KEY=test-master-key-$(date +%s)
+
+# Ports
+BACKEND_PORT=8001
+FRONTEND_PORT=3001
+ENVFILE
+
+echo "✓ Created .env file"
+echo ""
+echo "3. Checking .env contents..."
+echo "DB_PASSWORD in .env:"
+grep "^DB_PASSWORD=" .env
 echo ""
 
-# Step 2: Remove volumes completely (this is critical!)
-echo "Step 2: Removing all volumes for clean slate..."
-docker volume ls | grep qms_04 | awk '{print $2}' | xargs -r docker volume rm 2>/dev/null || true
-echo -e "${GREEN}✓ Volumes removed${NC}"
-echo ""
+# Start services
+echo "4. Starting Docker services..."
+docker compose -f docker-compose.prod.yml up -d db redis
 
-# Step 3: Start fresh database
-echo "Step 3: Starting fresh database..."
-docker compose up -d db
-echo "Waiting for database to initialize (15 seconds)..."
+echo ""
+echo "5. Waiting for database..."
+sleep 10
+
+# Check what db container sees
+echo ""
+echo "6. Checking PostgreSQL environment in container..."
+docker compose -f docker-compose.prod.yml exec -T db env | grep -E "POSTGRES_" || echo "No POSTGRES vars found!"
+
+echo ""
+echo "7. Starting backend..."
+docker compose -f docker-compose.prod.yml up -d backend
+
+echo ""
+echo "8. Waiting for backend startup..."
 sleep 15
-echo -e "${GREEN}✓ Fresh database started${NC}"
+
 echo ""
+echo "9. Checking backend logs for errors..."
+docker compose -f docker-compose.prod.yml logs backend --tail=50 | grep -i "error\|password" || echo "No obvious errors"
 
-# Step 4: Build backend (to include latest code changes)
-echo "Step 4: Building backend service..."
-docker compose build backend
-echo -e "${GREEN}✓ Backend built${NC}"
 echo ""
-
-# Step 5: Start all services
-echo "Step 5: Starting all services..."
-docker compose up -d
-echo "Waiting for services to start (20 seconds)..."
-sleep 20
-echo -e "${GREEN}✓ Services started${NC}"
-echo ""
-
-# Step 6: Check service health
-echo "Step 6: Checking service health..."
-echo "Services status:"
-docker compose ps
-echo ""
-
-# Step 7: Apply migrations
-echo "Step 7: Applying database migrations..."
-docker compose exec -T backend python3 manage.py migrate --noinput
-if [ $? -eq 0 ]; then
-    echo -e "${GREEN}✓ Migrations applied successfully${NC}"
-else
-    echo -e "${RED}✗ Migration failed!${NC}"
-    echo "Checking database state..."
-    docker compose logs db --tail 20
-    exit 1
-fi
-echo ""
-
-# Step 8: Collect static files
-echo "Step 8: Collecting static files..."
-docker compose exec -T backend python3 manage.py collectstatic --noinput 2>&1 | grep -v "^$" || echo "Static files collected"
-echo -e "${GREEN}✓ Static files ready${NC}"
-echo ""
-
-# Step 9: Create superuser
-echo "Step 9: Creating admin user..."
-docker compose exec -T backend python3 manage.py shell << PYTHON
-from django.contrib.auth import get_user_model
-User = get_user_model()
-if not User.objects.filter(username='admin').exists():
-    User.objects.create_superuser('admin', 'admin@example.com', 'admin123')
-    print('✓ Admin user created')
-else:
-    print('✓ Admin user already exists')
-PYTHON
-echo ""
-
-# Step 10: Initialize system defaults
-echo "Step 10: Initializing system defaults..."
-docker compose exec -T backend python3 << PYTHON
-import os
-import django
-os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'edms.settings.development')
-django.setup()
-
-# Initialize roles
-from apps.users.models import Role, User
-admin_user = User.objects.get(username='admin')
-
-roles = [
-    {'code': 'AUTHOR', 'name': 'Author', 'description': 'Can create and edit documents'},
-    {'code': 'REVIEWER', 'name': 'Reviewer', 'description': 'Can review documents'},
-    {'code': 'APPROVER', 'name': 'Approver', 'description': 'Can approve documents'},
-]
-
-for role_data in roles:
-    Role.objects.get_or_create(
-        code=role_data['code'],
-        defaults={
-            'name': role_data['name'],
-            'description': role_data['description'],
-            'created_by': admin_user
-        }
-    )
-print('✓ Roles initialized')
-
-# Initialize groups
-from django.contrib.auth.models import Group
-groups = ['Authors', 'Reviewers', 'Approvers', 'Administrators']
-for group_name in groups:
-    Group.objects.get_or_create(name=group_name)
-print('✓ Groups initialized')
-PYTHON
-echo -e "${GREEN}✓ System initialized${NC}"
-echo ""
-
-# Step 11: Test backend health
-echo "Step 11: Testing backend health..."
-BACKEND_HEALTH=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:8000/health/ 2>/dev/null || echo "000")
-if [ "$BACKEND_HEALTH" = "200" ]; then
-    echo -e "${GREEN}✓ Backend health check passed (200 OK)${NC}"
-else
-    echo -e "${YELLOW}⚠ Backend health check returned: $BACKEND_HEALTH${NC}"
+echo "10. Testing database migration..."
+docker compose -f docker-compose.prod.yml exec -T backend python manage.py migrate || {
+    echo ""
+    echo "❌ Migration failed!"
+    echo ""
+    echo "Backend environment:"
+    docker compose -f docker-compose.prod.yml exec -T backend env | grep -E "DB_"
+    echo ""
+    echo "PostgreSQL environment:"
+    docker compose -f docker-compose.prod.yml exec -T db env | grep -E "POSTGRES_"
+    echo ""
     echo "Backend logs:"
-    docker compose logs backend --tail 30
-fi
-echo ""
+    docker compose -f docker-compose.prod.yml logs backend --tail=100
+    exit 1
+}
 
-# Step 12: Test frontend
-echo "Step 12: Testing frontend..."
-FRONTEND_HEALTH=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:3000 2>/dev/null || echo "000")
-if [ "$FRONTEND_HEALTH" = "200" ]; then
-    echo -e "${GREEN}✓ Frontend accessible (200 OK)${NC}"
-else
-    echo -e "${YELLOW}⚠ Frontend returned: $FRONTEND_HEALTH (may need a moment to build)${NC}"
-fi
 echo ""
+echo "════════════════════════════════════════════════════════════════"
+echo "✅ Local test PASSED!"
+echo "════════════════════════════════════════════════════════════════"
+echo ""
+echo "If this works, the issue is in the deployment script's .env creation."
+echo "If this fails, the issue is in docker-compose.prod.yml configuration."
 
-# Step 13: Test API endpoints
-echo "Step 13: Testing API endpoints..."
-API_TEST=$(curl -s http://localhost:8000/api/v1/ 2>/dev/null || echo "FAILED")
-if [[ "$API_TEST" == *"api"* ]] || [[ "$API_TEST" == *"authentication"* ]]; then
-    echo -e "${GREEN}✓ API endpoints accessible${NC}"
-else
-    echo -e "${YELLOW}⚠ API may not be ready yet${NC}"
-fi
-echo ""
-
-# Step 14: Check Celery services
-echo "Step 14: Checking Celery services..."
-if docker compose ps celery_worker 2>/dev/null | grep -q "Up"; then
-    echo -e "${GREEN}✓ Celery worker running${NC}"
-else
-    echo -e "${YELLOW}⚠ Celery worker not running${NC}"
-fi
-
-if docker compose ps celery_beat 2>/dev/null | grep -q "Up"; then
-    echo -e "${GREEN}✓ Celery beat running${NC}"
-else
-    echo -e "${YELLOW}⚠ Celery beat not running${NC}"
-fi
-echo ""
-
-# Final Summary
-echo "=========================================="
-echo "📊 Local Deployment Test Complete"
-echo "=========================================="
-echo ""
-echo "Services:"
-docker compose ps --format "table {{.Name}}\t{{.Status}}\t{{.Ports}}"
-echo ""
-echo -e "${GREEN}Access URLs:${NC}"
-echo "  Frontend: http://localhost:3000"
-echo "  Backend:  http://localhost:8000"
-echo "  Admin:    http://localhost:8000/admin"
-echo ""
-echo -e "${GREEN}Admin Credentials:${NC}"
-echo "  Username: admin"
-echo "  Password: admin123"
-echo ""
-echo -e "${GREEN}✓ Fresh deployment complete!${NC}"
-echo ""
-echo "Next steps:"
-echo "1. Open http://localhost:3000 in your browser"
-echo "2. Test document workflows manually"
-echo "3. Check logs: docker compose logs backend -f"
-echo "4. If all works → Deploy to staging"
-echo ""
