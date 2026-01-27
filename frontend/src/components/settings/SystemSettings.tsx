@@ -11,6 +11,8 @@ const SystemSettings: React.FC<SystemSettingsProps> = ({ className = '' }) => {
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'general' | 'security' | 'features' | 'appearance' | 'notifications'>('notifications'); // Default to the only working tab
   const [hasChanges, setHasChanges] = useState(false);
+  const [sendingTestEmail, setSendingTestEmail] = useState(false);
+  const [testEmailResult, setTestEmailResult] = useState<{ success: boolean; message: string; recipients?: string[] } | null>(null);
 
   // Mock settings data
   const mockSettings: SystemConfiguration[] = [
@@ -273,6 +275,94 @@ const SystemSettings: React.FC<SystemSettingsProps> = ({ className = '' }) => {
     if (window.confirm('Are you sure you want to reset all settings to their default values?')) {
       setSettings(prev => prev.map(setting => ({ ...setting, value: setting.default_value })));
       setHasChanges(true);
+    }
+  }, []);
+
+  const handleSendTestEmail = useCallback(async () => {
+    setSendingTestEmail(true);
+    setTestEmailResult(null);
+
+    try {
+      // Get JWT token from localStorage (how the app authenticates)
+      // The app stores it as 'accessToken', not 'token'
+      const token = localStorage.getItem('accessToken') || localStorage.getItem('authToken');
+      console.log('🔍 Debug - Token from localStorage:', token ? 'EXISTS' : 'NULL');
+      console.log('🔍 Debug - Checked keys: accessToken, authToken');
+      
+      // Get CSRF token from cookie (fallback for session auth)
+      const getCookie = (name: string) => {
+        const value = `; ${document.cookie}`;
+        const parts = value.split(`; ${name}=`);
+        if (parts.length === 2) return parts.pop()?.split(';').shift();
+        return null;
+      };
+
+      const csrfToken = getCookie('csrftoken');
+      console.log('🔍 Debug - CSRF token:', csrfToken ? 'EXISTS' : 'NULL');
+      console.log('🔍 Debug - All cookies:', document.cookie);
+      
+      const headers: HeadersInit = {
+        'Content-Type': 'application/json',
+      };
+      
+      // Add JWT token if available (primary auth method)
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+        console.log('✅ Added Authorization header');
+      } else {
+        console.warn('⚠️ No token found in localStorage!');
+      }
+      
+      // Add CSRF token if available (for session auth)
+      if (csrfToken) {
+        headers['X-CSRFToken'] = csrfToken;
+        console.log('✅ Added CSRF header');
+      }
+      
+      console.log('🔍 Debug - Final headers:', headers);
+      
+      const response = await fetch('/api/v1/settings/email/send-test/', {
+        method: 'POST',
+        headers: headers,
+        credentials: 'include',
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        setTestEmailResult({
+          success: data.success,
+          message: data.message,
+          recipients: data.recipients || [],
+        });
+
+        if (data.success) {
+          setTimeout(() => setTestEmailResult(null), 10000);
+        }
+      } else {
+        // Handle HTTP errors
+        let errorMessage = data.message || 'Failed to send test email';
+        
+        if (response.status === 401) {
+          errorMessage = 'Authentication failed. Please refresh the page and try again.';
+        } else if (response.status === 403) {
+          errorMessage = 'Permission denied. Admin access required.';
+        }
+
+        setTestEmailResult({
+          success: false,
+          message: errorMessage,
+          recipients: [],
+        });
+      }
+    } catch (error: any) {
+      setTestEmailResult({
+        success: false,
+        message: error.message || 'Failed to send test email. Please check your connection.',
+        recipients: [],
+      });
+    } finally {
+      setSendingTestEmail(false);
     }
   }, []);
 
@@ -561,18 +651,77 @@ DEFAULT_FROM_EMAIL="EDMS System <your-email@company.com>"`}
                   <span className="flex items-center justify-center w-8 h-8 bg-blue-100 text-blue-600 rounded-full mr-3 text-sm font-bold">5</span>
                   Test Email Configuration
                 </h4>
-                <div className="ml-11 bg-gray-50 rounded-lg p-4 border border-gray-200">
-                  <p className="text-sm text-gray-700 mb-3">Test email delivery using the scheduler:</p>
-                  <ol className="text-sm text-gray-700 space-y-2 ml-4 list-decimal">
-                    <li>Go to <strong>Admin Dashboard → Scheduler tab</strong></li>
-                    <li>Find the <strong>"Send Test Email"</strong> task</li>
-                    <li>Click <strong>"Run Now"</strong> to trigger manually</li>
-                    <li>Check your admin user email inbox</li>
-                  </ol>
-                  <div className="mt-4 p-3 bg-green-50 border border-green-200 rounded">
-                    <p className="text-sm text-green-800">
-                      ✅ If you receive the test email, configuration is successful!
+                <div className="ml-11 space-y-4">
+                  <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
+                    <p className="text-sm text-gray-700 mb-4">
+                      Send a test email to verify your configuration is working correctly. 
+                      The test email will be sent to all administrator accounts.
                     </p>
+                    
+                    <button
+                      onClick={handleSendTestEmail}
+                      disabled={sendingTestEmail}
+                      className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 
+                                 disabled:bg-gray-400 disabled:cursor-not-allowed flex items-center
+                                 transition-colors duration-200"
+                    >
+                      {sendingTestEmail ? (
+                        <>
+                          <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" 
+                               xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                            <circle className="opacity-25" cx="12" cy="12" r="10" 
+                                    stroke="currentColor" strokeWidth="4"></circle>
+                            <path className="opacity-75" fill="currentColor" 
+                                  d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 
+                                     7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                          </svg>
+                          Sending Test Email...
+                        </>
+                      ) : (
+                        <>
+                          <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} 
+                                  d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 
+                                     00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                          </svg>
+                          Send Test Email
+                        </>
+                      )}
+                    </button>
+                    
+                    {testEmailResult && (
+                      <div className={`mt-4 p-4 rounded-lg border ${
+                        testEmailResult.success 
+                          ? 'bg-green-50 border-green-200' 
+                          : 'bg-red-50 border-red-200'
+                      }`}>
+                        <div className="flex items-start">
+                          <div className="flex-shrink-0">
+                            {testEmailResult.success ? (
+                              <svg className="w-5 h-5 text-green-600" fill="currentColor" viewBox="0 0 20 20">
+                                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                              </svg>
+                            ) : (
+                              <svg className="w-5 h-5 text-red-600" fill="currentColor" viewBox="0 0 20 20">
+                                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                              </svg>
+                            )}
+                          </div>
+                          <div className="ml-3 flex-1">
+                            <p className={`text-sm font-medium ${
+                              testEmailResult.success ? 'text-green-800' : 'text-red-800'
+                            }`}>
+                              {testEmailResult.message}
+                            </p>
+                            {testEmailResult.recipients && testEmailResult.recipients.length > 0 && (
+                              <p className="text-xs text-green-700 mt-1">
+                                Recipients: {testEmailResult.recipients.join(', ')}
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>

@@ -183,6 +183,51 @@ class DocumentAnnotationProcessor:
         # Additional technical information
         metadata['IS_CURRENT'] = 'CURRENT' if 'EFFECTIVE' in document.status else 'NOT CURRENT'
         
+        # Missing placeholders from database that need to be added
+        # DEPARTMENT - Author's department
+        if document.author and hasattr(document.author, 'department'):
+            metadata['DEPARTMENT'] = document.author.department
+        else:
+            metadata['DEPARTMENT'] = 'Not Specified'
+        
+        # DIGITAL_SIGNATURE - Digital signature placeholder
+        # This should show signature info for approved documents
+        if document.status in ['APPROVED_AND_EFFECTIVE', 'EFFECTIVE', 'APPROVED_PENDING_EFFECTIVE']:
+            if document.approver:
+                approver_name = f"{document.approver.first_name} {document.approver.last_name}".strip() or document.approver.username
+                metadata['DIGITAL_SIGNATURE'] = f"Electronically approved by {approver_name}"
+                if document.approval_date:
+                    metadata['DIGITAL_SIGNATURE'] += f" on {document.approval_date.strftime('%Y-%m-%d')}"
+            else:
+                metadata['DIGITAL_SIGNATURE'] = 'Electronically approved'
+        else:
+            metadata['DIGITAL_SIGNATURE'] = 'Pending approval'
+        
+        # DOWNLOADED_DATE - Alias for DOWNLOAD_DATE (already exists)
+        metadata['DOWNLOADED_DATE'] = metadata['DOWNLOAD_DATE']
+        
+        # PREVIOUS_VERSION - Previous version number
+        if document.supersedes:
+            metadata['PREVIOUS_VERSION'] = document.supersedes.version_string or 'N/A'
+        else:
+            metadata['PREVIOUS_VERSION'] = 'N/A'
+        
+        # REVISION_COUNT - Total number of revisions
+        # Count all documents in the same family
+        try:
+            import re
+            base_number = re.sub(r'-v\d+\.\d+$', '', document.document_number) if document.document_number else ''
+            if base_number:
+                from .models import Document as DocumentModel
+                revision_count = DocumentModel.objects.filter(
+                    document_number__startswith=base_number
+                ).count()
+                metadata['REVISION_COUNT'] = str(revision_count)
+            else:
+                metadata['REVISION_COUNT'] = '1'
+        except Exception:
+            metadata['REVISION_COUNT'] = '1'
+        
         # Common alternative placeholder names for backward compatibility with existing templates
         metadata.update({
             'DOCUMENT_NUMBER': metadata['DOC_NUMBER'],

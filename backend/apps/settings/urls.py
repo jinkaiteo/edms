@@ -1,13 +1,11 @@
 """
-URL Configuration for Settings App
+Settings URL Configuration
 """
+from django.urls import path
+from . import views
 
-from django.urls import path, include
-from rest_framework.routers import DefaultRouter
-
-# Create router for system settings endpoints
-router = DefaultRouter()
+app_name = 'settings'
 
 urlpatterns = [
-    path('', include(router.urls)),
+    path('email/send-test/', views.send_test_email, name='send-test-email'),
 ]
