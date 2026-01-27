@@ -843,11 +843,12 @@ initialize_database() {
     fi
     
     echo ""
-    print_step "Initializing placeholders (32 standard placeholders)..."
+    print_step "Initializing placeholders (35 placeholders with enhancements)..."
     echo ""
     
     if docker compose -f docker-compose.prod.yml exec -T backend python manage.py setup_placeholders; then
-        print_success "Placeholders initialized (32 placeholders for document annotation)"
+        print_success "Placeholders initialized (35 placeholders: 32 standard + 5 enhancements)"
+        print_info "Enhanced placeholders: DEPARTMENT, DIGITAL_SIGNATURE, DOWNLOADED_DATE, PREVIOUS_VERSION, REVISION_COUNT"
     else
         print_warning "Placeholder initialization had warnings (may already exist)"
     fi
@@ -910,7 +911,9 @@ for name, config in beat_schedule.items():
 
 print(f'Scheduler initialized: {created_count} new tasks created, {PeriodicTask.objects.count()} total')
 "; then
-        print_success "Celery Beat scheduler initialized (9 tasks: document lifecycle, workflow monitoring, health checks, data integrity, periodic reviews)"
+        print_success "Celery Beat scheduler initialized (9 real automated tasks only)"
+        print_info "Tasks: document lifecycle, workflow monitoring, health checks, data integrity, periodic reviews"
+        print_info "Note: 'Send Test Email' is now a button on Email Notifications page (not a scheduled task)"
     else
         print_warning "Scheduler initialization had warnings (tasks may already exist)"
     fi
@@ -928,40 +931,12 @@ print(f'Scheduler initialized: {created_count} new tasks created, {PeriodicTask.
     fi
     
     echo ""
-    print_step "Creating 'Send Test Email' task for email testing..."
+    print_step "Send Test Email feature configured..."
     echo ""
     
-    docker compose -f docker-compose.prod.yml exec -T backend python manage.py shell -c "
-from django_celery_beat.models import PeriodicTask, CrontabSchedule
-
-# Create crontab that never runs (Feb 31)
-crontab, _ = CrontabSchedule.objects.get_or_create(
-    minute='0',
-    hour='0',
-    day_of_month='31',
-    month_of_year='2',
-    day_of_week='*',
-)
-
-# Create task
-task, created = PeriodicTask.objects.get_or_create(
-    name='Send Test Email',
-    defaults={
-        'task': 'apps.scheduler.tasks.send_test_email_to_self',
-        'crontab': crontab,
-        'enabled': True,
-    }
-)
-
-if created:
-    print('✅ Send Test Email task created')
-else:
-    print('✓ Send Test Email task already exists')
-
-print(f'Total periodic tasks: {PeriodicTask.objects.count()}')
-"
-    
-    print_success "Email test task configured (manual trigger only)"
+    print_success "Send Test Email button available on Email Notifications page"
+    print_info "No longer creates fake scheduled task (architectural improvement)"
+    print_info "Users can test email directly from: Admin Dashboard → Email Notifications → Step 5"
     
     echo ""
     print_step "Verifying Celery configuration..."
