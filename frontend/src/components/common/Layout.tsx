@@ -238,7 +238,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
   const handlePasswordChangeSuccess = () => {
     // Show success message with better styling
     const successMessage = document.createElement('div');
-    successMessage.className = 'fixed top-4 right-4 bg-green-500 text-white px-6 py-3 rounded-lg shadow-lg z-50';
+    successMessage.className = 'fixed top-4 right-4 bg-green-500 text-white px-6 py-3 rounded-lg shadow-lg z-30';
     successMessage.textContent = 'Password changed successfully!';
     document.body.appendChild(successMessage);
     
@@ -590,7 +590,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
 
                 {/* Profile dropdown menu */}
                 {showProfileDropdown && (
-                  <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none z-50">
+                  <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none z-30">
                     <div className="py-1">
                       <button
                         onClick={() => {
