@@ -162,7 +162,18 @@ const UnifiedWorkflowModal: React.FC<UnifiedWorkflowModalProps> = ({
       const data = await response.json();
       const allUsers = data.results || [];
       
-      // Unified user filtering logic
+      // DEBUG: Log document object to see what fields are available
+      if (allUsers.length > 0) {
+        console.log('🔍 DEBUG - Document object:', {
+          hasDocument: !!document,
+          documentKeys: document ? Object.keys(document) : [],
+          author: document?.author,
+          author_id: document?.author_id,
+          authorId: document?.author?.id
+        });
+      }
+      
+      // Unified user filtering logic with Segregation of Duties enforcement
       const eligibleUsers = allUsers.filter((user: any) => {
         console.log(`Checking ${config.userType} ${user.username}: active_roles =`, user.active_roles, 'is_superuser =', user.is_superuser);
         
@@ -172,11 +183,15 @@ const UnifiedWorkflowModal: React.FC<UnifiedWorkflowModalProps> = ({
           config.permissionLevels.includes(role.permission_level)
         );
         
-        // Include superusers, exclude self-assignment
-        const isEligible = (user.is_superuser || hasRequiredRole) && 
-                          user.id !== document?.author_id;
+        // CRITICAL: Segregation of Duties - Exclude document author from selection
+        // Check multiple possible field names for author ID
+        const authorId = document?.author || document?.author_id || document?.author?.id;
+        const isSelfAssignment = user.id === authorId;
         
-        console.log(`${config.userType} ${user.username} eligible: ${isEligible} (hasRole: ${hasRequiredRole}, not self: ${user.id !== document?.author_id})`);
+        // Include superusers and users with required role, but exclude self-assignment
+        const isEligible = (user.is_superuser || hasRequiredRole) && !isSelfAssignment;
+        
+        console.log(`${config.userType} ${user.username} eligible: ${isEligible} (hasRole: ${hasRequiredRole}, notSelf: ${!isSelfAssignment}, authorId: ${authorId})`);
         return isEligible;
       });
       

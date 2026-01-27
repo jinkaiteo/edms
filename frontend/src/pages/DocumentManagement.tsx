@@ -157,6 +157,10 @@ const DocumentManagement: React.FC<DocumentManagementProps> = ({
     setDocumentListRefresh(prev => prev + 1);
     console.log('🔄 DocumentManagement: Document list refresh triggered');
     
+    // Trigger badge refresh to update "My Tasks" count immediately
+    triggerBadgeRefresh();
+    console.log('✅ Badge refreshed immediately after document creation');
+    
     // Clear success message after 5 seconds
     setTimeout(() => setUploadSuccess(null), 5000);
   }, []);

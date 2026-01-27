@@ -123,11 +123,12 @@ class DocumentViewSet(PeriodicReviewMixin, viewsets.ModelViewSet):
             )
         
         # Check if user has document creation permissions
+        # Allow admin, approve, review, and write levels to create documents
         has_permission = (
             user.is_superuser or
             user.user_roles.filter(
                 role__module='O1',
-                role__permission_level__in=['write', 'admin'],
+                role__permission_level__in=['admin', 'approve', 'review', 'write'],
                 is_active=True
             ).exists()
         )

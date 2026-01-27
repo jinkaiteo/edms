@@ -10,6 +10,7 @@
 import React, { useState } from 'react';
 import { Document, ReviewOutcome } from '../../types/api';
 import apiService from '../../services/api.ts';
+import { triggerBadgeRefresh } from '../../utils/badgeRefresh.ts';
 
 interface PeriodicReviewModalProps {
   isOpen: boolean;
@@ -65,6 +66,10 @@ const PeriodicReviewModal: React.FC<PeriodicReviewModalProps> = ({
           nextReviewMonths: nextReviewMonths
         };
         
+        // Trigger badge refresh - review task completed, version creation will add new task
+        triggerBadgeRefresh();
+        console.log('✅ Badge refreshed immediately after periodic review up-version initiated');
+        
         // Close this modal and trigger upversion flow
         onClose();
         onUpversion(reviewContext);
@@ -92,6 +97,10 @@ const PeriodicReviewModal: React.FC<PeriodicReviewModalProps> = ({
       });
 
       console.log('Periodic review completed:', response);
+      
+      // Trigger badge refresh to update "My Tasks" count immediately
+      triggerBadgeRefresh();
+      console.log('✅ Badge refreshed immediately after periodic review confirmation');
       
       // Show success message
       alert(`✅ Periodic review completed successfully!\n\nOutcome: ${selectedOutcome}\nNext review: ${response.next_review_date}`);
