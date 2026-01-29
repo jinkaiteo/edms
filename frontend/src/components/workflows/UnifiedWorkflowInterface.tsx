@@ -3,6 +3,7 @@ import { useAuth } from '../../contexts/AuthContext.tsx';
 import BaseWorkflowModal from './BaseWorkflowModal.tsx';
 import CommentHistory from './CommentHistory.tsx';
 import { CheckIcon, XMarkIcon } from '@heroicons/react/24/outline';
+import { triggerBadgeRefresh } from '../../utils/badgeRefresh.ts';
 
 interface UnifiedWorkflowInterfaceProps {
   isOpen: boolean;
@@ -275,6 +276,10 @@ const UnifiedWorkflowInterface: React.FC<UnifiedWorkflowInterfaceProps> = ({
             throw new Error(completeError.error || 'Failed to complete review');
           }
         }
+        
+        // Trigger badge refresh to update "My Tasks" count immediately
+        triggerBadgeRefresh();
+        console.log(`✅ Badge refreshed immediately after ${mode} action (${decision})`);
         
         // Dispatch update event
         window.dispatchEvent(new CustomEvent('documentUpdated', { 

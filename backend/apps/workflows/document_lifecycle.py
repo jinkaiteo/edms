@@ -1896,6 +1896,10 @@ Document Details:
     
     def _can_review(self, document: Document, user: User) -> bool:
         """Check if user can review document."""
+        # Segregation of Duties: Author cannot review their own document
+        if document.author == user and not user.is_superuser:
+            return False
+        
         return (document.reviewer == user or
                 user.user_roles.filter(
                     role__module='O1',
@@ -1906,6 +1910,10 @@ Document Details:
     
     def _can_approve(self, document: Document, user: User) -> bool:
         """Check if user can approve document."""
+        # Segregation of Duties: Author cannot approve their own document
+        if document.author == user and not user.is_superuser:
+            return False
+        
         return (document.approver == user or
                 user.user_roles.filter(
                     role__module='O1', 

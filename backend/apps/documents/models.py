@@ -541,6 +541,10 @@ class Document(models.Model):
         if self.status != 'PENDING_APPROVAL':
             return False
         
+        # Segregation of Duties: Author cannot approve their own document
+        if self.author == user and not user.is_superuser:
+            return False
+        
         # Assigned approver can approve
         if self.approver == user:
             return True
@@ -555,6 +559,10 @@ class Document(models.Model):
     def can_review(self, user):
         """Check if user can review this document."""
         if self.status not in ['PENDING_REVIEW', 'UNDER_REVIEW']:
+            return False
+        
+        # Segregation of Duties: Author cannot review their own document
+        if self.author == user and not user.is_superuser:
             return False
         
         # Assigned reviewer can review

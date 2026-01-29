@@ -14,6 +14,7 @@ import WorkflowHistory from '../workflows/WorkflowHistory.tsx';
 import PeriodicReviewModal from './PeriodicReviewModal.tsx';
 import { useAuth } from '../../contexts/AuthContext.tsx';
 import apiService from '../../services/api.ts';
+import { triggerBadgeRefresh } from '../../utils/badgeRefresh.ts';
 
 // Helper function to format dates
 const formatDate = (dateString: string | null | undefined): string => {
@@ -352,6 +353,10 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({
       // Clear selection since terminated documents are hidden from the list
       window.dispatchEvent(new CustomEvent('clearDocumentSelection'));
       
+      // Trigger badge refresh to update "My Tasks" count immediately
+      triggerBadgeRefresh();
+      console.log('✅ Badge refreshed immediately after document termination');
+      
       // Refresh document state
       await forceRefreshDocumentState();
       
@@ -659,14 +664,24 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({
       case 'PENDING_REVIEW':
         // Note: Enforcing uppercase PENDING_REVIEW for consistency with backend
         // EDMS lines 7-10: ONLY the assigned reviewer can start review process
-        // CRITICAL: Authors cannot review their own documents (segregation of duties)
+        // CRITICAL: Segregation of Duties - Authors cannot review their own documents
         
+        // Segregation of Duties: Only show review button if user is NOT the author
         if (isAssignedReviewer && !isDocumentAuthor) {
           actions.push({ 
             key: 'open_reviewer_interface', 
             label: '📋 Start Review Process', 
             color: 'blue', 
             description: 'Download document and provide review comments'
+          });
+        } else if (isDocumentAuthor && isAssignedReviewer) {
+          // Show informational message if author is assigned as reviewer
+          actions.push({ 
+            key: 'view_sod_message', 
+            label: '⚠️ Cannot Review Own Document', 
+            color: 'gray',
+            description: 'Segregation of duties: Authors cannot review their own documents. Please assign a different reviewer.',
+            disabled: true
           });
         } else if (isDocumentAuthor) {
           actions.push({ 
@@ -743,28 +758,41 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({
         
       case 'PENDING_APPROVAL':
         // EDMS lines 12-15: Approver can approve or reject
+        // CRITICAL: Segregation of Duties - Author cannot approve their own document
         
         // Debug: Calculate if Start Approval Process button should show
-        const shouldShowStartApproval = hasApprovalPermission && isAssignedApprover;
+        const shouldShowStartApproval = hasApprovalPermission && isAssignedApprover && !isDocumentAuthor;
         console.log('🔍 Debug - Start Approval Process Button Logic:', {
           documentStatus: document.status,
           statusMatches: document.status.toUpperCase() === 'PENDING_APPROVAL',
           isAssignedApprover,
+          isDocumentAuthor,
           hasApprovalPermission,
           authenticated,
           workflowStatusExists: !!workflowStatus,
           userExists: !!user,
           documentExists: !!document,
           shouldShowButton: shouldShowStartApproval,
-          allConditionsMet: shouldShowStartApproval && authenticated && !!workflowStatus && !!user && !!document
+          allConditionsMet: shouldShowStartApproval && authenticated && !!workflowStatus && !!user && !!document,
+          sodBlocked: isDocumentAuthor ? 'YES - Author cannot approve own document' : 'NO'
         });
         
-        if (hasApprovalPermission && isAssignedApprover) {
+        // Segregation of Duties: Only show approval button if user is NOT the author
+        if (hasApprovalPermission && isAssignedApprover && !isDocumentAuthor) {
           actions.push({ 
             key: 'open_approver_interface', 
             label: '✅ Start Approval Process', 
             color: 'green',
             description: 'Review and approve/reject document'
+          });
+        } else if (isDocumentAuthor && isAssignedApprover) {
+          // Show informational message if author is assigned as approver
+          actions.push({ 
+            key: 'view_sod_message', 
+            label: '⚠️ Cannot Approve Own Document', 
+            color: 'gray',
+            description: 'Segregation of duties: Authors cannot approve their own documents. Please assign a different approver.',
+            disabled: true
           });
         }
         
@@ -1516,7 +1544,7 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({
         <RouteForApprovalModalUnified
           isOpen={showRouteForApprovalModal}
           onClose={() => setShowRouteForApprovalModal(false)}
-          document={document}
+          document={completeDocument || document}
           onApprovalRouted={handleApprovalRouted}
         />
       )}

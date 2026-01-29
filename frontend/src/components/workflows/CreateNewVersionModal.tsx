@@ -7,6 +7,7 @@
 
 import React, { useState } from 'react';
 import { apiService } from '../../services/api.ts';
+import { triggerBadgeRefresh } from '../../utils/badgeRefresh.ts';
 import { 
   XMarkIcon,
   DocumentPlusIcon,
@@ -157,6 +158,10 @@ const CreateNewVersionModal: React.FC<CreateNewVersionModalProps> = ({
       // }
 
       if (workflowResponse.success) {
+        // Trigger badge refresh to update "My Tasks" count immediately
+        triggerBadgeRefresh();
+        console.log('✅ Badge refreshed immediately after new version creation');
+        
         onVersionCreated({
           success: true,
           message: workflowResponse.message,

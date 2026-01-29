@@ -1,238 +1,235 @@
-# Staging Deployment Instructions - Frontend Update
+# 🚀 Staging Deployment Instructions - SoD & Badge Refresh
 
-## 🎯 Purpose
-Deploy recent frontend authentication changes to staging server at `172.28.1.148`.
-
-## 📝 Changes Being Deployed
-- **Authentication redirect** in DocumentManagement component (commit 29e6433)
-- Users accessing document management without login will be redirected to login page
-- Frontend-only change requiring React rebuild
+**Branch**: `feature/segregation-of-duties-and-badge-refresh`  
+**Target**: Staging Server  
+**Status**: ✅ READY FOR DEPLOYMENT  
+**Date**: 2026-01-27
 
 ---
 
-## 🚀 Deployment Steps (Run from Your Local Machine)
+## ⚠️ Pre-Deployment Checklist
 
-### Prerequisites
-1. SSH access to staging server configured
-2. You're in the EDMS project root directory
-3. On the `develop` branch with latest changes
-
-### Step 1: Verify SSH Access
-```bash
-ssh lims@172.28.1.148 "echo 'Connection OK'"
-```
-✅ Should print "Connection OK"
+- [ ] Staging server accessible
+- [ ] SSH access available
+- [ ] Docker & Docker Compose installed
+- [ ] ~15-20 minutes available
+- [ ] Test users exist (approver01, reviewer01, admin)
 
 ---
 
-### Step 2: Run Deployment Script
+## 📊 Changes Being Deployed
 
-**Option A: Automated Deployment (Recommended)**
+**Backend (3 files)**:
+- SoD enforcement in workflow and models
+- Permission fix for document creation
+
+**Frontend (7 files)**:
+- Badge refresh on all workflow actions
+- Self-assignment prevention in dropdowns
+- Button hiding for document authors
+
+**Total**: 10 files, 99 insertions, 11 deletions
+
+---
+
+## 🚀 Deployment Steps
+
+### 1. Connect to Staging Server
 ```bash
-./deploy-staging-frontend-update.sh
+ssh your-staging-server
+cd /path/to/edms
 ```
 
-The script will:
-- Show you what changes will be deployed
-- Ask for confirmation before proceeding
-- Pull latest code on staging
-- Rebuild frontend container (3-5 min)
-- Verify deployment
-- Provide testing instructions
-
-**Option B: Manual Deployment**
-If you prefer manual control:
-
+### 2. Backup Current State (Optional)
 ```bash
-# 1. SSH to staging
-ssh lims@172.28.1.148
+git branch backup-staging-$(date +%Y%m%d-%H%M%S)
+git log --oneline -1 > /tmp/pre-deployment-commit.txt
+```
 
-# 2. Navigate to project
-cd /home/lims/edms-staging
-
-# 3. Check current status
-docker compose -f docker-compose.prod.yml ps
-
-# 4. Pull latest code
+### 3. Checkout Feature Branch
+```bash
 git fetch origin
-git checkout develop
-git pull origin develop
-
-# 5. View recent commits
-git log --oneline -5
-
-# 6. Rebuild frontend (this is the key step!)
-docker compose -f docker-compose.prod.yml stop frontend
-docker compose -f docker-compose.prod.yml build --no-cache frontend
-docker compose -f docker-compose.prod.yml up -d frontend
-
-# 7. Verify deployment
-docker compose -f docker-compose.prod.yml ps frontend
-docker compose -f docker-compose.prod.yml logs --tail=20 frontend
-
-# 8. Test HTTP response
-curl http://localhost:3001/
-curl http://localhost:8001/health/
-
-# 9. Exit SSH
-exit
+git checkout feature/segregation-of-duties-and-badge-refresh
+git log --oneline -1
+# Should show: 9a64042 or similar
 ```
 
----
-
-## ✅ Post-Deployment Verification
-
-### From Your Local Machine:
-
-1. **Test Frontend Access**
-   ```bash
-   curl http://172.28.1.148:3001/
-   ```
-   Should return HTML content
-
-2. **Test Backend API**
-   ```bash
-   curl http://172.28.1.148:8001/health/
-   ```
-   Should return: `{"status": "healthy"}`
-
-3. **Test in Browser**
-   - Open: `http://172.28.1.148:3001`
-   - **IMPORTANT**: Use incognito mode or hard reload (Ctrl+Shift+R)
-   - Try to access document management without logging in
-   - Should redirect to login page ✅
-
----
-
-## ⚠️ Critical: Browser Cache
-
-**The frontend JavaScript has been rebuilt!**
-
-Users must clear browser cache to see the new changes:
-
-### For Testing:
-- Use **Incognito/Private browsing mode**, OR
-- Hard reload: **Ctrl+Shift+R** (Windows/Linux) or **Cmd+Shift+R** (Mac)
-
-### For All Users:
-Notify team members to clear cache or use hard reload when accessing staging.
-
----
-
-## 🔍 Troubleshooting
-
-### Issue 1: Frontend container won't start
+### 4. Stop Services
 ```bash
-ssh lims@172.28.1.148
-cd /home/lims/edms-staging
-docker compose -f docker-compose.prod.yml logs frontend
+docker compose down
+docker compose ps  # Verify stopped
 ```
 
-### Issue 2: Port already in use
+### 5. Rebuild Containers
 ```bash
-# Check what's using port 3001
-sudo lsof -i :3001
-
-# If nginx is running standalone, stop it
-sudo systemctl stop nginx
+docker compose build --no-cache backend frontend
+# Wait 5-10 minutes for build
 ```
 
-### Issue 3: Build fails due to disk space
+### 6. Start Services
 ```bash
-# Clean up old Docker images
-docker system prune -a --volumes
+docker compose up -d
+docker compose ps  # Verify all running
+docker compose logs backend frontend | tail -50
 ```
 
-### Issue 4: Changes not visible in browser
-- **Solution**: Must use incognito mode or hard reload
-- Browser caches the old JavaScript bundle
-- Ctrl+Shift+R forces download of new bundle
-
----
-
-## 📊 Expected Results
-
-### Container Status
-```
-NAME                   STATUS          PORTS
-edms_prod_frontend     Up (healthy)    0.0.0.0:3001->80/tcp
-edms_prod_backend      Up (healthy)    0.0.0.0:8001->8000/tcp
-edms_prod_db          Up (healthy)    0.0.0.0:5433->5432/tcp
-edms_prod_redis       Up (healthy)    0.0.0.0:6380->6379/tcp
+### 7. Verify Deployment
+```bash
+curl http://localhost:8000/health/
+curl http://localhost:3000/
 ```
 
-### Frontend Logs (Last Lines)
+---
+
+## 🧪 Testing Checklist
+
+### Test 1: Badge Refresh on Document Creation
+**As**: approver01
+1. Note badge count
+2. Create new document
+3. **Expected**: Badge increases immediately
+4. **Console**: `✅ Badge refreshed immediately after document creation`
+
+**Status**: ⬜ PASS / ⬜ FAIL
+
+---
+
+### Test 2: Self-Assignment Prevention
+**As**: approver01
+1. Create document (you're the author)
+2. Click "Route for Approval"
+3. **Expected**: You NOT in approver dropdown
+4. **Console**: `authorId: 4` (not undefined)
+
+**Status**: ⬜ PASS / ⬜ FAIL
+
+---
+
+### Test 3: Button Hiding for Authors
+**As**: approver01 (author)
+1. Open your own document in PENDING_APPROVAL
+2. **Expected**: NO "Start Approval Process" button
+3. **Expected**: Shows "⚠️ Cannot Approve Own Document"
+
+**Status**: ⬜ PASS / ⬜ FAIL
+
+---
+
+### Test 4: Badge Refresh on Review
+**As**: reviewer01
+1. Note badge count
+2. Complete a review
+3. **Expected**: Badge decreases immediately
+
+**Status**: ⬜ PASS / ⬜ FAIL
+
+---
+
+### Test 5: Badge Refresh on Approval
+**As**: approver01
+1. Note badge count
+2. Approve someone else's document
+3. **Expected**: Badge decreases immediately
+
+**Status**: ⬜ PASS / ⬜ FAIL
+
+---
+
+### Test 6: New Version Creation
+**As**: Any user
+1. Create new version of EFFECTIVE document
+2. **Expected**: Badge increases (new DRAFT)
+
+**Status**: ⬜ PASS / ⬜ FAIL
+
+---
+
+### Test 7: Creation Permissions
+**As**: reviewer01 or approver01
+1. Create a document
+2. **Expected**: Success (no 403 error)
+
+**Status**: ⬜ PASS / ⬜ FAIL
+
+---
+
+## 📊 Test Results Summary
+
+**Overall Status**: ⬜ ALL PASS / ⬜ SOME FAIL
+
+---
+
+## 🔄 Rollback Plan
+
+### If Tests Fail:
+```bash
+docker compose down
+git checkout main
+docker compose build backend frontend
+docker compose up -d
 ```
-Nginx started successfully
-Frontend application ready
+
+---
+
+## ✅ Success Criteria
+
+- ✅ All 7 tests pass
+- ✅ No console errors
+- ✅ No 500 errors in logs
+- ✅ Badge updates work
+- ✅ SoD enforcement works
+- ✅ System stable 10+ minutes
+
+---
+
+## 🐛 Troubleshooting
+
+**Services won't start**:
+```bash
+docker compose logs backend frontend
 ```
 
-### Test Results
-- ✅ Frontend loads at `http://172.28.1.148:3001`
-- ✅ Accessing document management redirects to login
-- ✅ After login, document management is accessible
-- ✅ Backend API responds at `http://172.28.1.148:8001/health/`
+**Badge not updating**:
+1. Clear browser cache (Ctrl+Shift+R)
+2. Check console for errors
+3. Verify backend: `curl http://localhost:8000/health/`
+
+**Self-assignment still works**:
+1. Check console shows `authorId: X` (not undefined)
+2. Hard refresh browser
+3. Verify correct branch: `git branch --show-current`
 
 ---
 
-## 📝 Deployment Checklist
+## 📝 Deployment Log
 
-- [ ] SSH access verified
-- [ ] Deployment script run or manual steps completed
-- [ ] Frontend container rebuilt successfully
-- [ ] Container status shows "Up (healthy)"
-- [ ] Frontend accessible via HTTP
-- [ ] Backend health check passes
-- [ ] Authentication redirect tested (use incognito mode!)
-- [ ] Team notified about browser cache clearing
+**Deployed By**: _________________  
+**Date**: _________________  
+**Commit**: 9a64042  
+**All Tests Passed**: ⬜ YES / ⬜ NO  
+**Ready for Production**: ⬜ YES / ⬜ NO  
 
----
-
-## 🆘 Need Help?
-
-If deployment fails:
-
-1. **Check logs**:
-   ```bash
-   ssh lims@172.28.1.148 "cd /home/lims/edms-staging && docker compose -f docker-compose.prod.yml logs --tail=50 frontend"
-   ```
-
-2. **Restart all services**:
-   ```bash
-   ssh lims@172.28.1.148 "cd /home/lims/edms-staging && docker compose -f docker-compose.prod.yml restart"
-   ```
-
-3. **Full rebuild** (if needed):
-   ```bash
-   ssh lims@172.28.1.148 "cd /home/lims/edms-staging && docker compose -f docker-compose.prod.yml down && docker compose -f docker-compose.prod.yml up -d"
-   ```
+**Notes**: _________________________________
 
 ---
 
-## 📌 Quick Reference
+## 🎯 Next Steps
 
-| Item | Value |
-|------|-------|
-| **Server** | `172.28.1.148` |
-| **User** | `lims` |
-| **Path** | `/home/lims/edms-staging` |
-| **Frontend URL** | `http://172.28.1.148:3001` |
-| **Backend API** | `http://172.28.1.148:8001/api/v1` |
-| **Compose File** | `docker-compose.prod.yml` |
-| **Expected Downtime** | 3-5 minutes (frontend only) |
-| **Branch** | `develop` |
+**If All Pass ✅**:
+1. Monitor staging 24-48 hours
+2. Get stakeholder approval
+3. Create pull request
+4. Merge to main
+5. Deploy to production
 
----
-
-## ✨ After Successful Deployment
-
-1. Update team on Slack/communication channel
-2. Test the authentication flow thoroughly
-3. Monitor logs for any errors: `docker compose -f docker-compose.prod.yml logs -f frontend`
-4. Remind users to clear browser cache
+**If Tests Fail ❌**:
+1. Rollback to main
+2. Document issues
+3. Fix in feature branch
+4. Re-deploy to staging
 
 ---
 
-**Deployment Date**: January 13, 2026  
-**Changes**: Authentication redirect in DocumentManagement  
-**Impact**: Frontend only, backend unaffected
+**Time Required**: 15-20 minutes  
+**Risk Level**: LOW (backwards compatible)  
+**Rollback**: Easy (switch to main branch)

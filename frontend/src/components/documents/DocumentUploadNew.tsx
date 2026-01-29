@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { apiService } from '../../services/api.ts';
+import { triggerBadgeRefresh } from '../../utils/badgeRefresh';
 
 // Backend-compliant interfaces
 interface DocumentType {
@@ -261,6 +262,10 @@ const DocumentUploadNew: React.FC = () => {
         detail: result
       });
       window.dispatchEvent(documentCreatedEvent);
+      
+      // Trigger badge refresh to update "My Tasks" count immediately
+      triggerBadgeRefresh();
+      console.log('✅ Badge refreshed immediately after document creation');
       
       // Reset form
       setFormData({
