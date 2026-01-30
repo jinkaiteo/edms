@@ -388,7 +388,7 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({
     try {
       // Fetch PDF with authentication
       const response = await apiService.get(
-        `/documents/documents/${completeDocument.uuid}/download_official_pdf/`,
+        `/documents/documents/${completeDocument.uuid}/download/official/`,
         { responseType: 'blob' }
       );
       
@@ -400,8 +400,14 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({
       setShowPDFViewer(true);
     } catch (error: any) {
       console.error('Failed to load PDF:', error);
-      const errorMessage = error.response?.data?.error || 'Failed to load PDF';
-      alert(`Error: ${errorMessage}`);
+      console.error('Error response:', error.response);
+      console.error('Error status:', error.response?.status);
+      console.error('Error data:', error.response?.data);
+      
+      const errorMessage = error.response?.data?.error || error.message || 'Failed to load PDF';
+      const errorDetail = error.response?.data?.detail || '';
+      
+      alert(`Error: ${errorMessage}${errorDetail ? '\n\n' + errorDetail : ''}`);
     } finally {
       setLoadingPDF(false);
     }
