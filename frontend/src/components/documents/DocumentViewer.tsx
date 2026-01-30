@@ -388,7 +388,7 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({
     try {
       // Fetch PDF with authentication using axios directly for blob response
       const response = await apiService.client.get(
-        `/api/v1/documents/documents/${completeDocument.uuid}/download/official/`,
+        `/documents/documents/${completeDocument.uuid}/download/official/`,
         { 
           responseType: 'blob',
           headers: {
@@ -396,6 +396,19 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({
           }
         }
       );
+      
+      // Debug: Check what we received
+      console.log('Response headers:', response.headers);
+      console.log('Content-Type:', response.headers['content-type']);
+      console.log('Blob type:', response.data.type);
+      console.log('Blob size:', response.data.size);
+      
+      // Check if it's actually a PDF or a ZIP
+      const contentType = response.headers['content-type'] || response.data.type;
+      if (contentType.includes('zip')) {
+        alert('Backend returned a ZIP file instead of PDF. This usually means PDF generation failed. Try downloading the file instead.');
+        return;
+      }
       
       // Create blob URL from response
       const blob = response.data;
