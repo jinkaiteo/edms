@@ -12,6 +12,7 @@ import DownloadActionMenu from './DownloadActionMenu.tsx';
 import DocumentCreateModal from './DocumentCreateModal.tsx';
 import WorkflowHistory from '../workflows/WorkflowHistory.tsx';
 import PeriodicReviewModal from './PeriodicReviewModal.tsx';
+import DependencyVisualization from './DependencyVisualization.tsx';
 import { useAuth } from '../../contexts/AuthContext.tsx';
 import apiService from '../../services/api.ts';
 import { triggerBadgeRefresh } from '../../utils/badgeRefresh.ts';
@@ -53,7 +54,7 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({
   className = ''
 }) => {
   // TODO: Electronic Signatures feature exists but not operational - hidden until tested and documented
-  const [activeTab, setActiveTab] = useState<'details' | 'workflow' | 'history'>('details');
+  const [activeTab, setActiveTab] = useState<'details' | 'dependencies' | 'workflow' | 'history'>('details');
   const [workflowStatus, setWorkflowStatus] = useState<WorkflowInstance | null>(null);
   const [signatures, setSignatures] = useState<ElectronicSignature[]>([]);
   const [completeDocument, setCompleteDocument] = useState<Document | null>(null);
@@ -986,7 +987,7 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({
       <div className="border-b border-gray-200">
         <nav className="flex space-x-8 px-6" aria-label="Tabs">
           {/* 'signatures' tab hidden - TODO: Implement and test Electronic Signatures feature */}
-          {['details', 'workflow', 'history'].map((tab) => (
+          {['details', 'dependencies', 'workflow', 'history'].map((tab) => (
             <button
               key={tab}
               onClick={() => setActiveTab(tab as typeof activeTab)}
@@ -1141,117 +1142,7 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({
               </div>
             </div>
 
-            {/* Document Dependencies Section */}
-            <div>
-              <h3 className="text-lg font-medium text-gray-900 mb-4">🔗 Document Dependencies</h3>
-              
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                {/* Dependencies - What this document depends on */}
-                <div className="border border-gray-200 rounded-lg p-4">
-                  <div className="flex items-center justify-between mb-3">
-                    <h4 className="text-sm font-semibold text-gray-700">📥 Dependencies</h4>
-                  </div>
-                  
-                  {(completeDocument?.dependencies || document.dependencies) && (completeDocument?.dependencies || document.dependencies).length > 0 ? (
-                    <div className="space-y-3">
-                      {(completeDocument?.dependencies || document.dependencies).map((dep: any) => (
-                        <div key={dep.id} className="bg-blue-50 border border-blue-200 rounded-lg p-3">
-                          <div className="flex items-start justify-between">
-                            <div className="flex-1">
-                              <div className="flex items-center space-x-2 mb-1">
-                                <span className="text-sm font-medium text-blue-900">
-                                  {dep.depends_on_display || `Document ${dep.depends_on}`}
-                                </span>
-                                {dep.is_critical && (
-                                  <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-red-100 text-red-800">
-                                    Critical
-                                  </span>
-                                )}
-                              </div>
-                              <div className="flex items-center space-x-2 text-xs text-blue-700">
-                                <span className="capitalize">{(dep.dependency_type_display || dep.dependency_type || 'references').toLowerCase()}</span>
-                                {dep.created_at && (
-                                  <>
-                                    <span>•</span>
-                                    <span>Added {formatDate(dep.created_at)}</span>
-                                  </>
-                                )}
-                              </div>
-                              {dep.description && (
-                                <p className="text-xs text-blue-600 mt-1">{dep.description}</p>
-                              )}
-                            </div>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <div className="text-center py-6">
-                      <div className="text-gray-400 mb-2">
-                        <svg className="w-8 h-8 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
-                        </svg>
-                      </div>
-                      <p className="text-sm text-gray-500">No dependencies</p>
-                      <p className="text-xs text-gray-400 mt-1">This document does not depend on other documents</p>
-                    </div>
-                  )}
-                </div>
-
-                {/* Dependents - What depends on this document */}
-                <div className="border border-gray-200 rounded-lg p-4">
-                  <div className="flex items-center justify-between mb-3">
-                    <h4 className="text-sm font-semibold text-gray-700">📤 Dependents</h4>
-                  </div>
-                  
-                  {(completeDocument?.dependents || document.dependents) && (completeDocument?.dependents || document.dependents).length > 0 ? (
-                    <div className="space-y-3">
-                      {(completeDocument?.dependents || document.dependents).map((dep: any) => (
-                        <div key={dep.id} className="bg-green-50 border border-green-200 rounded-lg p-3">
-                          <div className="flex items-start justify-between">
-                            <div className="flex-1">
-                              <div className="flex items-center space-x-2 mb-1">
-                                <span className="text-sm font-medium text-green-900">
-                                  {dep.document_display || `Document ${dep.document}`}
-                                </span>
-                                {dep.is_critical && (
-                                  <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-red-100 text-red-800">
-                                    Critical
-                                  </span>
-                                )}
-                              </div>
-                              <div className="flex items-center space-x-2 text-xs text-green-700">
-                                <span className="capitalize">{(dep.dependency_type_display || dep.dependency_type || 'references').toLowerCase()}</span>
-                                {dep.created_at && (
-                                  <>
-                                    <span>•</span>
-                                    <span>Added {formatDate(dep.created_at)}</span>
-                                  </>
-                                )}
-                              </div>
-                              {dep.description && (
-                                <p className="text-xs text-green-600 mt-1">{dep.description}</p>
-                              )}
-                            </div>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <div className="text-center py-6">
-                      <div className="text-gray-400 mb-2">
-                        <svg className="w-8 h-8 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
-                        </svg>
-                      </div>
-                      <p className="text-sm text-gray-500">No dependents</p>
-                      <p className="text-xs text-gray-400 mt-1">No other documents depend on this one</p>
-                    </div>
-                  )}
-                </div>
-              </div>
-              
-            </div>
+            {/* Document Dependencies Section - Removed: Now available in dedicated Dependencies tab */}
 
             {/* Workflow Assignment Information */}
             <div>
@@ -1503,6 +1394,47 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({
                 </div>
               )}
             </div>
+          </div>
+        )}
+
+        {activeTab === 'dependencies' && (
+          <div className="space-y-6">
+            <div className="bg-blue-50 border-l-4 border-blue-400 p-4 mb-6">
+              <div className="flex">
+                <div className="flex-shrink-0">
+                  <svg className="h-5 w-5 text-blue-400" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+                  </svg>
+                </div>
+                <div className="ml-3">
+                  <p className="text-sm text-blue-700">
+                    <strong>Interactive Dependency Tree:</strong> This view shows the complete dependency hierarchy for this document, including both forward dependencies (what this document depends on) and reverse dependencies (what depends on this document). Expand nodes to explore multi-level chains up to 3 levels deep.
+                  </p>
+                </div>
+              </div>
+            </div>
+            
+            {document?.uuid ? (
+              <DependencyVisualization 
+                documentUuid={document.uuid}
+                documentNumber={document.document_number}
+                onCircularDependencyDetected={(hasCircular) => {
+                  if (hasCircular) {
+                    console.warn('⚠️ Complex dependency chain detected for document:', document.document_number);
+                  }
+                }}
+              />
+            ) : (
+              <div className="text-center py-12">
+                <div className="text-gray-400 mb-4">
+                  <svg className="w-16 h-16 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                </div>
+                <h3 className="text-lg font-medium text-gray-900 mb-1">Loading Document Data</h3>
+                <p className="text-gray-500">Please wait while we load the complete document information...</p>
+              </div>
+            )}
           </div>
         )}
 

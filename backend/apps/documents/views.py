@@ -1810,6 +1810,31 @@ class DocumentViewSet(PeriodicReviewMixin, viewsets.ModelViewSet):
             max_depth = int(request.query_params.get('max_depth', 5))
             chain = DocumentDependency.get_dependency_chain(document.id, max_depth)
             
+            # Helper to enrich chain with document details
+            def enrich_chain(chain_list):
+                enriched = []
+                for item in chain_list:
+                    doc_id = item.get('document_id')
+                    try:
+                        doc = Document.objects.get(id=doc_id)
+                        enriched.append({
+                            'id': doc.id,
+                            'document_number': doc.document_number,
+                            'title': doc.title,
+                            'type': item.get('type'),
+                            'is_critical': item.get('is_critical', False),
+                            'depth': item.get('depth', 1),
+                            'parent_id': item.get('parent_id')  # ← CRITICAL: Include parent_id!
+                        })
+                    except Document.DoesNotExist:
+                        continue
+                return enriched
+            
+            enriched_chain = {
+                'dependencies': enrich_chain(chain.get('dependencies', [])),
+                'dependents': enrich_chain(chain.get('dependents', []))
+            }
+            
             return Response({
                 'document': {
                     'id': document.id,
@@ -1817,10 +1842,10 @@ class DocumentViewSet(PeriodicReviewMixin, viewsets.ModelViewSet):
                     'title': document.title,
                     'status': document.status
                 },
-                'dependency_chain': chain,
+                'dependency_chain': enriched_chain,
                 'analysis': {
-                    'total_dependencies': len(chain.get('dependencies', [])),
-                    'total_dependents': len(chain.get('dependents', [])),
+                    'total_dependencies': len(enriched_chain.get('dependencies', [])),
+                    'total_dependents': len(enriched_chain.get('dependents', [])),
                     'max_depth_reached': max_depth,
                     'impact_assessment': self._assess_change_impact(document, chain)
                 }

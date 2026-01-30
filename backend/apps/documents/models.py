@@ -1273,8 +1273,22 @@ class DocumentDependency(models.Model):
     @classmethod
     def get_dependency_chain(cls, document_id, max_depth=10):
         """
-        Get the complete dependency chain for a document.
-        Useful for impact analysis when documents change.
+        Get the complete dependency chain for a document using BFS.
+        
+        Uses Breadth-First Search to explore ALL branches at each depth level
+        before going deeper. This ensures complete width coverage and detects
+        all dependencies/dependents at each level.
+        
+        Args:
+            document_id: Starting document ID
+            max_depth: Maximum depth to traverse (default 10)
+            
+        Returns:
+            dict with 'dependencies' and 'dependents' lists containing:
+                - document_id: Document ID
+                - depth: Depth level (1-based)
+                - type: Dependency type
+                - is_critical: Boolean flag
         """
         dependencies = {}
         dependents = {}
@@ -1299,28 +1313,54 @@ class DocumentDependency(models.Model):
                 'is_critical': dep.is_critical
             })
         
-        def get_chain(doc_id, chain_type, visited, depth):
-            if depth > max_depth or doc_id in visited:
-                return []
+        def get_chain_bfs(start_doc_id, chain_type):
+            """
+            Breadth-First Search to get complete dependency chain.
+            Explores all nodes at depth N before going to depth N+1.
+            This ensures we see ALL branches at each level.
             
-            visited.add(doc_id)
+            Returns parent-child relationships for proper edge rendering.
+            """
+            source = dependencies if chain_type == 'dependencies' else dependents
+            visited = set()
             result = []
             
-            source = dependencies if chain_type == 'dependencies' else dependents
-            for item in source.get(doc_id, []):
-                result.append({
-                    'document_id': item['id'],
-                    'depth': depth,
-                    'type': item['type'],
-                    'is_critical': item['is_critical'],
-                    'chain': get_chain(item['id'], chain_type, visited.copy(), depth + 1)
-                })
+            # Queue: (document_id, depth, parent_id)
+            # BFS uses FIFO (First In, First Out)
+            queue = [(start_doc_id, 0, None)]
+            visited.add(start_doc_id)
+            
+            while queue:
+                current_id, current_depth, parent_id = queue.pop(0)  # BFS: FIFO
+                
+                # Skip if we've reached max depth
+                if current_depth >= max_depth:
+                    continue
+                
+                # Get all direct dependencies/dependents of current node
+                for item in source.get(current_id, []):
+                    next_id = item['id']
+                    next_depth = current_depth + 1
+                    
+                    # Add to result with parent information for edge creation
+                    result.append({
+                        'document_id': next_id,
+                        'parent_id': current_id,  # ← Added: who this connects to
+                        'depth': next_depth,
+                        'type': item['type'],
+                        'is_critical': item['is_critical']
+                    })
+                    
+                    # Only explore further if not visited (prevents infinite loops)
+                    if next_id not in visited:
+                        visited.add(next_id)
+                        queue.append((next_id, next_depth, current_id))
             
             return result
         
         return {
-            'dependencies': get_chain(document_id, 'dependencies', set(), 1),
-            'dependents': get_chain(document_id, 'dependents', set(), 1)
+            'dependencies': get_chain_bfs(document_id, 'dependencies'),
+            'dependents': get_chain_bfs(document_id, 'dependents')
         }
 
 
