@@ -1,0 +1,261 @@
+==========================================
+EDMS Diagnostic Report
+==========================================
+Hostname: qms
+Date: Mon Jan 26 05:09:58 PM +08 2026
+User: jinkaiteo
+
+==========================================
+1. DOCKER CONTAINERS
+==========================================
+NAME                      IMAGE                  COMMAND                  SERVICE         CREATED       STATUS                 PORTS
+edms_prod_backend         qms_04-backend         "sh -c 'echo 'Starti…"   backend         3 hours ago   Up 3 hours (healthy)   0.0.0.0:8001->8000/tcp, [::]:8001->8000/tcp
+edms_prod_celery_beat     qms_04-celery_beat     "celery -A edms beat…"   celery_beat     4 hours ago   Up 3 hours             8000/tcp
+edms_prod_celery_worker   qms_04-celery_worker   "celery -A edms work…"   celery_worker   4 hours ago   Up 3 hours (healthy)   8000/tcp
+edms_prod_db              postgres:18            "docker-entrypoint.s…"   db              4 hours ago   Up 4 hours (healthy)   0.0.0.0:5433->5432/tcp, [::]:5433->5432/tcp
+edms_prod_frontend        qms_04-frontend        "/docker-entrypoint.…"   frontend        4 hours ago   Up 4 hours (healthy)   0.0.0.0:3001->80/tcp, [::]:3001->80/tcp
+edms_prod_redis           redis:7-alpine         "docker-entrypoint.s…"   redis           4 hours ago   Up 4 hours (healthy)   0.0.0.0:6380->6379/tcp, [::]:6380->6379/tcp
+
+==========================================
+2. ENVIRONMENT VARIABLES (.env)
+==========================================
+--- CELERY Configuration ---
+CELERY_BROKER_URL=redis://redis:6379/0
+
+--- Database Configuration ---
+DB_NAME=edms_test_db
+DB_USER=edms_test_user
+DB_HOST=db
+DB_PORT=5432
+
+--- Redis Configuration ---
+REDIS_URL=redis://redis:6379/1
+
+==========================================
+3. DJANGO SETTINGS
+==========================================
+DEBUG: False
+ENVIRONMENT: NOT SET
+CELERY_BROKER_URL: redis://redis:6379/0
+CELERY_RESULT_BACKEND: django-db
+CELERY_BEAT_SCHEDULER: NOT SET
+INSTALLED_APPS_COUNT: 24
+HAS_DJANGO_CELERY_BEAT: True
+HAS_DJANGO_CELERY_RESULTS: True
+
+==========================================
+4. CELERY APP CONFIGURATION
+==========================================
+Celery app name: default
+Broker URL: redis://redis:6379/0
+Result backend: None
+Task track started: False
+Task ignore result: False
+Result expires: 1 day, 0:00:00
+Result persistent: None
+Beat scheduler: celery.beat:PersistentScheduler
+
+==========================================
+5. BEAT SCHEDULE TASKS
+==========================================
+Total tasks in beat_schedule: 0
+
+
+==========================================
+6. DATABASE - PERIODIC TASKS
+==========================================
+Total PeriodicTask records: 10
+
+check-workflow-timeouts:
+  Task: apps.scheduler.tasks.check_workflow_timeouts
+  Enabled: True
+  Last run: Never
+  Total runs: 0
+cleanup-celery-results:
+  Task: apps.scheduler.celery_cleanup.cleanup_celery_results
+  Enabled: True
+  Last run: Never
+  Total runs: 0
+perform-system-health-check:
+  Task: apps.scheduler.tasks.perform_system_health_check
+  Enabled: True
+  Last run: Never
+  Total runs: 0
+process-document-effective-dates:
+  Task: apps.scheduler.tasks.process_document_effective_dates
+  Enabled: True
+  Last run: Never
+  Total runs: 0
+process-document-obsoletion-dates:
+  Task: apps.scheduler.tasks.process_document_obsoletion_dates
+  Enabled: True
+  Last run: Never
+  Total runs: 0
+process-periodic-reviews:
+  Task: apps.scheduler.tasks.process_periodic_reviews
+  Enabled: True
+  Last run: Never
+  Total runs: 0
+run-daily-integrity-check:
+  Task: apps.audit.integrity_tasks.run_daily_integrity_check
+  Enabled: True
+  Last run: Never
+  Total runs: 0
+send-daily-health-report:
+  Task: apps.scheduler.tasks.send_daily_health_report
+  Enabled: True
+  Last run: Never
+  Total runs: 0
+Send Test Email:
+  Task: apps.scheduler.tasks.send_test_email_to_self
+  Enabled: True
+  Last run: Never
+  Total runs: 0
+verify-audit-trail-checksums:
+  Task: apps.audit.integrity_tasks.verify_audit_trail_checksums
+  Enabled: True
+  Last run: Never
+  Total runs: 0
+
+==========================================
+7. DATABASE - TASK RESULTS
+==========================================
+Total TaskResult records: 35
+
+Recent 10 executions:
+  apps.scheduler.tasks.perform_system_health_check
+    Status: SUCCESS
+    Date: 2026-01-26 09:00:02.550181+00:00
+  apps.scheduler.tasks.process_document_effective_dates
+    Status: SUCCESS
+    Date: 2026-01-26 09:00:00.051045+00:00
+  apps.scheduler.tasks.process_periodic_reviews
+    Status: SUCCESS
+    Date: 2026-01-26 09:00:00.049856+00:00
+  apps.scheduler.tasks.perform_system_health_check
+    Status: SUCCESS
+    Date: 2026-01-26 08:30:02.350394+00:00
+  apps.scheduler.tasks.process_document_obsoletion_dates
+    Status: SUCCESS
+    Date: 2026-01-26 08:15:00.038921+00:00
+  apps.scheduler.tasks.perform_system_health_check
+    Status: SUCCESS
+    Date: 2026-01-26 08:00:02.359271+00:00
+  apps.scheduler.tasks.process_document_effective_dates
+    Status: SUCCESS
+    Date: 2026-01-26 08:00:00.054575+00:00
+  apps.scheduler.tasks.check_workflow_timeouts
+    Status: SUCCESS
+    Date: 2026-01-26 08:00:00.049996+00:00
+  apps.scheduler.tasks.perform_system_health_check
+    Status: SUCCESS
+    Date: 2026-01-26 07:30:02.376873+00:00
+  apps.scheduler.tasks.process_document_obsoletion_dates
+    Status: SUCCESS
+    Date: 2026-01-26 07:15:00.038209+00:00
+
+==========================================
+8. STATUS API OUTPUT
+==========================================
+Total tasks in status API: 10
+
+Process Effective Dates:
+  Schedule name: process-document-effective-dates
+  Task path: apps.scheduler.tasks.process_document_effective_dates
+  Last run: 10m ago
+  Status: SUCCESS
+
+Process Obsolescence Dates:
+  Schedule name: process-document-obsoletion-dates
+  Task path: apps.scheduler.tasks.process_document_obsoletion_dates
+  Last run: 55m ago
+  Status: SUCCESS
+
+Check Workflow Timeouts:
+  Schedule name: check-workflow-timeouts
+  Task path: apps.scheduler.tasks.check_workflow_timeouts
+  Last run: 1h ago
+  Status: SUCCESS
+
+System Health Check:
+  Schedule name: perform-system-health-check
+  Task path: apps.scheduler.tasks.perform_system_health_check
+  Last run: 10m ago
+  Status: SUCCESS
+
+Periodic Review Processing:
+  Schedule name: process-periodic-reviews
+  Task path: apps.scheduler.tasks.process_periodic_reviews
+  Last run: 10m ago
+  Status: SUCCESS
+
+
+==========================================
+9. CELERY BEAT LOGS (Last 30 lines)
+==========================================
+edms_prod_celery_beat  | celery beat v5.3.4 (emerald-rush) is starting.
+edms_prod_celery_beat  | __    -    ... __   -        _
+edms_prod_celery_beat  | LocalTime -> 2026-01-26 04:46:59
+edms_prod_celery_beat  | Configuration ->
+edms_prod_celery_beat  |     . broker -> redis://redis:6379/0
+edms_prod_celery_beat  |     . loader -> celery.loaders.app.AppLoader
+edms_prod_celery_beat  |     . scheduler -> celery.beat.PersistentScheduler
+edms_prod_celery_beat  |     . db -> /tmp/celerybeat-schedule
+edms_prod_celery_beat  |     . logfile -> [stderr]@%WARNING
+edms_prod_celery_beat  |     . maxinterval -> 5.00 minutes (300s)
+edms_prod_celery_beat  | celery beat v5.3.4 (emerald-rush) is starting.
+edms_prod_celery_beat  | __    -    ... __   -        _
+edms_prod_celery_beat  | LocalTime -> 2026-01-26 05:29:46
+edms_prod_celery_beat  | Configuration ->
+edms_prod_celery_beat  |     . broker -> redis://redis:6379/0
+edms_prod_celery_beat  |     . loader -> celery.loaders.app.AppLoader
+edms_prod_celery_beat  |     . scheduler -> celery.beat.PersistentScheduler
+edms_prod_celery_beat  |     . db -> /tmp/celerybeat-schedule
+edms_prod_celery_beat  |     . logfile -> [stderr]@%WARNING
+edms_prod_celery_beat  |     . maxinterval -> 5.00 minutes (300s)
+edms_prod_celery_beat  | celery beat v5.3.4 (emerald-rush) is starting.
+edms_prod_celery_beat  | __    -    ... __   -        _
+edms_prod_celery_beat  | LocalTime -> 2026-01-26 05:44:16
+edms_prod_celery_beat  | Configuration ->
+edms_prod_celery_beat  |     . broker -> redis://redis:6379/0
+edms_prod_celery_beat  |     . loader -> celery.loaders.app.AppLoader
+edms_prod_celery_beat  |     . scheduler -> celery.beat.PersistentScheduler
+edms_prod_celery_beat  |     . db -> /tmp/celerybeat-schedule
+edms_prod_celery_beat  |     . logfile -> [stderr]@%WARNING
+edms_prod_celery_beat  |     . maxinterval -> 5.00 minutes (300s)
+
+==========================================
+10. CELERY WORKER LOGS (Last 20 lines)
+==========================================
+
+==========================================
+11. SETTINGS FILE GREP
+==========================================
+--- CELERY_RESULT_BACKEND in settings ---
+231:# CELERY_RESULT_BACKEND configured below (line 360) - DO NOT set here to avoid conflicts
+361:CELERY_RESULT_BACKEND = "django-db"
+
+--- CELERY_BEAT_SCHEDULER in settings ---
+
+==========================================
+12. GIT COMMIT INFO
+==========================================
+9f0d64e docs: Add next steps guide for local vs staging comparison
+40026d6 fix: Disable automatic celery.backend_cleanup task
+62b73fe feat: Add comprehensive local vs staging comparison script
+adfe8f7 feat: Add complete fresh staging deployment script
+90a33a0 feat: Add automated fix script for Celery result backend issue
+
+On branch main
+Your branch is up to date with 'origin/main'.
+
+Untracked files:
+  (use "git add <file>..." to include in what will be committed)
+	edms_diagnostic_qms_20260126_170958.txt
+	test.env
+
+nothing added to commit but untracked files present (use "git add" to track)
+
+==========================================
+DIAGNOSTIC COMPLETE
+==========================================
