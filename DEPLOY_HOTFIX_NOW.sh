@@ -35,7 +35,7 @@ echo ""
 
 # Restart backend only (no frontend changes)
 echo "🔄 Restarting backend container..."
-docker compose restart backend
+docker compose -f docker-compose.prod.yml restart backend
 
 echo ""
 echo "⏳ Waiting for backend to be healthy..."
@@ -43,7 +43,7 @@ sleep 10
 
 # Check health
 echo "🏥 Checking backend health..."
-docker compose ps backend
+docker compose -f docker-compose.prod.yml ps backend
 
 echo ""
 echo "✅ DEPLOYMENT COMPLETE!"
@@ -54,4 +54,4 @@ echo "2. Expected: Error message blocking the action"
 echo "3. Recommended: Create a backup superuser"
 echo ""
 echo "Rollback command if needed:"
-echo "git checkout $CURRENT_COMMIT && docker compose restart backend"
+echo "git checkout $CURRENT_COMMIT && docker compose -f docker-compose.prod.yml restart backend"
