@@ -653,7 +653,7 @@ const UserManagement: React.FC<UserManagementProps> = ({ className = '' }) => {
       {/* Edit User Modal */}
       {showEditUser && selectedUser && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-lg shadow-lg max-w-md w-full p-6">
+          <div className="bg-white rounded-lg shadow-lg max-w-md w-full my-8 max-h-[90vh] overflow-y-auto p-6">
             <h4 className="text-lg font-medium text-gray-900 mb-4">Edit User: {selectedUser.username}</h4>
             
             <form onSubmit={handleEditUser} className="space-y-4">
@@ -725,7 +725,7 @@ const UserManagement: React.FC<UserManagementProps> = ({ className = '' }) => {
       {/* Password Reset Modal */}
       {showPasswordReset && selectedUser && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-lg shadow-lg max-w-md w-full p-6">
+          <div className="bg-white rounded-lg shadow-lg max-w-md w-full my-8 max-h-[90vh] overflow-y-auto p-6">
             <h4 className="text-lg font-medium text-gray-900 mb-4">Reset Password: {selectedUser.username}</h4>
             
             <form onSubmit={handlePasswordReset} className="space-y-4">
