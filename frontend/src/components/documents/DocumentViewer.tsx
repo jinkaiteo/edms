@@ -386,14 +386,19 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({
     
     setLoadingPDF(true);
     try {
-      // Fetch PDF with authentication
-      const response = await apiService.get(
-        `/documents/documents/${completeDocument.uuid}/download/official/`,
-        { responseType: 'blob' }
+      // Fetch PDF with authentication using axios directly for blob response
+      const response = await apiService.client.get(
+        `/api/v1/documents/documents/${completeDocument.uuid}/download/official/`,
+        { 
+          responseType: 'blob',
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('accessToken')}`
+          }
+        }
       );
       
-      // Create blob URL
-      const blob = new Blob([response.data], { type: 'application/pdf' });
+      // Create blob URL from response
+      const blob = response.data;
       const url = URL.createObjectURL(blob);
       
       setPdfUrl(url);
