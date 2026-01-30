@@ -272,6 +272,84 @@ const UserManagement: React.FC<UserManagementProps> = ({ className = '' }) => {
     }
   };
 
+  const handleGrantSuperuser = async () => {
+    if (!selectedUser) return;
+    
+    const reason = prompt('Please provide a reason for granting superuser status:');
+    if (!reason) return; // User cancelled
+    
+    setOperationLoading(true);
+    try {
+      const response = await apiService.post(`/users/users/${selectedUser.id}/grant_superuser/`, {
+        reason
+      });
+      
+      // Update the selected user with new superuser status
+      const updatedUser = await apiService.get(`/users/users/${selectedUser.id}/`);
+      setSelectedUser(updatedUser.data);
+      
+      // Update user in the list
+      setUsers(users.map(u => 
+        u.id === selectedUser.id ? { ...u, is_superuser: true, is_staff: true } : u
+      ));
+      
+      alert(`✅ Superuser status granted to ${selectedUser.username}`);
+      setError(null);
+      
+    } catch (error: any) {
+      const errorMessage = error.response?.data?.error || error.response?.data?.detail || 'Failed to grant superuser status';
+      setError(errorMessage);
+      alert(`❌ ${errorMessage}`);
+    } finally {
+      setOperationLoading(false);
+    }
+  };
+
+  const handleRevokeSuperuser = async () => {
+    if (!selectedUser) return;
+    
+    const confirmed = window.confirm(
+      `⚠️ Are you sure you want to revoke superuser status from ${selectedUser.username}?\n\n` +
+      `This will remove all admin privileges. If this is the last superuser, the operation will be blocked.`
+    );
+    if (!confirmed) return;
+    
+    const reason = prompt('Please provide a reason for revoking superuser status:');
+    if (!reason) return; // User cancelled
+    
+    setOperationLoading(true);
+    try {
+      const response = await apiService.post(`/users/users/${selectedUser.id}/revoke_superuser/`, {
+        reason
+      });
+      
+      // Update the selected user with new superuser status
+      const updatedUser = await apiService.get(`/users/users/${selectedUser.id}/`);
+      setSelectedUser(updatedUser.data);
+      
+      // Update user in the list
+      setUsers(users.map(u => 
+        u.id === selectedUser.id ? { ...u, is_superuser: false } : u
+      ));
+      
+      alert(`✅ Superuser status revoked from ${selectedUser.username}`);
+      setError(null);
+      
+    } catch (error: any) {
+      const errorMessage = error.response?.data?.error || error.response?.data?.detail || 'Failed to revoke superuser status';
+      const errorDetail = error.response?.data?.detail;
+      
+      if (errorDetail) {
+        alert(`❌ ${errorMessage}\n\n${errorDetail}`);
+      } else {
+        alert(`❌ ${errorMessage}`);
+      }
+      setError(errorMessage);
+    } finally {
+      setOperationLoading(false);
+    }
+  };
+
   const openEditUser = (user: UserWithRoles) => {
     setSelectedUser(user);
     setEditUserForm({
@@ -728,6 +806,43 @@ const UserManagement: React.FC<UserManagementProps> = ({ className = '' }) => {
             <h4 className="text-lg font-medium text-gray-900 mb-4">Manage Roles: {selectedUser.username}</h4>
             
             <div className="space-y-6">
+              {/* Superuser Status */}
+              <div className="border-b border-gray-200 pb-4">
+                <h5 className="text-sm font-medium text-gray-700 mb-3">Superuser Status</h5>
+                <div className="flex items-center justify-between p-4 bg-gradient-to-r from-purple-50 to-indigo-50 rounded-lg border border-purple-200">
+                  <div className="flex items-center space-x-3">
+                    <div className={`w-3 h-3 rounded-full ${selectedUser.is_superuser ? 'bg-purple-500' : 'bg-gray-300'}`}></div>
+                    <div>
+                      <p className="text-sm font-medium text-gray-900">
+                        {selectedUser.is_superuser ? '⭐ Superuser' : 'Regular User'}
+                      </p>
+                      <p className="text-xs text-gray-500 mt-1">
+                        {selectedUser.is_superuser 
+                          ? 'Full admin access to all system functions' 
+                          : 'Standard user permissions based on assigned roles'}
+                      </p>
+                    </div>
+                  </div>
+                  {selectedUser.is_superuser ? (
+                    <button
+                      onClick={() => handleRevokeSuperuser()}
+                      disabled={operationLoading}
+                      className="px-4 py-2 bg-red-600 text-white text-sm font-medium rounded-md hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                    >
+                      {operationLoading ? 'Processing...' : 'Revoke Superuser'}
+                    </button>
+                  ) : (
+                    <button
+                      onClick={() => handleGrantSuperuser()}
+                      disabled={operationLoading}
+                      className="px-4 py-2 bg-purple-600 text-white text-sm font-medium rounded-md hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                    >
+                      {operationLoading ? 'Processing...' : 'Grant Superuser'}
+                    </button>
+                  )}
+                </div>
+              </div>
+
               {/* Current Roles */}
               <div>
                 <h5 className="text-sm font-medium text-gray-700 mb-2">Current Roles</h5>
