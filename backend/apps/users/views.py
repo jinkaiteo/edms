@@ -71,6 +71,161 @@ class UserViewSet(viewsets.ModelViewSet):
         # Regular users see limited information
         return queryset.filter(is_active=True)
     
+    def update(self, request, *args, **kwargs):
+        """Override update to prevent superuser deactivation."""
+        instance = self.get_object()
+        
+        # CRITICAL PROTECTION: Prevent deactivating the last superuser
+        if instance.is_superuser and 'is_active' in request.data:
+            if not request.data.get('is_active', True):
+                # Check if this is the last active superuser
+                active_superusers = User.objects.filter(
+                    is_superuser=True, 
+                    is_active=True
+                ).exclude(id=instance.id).count()
+                
+                if active_superusers == 0:
+                    return Response(
+                        {
+                            'error': 'Cannot deactivate the last superuser. This would lock you out of admin functions.',
+                            'detail': 'Please assign superuser status to another user before deactivating this account.'
+                        },
+                        status=status.HTTP_403_FORBIDDEN
+                    )
+        
+        # PROTECTION: Prevent non-superusers from modifying superuser status
+        if 'is_superuser' in request.data and not request.user.is_superuser:
+            return Response(
+                {'error': 'Only superusers can modify superuser status'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+        
+        return super().update(request, *args, **kwargs)
+    
+    def partial_update(self, request, *args, **kwargs):
+        """Override partial_update to prevent superuser deactivation."""
+        instance = self.get_object()
+        
+        # CRITICAL PROTECTION: Prevent deactivating the last superuser
+        if instance.is_superuser and 'is_active' in request.data:
+            if not request.data.get('is_active', True):
+                # Check if this is the last active superuser
+                active_superusers = User.objects.filter(
+                    is_superuser=True, 
+                    is_active=True
+                ).exclude(id=instance.id).count()
+                
+                if active_superusers == 0:
+                    return Response(
+                        {
+                            'error': 'Cannot deactivate the last superuser. This would lock you out of admin functions.',
+                            'detail': 'Please assign superuser status to another user before deactivating this account.'
+                        },
+                        status=status.HTTP_403_FORBIDDEN
+                    )
+        
+        # PROTECTION: Prevent non-superusers from modifying superuser status
+        if 'is_superuser' in request.data and not request.user.is_superuser:
+            return Response(
+                {'error': 'Only superusers can modify superuser status'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+        
+        return super().partial_update(request, *args, **kwargs)
+    
+    @action(detail=True, methods=['post'], permission_classes=[IsAuthenticated])
+    def grant_superuser(self, request, pk=None):
+        """
+        Grant superuser status to a user.
+        Only existing superusers can grant this status.
+        """
+        if not request.user.is_superuser:
+            return Response(
+                {'error': 'Only superusers can grant superuser status'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+        
+        user = self.get_object()
+        reason = request.data.get('reason', '')
+        
+        if user.is_superuser:
+            return Response(
+                {'message': f'{user.username} is already a superuser'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # Grant superuser status
+        user.is_superuser = True
+        user.is_staff = True  # Superusers should also have staff access
+        user.save(update_fields=['is_superuser', 'is_staff'])
+        
+        # Log the action
+        print(f"AUDIT: Superuser status granted to {user.username} by {request.user.username}. Reason: {reason}")
+        
+        return Response(
+            {
+                'message': f'Superuser status granted to {user.username}',
+                'username': user.username,
+                'is_superuser': user.is_superuser,
+                'granted_by': request.user.username
+            },
+            status=status.HTTP_200_OK
+        )
+    
+    @action(detail=True, methods=['post'], permission_classes=[IsAuthenticated])
+    def revoke_superuser(self, request, pk=None):
+        """
+        Revoke superuser status from a user.
+        Only existing superusers can revoke this status.
+        Cannot revoke the last superuser.
+        """
+        if not request.user.is_superuser:
+            return Response(
+                {'error': 'Only superusers can revoke superuser status'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+        
+        user = self.get_object()
+        reason = request.data.get('reason', '')
+        
+        if not user.is_superuser:
+            return Response(
+                {'message': f'{user.username} is not a superuser'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # Check if this is the last active superuser
+        active_superusers = User.objects.filter(
+            is_superuser=True,
+            is_active=True
+        ).exclude(id=user.id).count()
+        
+        if active_superusers == 0:
+            return Response(
+                {
+                    'error': 'Cannot revoke superuser status from the last superuser',
+                    'detail': 'Please grant superuser status to another user first.'
+                },
+                status=status.HTTP_403_FORBIDDEN
+            )
+        
+        # Revoke superuser status
+        user.is_superuser = False
+        user.save(update_fields=['is_superuser'])
+        
+        # Log the action
+        print(f"AUDIT: Superuser status revoked from {user.username} by {request.user.username}. Reason: {reason}")
+        
+        return Response(
+            {
+                'message': f'Superuser status revoked from {user.username}',
+                'username': user.username,
+                'is_superuser': user.is_superuser,
+                'revoked_by': request.user.username
+            },
+            status=status.HTTP_200_OK
+        )
+    
     @action(detail=True, methods=['post'])
     def assign_role(self, request, pk=None):
         """Assign a role to a user."""
