@@ -12,6 +12,7 @@
     "@types/node": "^16.18.59",
     "@types/react": "^18.2.37",
     "@types/react-dom": "^18.2.15",
+    "@xyflow/react": "^12.10.0",
     "axios": "^1.6.0",
     "node-fetch": "^3.3.2",
     "playwright": "^1.57.0",
