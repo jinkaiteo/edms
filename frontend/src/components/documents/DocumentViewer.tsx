@@ -13,6 +13,7 @@ import DocumentCreateModal from './DocumentCreateModal.tsx';
 import WorkflowHistory from '../workflows/WorkflowHistory.tsx';
 import PeriodicReviewModal from './PeriodicReviewModal.tsx';
 import DependencyVisualization from './DependencyVisualization.tsx';
+import PDFViewerSimple from './PDFViewerSimple.tsx';
 import { useAuth } from '../../contexts/AuthContext.tsx';
 import apiService from '../../services/api.ts';
 import { triggerBadgeRefresh } from '../../utils/badgeRefresh.ts';
@@ -79,6 +80,11 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({
     comments: string;
     nextReviewMonths: number;
   } | null>(null);
+  
+  // PDF Viewer
+  const [showPDFViewer, setShowPDFViewer] = useState(false);
+  const [pdfUrl, setPdfUrl] = useState<string>('');
+  const [loadingPDF, setLoadingPDF] = useState(false);
   
   // Auth context for role-based visibility
   const { authenticated, user } = useAuth();
@@ -372,6 +378,42 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({
 
   const handleTerminateCancel = () => {
     setShowTerminateModal(false);
+  };
+
+  // Handle PDF viewing with authentication
+  const handleViewPDF = async () => {
+    if (!completeDocument) return;
+    
+    setLoadingPDF(true);
+    try {
+      // Fetch PDF with authentication
+      const response = await apiService.get(
+        `/documents/documents/${completeDocument.uuid}/download_official_pdf/`,
+        { responseType: 'blob' }
+      );
+      
+      // Create blob URL
+      const blob = new Blob([response.data], { type: 'application/pdf' });
+      const url = URL.createObjectURL(blob);
+      
+      setPdfUrl(url);
+      setShowPDFViewer(true);
+    } catch (error: any) {
+      console.error('Failed to load PDF:', error);
+      const errorMessage = error.response?.data?.error || 'Failed to load PDF';
+      alert(`Error: ${errorMessage}`);
+    } finally {
+      setLoadingPDF(false);
+    }
+  };
+
+  // Cleanup PDF URL when viewer closes
+  const handleClosePDFViewer = () => {
+    setShowPDFViewer(false);
+    if (pdfUrl) {
+      URL.revokeObjectURL(pdfUrl);
+      setPdfUrl('');
+    }
   };
 
   const handleCreateDocumentSuccess = (updatedDocument: any) => {
@@ -942,6 +984,29 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({
                   </button>
                 ) : null;
               })()
+            )}
+            {/* View PDF Button (only for approved/effective documents) */}
+            {completeDocument && ['APPROVED_AND_EFFECTIVE', 'EFFECTIVE', 'APPROVED_PENDING_EFFECTIVE'].includes(completeDocument.status) && (
+              <button
+                onClick={handleViewPDF}
+                disabled={loadingPDF}
+                className="inline-flex items-center px-3 py-2 border border-indigo-600 shadow-sm text-sm font-medium rounded-md text-indigo-600 bg-white hover:bg-indigo-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                title="View PDF in browser"
+              >
+                {loadingPDF ? (
+                  <>
+                    <svg className="animate-spin h-4 w-4 mr-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    Loading...
+                  </>
+                ) : (
+                  <>
+                    📄 View PDF
+                  </>
+                )}
+              </button>
             )}
             {document.file_path && (
               <DownloadActionMenu
@@ -1578,6 +1643,16 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({
             setShowPeriodicReviewModal(false);
             setShowCreateNewVersionModal(true);
           }}
+        />
+      )}
+
+      {/* PDF Viewer Modal */}
+      {showPDFViewer && pdfUrl && (
+        <PDFViewerSimple
+          pdfUrl={pdfUrl}
+          documentTitle={completeDocument?.title}
+          documentNumber={completeDocument?.document_number}
+          onClose={handleClosePDFViewer}
         />
       )}
     </div>
