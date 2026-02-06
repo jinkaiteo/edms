@@ -349,15 +349,21 @@ class DocumentLifecycleService:
 
     def approve_document(self, document: Document, user: User, 
                         effective_date: date, comment: str = '', approved: bool = True,
-                        review_period_months: int = None) -> bool:
+                        review_period_months: int = None,
+                        sensitivity_label: str = None,
+                        sensitivity_change_reason: str = '') -> bool:
         """
-        Approve document with required effective date (PENDING_APPROVAL → APPROVED_PENDING_EFFECTIVE or APPROVED_AND_EFFECTIVE).
+        Approve document with required effective date and sensitivity label.
         
         Args:
             document: Document to approve
             user: User approving (must be assigned approver)
             effective_date: Date when document becomes effective (REQUIRED)
             comment: Approval comment
+            approved: True to approve, False to reject
+            review_period_months: Periodic review interval in months
+            sensitivity_label: Sensitivity classification (REQUIRED for approval)
+            sensitivity_change_reason: Reason if sensitivity changed from inherited
             
         Returns:
             bool: True if successful
@@ -377,6 +383,33 @@ class DocumentLifecycleService:
         # Handle rejection path
         if not approved:
             return self.reject_document(document, user, comment)
+        
+        # === SENSITIVITY LABEL VALIDATION ===
+        if not sensitivity_label:
+            raise ValidationError("Sensitivity label is required for document approval")
+        
+        from apps.documents.sensitivity_labels import SENSITIVITY_CHOICES
+        valid_labels = [choice[0] for choice in SENSITIVITY_CHOICES]
+        if sensitivity_label not in valid_labels:
+            raise ValidationError(f"Invalid sensitivity label: {sensitivity_label}. Valid options: {', '.join(valid_labels)}")
+        
+        # Detect if sensitivity changed from inherited value
+        sensitivity_changed = (document.sensitivity_label != sensitivity_label)
+        
+        if sensitivity_changed and not sensitivity_change_reason:
+            raise ValidationError(
+                "A detailed reason is required when changing sensitivity classification"
+            )
+        
+        # Set sensitivity label with full tracking
+        old_sensitivity = document.sensitivity_label
+        document.sensitivity_label = sensitivity_label
+        document.sensitivity_set_by = user
+        document.sensitivity_set_at = timezone.now()
+        
+        if sensitivity_changed:
+            document.sensitivity_change_reason = sensitivity_change_reason
+        # === END SENSITIVITY LABEL HANDLING ===
         
         # Validate effective_date is provided for approvals only
         if not effective_date:
@@ -398,6 +431,34 @@ class DocumentLifecycleService:
             document.next_review_date = None
         
         document.save()
+        
+        # === LOG SENSITIVITY IN AUDIT TRAIL ===
+        from apps.audit.models import AuditTrail
+        
+        if sensitivity_changed:
+            AuditTrail.objects.create(
+                document=document,
+                action='SENSITIVITY_CHANGED',
+                user=user,
+                details={
+                    'old_sensitivity': old_sensitivity,
+                    'new_sensitivity': sensitivity_label,
+                    'reason': sensitivity_change_reason,
+                    'changed_during': 'approval'
+                }
+            )
+        else:
+            AuditTrail.objects.create(
+                document=document,
+                action='SENSITIVITY_CONFIRMED',
+                user=user,
+                details={
+                    'sensitivity': sensitivity_label,
+                    'inherited_from': document.sensitivity_inherited_from.document_number if document.sensitivity_inherited_from else None,
+                    'confirmed_during': 'approval'
+                }
+            )
+        # === END AUDIT LOGGING ===
 
         # Determine target state based on effective date
         today = timezone.now().date()
@@ -665,7 +726,26 @@ class DocumentLifecycleService:
                 supersedes=existing_document,
                 reason_for_change=new_version_data.get('reason_for_change', ''),
                 change_summary=new_version_data.get('change_summary', ''),
-                status='DRAFT'
+                status='DRAFT',
+                # === INHERIT SENSITIVITY FROM PARENT ===
+                sensitivity_label=existing_document.sensitivity_label,
+                sensitivity_inherited_from=existing_document,
+                sensitivity_set_by=None,  # Will be set by approver
+                sensitivity_set_at=None,
+                sensitivity_change_reason=''
+            )
+            
+            # Log sensitivity inheritance in audit trail
+            from apps.audit.models import AuditTrail
+            AuditTrail.objects.create(
+                document=new_document,
+                action='VERSION_CREATED',
+                user=user,
+                details={
+                    'parent_version': f"{existing_document.document_number} v{existing_document.version_major}.{existing_document.version_minor}",
+                    'inherited_sensitivity': existing_document.sensitivity_label,
+                    'message': f"New version inherits {existing_document.get_sensitivity_label_display() if hasattr(existing_document, 'get_sensitivity_label_display') else existing_document.sensitivity_label} classification"
+                }
             )
             
             # Copy dependencies from existing document to new version (with smart resolution)
