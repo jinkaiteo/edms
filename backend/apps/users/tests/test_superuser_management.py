@@ -24,6 +24,7 @@ class TestSuperuserProtection:
             email='admin@example.com',
             password='admin123'
         )
+        self.superuser.refresh_from_db()  # Ensure UUID is loaded
         
         # Create regular user
         self.regular_user = User.objects.create_user(
@@ -31,6 +32,7 @@ class TestSuperuserProtection:
             email='regular@example.com',
             password='pass123'
         )
+        self.regular_user.refresh_from_db()  # Ensure UUID is loaded
     
     def test_cannot_deactivate_last_superuser(self):
         """Test that system prevents deactivating the last superuser"""
@@ -102,6 +104,7 @@ class TestGrantSuperuserAction:
             email='admin@example.com',
             password='admin123'
         )
+        self.superuser.refresh_from_db()  # Ensure UUID is loaded
         
         # Create regular user
         self.regular_user = User.objects.create_user(
@@ -109,6 +112,7 @@ class TestGrantSuperuserAction:
             email='regular@example.com',
             password='pass123'
         )
+        self.regular_user.refresh_from_db()  # Ensure UUID is loaded
     
     def test_superuser_can_grant_superuser_status(self):
         """Test that superuser can grant superuser status to another user"""
@@ -182,12 +186,14 @@ class TestRevokeSuperuserAction:
             email='admin1@example.com',
             password='admin123'
         )
+        self.superuser1.refresh_from_db()  # Ensure UUID is loaded
         
         self.superuser2 = User.objects.create_superuser(
             username='admin2',
             email='admin2@example.com',
             password='admin123'
         )
+        self.superuser2.refresh_from_db()  # Ensure UUID is loaded
         
         # Create regular user
         self.regular_user = User.objects.create_user(
@@ -195,6 +201,7 @@ class TestRevokeSuperuserAction:
             email='regular@example.com',
             password='pass123'
         )
+        self.regular_user.refresh_from_db()  # Ensure UUID is loaded
     
     def test_can_revoke_superuser_when_multiple_exist(self):
         """Test revoking superuser when multiple superusers exist"""
@@ -265,6 +272,7 @@ class TestSuperuserManagementIntegration:
             email='admin@example.com',
             password='admin123'
         )
+        self.admin.refresh_from_db()  # Ensure UUID is loaded
         
         # Create users to promote
         self.user1 = User.objects.create_user(
@@ -272,12 +280,14 @@ class TestSuperuserManagementIntegration:
             email='user1@example.com',
             password='pass123'
         )
+        self.user1.refresh_from_db()  # Ensure UUID is loaded
         
         self.user2 = User.objects.create_user(
             username='user2',
             email='user2@example.com',
             password='pass123'
         )
+        self.user2.refresh_from_db()  # Ensure UUID is loaded
     
     def test_safe_superuser_transition_workflow(self):
         """Test safe transfer of superuser duties"""

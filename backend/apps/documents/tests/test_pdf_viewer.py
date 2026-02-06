@@ -26,14 +26,19 @@ class TestPDFViewerEndpoint:
             password='testpass123'
         )
         
-        # Create document type and source
+        # Create document type and source with required created_by
         self.doc_type, _ = DocumentType.objects.get_or_create(
             code='SOP',
-            name='Standard Operating Procedure'
+            defaults={
+                'name': 'Standard Operating Procedure',
+                'created_by': self.user
+            }
         )
         self.doc_source, _ = DocumentSource.objects.get_or_create(
-            code='INTERNAL',
-            name='Internal'
+            name='Internal',
+            defaults={
+                'source_type': 'INTERNAL'
+            }
         )
         
         # Create effective document
@@ -138,14 +143,19 @@ class TestPDFViewerAccessControl:
             password='pass123'
         )
         
-        # Create document
+        # Create document type and source with required created_by
         doc_type, _ = DocumentType.objects.get_or_create(
             code='SOP',
-            name='Standard Operating Procedure'
+            defaults={
+                'name': 'Standard Operating Procedure',
+                'created_by': self.author
+            }
         )
         doc_source, _ = DocumentSource.objects.get_or_create(
-            code='INTERNAL',
-            name='Internal'
+            name='Internal',
+            defaults={
+                'source_type': 'INTERNAL'
+            }
         )
         
         self.document = Document.objects.create(
