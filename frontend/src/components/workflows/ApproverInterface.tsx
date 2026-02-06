@@ -9,6 +9,7 @@ import React, { useState, useEffect } from 'react';
 import { apiService } from '../../services/api.ts';
 import { useAuth } from '../../contexts/AuthContext.tsx';
 import { triggerBadgeRefresh } from '../../utils/badgeRefresh';
+import SensitivityLabelSelector from './SensitivityLabelSelector.tsx';
 import { 
   XMarkIcon,
   CheckCircleIcon,
@@ -50,6 +51,8 @@ const ApproverInterface: React.FC<ApproverInterfaceProps> = ({
   const [approvalDecision, setApprovalDecision] = useState<'approve' | 'reject' | ''>('');
   const [approvalComment, setApprovalComment] = useState<string>('');
   const [effectiveDate, setEffectiveDate] = useState('');
+  const [sensitivityLabel, setSensitivityLabel] = useState<string>(document.sensitivity_label || 'INTERNAL');
+  const [sensitivityChangeReason, setSensitivityChangeReason] = useState<string>('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   
@@ -148,6 +151,17 @@ const ApproverInterface: React.FC<ApproverInterfaceProps> = ({
             throw new Error('Effective date is required for approval');
           }
           requestData.effective_date = effectiveDate;
+          
+          // Add sensitivity label (REQUIRED for approval)
+          if (!sensitivityLabel) {
+            throw new Error('Sensitivity label is required for approval');
+          }
+          requestData.sensitivity_label = sensitivityLabel;
+          
+          // Add sensitivity change reason if changed
+          if (sensitivityChangeReason) {
+            requestData.sensitivity_change_reason = sensitivityChangeReason;
+          }
         }
 
         const workflowResponse = await apiService.post(`/documents/documents/${document.uuid}/workflow/`, requestData);
@@ -340,6 +354,24 @@ const ApproverInterface: React.FC<ApproverInterfaceProps> = ({
             </div>
           )}
 
+          {/* Sensitivity Label Selector - Only for Approval */}
+          {approvalDecision === 'approve' && (
+            <div className="mb-6">
+              <SensitivityLabelSelector
+                value={sensitivityLabel}
+                onChange={(label: string, reason: string) => {
+                  setSensitivityLabel(label);
+                  setSensitivityChangeReason(reason);
+                }}
+                inheritedFrom={document.sensitivity_inherited_from_number}
+                originalValue={document.sensitivity_label}
+                required={true}
+                disabled={loading}
+                showGuide={true}
+              />
+            </div>
+          )}
+          
           {/* Approval Comments */}
           <div className="mb-6">
             <label htmlFor="approvalComment" className="block text-sm font-medium text-gray-700 mb-2">

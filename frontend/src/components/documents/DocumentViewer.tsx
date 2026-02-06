@@ -3,6 +3,7 @@ import { Document, WorkflowInstance, ElectronicSignature } from '../../types/api
 import UnifiedWorkflowInterface from '../workflows/UnifiedWorkflowInterface.tsx';
 import SubmitForReviewModalUnified from '../workflows/SubmitForReviewModalUnified.tsx';
 import RouteForApprovalModalUnified from '../workflows/RouteForApprovalModalUnified.tsx';
+import SensitivityBadge from '../common/SensitivityBadge.tsx';
 // SetEffectiveDateModal removed - no longer needed in simplified workflow
 import CreateNewVersionModal from '../workflows/CreateNewVersionModal.tsx';
 import MarkObsoleteModal from '../workflows/MarkObsoleteModal.tsx';
@@ -958,6 +959,9 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({
               <h2 className="text-xl font-semibold text-gray-900 truncate">
                 {document.title}
               </h2>
+              {document.sensitivity_label && (
+                <SensitivityBadge label={document.sensitivity_label} size="md" />
+              )}
               <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(document.status)}`}>
                 {document.status.replace('_', ' ')}
               </span>
