@@ -202,7 +202,7 @@ const ReviewerInterface: React.FC<ReviewerInterfaceProps> = ({
 
   if (loading) {
     return (
-      <div className="fixed inset-0 z-[60] overflow-y-auto bg-gray-500 bg-opacity-75 flex items-center justify-center">
+      <div className="fixed inset-0 overflow-y-auto" style={{ zIndex: 60 }} bg-gray-500 bg-opacity-75 flex items-center justify-center">
         <div className="bg-white rounded-lg p-6">
           <div className="flex items-center space-x-3">
             <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div>
@@ -215,7 +215,7 @@ const ReviewerInterface: React.FC<ReviewerInterfaceProps> = ({
 
   if (!document) {
     return (
-      <div className="fixed inset-0 z-[60] overflow-y-auto bg-gray-500 bg-opacity-75 flex items-center justify-center">
+      <div className="fixed inset-0 overflow-y-auto" style={{ zIndex: 60 }} bg-gray-500 bg-opacity-75 flex items-center justify-center">
         <div className="bg-white rounded-lg p-6">
           <h3 className="text-lg font-semibold text-red-600 mb-2">Document Not Found</h3>
           <p className="text-gray-600 mb-4">Unable to load document for review.</p>
@@ -231,7 +231,7 @@ const ReviewerInterface: React.FC<ReviewerInterfaceProps> = ({
   }
 
   return (
-    <div className="fixed inset-0 z-[60] overflow-y-auto bg-gray-500 bg-opacity-75">
+    <div className="fixed inset-0 overflow-y-auto" style={{ zIndex: 60 }} bg-gray-500 bg-opacity-75">
       <div className="flex items-center justify-center min-h-screen p-4">
         <div className="bg-white rounded-lg shadow-xl max-w-4xl w-full max-h-screen overflow-y-auto">
           
