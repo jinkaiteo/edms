@@ -274,7 +274,7 @@ const DocumentManagement: React.FC<DocumentManagementProps> = ({
                 searchFilters={getSearchFilters()}
               />
             </div>
-            <div className="lg:sticky lg:top-6 lg:h-fit">
+            <div className="lg:sticky lg:top-6 lg:h-fit lg:z-10">
               {selectedDocument ? (
                 <DocumentViewer
                   document={selectedDocument}
