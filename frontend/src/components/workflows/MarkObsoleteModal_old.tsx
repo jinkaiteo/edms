@@ -261,7 +261,7 @@ const MarkObsoleteModal: React.FC<MarkObsoleteModalProps> = ({
   const canProceed = !hasDependencies && !checkingDependencies && reasonForObsolescence.trim().length > 0 && obsolescenceDate.length > 0;
 
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto bg-gray-500 bg-opacity-75 flex items-center justify-center">
+    <div className="fixed inset-0 z-[60] overflow-y-auto bg-gray-500 bg-opacity-75 flex items-center justify-center">
       <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full mx-4">
         <div className="px-6 py-4 border-b border-gray-200">
           <div className="flex items-center justify-between">
