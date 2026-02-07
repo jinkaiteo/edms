@@ -33,6 +33,8 @@ interface Document {
   file_path?: string;
   created_at: string;
   review_date?: string;
+  sensitivity_label?: string;
+  sensitivity_inherited_from_number?: string;
 }
 
 interface ApproverInterfaceProps {
@@ -58,6 +60,16 @@ const ApproverInterface: React.FC<ApproverInterfaceProps> = ({
   
   // Get current user from auth context
   const { user } = useAuth();
+
+  // Debug logging
+  useEffect(() => {
+    console.log('=== ApproverInterface Debug ===');
+    console.log('approvalDecision:', approvalDecision);
+    console.log('document.sensitivity_label:', document.sensitivity_label);
+    console.log('document.sensitivity_inherited_from_number:', document.sensitivity_inherited_from_number);
+    console.log('sensitivityLabel state:', sensitivityLabel);
+    console.log('Should show selector:', approvalDecision === 'approve');
+  }, [approvalDecision, document.sensitivity_label, document.sensitivity_inherited_from_number, sensitivityLabel]);
 
   useEffect(() => {
     if (isOpen) {

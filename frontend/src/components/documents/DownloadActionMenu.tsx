@@ -65,7 +65,7 @@ const DownloadActionMenu: React.FC<DownloadActionMenuProps> = ({
   // Determine available download options based on document state
   const getAvailableDownloadOptions = (): DownloadOption[] => {
     const hasFile = !!(document.file_path && document.file_name);
-    const isApproved = ['APPROVED', 'EFFECTIVE', 'APPROVED_PENDING_EFFECTIVE'].includes(
+    const isApproved = ['APPROVED', 'EFFECTIVE', 'APPROVED_PENDING_EFFECTIVE', 'SUPERSEDED', 'SCHEDULED_FOR_OBSOLESCENCE', 'OBSOLETE'].includes(
       document.status.toUpperCase()
     );
 

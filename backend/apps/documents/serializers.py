@@ -262,11 +262,7 @@ class DocumentListSerializer(serializers.ModelSerializer):
         source='get_sensitivity_label_display',
         read_only=True
     )
-    sensitivity_set_by_display = serializers.CharField(
-        source='sensitivity_set_by.get_full_name',
-        read_only=True,
-        allow_null=True
-    )
+    sensitivity_set_by_display = serializers.SerializerMethodField()
     
     class Meta:
         model = Document
@@ -310,6 +306,12 @@ class DocumentListSerializer(serializers.ModelSerializer):
             document__status__in=['APPROVED_PENDING_EFFECTIVE', 'EFFECTIVE', 'SCHEDULED_FOR_OBSOLESCENCE']
         )
         return DocumentDependencySerializer(active_dependents, many=True, context=self.context).data
+    
+    def get_sensitivity_set_by_display(self, obj):
+        """Return the full name of user who set sensitivity label."""
+        if obj.sensitivity_set_by:
+            return obj.sensitivity_set_by.get_full_name() or obj.sensitivity_set_by.username
+        return None
 
 
 class DocumentDetailSerializer(serializers.ModelSerializer):
@@ -347,11 +349,7 @@ class DocumentDetailSerializer(serializers.ModelSerializer):
         source='get_sensitivity_label_display',
         read_only=True
     )
-    sensitivity_set_by_display = serializers.CharField(
-        source='sensitivity_set_by.get_full_name',
-        read_only=True,
-        allow_null=True
-    )
+    sensitivity_set_by_display = serializers.SerializerMethodField()
     sensitivity_set_at = serializers.DateTimeField(read_only=True)
     sensitivity_change_reason = serializers.CharField(read_only=True, allow_blank=True)
     sensitivity_inherited_from_number = serializers.CharField(
@@ -379,7 +377,10 @@ class DocumentDetailSerializer(serializers.ModelSerializer):
             'review_period_months', 'last_review_date', 'next_review_date', 'last_reviewed_by',
             'is_active', 'requires_training', 'is_controlled',
             'dependencies', 'dependents', 'comments', 'attachments', 'versions',
-            'can_edit', 'can_review', 'can_approve', 'metadata'
+            'can_edit', 'can_review', 'can_approve', 'metadata',
+            # Add sensitivity fields
+            'sensitivity_label', 'sensitivity_label_display', 'sensitivity_set_by_display',
+            'sensitivity_set_at', 'sensitivity_change_reason', 'sensitivity_inherited_from_number',
         ]
         read_only_fields = [
             'uuid', 'document_number', 'created_at', 'updated_at',
@@ -426,6 +427,12 @@ class DocumentDetailSerializer(serializers.ModelSerializer):
         """Return the full name of the user who initiated obsolescence."""
         if obj.obsoleted_by:
             return obj.obsoleted_by.get_full_name() or obj.obsoleted_by.username
+        return None
+    
+    def get_sensitivity_set_by_display(self, obj):
+        """Return the full name of user who set sensitivity label."""
+        if obj.sensitivity_set_by:
+            return obj.sensitivity_set_by.get_full_name() or obj.sensitivity_set_by.username
         return None
 
 

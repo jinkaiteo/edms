@@ -385,6 +385,11 @@ class DocumentLifecycleService:
             return self.reject_document(document, user, comment)
         
         # === SENSITIVITY LABEL VALIDATION ===
+        print(f"🔍 Sensitivity label validation:")
+        print(f"   sensitivity_label type: {type(sensitivity_label)}")
+        print(f"   sensitivity_label value: {repr(sensitivity_label)}")
+        print(f"   bool(sensitivity_label): {bool(sensitivity_label)}")
+        
         if not sensitivity_label:
             raise ValidationError("Sensitivity label is required for document approval")
         
@@ -434,29 +439,40 @@ class DocumentLifecycleService:
         
         # === LOG SENSITIVITY IN AUDIT TRAIL ===
         from apps.audit.models import AuditTrail
+        from django.contrib.contenttypes.models import ContentType
         
         if sensitivity_changed:
             AuditTrail.objects.create(
-                document=document,
                 action='SENSITIVITY_CHANGED',
                 user=user,
-                details={
+                content_type=ContentType.objects.get_for_model(document),
+                object_id=str(document.id),
+                object_representation=f"{document.document_number} - {document.title}",
+                description=f"Sensitivity changed from {old_sensitivity} to {sensitivity_label}",
+                metadata={
                     'old_sensitivity': old_sensitivity,
                     'new_sensitivity': sensitivity_label,
                     'reason': sensitivity_change_reason,
                     'changed_during': 'approval'
-                }
+                },
+                module='workflows',
+                severity='INFO'
             )
         else:
             AuditTrail.objects.create(
-                document=document,
                 action='SENSITIVITY_CONFIRMED',
                 user=user,
-                details={
+                content_type=ContentType.objects.get_for_model(document),
+                object_id=str(document.id),
+                object_representation=f"{document.document_number} - {document.title}",
+                description=f"Sensitivity confirmed as {sensitivity_label}",
+                metadata={
                     'sensitivity': sensitivity_label,
                     'inherited_from': document.sensitivity_inherited_from.document_number if document.sensitivity_inherited_from else None,
                     'confirmed_during': 'approval'
-                }
+                },
+                module='workflows',
+                severity='INFO'
             )
         # === END AUDIT LOGGING ===
 
@@ -737,15 +753,22 @@ class DocumentLifecycleService:
             
             # Log sensitivity inheritance in audit trail
             from apps.audit.models import AuditTrail
+            from django.contrib.contenttypes.models import ContentType
+            
             AuditTrail.objects.create(
-                document=new_document,
                 action='VERSION_CREATED',
                 user=user,
-                details={
+                content_type=ContentType.objects.get_for_model(new_document),
+                object_id=str(new_document.id),
+                object_representation=f"{new_document.document_number} - {new_document.title}",
+                description=f"New version created from {existing_document.document_number}",
+                metadata={
                     'parent_version': f"{existing_document.document_number} v{existing_document.version_major}.{existing_document.version_minor}",
                     'inherited_sensitivity': existing_document.sensitivity_label,
                     'message': f"New version inherits {existing_document.get_sensitivity_label_display() if hasattr(existing_document, 'get_sensitivity_label_display') else existing_document.sensitivity_label} classification"
-                }
+                },
+                module='workflows',
+                severity='INFO'
             )
             
             # Copy dependencies from existing document to new version (with smart resolution)

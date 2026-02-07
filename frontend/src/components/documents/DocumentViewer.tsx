@@ -951,36 +951,40 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({
 
   return (
     <div className={`bg-white rounded-lg shadow-sm border border-gray-200 ${className}`}>
-      {/* Header */}
+      {/* Header - Reorganized for better readability */}
       <div className="p-6 border-b border-gray-200">
-        <div className="flex justify-between items-start">
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center space-x-3 mb-2">
-              <h2 className="text-xl font-semibold text-gray-900 truncate">
-                {document.title}
-              </h2>
-              {document.sensitivity_label && (
-                <SensitivityBadge label={document.sensitivity_label} size="md" />
-              )}
-              <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(document.status)}`}>
-                {document.status.replace('_', ' ')}
-              </span>
-            </div>
-            <div className="flex items-center space-x-4 text-sm text-gray-500">
-              <span>{document.base_document_number || document.document_number?.split('-v')[0] || document.document_number}</span>
-              <span>•</span>
-              <span>Version {document.version_string || document.version || '1.0'}</span>
-              <span>•</span>
-              <span>
-                {document.document_type_display || 
-                 (document.document_type && typeof document.document_type === 'object' 
-                   ? document.document_type.name 
-                   : document.document_type) || 
-                 'Unknown Type'}
-              </span>
-            </div>
+        {/* Title Row - Clean and prominent */}
+        <div className="mb-4">
+          <h2 className="text-2xl font-bold text-gray-900 mb-3">
+            {document.title}
+          </h2>
+          {/* Metadata Row */}
+          <div className="flex items-center space-x-4 text-sm text-gray-500 mb-3">
+            <span>{document.base_document_number || document.document_number?.split('-v')[0] || document.document_number}</span>
+            <span>•</span>
+            <span>Version {document.version_string || document.version || '1.0'}</span>
+            <span>•</span>
+            <span>
+              {document.document_type_display || 
+               (document.document_type && typeof document.document_type === 'object' 
+                 ? document.document_type.name 
+                 : document.document_type) || 
+               'Unknown Type'}
+            </span>
           </div>
-          <div className="flex items-center space-x-2 ml-4">
+          {/* Badges Row - Status and Sensitivity */}
+          <div className="flex items-center space-x-3">
+            <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${getStatusColor(document.status)}`}>
+              {document.status.replace(/_/g, ' ')}
+            </span>
+            {document.sensitivity_label && (
+              <SensitivityBadge label={document.sensitivity_label} size="md" />
+            )}
+          </div>
+        </div>
+        {/* Action Buttons Row */}
+        <div className="flex items-center justify-between pt-3 border-t border-gray-100">
+          <div className="flex items-center space-x-2">
             {/* Edit button - only show to document author when document is in DRAFT status */}
             {authenticated && user && document.status.toUpperCase() === 'DRAFT' && (
               (() => {
@@ -1013,8 +1017,8 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({
                 ) : null;
               })()
             )}
-            {/* View PDF Button (only for approved/effective documents) */}
-            {completeDocument && ['APPROVED_AND_EFFECTIVE', 'EFFECTIVE', 'APPROVED_PENDING_EFFECTIVE'].includes(completeDocument.status) && (
+            {/* View PDF Button (approved, effective, superseded, scheduled for obsolescence, and obsolete documents) */}
+            {completeDocument && ['APPROVED_AND_EFFECTIVE', 'EFFECTIVE', 'APPROVED_PENDING_EFFECTIVE', 'SUPERSEDED', 'SCHEDULED_FOR_OBSOLESCENCE', 'OBSOLETE'].includes(completeDocument.status) && (
               <button
                 onClick={handleViewPDF}
                 disabled={loadingPDF}
@@ -1044,35 +1048,24 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({
                 }}
               />
             )}
-            {/* Clear Selection Button */}
-            <button
-              onClick={() => {
-                // Call the parent's onDocumentSelect with null to clear selection
-                // This requires updating the DocumentManagement to handle null selection
-                if (onClose) {
-                  onClose(); // For full viewer mode
-                } else {
-                  // For split view, dispatch a custom event to clear selection
-                  window.dispatchEvent(new CustomEvent('clearDocumentSelection'));
-                }
-              }}
-              className="px-3 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50 focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
-              title="Clear selection"
-            >
-              ✖️ Clear
-            </button>
-            
-            {onClose && (
-              <button
-                onClick={onClose}
-                className="p-2 text-gray-400 hover:text-gray-600"
-              >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
-            )}
           </div>
+          {/* Clear/Back Button - Right side */}
+          <button
+            onClick={() => {
+              // Call the parent's onDocumentSelect with null to clear selection
+              // This requires updating the DocumentManagement to handle null selection
+              if (onClose) {
+                onClose(); // For full viewer mode
+              } else {
+                // For split view, dispatch a custom event to clear selection
+                window.dispatchEvent(new CustomEvent('clearDocumentSelection'));
+              }
+            }}
+            className="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50 focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+            title="Back to document list"
+          >
+            ← Back
+          </button>
         </div>
       </div>
 

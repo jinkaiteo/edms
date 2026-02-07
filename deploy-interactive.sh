@@ -5,8 +5,8 @@
 ################################################################################
 #
 # Description: Interactive deployment script for EDMS with HAProxy
-# Version: 1.0
-# Date: December 24, 2024
+# Version: 1.3.1
+# Date: February 6, 2026
 #
 # This script guides you through:
 # - Environment configuration
@@ -19,6 +19,11 @@
 ################################################################################
 
 set -e  # Exit on error
+
+# Version and build information
+SCRIPT_VERSION="1.3.1"
+BUILD_DATE="2026-02-06"
+DEPLOYMENT_NAME="Sensitivity Label Fixes & UI Improvements"
 
 # Colors for output
 RED='\033[0;31m'
@@ -1460,8 +1465,24 @@ PYEOF
 # Main Execution
 ################################################################################
 
-main() {
+show_welcome_banner() {
     clear
+    echo ""
+    echo -e "${BOLD}${CYAN}╔═══════════════════════════════════════════════════════════════╗${NC}"
+    echo -e "${BOLD}${CYAN}║                                                               ║${NC}"
+    echo -e "${BOLD}${CYAN}║              ${BOLD}${MAGENTA}EDMS Interactive Deployment${NC}${BOLD}${CYAN}                ║${NC}"
+    echo -e "${BOLD}${CYAN}║                                                               ║${NC}"
+    echo -e "${BOLD}${CYAN}║${NC}  ${BOLD}Version:${NC} ${GREEN}${SCRIPT_VERSION}${NC}                                            ${BOLD}${CYAN}║${NC}"
+    echo -e "${BOLD}${CYAN}║${NC}  ${BOLD}Date:${NC}    ${GREEN}${BUILD_DATE}${NC}                                       ${BOLD}${CYAN}║${NC}"
+    echo -e "${BOLD}${CYAN}║${NC}  ${BOLD}Release:${NC} ${YELLOW}${DEPLOYMENT_NAME}${NC}     ${BOLD}${CYAN}║${NC}"
+    echo -e "${BOLD}${CYAN}║                                                               ║${NC}"
+    echo -e "${BOLD}${CYAN}╚═══════════════════════════════════════════════════════════════╝${NC}"
+    echo ""
+    sleep 2
+}
+
+main() {
+    show_welcome_banner
     
     # Banner
     echo -e "${BOLD}${CYAN}"

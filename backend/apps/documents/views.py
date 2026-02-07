@@ -940,10 +940,11 @@ class DocumentViewSet(PeriodicReviewMixin, viewsets.ModelViewSet):
         """Download official PDF (only for approved and effective documents)."""
         document = self.get_object()
         
-        # Access control: Only approved and effective documents can be downloaded as official PDF
-        if document.status not in ['APPROVED_AND_EFFECTIVE', 'EFFECTIVE', 'APPROVED_PENDING_EFFECTIVE']:
+        # Access control: Allow downloads of approved, effective, superseded, scheduled for obsolescence, and obsolete documents
+        # SUPERSEDED, SCHEDULED_FOR_OBSOLESCENCE, and OBSOLETE documents have watermarks for audit/reference purposes
+        if document.status not in ['APPROVED_AND_EFFECTIVE', 'EFFECTIVE', 'APPROVED_PENDING_EFFECTIVE', 'SUPERSEDED', 'SCHEDULED_FOR_OBSOLESCENCE', 'OBSOLETE']:
             return Response(
-                {'error': 'Official PDF download is only available for approved and effective documents'},
+                {'error': 'Official PDF download is only available for approved, effective, superseded, and obsolete documents'},
                 status=status.HTTP_403_FORBIDDEN
             )
         
@@ -1911,6 +1912,11 @@ class DocumentViewSet(PeriodicReviewMixin, viewsets.ModelViewSet):
                 status=status.HTTP_400_BAD_REQUEST
             )
         
+        # Debug: Log the incoming request
+        print(f"🔍 workflow() called with action: {action_type}")
+        print(f"   Document: {document.document_number}")
+        print(f"   Request data: {request.data}")
+        
         try:
             if action_type == 'submit_for_review':
                 return self._handle_submit_for_review(document, request)
@@ -1919,7 +1925,8 @@ class DocumentViewSet(PeriodicReviewMixin, viewsets.ModelViewSet):
             elif action_type == 'route_for_approval':
                 return self._handle_route_for_approval(document, request)
             elif action_type == 'approve':
-                return self._handle_approve(document, request)
+                print(f"🎯 Routing to _handle_approve_with_sensitivity")
+                return self._handle_approve_with_sensitivity(document, request)
             else:
                 return Response(
                     {'error': f'Unknown workflow action: {action_type}'},
@@ -1928,7 +1935,7 @@ class DocumentViewSet(PeriodicReviewMixin, viewsets.ModelViewSet):
                 
         except Exception as e:
             # Log the error for debugging
-            print(f"Workflow error for {action_type}: {e}")
+            print(f"❌ Workflow error for {action_type}: {e}")
             import traceback
             traceback.print_exc()
             
@@ -2349,6 +2356,140 @@ Action Required: Review the document and either approve or reject with comments.
             'decision': decision,
             'effective_date': document.effective_date
         })
+    
+    def _handle_approve_with_sensitivity(self, document, request):
+        """Handle document approval using workflow service with sensitivity label support."""
+        # Debug logging
+        print(f"🔍 _handle_approve_with_sensitivity called")
+        print(f"📄 Document: {document.document_number}")
+        print(f"👤 User: {request.user.username}")
+        print(f"📦 Request data: {request.data}")
+        
+        # Validate that user is assigned approver
+        if document.approver != request.user:
+            return Response(
+                {'error': 'Only the assigned approver can approve this document'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+        
+        # Validate document status
+        if document.status != 'PENDING_APPROVAL':
+            return Response(
+                {'error': f'Document must be in PENDING_APPROVAL status. Current status: {document.status}'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # Get approval data from request
+        approved = request.data.get('approved', True)
+        comment = request.data.get('comment', '')
+        effective_date_str = request.data.get('effective_date')
+        review_period_months = request.data.get('review_period_months')
+        sensitivity_label = request.data.get('sensitivity_label')
+        sensitivity_change_reason = request.data.get('sensitivity_change_reason', '')
+        
+        # Debug: Show what we extracted
+        print(f"📦 Extracted from request.data:")
+        print(f"   approved: {approved}")
+        print(f"   comment: {comment}")
+        print(f"   effective_date_str: {effective_date_str}")
+        print(f"   review_period_months: {review_period_months}")
+        print(f"   sensitivity_label: {sensitivity_label}")
+        print(f"   sensitivity_change_reason: {sensitivity_change_reason}")
+        
+        # Use workflow service for approval/rejection
+        from apps.workflows.services import get_simple_workflow_service
+        from datetime import datetime
+        
+        workflow_service = get_simple_workflow_service()
+        old_status = document.status
+        
+        # Handle rejection
+        if not approved:
+            try:
+                success = workflow_service.approve_document(
+                    document=document,
+                    user=request.user,
+                    effective_date=datetime.now().date(),  # Dummy date for rejection
+                    comment=comment or 'Document rejected',
+                    approved=False
+                )
+                
+                if success:
+                    document.refresh_from_db()
+                    
+                    log_document_access(
+                        document=document,
+                        user=request.user,
+                        access_type='WORKFLOW',
+                        request=request,
+                        success=True,
+                        metadata={'action': 'reject', 'old_status': old_status, 'new_status': document.status}
+                    )
+                    
+                    return Response({'message': 'Document rejected successfully', 'status': document.status})
+                else:
+                    return Response({'error': 'Failed to reject document'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            except Exception as e:
+                return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+        
+        # Handle approval - require effective_date and sensitivity_label
+        if not effective_date_str:
+            return Response({'error': 'Effective date is required for approval'}, status=status.HTTP_400_BAD_REQUEST)
+        
+        if not sensitivity_label:
+            return Response({'error': 'Sensitivity label is required for document approval'}, status=status.HTTP_400_BAD_REQUEST)
+        
+        # Convert effective_date string to date object
+        try:
+            effective_date = datetime.strptime(effective_date_str, '%Y-%m-%d').date()
+        except (ValueError, TypeError):
+            return Response({'error': 'Invalid effective date format. Expected YYYY-MM-DD'}, status=status.HTTP_400_BAD_REQUEST)
+        
+        # Call workflow service with all parameters including sensitivity label
+        try:
+            success = workflow_service.approve_document(
+                document=document,
+                user=request.user,
+                effective_date=effective_date,
+                comment=comment or 'Document approved',
+                approved=True,
+                review_period_months=review_period_months,
+                sensitivity_label=sensitivity_label,
+                sensitivity_change_reason=sensitivity_change_reason
+            )
+            
+            if not success:
+                return Response({'error': 'Failed to approve document'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            
+            document.refresh_from_db()
+            
+            log_document_access(
+                document=document,
+                user=request.user,
+                access_type='WORKFLOW',
+                request=request,
+                success=True,
+                metadata={
+                    'action': 'approve',
+                    'old_status': old_status,
+                    'new_status': document.status,
+                    'effective_date': effective_date_str,
+                    'sensitivity_label': sensitivity_label
+                }
+            )
+            
+            return Response({
+                'message': 'Document approved successfully',
+                'status': document.status,
+                'effective_date': effective_date_str,
+                'sensitivity_label': sensitivity_label
+            })
+            
+        except Exception as e:
+            print(f"❌ Approval failed: {e}")
+            import traceback
+            traceback.print_exc()
+            return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
 
 class DocumentVersionViewSet(viewsets.ReadOnlyModelViewSet):
