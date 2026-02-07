@@ -187,7 +187,7 @@ const AdminDashboard: React.FC = () => {
                 </div>
                 <div className="ml-3 flex-1">
                   <dt className="text-sm font-medium text-gray-500">Document Storage</dt>
-                  <dd className="text-lg font-semibold text-gray-900">{stats.totalDocuments || 0} Documents</dd>
+                  <dd className="text-lg font-semibold text-gray-900">{dashboardStats.totalDocuments || 0} Documents</dd>
                   <dd className="text-xs text-gray-500">Active files stored</dd>
                 </div>
               </div>
@@ -205,7 +205,7 @@ const AdminDashboard: React.FC = () => {
                 </div>
                 <div className="ml-3 flex-1">
                   <dt className="text-sm font-medium text-gray-500">Total Users</dt>
-                  <dd className="text-lg font-semibold text-gray-900">{stats.totalUsers || 0} Users</dd>
+                  <dd className="text-lg font-semibold text-gray-900">{dashboardStats.totalUsers || 0} Users</dd>
                   <dd className="text-xs text-gray-500">Registered accounts</dd>
                 </div>
               </div>
