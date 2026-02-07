@@ -444,7 +444,7 @@ const CreateNewVersionModal: React.FC<CreateNewVersionModalProps> = ({
   );
   
   // Use React Portal to render modal at document.body level, escaping parent stacking context
-  return ReactDOM.createPortal(modalContent, document.body);
+  return ReactDOM.createPortal(modalContent, window.document.body);
 };
 
 export default CreateNewVersionModal;
