@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import ReactDOM from 'react-dom';
 import { XMarkIcon, ExclamationTriangleIcon, InformationCircleIcon } from '@heroicons/react/24/outline';
 import { apiService } from '../../services/api.ts';
 import { triggerBadgeRefresh } from '../../utils/badgeRefresh.ts';
