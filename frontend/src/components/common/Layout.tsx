@@ -590,8 +590,47 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
 
                 {/* Profile dropdown menu */}
                 {showProfileDropdown && (
-                  <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none z-50">
+                  <div className="absolute right-0 mt-2 w-80 bg-white rounded-md shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none z-50">
                     <div className="py-1">
+                      {/* About Section */}
+                      <div className="px-4 py-3 border-b border-gray-200">
+                        <div className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">
+                          About EDMS
+                        </div>
+                        <div className="space-y-1 text-sm">
+                          <div className="flex justify-between">
+                            <span className="text-gray-600">Version:</span>
+                            <span className="font-medium text-gray-900">1.3.1</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-gray-600">Build Date:</span>
+                            <span className="font-medium text-gray-900">2026-02-06</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-gray-600">Environment:</span>
+                            <span className="font-medium text-gray-900">{process.env.NODE_ENV === 'production' ? 'Production' : 'Development'}</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-gray-600">Backend:</span>
+                            <span className="font-medium text-gray-900">Django 4.2</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-gray-600">Frontend:</span>
+                            <span className="font-medium text-gray-900">React 18</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-gray-600">Database:</span>
+                            <span className="font-medium text-gray-900">PostgreSQL</span>
+                          </div>
+                        </div>
+                        <div className="mt-2 pt-2 border-t border-gray-100">
+                          <p className="text-xs text-gray-500">
+                            © 2024-2026 EDMS. All rights reserved.
+                          </p>
+                        </div>
+                      </div>
+                      
+                      {/* Actions */}
                       <button
                         onClick={() => {
                           setShowChangePassword(true);
