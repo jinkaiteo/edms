@@ -624,6 +624,13 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                           </div>
                         </div>
                         <div className="mt-2 pt-2 border-t border-gray-100">
+                          <div className="flex items-center justify-between mb-2">
+                            <span className="text-xs font-medium text-gray-500">System Status</span>
+                            <div className="flex items-center">
+                              <div className="h-2 w-2 bg-green-500 rounded-full mr-1.5 animate-pulse"></div>
+                              <span className="text-xs font-medium text-green-600">Operational</span>
+                            </div>
+                          </div>
                           <p className="text-xs text-gray-500">
                             © 2024-2026 EDMS. All rights reserved.
                           </p>
