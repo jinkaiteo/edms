@@ -129,8 +129,8 @@ const AdminDashboard: React.FC = () => {
                 </div>
                 <div className="ml-3 flex-1">
                   <dt className="text-sm font-medium text-gray-500">Application Version</dt>
-                  <dd className="text-lg font-semibold text-gray-900">v1.3.2</dd>
-                  <dd className="text-xs text-gray-500">Released: 2026-02-06</dd>
+                  <dd className="text-lg font-semibold text-gray-900">v1.3.3</dd>
+                  <dd className="text-xs text-gray-500">Released: 2026-02-08</dd>
                 </div>
               </div>
             </div>

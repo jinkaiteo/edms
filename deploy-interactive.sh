@@ -21,9 +21,9 @@
 set -e  # Exit on error
 
 # Version and build information
-SCRIPT_VERSION="1.3.2"
-BUILD_DATE="2026-02-06"
-DEPLOYMENT_NAME="Sensitivity Labels, UI/UX Improvements & System Info"
+SCRIPT_VERSION="1.3.3"
+BUILD_DATE="2026-02-08"
+DEPLOYMENT_NAME="Real-time System Health Monitoring in About Tab"
 
 # Colors for output
 RED='\033[0;31m'

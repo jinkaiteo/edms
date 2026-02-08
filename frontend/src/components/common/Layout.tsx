@@ -5,7 +5,7 @@
  * header, sidebar, and content areas.
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
 import {
   DocumentTextIcon,
@@ -24,7 +24,6 @@ import {
   ChevronRightIcon,
   ComputerDesktopIcon,
   ServerIcon,
-  ChevronLeftIcon,
   ChevronDoubleLeftIcon,
   ChevronDoubleRightIcon,
   EnvelopeIcon
@@ -61,9 +60,13 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
 
   // Document count state and refresh functionality
   const [documentCount, setDocumentCount] = useState<number>(0);
+  
+  // System health state
+  const [systemHealth, setSystemHealth] = useState<'healthy' | 'degraded' | 'unknown'>('unknown');
+  const [healthLoading, setHealthLoading] = useState<boolean>(true);
 
   // Smart badge refresh function  
-  const refreshBadge = async () => {
+  const refreshBadge = useCallback(async () => {
     if (!authenticated || !user) {
       console.log('Badge refresh skipped - user not authenticated');
       return;
@@ -87,7 +90,33 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
       // Don't reset to 0 on error - keep current count
       console.log('Keeping current badge count due to error');
     }
-  };
+  }, [authenticated, user]);
+  
+  // System health check function
+  const refreshSystemHealth = useCallback(async () => {
+    if (!authenticated || !user) {
+      console.log('Health check skipped - user not authenticated');
+      return;
+    }
+    
+    try {
+      setHealthLoading(true);
+      console.log('🏥 System health check starting...');
+      const data = await apiService.get('/dashboard/stats/');
+      // Backend returns system_health nested under stat_cards
+      const health = data.stat_cards?.system_health || data.system_health || 'unknown';
+      
+      setSystemHealth(health);
+      console.log(`✅ System health: ${health}`);
+      
+      return health;
+    } catch (err) {
+      console.error('❌ Failed to check system health:', err);
+      setSystemHealth('unknown');
+    } finally {
+      setHealthLoading(false);
+    }
+  }, [authenticated, user]);
 
   // Enhanced polling with immediate refresh capability
   useEffect(() => {
@@ -95,6 +124,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
 
     // Initial fetch
     refreshBadge();
+    refreshSystemHealth();
     
     // Listen for global badge refresh events from workflow components
     const handleBadgeRefreshEvent = () => {
@@ -107,13 +137,14 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
     const backupPolling = setInterval(() => {
       console.log('🔄 Backup polling: 5-minute safety refresh');
       refreshBadge();
+      refreshSystemHealth();
     }, 5 * 60 * 1000); // 5 minutes instead of 60 seconds
 
     return () => {
       window.removeEventListener('badgeRefresh', handleBadgeRefreshEvent);
       clearInterval(backupPolling);
     };
-  }, [authenticated, user]); // FIXED: Removed lastRefreshTime to prevent infinite loop
+  }, [authenticated, user, refreshBadge, refreshSystemHealth]);
 
   // Handle click outside dropdown to close it
   useEffect(() => {
@@ -600,11 +631,11 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                         <div className="space-y-1 text-sm">
                           <div className="flex justify-between">
                             <span className="text-gray-600">Version:</span>
-                            <span className="font-medium text-gray-900">1.3.2</span>
+                            <span className="font-medium text-gray-900">1.3.3</span>
                           </div>
                           <div className="flex justify-between">
                             <span className="text-gray-600">Build Date:</span>
-                            <span className="font-medium text-gray-900">2026-02-06</span>
+                            <span className="font-medium text-gray-900">2026-02-08</span>
                           </div>
                           <div className="flex justify-between">
                             <span className="text-gray-600">Environment:</span>
@@ -627,8 +658,27 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                           <div className="flex items-center justify-between mb-2">
                             <span className="text-xs font-medium text-gray-500">System Status</span>
                             <div className="flex items-center">
-                              <div className="h-2 w-2 bg-green-500 rounded-full mr-1.5 animate-pulse"></div>
-                              <span className="text-xs font-medium text-green-600">Operational</span>
+                              {healthLoading ? (
+                                <>
+                                  <div className="h-2 w-2 bg-gray-400 rounded-full mr-1.5 animate-pulse"></div>
+                                  <span className="text-xs font-medium text-gray-500">Checking...</span>
+                                </>
+                              ) : systemHealth === 'healthy' ? (
+                                <>
+                                  <div className="h-2 w-2 bg-green-500 rounded-full mr-1.5 animate-pulse"></div>
+                                  <span className="text-xs font-medium text-green-600">Operational</span>
+                                </>
+                              ) : systemHealth === 'degraded' ? (
+                                <>
+                                  <div className="h-2 w-2 bg-yellow-500 rounded-full mr-1.5 animate-pulse"></div>
+                                  <span className="text-xs font-medium text-yellow-600">Degraded</span>
+                                </>
+                              ) : (
+                                <>
+                                  <div className="h-2 w-2 bg-red-500 rounded-full mr-1.5 animate-pulse"></div>
+                                  <span className="text-xs font-medium text-red-600">Issues Detected</span>
+                                </>
+                              )}
                             </div>
                           </div>
                           <p className="text-xs text-gray-500">
