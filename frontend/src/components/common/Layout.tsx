@@ -600,7 +600,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                         <div className="space-y-1 text-sm">
                           <div className="flex justify-between">
                             <span className="text-gray-600">Version:</span>
-                            <span className="font-medium text-gray-900">1.3.1</span>
+                            <span className="font-medium text-gray-900">1.3.2</span>
                           </div>
                           <div className="flex justify-between">
                             <span className="text-gray-600">Build Date:</span>
