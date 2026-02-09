@@ -19,7 +19,7 @@ const PDFViewerSimple: React.FC<PDFViewerSimpleProps> = ({
   onClose 
 }) => {
   return (
-    <div className="fixed inset-0 z-50 bg-white flex flex-col">
+    <div className="fixed inset-0 z-[60] bg-white flex flex-col">
       {/* Header */}
       <div className="bg-gray-100 border-b px-4 py-3 flex items-center justify-between shadow-sm">
         <div className="flex items-center space-x-3">
