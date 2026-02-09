@@ -950,9 +950,9 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({
   }
 
   return (
-    <div className={`bg-white rounded-lg shadow-sm border border-gray-200 ${className}`}>
+    <div className={`bg-white rounded-lg shadow-sm border border-gray-200 relative ${className}`}>
       {/* Header - Reorganized for better readability */}
-      <div className="p-6 border-b border-gray-200">
+      <div className="p-6 border-b border-gray-200 sticky top-16 bg-white z-40">
         {/* Title Row - Clean and prominent */}
         <div className="mb-4">
           <h2 className="text-2xl font-bold text-gray-900 mb-3">
