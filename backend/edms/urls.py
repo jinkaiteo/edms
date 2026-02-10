@@ -16,6 +16,7 @@ from drf_spectacular.views import (
     SpectacularSwaggerView,
 )
 from apps.api.dashboard_stats import DashboardStatsView
+from apps.api.system_info_views import system_info_view
 
 # API URL patterns
 api_urlpatterns = [
@@ -34,6 +35,9 @@ api_urlpatterns = [
     
     # Dashboard statistics
     path('dashboard/stats/', DashboardStatsView.as_view(), name='dashboard-stats'),
+    
+    # System information
+    path('system/info/', system_info_view, name='system-info'),
     
     # Core modules
     path('documents/', include('apps.documents.urls')),

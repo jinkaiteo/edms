@@ -6,6 +6,7 @@
  */
 
 import React, { useState, useEffect, useCallback } from 'react';
+import { useSystemInfo } from '../../hooks/useSystemInfo.ts';
 import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
 import {
   DocumentTextIcon,
@@ -64,6 +65,9 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
   // System health state
   const [systemHealth, setSystemHealth] = useState<'healthy' | 'degraded' | 'unknown'>('unknown');
   const [healthLoading, setHealthLoading] = useState<boolean>(true);
+  
+  // System info for version display
+  const { systemInfo } = useSystemInfo();
 
   // Smart badge refresh function  
   const refreshBadge = useCallback(async () => {
@@ -631,11 +635,11 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                         <div className="space-y-1 text-sm">
                           <div className="flex justify-between">
                             <span className="text-gray-600">Version:</span>
-                            <span className="font-medium text-gray-900">1.3.3</span>
+                            <span className="font-medium text-gray-900">{systemInfo?.application.version || '1.3.3'}</span>
                           </div>
                           <div className="flex justify-between">
                             <span className="text-gray-600">Build Date:</span>
-                            <span className="font-medium text-gray-900">2026-02-08</span>
+                            <span className="font-medium text-gray-900">{systemInfo?.application.build_date || '2026-02-08'}</span>
                           </div>
                           <div className="flex justify-between">
                             <span className="text-gray-600">Environment:</span>

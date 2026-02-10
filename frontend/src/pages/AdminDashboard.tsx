@@ -10,6 +10,7 @@ import LoadingSpinner from '../components/common/LoadingSpinner.tsx';
 import TaskListWidget from '../components/scheduler/TaskListWidget.tsx';
 // BackupManagement removed - backups now managed via CLI (see QUICK_START_BACKUP_RESTORE.md)
 import { useDashboardUpdates } from '../hooks/useDashboardUpdates.ts';
+import { useSystemInfo } from '../hooks/useSystemInfo.ts';
 import { DashboardStats } from '../types/api.ts';
 
 const AdminDashboard: React.FC = () => {
@@ -49,6 +50,9 @@ const AdminDashboard: React.FC = () => {
     onError: handleDashboardError,
     onUpdate: handleDashboardUpdate
   });
+  
+  // Use system info hook for version information
+  const { systemInfo } = useSystemInfo();
 
   // Quick links to admin sections
   const adminQuickLinks = [
@@ -129,8 +133,8 @@ const AdminDashboard: React.FC = () => {
                 </div>
                 <div className="ml-3 flex-1">
                   <dt className="text-sm font-medium text-gray-500">Application Version</dt>
-                  <dd className="text-lg font-semibold text-gray-900">v1.3.3</dd>
-                  <dd className="text-xs text-gray-500">Released: 2026-02-08</dd>
+                  <dd className="text-lg font-semibold text-gray-900">v{systemInfo?.application.version || '1.3.3'}</dd>
+                  <dd className="text-xs text-gray-500">Released: {systemInfo?.application.build_date || '2026-02-08'}</dd>
                 </div>
               </div>
             </div>
@@ -147,11 +151,11 @@ const AdminDashboard: React.FC = () => {
                 </div>
                 <div className="ml-3 flex-1">
                   <dt className="text-sm font-medium text-gray-500">Environment</dt>
-                  <dd className="text-lg font-semibold text-gray-900">
-                    {process.env.NODE_ENV === 'production' ? 'Production' : 'Development'}
+                  <dd className="text-lg font-semibold text-gray-900 capitalize">
+                    {systemInfo?.application.environment || (process.env.NODE_ENV === 'production' ? 'Production' : 'Development')}
                   </dd>
                   <dd className="text-xs text-gray-500">
-                    Backend: Django 4.2 | Frontend: React 18
+                    Backend: {systemInfo?.backend.framework || 'Django'} {systemInfo?.backend.version || '4.2'} | Frontend: React 18
                   </dd>
                 </div>
               </div>
@@ -169,8 +173,12 @@ const AdminDashboard: React.FC = () => {
                 </div>
                 <div className="ml-3 flex-1">
                   <dt className="text-sm font-medium text-gray-500">Database</dt>
-                  <dd className="text-lg font-semibold text-gray-900">PostgreSQL</dd>
-                  <dd className="text-xs text-gray-500">Status: Connected</dd>
+                  <dd className="text-lg font-semibold text-gray-900">
+                    {systemInfo?.database.type || 'PostgreSQL'} {systemInfo?.database.version ? `(${systemInfo.database.version})` : ''}
+                  </dd>
+                  <dd className="text-xs text-gray-500">
+                    Status: {systemInfo?.database.status ? systemInfo.database.status.charAt(0).toUpperCase() + systemInfo.database.status.slice(1) : 'Connected'}
+                  </dd>
                 </div>
               </div>
             </div>
