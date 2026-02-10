@@ -243,7 +243,19 @@ const AdminDashboard: React.FC = () => {
                 <svg className="h-4 w-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
-                <span className="text-green-600 font-medium">System Status: Operational</span>
+                <span className={`font-medium ${
+                  dashboardStats.stat_cards?.system_health === 'healthy' 
+                    ? 'text-green-600' 
+                    : dashboardStats.stat_cards?.system_health === 'degraded'
+                    ? 'text-yellow-600'
+                    : 'text-red-600'
+                }`}>
+                  System Status: {
+                    dashboardStats.stat_cards?.system_health === 'healthy' ? 'Operational' : 
+                    dashboardStats.stat_cards?.system_health === 'degraded' ? 'Degraded' : 
+                    dashboardStats.stat_cards?.system_health ? 'Issues Detected' : 'Checking...'
+                  }
+                </span>
               </div>
               <div className="text-gray-500">
                 © 2024-2026 EDMS. All rights reserved.
