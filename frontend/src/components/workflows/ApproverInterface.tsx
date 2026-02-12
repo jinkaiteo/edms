@@ -9,6 +9,7 @@ import React, { useState, useEffect } from 'react';
 import { apiService } from '../../services/api.ts';
 import { useAuth } from '../../contexts/AuthContext.tsx';
 import { triggerBadgeRefresh } from '../../utils/badgeRefresh';
+import SensitivityLabelSelector from './SensitivityLabelSelector.tsx';
 import { 
   XMarkIcon,
   CheckCircleIcon,
@@ -32,6 +33,8 @@ interface Document {
   file_path?: string;
   created_at: string;
   review_date?: string;
+  sensitivity_label?: string;
+  sensitivity_inherited_from_number?: string;
 }
 
 interface ApproverInterfaceProps {
@@ -50,11 +53,23 @@ const ApproverInterface: React.FC<ApproverInterfaceProps> = ({
   const [approvalDecision, setApprovalDecision] = useState<'approve' | 'reject' | ''>('');
   const [approvalComment, setApprovalComment] = useState<string>('');
   const [effectiveDate, setEffectiveDate] = useState('');
+  const [sensitivityLabel, setSensitivityLabel] = useState<string>(document.sensitivity_label || 'INTERNAL');
+  const [sensitivityChangeReason, setSensitivityChangeReason] = useState<string>('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   
   // Get current user from auth context
   const { user } = useAuth();
+
+  // Debug logging
+  useEffect(() => {
+    console.log('=== ApproverInterface Debug ===');
+    console.log('approvalDecision:', approvalDecision);
+    console.log('document.sensitivity_label:', document.sensitivity_label);
+    console.log('document.sensitivity_inherited_from_number:', document.sensitivity_inherited_from_number);
+    console.log('sensitivityLabel state:', sensitivityLabel);
+    console.log('Should show selector:', approvalDecision === 'approve');
+  }, [approvalDecision, document.sensitivity_label, document.sensitivity_inherited_from_number, sensitivityLabel]);
 
   useEffect(() => {
     if (isOpen) {
@@ -148,6 +163,17 @@ const ApproverInterface: React.FC<ApproverInterfaceProps> = ({
             throw new Error('Effective date is required for approval');
           }
           requestData.effective_date = effectiveDate;
+          
+          // Add sensitivity label (REQUIRED for approval)
+          if (!sensitivityLabel) {
+            throw new Error('Sensitivity label is required for approval');
+          }
+          requestData.sensitivity_label = sensitivityLabel;
+          
+          // Add sensitivity change reason if changed
+          if (sensitivityChangeReason) {
+            requestData.sensitivity_change_reason = sensitivityChangeReason;
+          }
         }
 
         const workflowResponse = await apiService.post(`/documents/documents/${document.uuid}/workflow/`, requestData);
@@ -183,7 +209,7 @@ const ApproverInterface: React.FC<ApproverInterfaceProps> = ({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto bg-gray-500 bg-opacity-75 flex items-center justify-center">
+    <div className="fixed inset-0 overflow-y-auto" style={{ zIndex: 9999 }} bg-gray-500 bg-opacity-75 flex items-center justify-center">
       <div className="bg-white rounded-lg shadow-xl max-w-4xl w-full mx-4 max-h-[90vh] overflow-y-auto">
         <div className="px-6 py-4 border-b border-gray-200">
           <div className="flex items-center justify-between">
@@ -340,6 +366,24 @@ const ApproverInterface: React.FC<ApproverInterfaceProps> = ({
             </div>
           )}
 
+          {/* Sensitivity Label Selector - Only for Approval */}
+          {approvalDecision === 'approve' && (
+            <div className="mb-6">
+              <SensitivityLabelSelector
+                value={sensitivityLabel}
+                onChange={(label: string, reason: string) => {
+                  setSensitivityLabel(label);
+                  setSensitivityChangeReason(reason);
+                }}
+                inheritedFrom={document.sensitivity_inherited_from_number}
+                originalValue={document.sensitivity_label}
+                required={true}
+                disabled={loading}
+                showGuide={true}
+              />
+            </div>
+          )}
+          
           {/* Approval Comments */}
           <div className="mb-6">
             <label htmlFor="approvalComment" className="block text-sm font-medium text-gray-700 mb-2">

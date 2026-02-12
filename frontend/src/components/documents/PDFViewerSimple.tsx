@@ -1,4 +1,5 @@
 import React from 'react';
+import ReactDOM from 'react-dom';
 import { XMarkIcon, ArrowDownTrayIcon } from '@heroicons/react/24/outline';
 
 interface PDFViewerSimpleProps {
@@ -18,8 +19,9 @@ const PDFViewerSimple: React.FC<PDFViewerSimpleProps> = ({
   documentNumber,
   onClose 
 }) => {
-  return (
-    <div className="fixed inset-0 z-50 bg-white flex flex-col">
+  // Use React Portal to render at document body level, bypassing all parent z-index contexts
+  return ReactDOM.createPortal(
+    <div className="fixed inset-0 z-[60] bg-white flex flex-col">
       {/* Header */}
       <div className="bg-gray-100 border-b px-4 py-3 flex items-center justify-between shadow-sm">
         <div className="flex items-center space-x-3">
@@ -66,7 +68,8 @@ const PDFViewerSimple: React.FC<PDFViewerSimpleProps> = ({
           style={{ minHeight: '100%' }}
         />
       </div>
-    </div>
+    </div>,
+    document.body // Render at body level, outside all parent components
   );
 };
 

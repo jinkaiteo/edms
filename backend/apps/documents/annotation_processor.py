@@ -180,6 +180,44 @@ class DocumentAnnotationProcessor:
         metadata['IF_DRAFT'] = 'DRAFT - NOT FOR USE' if 'DRAFT' in document.status else ''
         metadata['IF_EFFECTIVE'] = 'CURRENT VERSION' if 'EFFECTIVE' in document.status else ''
         
+        # ===== SENSITIVITY LABEL PLACEHOLDERS =====
+        # Get sensitivity label with fallback
+        sensitivity_label = getattr(document, 'sensitivity_label', 'INTERNAL')
+        
+        # Basic sensitivity placeholders
+        metadata['SENSITIVITY_LABEL'] = sensitivity_label
+        metadata['SENSITIVITY_LABEL_FULL'] = self._get_sensitivity_display(sensitivity_label)
+        metadata['SENSITIVITY_LABEL_ICON'] = self._get_sensitivity_icon(sensitivity_label)
+        
+        # Conditional sensitivity placeholders (for headers/watermarks)
+        metadata['IF_PUBLIC'] = '' if sensitivity_label == 'PUBLIC' else ''  # PUBLIC shows no header
+        metadata['IF_INTERNAL'] = 'INTERNAL USE ONLY' if sensitivity_label == 'INTERNAL' else ''
+        metadata['IF_CONFIDENTIAL'] = 'CONFIDENTIAL' if sensitivity_label == 'CONFIDENTIAL' else ''
+        metadata['IF_RESTRICTED'] = 'RESTRICTED - REGULATORY/COMPLIANCE' if sensitivity_label == 'RESTRICTED' else ''
+        metadata['IF_PROPRIETARY'] = 'PROPRIETARY - TRADE SECRET' if sensitivity_label == 'PROPRIETARY' else ''
+        
+        # Sensitivity metadata (who set it, when, why)
+        if hasattr(document, 'sensitivity_set_by') and document.sensitivity_set_by:
+            metadata['SENSITIVITY_SET_BY'] = f"{document.sensitivity_set_by.first_name} {document.sensitivity_set_by.last_name}".strip() or document.sensitivity_set_by.username
+        else:
+            metadata['SENSITIVITY_SET_BY'] = 'System Default'
+        
+        if hasattr(document, 'sensitivity_set_at') and document.sensitivity_set_at:
+            metadata['SENSITIVITY_SET_DATE'] = document.sensitivity_set_at.strftime('%Y-%m-%d')
+            metadata['SENSITIVITY_SET_DATE_LONG'] = document.sensitivity_set_at.strftime('%B %d, %Y')
+        else:
+            metadata['SENSITIVITY_SET_DATE'] = 'Not Set'
+            metadata['SENSITIVITY_SET_DATE_LONG'] = 'Not Set'
+        
+        if hasattr(document, 'sensitivity_change_reason') and document.sensitivity_change_reason:
+            metadata['SENSITIVITY_CHANGE_REASON'] = document.sensitivity_change_reason
+        else:
+            metadata['SENSITIVITY_CHANGE_REASON'] = ''
+        
+        # Sensitivity watermark text (for PDF generation)
+        metadata['SENSITIVITY_WATERMARK'] = self._get_sensitivity_watermark_text(sensitivity_label)
+        # ===== END SENSITIVITY LABEL PLACEHOLDERS =====
+        
         # Additional technical information
         metadata['IS_CURRENT'] = 'CURRENT' if 'EFFECTIVE' in document.status else 'NOT CURRENT'
         
@@ -321,6 +359,39 @@ class DocumentAnnotationProcessor:
         local_name = 'SGT'  # Singapore Standard Time  # 'SGT' for Singapore Time
         
         return f"{now_utc.strftime('%m/%d/%Y %I:%M %p')} UTC ({now_local.strftime('%I:%M %p')} {local_name})"
+    
+    def _get_sensitivity_display(self, label: str) -> str:
+        """Get full display name for sensitivity label."""
+        SENSITIVITY_DISPLAYS = {
+            'PUBLIC': 'Public',
+            'INTERNAL': 'Internal Use Only',
+            'CONFIDENTIAL': 'Confidential',
+            'RESTRICTED': 'Restricted - Regulatory/Compliance',
+            'PROPRIETARY': 'Proprietary / Trade Secret',
+        }
+        return SENSITIVITY_DISPLAYS.get(label, 'Internal Use Only')
+    
+    def _get_sensitivity_icon(self, label: str) -> str:
+        """Get icon for sensitivity label."""
+        SENSITIVITY_ICONS = {
+            'PUBLIC': '🌐',
+            'INTERNAL': '🏢',
+            'CONFIDENTIAL': '🔒',
+            'RESTRICTED': '⚠️',
+            'PROPRIETARY': '🛡️',
+        }
+        return SENSITIVITY_ICONS.get(label, '🏢')
+    
+    def _get_sensitivity_watermark_text(self, label: str) -> str:
+        """Get watermark text for sensitivity label (used in PDF headers)."""
+        WATERMARK_TEXTS = {
+            'PUBLIC': '',  # No watermark for PUBLIC
+            'INTERNAL': 'INTERNAL USE ONLY',
+            'CONFIDENTIAL': 'CONFIDENTIAL',
+            'RESTRICTED': 'RESTRICTED - REGULATORY/COMPLIANCE',
+            'PROPRIETARY': 'PROPRIETARY - TRADE SECRET',
+        }
+        return WATERMARK_TEXTS.get(label, 'INTERNAL USE ONLY')
     
     def _get_version_change_reason(self, document):
         """Extract the reason for change from workflow comments or document description."""

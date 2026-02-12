@@ -127,13 +127,16 @@ def document_workflow_endpoint(request, uuid):
                             'error': 'Invalid effective_date format. Use YYYY-MM-DD'
                         }, status=status.HTTP_400_BAD_REQUEST)
                 
-                # Get approved flag and review_period_months for periodic review
+                # Get approved flag, review_period_months, and sensitivity label for approval
                 approved = request.data.get('approved', True)
                 review_period_months = request.data.get('review_period_months')
+                sensitivity_label = request.data.get('sensitivity_label')
+                sensitivity_change_reason = request.data.get('sensitivity_change_reason', '')
                 
                 result = workflow_service.approve_document(
                     document, request.user, effective_date, comment, 
-                    approved, review_period_months
+                    approved, review_period_months,
+                    sensitivity_label, sensitivity_change_reason
                 )
                 # Send notification to document author about approval
                 if result and document.author:

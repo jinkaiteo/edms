@@ -6,6 +6,7 @@
  */
 
 import React, { useState } from 'react';
+import ReactDOM from 'react-dom';
 import { apiService } from '../../services/api.ts';
 import { triggerBadgeRefresh } from '../../utils/badgeRefresh.ts';
 import { 
@@ -207,8 +208,8 @@ const CreateNewVersionModal: React.FC<CreateNewVersionModalProps> = ({
 
   if (!isOpen) return null;
 
-  return (
-    <div className="fixed inset-0 z-50 overflow-y-auto bg-gray-500 bg-opacity-75 flex items-center justify-center p-4">
+  const modalContent = (
+    <div className="fixed inset-0 overflow-y-auto bg-gray-500 bg-opacity-75 flex items-center justify-center p-4" style={{ zIndex: 9999 }}>
       <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full my-8 max-h-[90vh] overflow-y-auto">
         <div className="px-6 py-4 border-b border-gray-200">
           <div className="flex items-center justify-between">
@@ -441,6 +442,9 @@ const CreateNewVersionModal: React.FC<CreateNewVersionModalProps> = ({
       </div>
     </div>
   );
+  
+  // Use React Portal to render modal at document.body level, escaping parent stacking context
+  return ReactDOM.createPortal(modalContent, window.document.body);
 };
 
 export default CreateNewVersionModal;

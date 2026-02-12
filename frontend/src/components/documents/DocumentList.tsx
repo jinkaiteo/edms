@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import apiService from '../../services/api.ts';
 import { useAuth } from '../../contexts/AuthContext.tsx';
+import SensitivityBadge from '../common/SensitivityBadge.tsx';
 
 interface Document {
   id?: number;
@@ -525,6 +526,9 @@ const DocumentList: React.FC<DocumentListProps> = ({
                           <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800" title="You are the author">
                             👤 Mine
                           </span>
+                        )}
+                        {document.sensitivity_label && (
+                          <SensitivityBadge label={document.sensitivity_label} size="sm" />
                         )}
                         <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(document.status)}`}>
                           {document.status.replace(/_/g, ' ')}

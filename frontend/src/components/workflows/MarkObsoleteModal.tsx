@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import ReactDOM from 'react-dom';
 import { XMarkIcon, ExclamationTriangleIcon, InformationCircleIcon } from '@heroicons/react/24/outline';
 import { apiService } from '../../services/api.ts';
 import { triggerBadgeRefresh } from '../../utils/badgeRefresh.ts';
@@ -243,8 +244,8 @@ const MarkObsoleteModal: React.FC<MarkObsoleteModalProps> = ({
 
   const canProceed = !hasDependencies && !checkingDependencies && reasonForObsolescence.trim().length > 0 && obsolescenceDate.length > 0;
 
-  return (
-    <div className="fixed inset-0 z-50 overflow-y-auto">
+  const modalContent = (
+    <div className="fixed inset-0 overflow-y-auto" style={{ zIndex: 9999 }}>
       <div className="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:block sm:p-0">
         <div className="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" onClick={handleClose}></div>
         
@@ -376,6 +377,9 @@ const MarkObsoleteModal: React.FC<MarkObsoleteModalProps> = ({
       </div>
     </div>
   );
+  
+  // Use React Portal to render modal at document.body level
+  return ReactDOM.createPortal(modalContent, window.document.body);
 };
 
 export default MarkObsoleteModal;

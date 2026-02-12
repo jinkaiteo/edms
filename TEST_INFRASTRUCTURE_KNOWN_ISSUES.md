@@ -1,7 +1,7 @@
 # Test Infrastructure Known Issues
 
 **Date:** 2026-01-30  
-**Status:** Investigation Required  
+**Status:** ✅ **RESOLVED** - See `PYTEST_INFRASTRUCTURE_FIX_COMPLETE.md`  
 
 ---
 

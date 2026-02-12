@@ -10,6 +10,7 @@ import LoadingSpinner from '../components/common/LoadingSpinner.tsx';
 import TaskListWidget from '../components/scheduler/TaskListWidget.tsx';
 // BackupManagement removed - backups now managed via CLI (see QUICK_START_BACKUP_RESTORE.md)
 import { useDashboardUpdates } from '../hooks/useDashboardUpdates.ts';
+import { useSystemInfo } from '../hooks/useSystemInfo.ts';
 import { DashboardStats } from '../types/api.ts';
 
 const AdminDashboard: React.FC = () => {
@@ -49,6 +50,9 @@ const AdminDashboard: React.FC = () => {
     onError: handleDashboardError,
     onUpdate: handleDashboardUpdate
   });
+  
+  // Use system info hook for version information
+  const { systemInfo } = useSystemInfo();
 
   // Quick links to admin sections
   const adminQuickLinks = [
@@ -105,7 +109,169 @@ const AdminDashboard: React.FC = () => {
     return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-2xl font-bold text-gray-900 mb-4">Administration Overview</h2>
+        <h2 className="text-2xl font-bold text-gray-900 mb-6">Administration Overview</h2>
+        
+        {/* System Information Section */}
+        <div className="bg-white shadow rounded-lg p-6 mb-6">
+          <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+            <svg className="h-5 w-5 mr-2 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+            </svg>
+            System Information
+          </h3>
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {/* Version & Build Info */}
+            <div className="space-y-3">
+              <div className="flex items-start">
+                <div className="flex-shrink-0">
+                  <div className="h-8 w-8 rounded-lg bg-blue-100 flex items-center justify-center">
+                    <svg className="h-5 w-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
+                    </svg>
+                  </div>
+                </div>
+                <div className="ml-3 flex-1">
+                  <dt className="text-sm font-medium text-gray-500">Application Version</dt>
+                  <dd className="text-lg font-semibold text-gray-900">v{systemInfo?.application.version || '1.3.3'}</dd>
+                  <dd className="text-xs text-gray-500">Released: {systemInfo?.application.build_date || '2026-02-08'}</dd>
+                </div>
+              </div>
+            </div>
+
+            {/* Environment */}
+            <div className="space-y-3">
+              <div className="flex items-start">
+                <div className="flex-shrink-0">
+                  <div className="h-8 w-8 rounded-lg bg-green-100 flex items-center justify-center">
+                    <svg className="h-5 w-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 12h14M5 12a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v4a2 2 0 01-2 2M5 12a2 2 0 00-2 2v4a2 2 0 002 2h14a2 2 0 002-2v-4a2 2 0 00-2-2m-2-4h.01M17 16h.01" />
+                    </svg>
+                  </div>
+                </div>
+                <div className="ml-3 flex-1">
+                  <dt className="text-sm font-medium text-gray-500">Environment</dt>
+                  <dd className="text-lg font-semibold text-gray-900 capitalize">
+                    {systemInfo?.application.environment || (process.env.NODE_ENV === 'production' ? 'Production' : 'Development')}
+                  </dd>
+                  <dd className="text-xs text-gray-500">
+                    Backend: {systemInfo?.backend.framework || 'Django'} {systemInfo?.backend.version || '4.2'} | Frontend: React 18
+                  </dd>
+                </div>
+              </div>
+            </div>
+
+            {/* Database */}
+            <div className="space-y-3">
+              <div className="flex items-start">
+                <div className="flex-shrink-0">
+                  <div className="h-8 w-8 rounded-lg bg-purple-100 flex items-center justify-center">
+                    <svg className="h-5 w-5 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4m0 5c0 2.21-3.582 4-8 4s-8-1.79-8-4" />
+                    </svg>
+                  </div>
+                </div>
+                <div className="ml-3 flex-1">
+                  <dt className="text-sm font-medium text-gray-500">Database</dt>
+                  <dd className="text-lg font-semibold text-gray-900">
+                    {systemInfo?.database.type || 'PostgreSQL'} {systemInfo?.database.version ? `(${systemInfo.database.version})` : ''}
+                  </dd>
+                  <dd className="text-xs text-gray-500">
+                    Status: {systemInfo?.database.status ? systemInfo.database.status.charAt(0).toUpperCase() + systemInfo.database.status.slice(1) : 'Connected'}
+                  </dd>
+                </div>
+              </div>
+            </div>
+
+            {/* Storage Info */}
+            <div className="space-y-3">
+              <div className="flex items-start">
+                <div className="flex-shrink-0">
+                  <div className="h-8 w-8 rounded-lg bg-yellow-100 flex items-center justify-center">
+                    <svg className="h-5 w-5 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" />
+                    </svg>
+                  </div>
+                </div>
+                <div className="ml-3 flex-1">
+                  <dt className="text-sm font-medium text-gray-500">Document Storage</dt>
+                  <dd className="text-lg font-semibold text-gray-900">{dashboardStats.total_documents || 0} Documents</dd>
+                  <dd className="text-xs text-gray-500">Active files stored</dd>
+                </div>
+              </div>
+            </div>
+
+            {/* Active Users */}
+            <div className="space-y-3">
+              <div className="flex items-start">
+                <div className="flex-shrink-0">
+                  <div className="h-8 w-8 rounded-lg bg-indigo-100 flex items-center justify-center">
+                    <svg className="h-5 w-5 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
+                    </svg>
+                  </div>
+                </div>
+                <div className="ml-3 flex-1">
+                  <dt className="text-sm font-medium text-gray-500">Total Users</dt>
+                  <dd className="text-lg font-semibold text-gray-900">{dashboardStats.active_users || 0} Users</dd>
+                  <dd className="text-xs text-gray-500">Registered accounts</dd>
+                </div>
+              </div>
+            </div>
+
+            {/* Compliance Info */}
+            <div className="space-y-3">
+              <div className="flex items-start">
+                <div className="flex-shrink-0">
+                  <div className="h-8 w-8 rounded-lg bg-red-100 flex items-center justify-center">
+                    <svg className="h-5 w-5 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                    </svg>
+                  </div>
+                </div>
+                <div className="ml-3 flex-1">
+                  <dt className="text-sm font-medium text-gray-500">Compliance</dt>
+                  <dd className="text-lg font-semibold text-gray-900">21 CFR Part 11</dd>
+                  <dd className="text-xs text-gray-500">FDA Compliant</dd>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Additional Info Bar */}
+          <div className="mt-6 pt-6 border-t border-gray-200">
+            <div className="flex flex-wrap items-center justify-between gap-4 text-sm">
+              <div className="flex items-center text-gray-600">
+                <svg className="h-4 w-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <span>Server Time: {new Date().toLocaleString()}</span>
+              </div>
+              <div className="flex items-center text-gray-600">
+                <svg className="h-4 w-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <span className={`font-medium ${
+                  dashboardStats.stat_cards?.system_health === 'healthy' 
+                    ? 'text-green-600' 
+                    : dashboardStats.stat_cards?.system_health === 'degraded'
+                    ? 'text-yellow-600'
+                    : 'text-red-600'
+                }`}>
+                  System Status: {
+                    dashboardStats.stat_cards?.system_health === 'healthy' ? 'Operational' : 
+                    dashboardStats.stat_cards?.system_health === 'degraded' ? 'Degraded' : 
+                    dashboardStats.stat_cards?.system_health ? 'Issues Detected' : 'Checking...'
+                  }
+                </span>
+              </div>
+              <div className="text-gray-500">
+                © 2024-2026 EDMS. All rights reserved.
+              </div>
+            </div>
+          </div>
+        </div>
+        
         <p className="text-gray-600 mb-6">
           Manage users, configure workflows, and monitor system activities from this central admin dashboard.
         </p>
@@ -162,8 +328,8 @@ const AdminDashboard: React.FC = () => {
                 <span className="text-blue-600 text-2xl">📄</span>
               </div>
             </div>
-            <div className="ml-4 flex-1">
-              <dt className="text-sm font-medium text-gray-500 truncate">Total Documents</dt>
+            <div className="ml-4 flex-1 min-w-0">
+              <dt className="text-sm font-medium text-gray-500">Total Documents</dt>
               <dd className="text-2xl font-bold text-gray-900 mt-1">
                 {dashboardStats.stat_cards?.total_documents ?? 0}
               </dd>
@@ -179,8 +345,8 @@ const AdminDashboard: React.FC = () => {
                 <span className="text-orange-600 text-2xl">✅</span>
               </div>
             </div>
-            <div className="ml-4 flex-1">
-              <dt className="text-sm font-medium text-gray-500 truncate">Docs Needing Action</dt>
+            <div className="ml-4 flex-1 min-w-0">
+              <dt className="text-sm font-medium text-gray-500">Pending Actions</dt>
               <dd className="text-2xl font-bold text-gray-900 mt-1">
                 {dashboardStats.stat_cards?.documents_needing_action ?? 0}
               </dd>
@@ -196,8 +362,8 @@ const AdminDashboard: React.FC = () => {
                 <span className="text-green-600 text-2xl">👥</span>
               </div>
             </div>
-            <div className="ml-4 flex-1">
-              <dt className="text-sm font-medium text-gray-500 truncate">Active Users (24h)</dt>
+            <div className="ml-4 flex-1 min-w-0">
+              <dt className="text-sm font-medium text-gray-500">Active Users (24h)</dt>
               <dd className="text-2xl font-bold text-gray-900 mt-1">
                 {dashboardStats.stat_cards?.active_users_24h ?? 0}
               </dd>
@@ -228,8 +394,8 @@ const AdminDashboard: React.FC = () => {
                 </span>
               </div>
             </div>
-            <div className="ml-4 flex-1">
-              <dt className="text-sm font-medium text-gray-500 truncate">System Health</dt>
+            <div className="ml-4 flex-1 min-w-0">
+              <dt className="text-sm font-medium text-gray-500">System Health</dt>
               <dd className={`text-2xl font-bold mt-1 ${
                 dashboardStats.stat_cards?.system_health === 'healthy'
                   ? 'text-green-600'

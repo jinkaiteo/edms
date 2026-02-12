@@ -58,10 +58,12 @@ class SimpleWorkflowService:
     
     def approve_document(self, document: Document, user: User, 
                         effective_date: date, comment: str = '', 
-                        approved: bool = True, review_period_months: int = None) -> bool:
-        """Approve document with required effective date and optional periodic review."""
+                        approved: bool = True, review_period_months: int = None,
+                        sensitivity_label: str = None, sensitivity_change_reason: str = '') -> bool:
+        """Approve document with required effective date, sensitivity label, and optional periodic review."""
         return self.lifecycle_service.approve_document(
-            document, user, effective_date, comment, approved, review_period_months
+            document, user, effective_date, comment, approved, review_period_months,
+            sensitivity_label, sensitivity_change_reason
         )
     
     # make_effective method removed - documents become effective automatically

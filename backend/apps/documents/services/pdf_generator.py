@@ -477,12 +477,73 @@ class OfficialPDFGenerator:
         return pdf_content
     
     def _add_watermark(self, pdf_content, document):
-        """Add watermark to PDF."""
-        logger.info("Adding watermark to PDF")
+        """
+        Add dual-layer watermark to PDF:
+        1. Sensitivity header bar (top) - if CONFIDENTIAL+
+        2. Status diagonal watermark (center) - if not EFFECTIVE
+        """
+        logger.info(f"Adding watermarks to PDF for {document.document_number}")
         
-        # For Phase 2, just return original content
-        # Full implementation would overlay "OFFICIAL DOCUMENT" watermark
-        return pdf_content
+        try:
+            from apps.documents.watermark_processor import watermark_processor
+            import tempfile
+            
+            # Get sensitivity and status
+            sensitivity_label = getattr(document, 'sensitivity_label', 'INTERNAL')
+            document_status = document.status
+            
+            # Check if any watermark is needed
+            watermark_info = watermark_processor.get_watermark_status(sensitivity_label, document_status)
+            
+            if not watermark_info['requires_watermark']:
+                logger.info(f"No watermark needed for {sensitivity_label}/{document_status}")
+                return pdf_content
+            
+            # Create temporary files for processing
+            with tempfile.NamedTemporaryFile(suffix='.pdf', delete=False) as input_temp:
+                input_temp.write(pdf_content)
+                input_temp_path = input_temp.name
+            
+            output_temp_path = input_temp_path.replace('.pdf', '_watermarked.pdf')
+            
+            try:
+                # Add watermarks
+                success = watermark_processor.add_watermarks_to_pdf(
+                    input_temp_path,
+                    output_temp_path,
+                    sensitivity_label,
+                    document_status
+                )
+                
+                if success and os.path.exists(output_temp_path):
+                    # Read watermarked PDF
+                    with open(output_temp_path, 'rb') as f:
+                        watermarked_content = f.read()
+                    
+                    logger.info(f"✅ Watermarks added successfully: "
+                              f"Sensitivity={watermark_info['has_sensitivity_header']}, "
+                              f"Status={watermark_info['has_status_watermark']}")
+                    
+                    return watermarked_content
+                else:
+                    logger.warning("Watermark processing failed, returning original PDF")
+                    return pdf_content
+                    
+            finally:
+                # Clean up temporary files
+                try:
+                    if os.path.exists(input_temp_path):
+                        os.unlink(input_temp_path)
+                    if os.path.exists(output_temp_path):
+                        os.unlink(output_temp_path)
+                except Exception as cleanup_error:
+                    logger.warning(f"Failed to clean up temp files: {cleanup_error}")
+                    
+        except Exception as e:
+            logger.warning(f"Watermark addition failed: {e}, returning original PDF")
+            import traceback
+            traceback.print_exc()
+            return pdf_content
     
     def _add_verification_qr(self, pdf_content, document):
         """Add QR code for document verification."""

@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContext.tsx';
 import BaseWorkflowModal from './BaseWorkflowModal.tsx';
 import CommentHistory from './CommentHistory.tsx';
+import SensitivityLabelSelector from './SensitivityLabelSelector.tsx';
 import { CheckIcon, XMarkIcon } from '@heroicons/react/24/outline';
 import { triggerBadgeRefresh } from '../../utils/badgeRefresh.ts';
 
@@ -33,6 +34,10 @@ const UnifiedWorkflowInterface: React.FC<UnifiedWorkflowInterfaceProps> = ({
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
   const [commentHistory, setCommentHistory] = useState<any[]>([]);
   const [loadingHistory, setLoadingHistory] = useState(false);
+  
+  // Sensitivity label state (for approval mode only)
+  const [sensitivityLabel, setSensitivityLabel] = useState<string>(document?.sensitivity_label || 'INTERNAL');
+  const [sensitivityChangeReason, setSensitivityChangeReason] = useState<string>('');
 
   // Configuration based on mode
   const config = {
@@ -179,6 +184,27 @@ const UnifiedWorkflowInterface: React.FC<UnifiedWorkflowInterfaceProps> = ({
       return;
     }
     
+    // Validate sensitivity label for approval mode
+    if (mode === 'approval' && decision === 'approve') {
+      if (!sensitivityLabel) {
+        setError('Sensitivity label is required for approval');
+        return;
+      }
+      
+      // Check if sensitivity changed and validate reason
+      const originalSensitivity = document?.sensitivity_label || 'INTERNAL';
+      if (sensitivityLabel !== originalSensitivity) {
+        if (!sensitivityChangeReason?.trim()) {
+          setError('Please provide a reason for changing the sensitivity classification');
+          return;
+        }
+        if (sensitivityChangeReason.trim().length < 20) {
+          setError('Change reason must be at least 20 characters (currently: ' + sensitivityChangeReason.trim().length + ')');
+          return;
+        }
+      }
+    }
+    
     setShowConfirmDialog(true);
   };
 
@@ -202,7 +228,7 @@ const UnifiedWorkflowInterface: React.FC<UnifiedWorkflowInterfaceProps> = ({
       });
 
       // Handle workflow state logic for review mode
-      let action = mode === 'review' ? 'complete_review' : 'approve_document';
+      let action = mode === 'review' ? 'complete_review' : 'approve';
       
       // CRITICAL FIX: For review mode, check if we need to start review first
       if (mode === 'review' && document.status === 'PENDING_REVIEW') {
@@ -223,6 +249,12 @@ const UnifiedWorkflowInterface: React.FC<UnifiedWorkflowInterfaceProps> = ({
         // Add review period for approvals
         if (decision === 'approve') {
           requestBody.review_period_months = requiresReview ? reviewPeriodMonths : null;
+          
+          // Include sensitivity label when approving
+          requestBody.sensitivity_label = sensitivityLabel;
+          if (sensitivityChangeReason) {
+            requestBody.sensitivity_change_reason = sensitivityChangeReason;
+          }
         }
       }
       
@@ -374,6 +406,24 @@ const UnifiedWorkflowInterface: React.FC<UnifiedWorkflowInterfaceProps> = ({
           </div>
         </div>
 
+        {/* Sensitivity Label Selector - Only for Approval Mode and Approve Decision */}
+        {mode === 'approval' && decision === 'approve' && (
+          <div className="space-y-2">
+            <SensitivityLabelSelector
+              value={sensitivityLabel}
+              onChange={(label: string, reason: string) => {
+                setSensitivityLabel(label);
+                setSensitivityChangeReason(reason);
+              }}
+              inheritedFrom={document?.sensitivity_inherited_from_number}
+              originalValue={document?.sensitivity_label}
+              required={true}
+              disabled={loading}
+              showGuide={true}
+            />
+          </div>
+        )}
+
         {/* Comment Section */}
         <div className="space-y-2">
           <label className="block text-sm font-semibold text-gray-900">
@@ -495,7 +545,7 @@ const UnifiedWorkflowInterface: React.FC<UnifiedWorkflowInterfaceProps> = ({
 
         {/* Confirmation Dialog */}
         {showConfirmDialog && (
-          <div className="fixed inset-0 z-50 bg-black bg-opacity-50 flex items-center justify-center">
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center" style={{ zIndex: 9999 }}>
             <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
               <h3 className="text-lg font-semibold text-gray-900 mb-4">
                 Confirm {mode === 'review' ? 'Review' : 'Approval'} Submission

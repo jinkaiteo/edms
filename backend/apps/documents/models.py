@@ -14,6 +14,7 @@ from django.core.validators import RegexValidator, MinValueValidator, MaxValueVa
 from django.utils.translation import gettext_lazy as _
 from django.conf import settings
 from django.core.exceptions import ValidationError
+from .sensitivity_labels import SENSITIVITY_CHOICES
 
 
 User = get_user_model()
@@ -234,6 +235,44 @@ class Document(models.Model):
         DocumentSource, 
         on_delete=models.PROTECT,
         related_name='documents'
+    )
+    
+    # Sensitivity Label System (5-tier classification)
+    sensitivity_label = models.CharField(
+        max_length=20,
+        choices=SENSITIVITY_CHOICES,
+        default='INTERNAL',
+        db_index=True,
+        help_text='Sensitivity classification (set by approver)'
+    )
+    
+    sensitivity_set_by = models.ForeignKey(
+        User,
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name='sensitivity_labeled_documents',
+        help_text='User who set the sensitivity label (typically approver)'
+    )
+    
+    sensitivity_set_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text='When sensitivity label was set'
+    )
+    
+    sensitivity_inherited_from = models.ForeignKey(
+        'self',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='sensitivity_inherited_by',
+        help_text='Parent document this sensitivity was inherited from'
+    )
+    
+    sensitivity_change_reason = models.TextField(
+        blank=True,
+        help_text='Reason for sensitivity label change (required if changed from parent)'
     )
     
     # Document lifecycle
