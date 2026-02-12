@@ -328,8 +328,8 @@ const AdminDashboard: React.FC = () => {
                 <span className="text-blue-600 text-2xl">📄</span>
               </div>
             </div>
-            <div className="ml-4 flex-1">
-              <dt className="text-sm font-medium text-gray-500 truncate">Total Documents</dt>
+            <div className="ml-4 flex-1 min-w-0">
+              <dt className="text-sm font-medium text-gray-500">Total Documents</dt>
               <dd className="text-2xl font-bold text-gray-900 mt-1">
                 {dashboardStats.stat_cards?.total_documents ?? 0}
               </dd>
@@ -345,8 +345,8 @@ const AdminDashboard: React.FC = () => {
                 <span className="text-orange-600 text-2xl">✅</span>
               </div>
             </div>
-            <div className="ml-4 flex-1">
-              <dt className="text-sm font-medium text-gray-500 truncate">Docs Needing Action</dt>
+            <div className="ml-4 flex-1 min-w-0">
+              <dt className="text-sm font-medium text-gray-500">Pending Actions</dt>
               <dd className="text-2xl font-bold text-gray-900 mt-1">
                 {dashboardStats.stat_cards?.documents_needing_action ?? 0}
               </dd>
@@ -362,8 +362,8 @@ const AdminDashboard: React.FC = () => {
                 <span className="text-green-600 text-2xl">👥</span>
               </div>
             </div>
-            <div className="ml-4 flex-1">
-              <dt className="text-sm font-medium text-gray-500 truncate">Active Users (24h)</dt>
+            <div className="ml-4 flex-1 min-w-0">
+              <dt className="text-sm font-medium text-gray-500">Active Users (24h)</dt>
               <dd className="text-2xl font-bold text-gray-900 mt-1">
                 {dashboardStats.stat_cards?.active_users_24h ?? 0}
               </dd>
@@ -394,8 +394,8 @@ const AdminDashboard: React.FC = () => {
                 </span>
               </div>
             </div>
-            <div className="ml-4 flex-1">
-              <dt className="text-sm font-medium text-gray-500 truncate">System Health</dt>
+            <div className="ml-4 flex-1 min-w-0">
+              <dt className="text-sm font-medium text-gray-500">System Health</dt>
               <dd className={`text-2xl font-bold mt-1 ${
                 dashboardStats.stat_cards?.system_health === 'healthy'
                   ? 'text-green-600'
