@@ -31,6 +31,10 @@ if [ -z "$SCRIPT_VERSION" ]; then
     echo "⚠️  Warning: Could not detect version from package.json, using fallback: $SCRIPT_VERSION"
 fi
 
+# Export for docker-compose environment variable substitution
+export APP_VERSION="$SCRIPT_VERSION"
+export BUILD_DATE
+
 # Colors for output
 RED='\033[0;31m'
 GREEN='\033[0;32m'
