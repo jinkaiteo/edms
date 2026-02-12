@@ -12,6 +12,7 @@ import TaskListWidget from '../components/scheduler/TaskListWidget.tsx';
 import { useDashboardUpdates } from '../hooks/useDashboardUpdates.ts';
 import { useSystemInfo } from '../hooks/useSystemInfo.ts';
 import { DashboardStats } from '../types/api.ts';
+import { systemConfigService, SystemConfig } from '../services/systemConfig.ts';
 
 const AdminDashboard: React.FC = () => {
   const location = useLocation();
@@ -36,6 +37,67 @@ const AdminDashboard: React.FC = () => {
     // No additional action needed here
   }, []);
   
+  // Logo upload handlers
+  const handleLogoSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    
+    // Validate file type
+    if (!['image/png', 'image/jpeg', 'image/jpg'].includes(file.type)) {
+      setLogoError('Please upload a PNG or JPG file');
+      return;
+    }
+    
+    // Validate file size (2MB)
+    if (file.size > 2 * 1024 * 1024) {
+      setLogoError(`File too large (${(file.size / 1024 / 1024).toFixed(2)}MB). Maximum size is 2MB.`);
+      return;
+    }
+    
+    setLogoFile(file);
+    setLogoError(null);
+    
+    // Create preview
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      setLogoPreview(reader.result as string);
+    };
+    reader.readAsDataURL(file);
+  };
+  
+  const handleLogoUpload = async () => {
+    if (!logoFile) return;
+    
+    setUploadingLogo(true);
+    setLogoError(null);
+    
+    try {
+      const response = await systemConfigService.uploadLogo(logoFile);
+      setSystemConfig(prev => prev ? { ...prev, logo_url: response.logo_url, has_logo: true } : null);
+      setLogoPreview(response.logo_url);
+      setLogoFile(null);
+      alert('Logo uploaded successfully!');
+    } catch (error: any) {
+      setLogoError(error.response?.data?.error || 'Failed to upload logo');
+    } finally {
+      setUploadingLogo(false);
+    }
+  };
+  
+  const handleLogoDelete = async () => {
+    if (!window.confirm('Are you sure you want to delete the company logo?')) return;
+    
+    try {
+      await systemConfigService.deleteLogo();
+      setSystemConfig(prev => prev ? { ...prev, logo_url: null, has_logo: false } : null);
+      setLogoPreview(null);
+      setLogoFile(null);
+      alert('Logo deleted successfully!');
+    } catch (error: any) {
+      setLogoError(error.response?.data?.error || 'Failed to delete logo');
+    }
+  };
+  
   // Use dashboard updates hook for real-time data
   const {
     dashboardStats,
@@ -53,6 +115,29 @@ const AdminDashboard: React.FC = () => {
   
   // Use system info hook for version information
   const { systemInfo } = useSystemInfo();
+  
+  // Load system configuration on mount
+  useEffect(() => {
+    const loadConfig = async () => {
+      try {
+        const config = await systemConfigService.getConfig();
+        setSystemConfig(config);
+        if (config.logo_url) {
+          setLogoPreview(config.logo_url);
+        }
+      } catch (error) {
+        console.error('Failed to load system config:', error);
+      }
+    };
+    loadConfig();
+  }, []);
+  
+  // System configuration (logo, branding)
+  const [systemConfig, setSystemConfig] = useState<SystemConfig | null>(null);
+  const [logoFile, setLogoFile] = useState<File | null>(null);
+  const [logoPreview, setLogoPreview] = useState<string | null>(null);
+  const [uploadingLogo, setUploadingLogo] = useState(false);
+  const [logoError, setLogoError] = useState<string | null>(null);
 
   // Quick links to admin sections
   const adminQuickLinks = [
@@ -268,6 +353,93 @@ const AdminDashboard: React.FC = () => {
               <div className="text-gray-500">
                 © 2024-2026 EDMS. All rights reserved.
               </div>
+            </div>
+          </div>
+        </div>
+        
+        {/* System Branding Section */}
+        <div className="bg-white rounded-lg shadow-sm p-6 mb-6">
+          <h2 className="text-xl font-semibold text-gray-900 mb-4 flex items-center">
+            <svg className="h-6 w-6 mr-2 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+            </svg>
+            System Branding
+          </h2>
+          
+          <div className="space-y-6">
+            {/* Company Logo Section */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Company Logo
+              </label>
+              <p className="text-sm text-gray-500 mb-4">
+                Upload your company logo for PDF cover pages. Recommended size: 300x100px, PNG or JPG format, max 2MB.
+              </p>
+              
+              {/* Logo Preview */}
+              {logoPreview && (
+                <div className="mb-4 p-4 bg-gray-50 rounded-lg border border-gray-200">
+                  <p className="text-sm font-medium text-gray-700 mb-2">Current Logo:</p>
+                  <img 
+                    src={logoPreview} 
+                    alt="Company Logo" 
+                    className="max-h-24 object-contain bg-white p-2 border border-gray-300 rounded"
+                  />
+                </div>
+              )}
+              
+              {/* Error Message */}
+              {logoError && (
+                <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg">
+                  <p className="text-sm text-red-600">{logoError}</p>
+                </div>
+              )}
+              
+              {/* Upload Controls */}
+              <div className="flex items-center gap-3">
+                <input
+                  type="file"
+                  id="logo-upload"
+                  accept="image/png,image/jpeg,image/jpg"
+                  onChange={handleLogoSelect}
+                  className="hidden"
+                />
+                <label
+                  htmlFor="logo-upload"
+                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 cursor-pointer transition-colors"
+                >
+                  Choose Logo
+                </label>
+                
+                {logoFile && (
+                  <button
+                    onClick={handleLogoUpload}
+                    disabled={uploadingLogo}
+                    className={`px-4 py-2 rounded-lg transition-colors ${
+                      uploadingLogo
+                        ? 'bg-gray-400 cursor-not-allowed'
+                        : 'bg-green-600 hover:bg-green-700 text-white'
+                    }`}
+                  >
+                    {uploadingLogo ? 'Uploading...' : 'Upload Logo'}
+                  </button>
+                )}
+                
+                {systemConfig?.has_logo && (
+                  <button
+                    onClick={handleLogoDelete}
+                    className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+                  >
+                    Delete Logo
+                  </button>
+                )}
+              </div>
+              
+              {logoFile && (
+                <p className="mt-2 text-sm text-gray-600">
+                  Selected: {logoFile.name} ({(logoFile.size / 1024).toFixed(0)} KB)
+                </p>
+              )}
             </div>
           </div>
         </div>
@@ -573,8 +745,6 @@ const AdminDashboard: React.FC = () => {
         );
       case 'reports':
         return <Reports />;
-      case 'scheduler':
-        return <TaskListWidget />;
       // Emails tab content merged into Settings > Notifications
       case 'emails':
         return (
