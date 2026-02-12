@@ -17,6 +17,12 @@ from drf_spectacular.views import (
 )
 from apps.api.dashboard_stats import DashboardStatsView
 from apps.api.system_info_views import system_info_view
+from apps.api.system_config_views import (
+    get_system_config,
+    upload_logo,
+    delete_logo,
+    update_company_name
+)
 
 # API URL patterns
 api_urlpatterns = [
@@ -38,6 +44,12 @@ api_urlpatterns = [
     
     # System information
     path('system/info/', system_info_view, name='system-info'),
+    
+    # System configuration (branding, logo)
+    path('system/config/', get_system_config, name='system-config'),
+    path('system/config/logo/', upload_logo, name='upload-logo'),
+    path('system/config/logo/delete/', delete_logo, name='delete-logo'),
+    path('system/config/company-name/', update_company_name, name='update-company-name'),
     
     # Core modules
     path('documents/', include('apps.documents.urls')),

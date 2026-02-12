@@ -1668,3 +1668,60 @@ class DocumentAttachment(models.Model):
                 sha256_hash.update(chunk)
         
         return sha256_hash.hexdigest() == self.file_checksum
+
+
+# ============================================================================
+# SYSTEM CONFIGURATION
+# ============================================================================
+
+class SystemConfiguration(models.Model):
+    """
+    Singleton model for system-wide configuration
+    Stores company branding, logo, etc. for PDF generation
+    """
+    
+    # Company branding
+    logo = models.ImageField(
+        upload_to='system/logos/',
+        null=True,
+        blank=True,
+        help_text='Company logo for PDF cover pages (PNG/JPG, recommended: 300x100px, max 2MB)'
+    )
+    company_name = models.CharField(
+        max_length=200,
+        default='Company Name',
+        help_text='Company name displayed on PDF cover pages'
+    )
+    
+    # Audit fields
+    updated_at = models.DateTimeField(auto_now=True)
+    updated_by = models.ForeignKey(
+        'users.User',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='system_config_updates'
+    )
+    
+    class Meta:
+        verbose_name = 'System Configuration'
+        verbose_name_plural = 'System Configuration'
+        db_table = 'system_configuration'
+    
+    def __str__(self):
+        return f"System Configuration (Updated: {self.updated_at})"
+    
+    @classmethod
+    def get_instance(cls):
+        """Get or create singleton instance"""
+        instance, created = cls.objects.get_or_create(pk=1)
+        return instance
+    
+    def save(self, *args, **kwargs):
+        """Ensure only one instance exists (singleton pattern)"""
+        self.pk = 1
+        super().save(*args, **kwargs)
+    
+    def delete(self, *args, **kwargs):
+        """Prevent deletion of singleton instance"""
+        pass
