@@ -20,10 +20,16 @@
 
 set -e  # Exit on error
 
-# Version and build information
-SCRIPT_VERSION="1.3.3"
-BUILD_DATE="2026-02-08"
+# Version and build information (auto-detected from package.json)
+SCRIPT_VERSION=$(grep '"version"' frontend/package.json | head -1 | awk -F'"' '{print $4}')
+BUILD_DATE=$(date +%Y-%m-%d)
 DEPLOYMENT_NAME="Real-time System Health Monitoring in About Tab"
+
+# Fallback if version detection fails
+if [ -z "$SCRIPT_VERSION" ]; then
+    SCRIPT_VERSION="1.3.3"
+    echo "⚠️  Warning: Could not detect version from package.json, using fallback: $SCRIPT_VERSION"
+fi
 
 # Colors for output
 RED='\033[0;31m'

@@ -45,11 +45,13 @@ def system_info_view(request):
     except Exception:
         db_version = "Unknown"
     
-    # Application version (should match frontend package.json)
-    app_version = getattr(settings, 'APP_VERSION', '1.3.3')
+    # Application version (read from environment or use default)
+    # This will be set by deployment script from package.json
+    import os
+    app_version = os.getenv('APP_VERSION', getattr(settings, 'APP_VERSION', '1.3.3'))
     
-    # Build date
-    build_date = getattr(settings, 'BUILD_DATE', '2026-02-08')
+    # Build date (auto-generated during deployment)
+    build_date = os.getenv('BUILD_DATE', getattr(settings, 'BUILD_DATE', datetime.now().strftime('%Y-%m-%d')))
     
     # Environment
     environment = 'production' if not settings.DEBUG else 'development'
