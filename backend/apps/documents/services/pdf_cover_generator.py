@@ -171,11 +171,25 @@ class PDFCoverPageGenerator:
         canvas.setFillColor(self.SECONDARY_COLOR)
         canvas.setFont('Helvetica', 11)
         
-        # Metadata items
+        # Metadata items - Complete document control chain
         metadata = [
-            ('Effective Date:', self.document.effective_date.strftime('%Y-%m-%d') if self.document.effective_date else 'Not set'),
+            # Author information
+            ('Author:', self._get_author_name()),
+            ('Authored Date:', self.document.created_at.strftime('%Y-%m-%d') if self.document.created_at else 'N/A'),
+            
+            # Reviewer information
+            ('Reviewed By:', self._get_reviewer_name()),
+            ('Review Date:', self.document.review_date.strftime('%Y-%m-%d') if self.document.review_date else 'Not reviewed'),
+            
+            # Approver information
             ('Approved By:', self._get_approver_name()),
-            ('Department:', self.document.author.department if hasattr(self.document.author, 'department') else 'N/A'),
+            ('Approval Date:', self.document.approval_date.strftime('%Y-%m-%d') if self.document.approval_date else 'Not approved'),
+            
+            # Effective date
+            ('Effective Date:', self.document.effective_date.strftime('%Y-%m-%d') if self.document.effective_date else 'Not set'),
+            
+            # Department
+            ('Department:', self.document.author.department if hasattr(self.document.author, 'department') and self.document.author.department else 'N/A'),
         ]
         
         # Add next review date if exists
@@ -263,4 +277,54 @@ class PDFCoverPageGenerator:
             
         except Exception as e:
             print(f"Warning: Could not get approver: {e}")
+            return "N/A"
+    
+    def _get_author_name(self) -> str:
+        """
+        Get author name with role
+        
+        Returns:
+            str: Author name with role
+        """
+        try:
+            author = self.document.author
+            role = 'Author'
+            
+            # Try to get user's role
+            if hasattr(author, 'userrole_set'):
+                user_roles = author.userrole_set.filter(is_active=True)
+                if user_roles.exists():
+                    role = user_roles.first().role.role_name
+            
+            return f"{author.get_full_name() or author.username} ({role})"
+            
+        except Exception as e:
+            print(f"Warning: Could not get author: {e}")
+            return "N/A"
+    
+    def _get_reviewer_name(self) -> str:
+        """
+        Get reviewer name with role
+        
+        Returns:
+            str: Reviewer name with role
+        """
+        try:
+            # Check if document has reviewer field
+            if hasattr(self.document, 'reviewer') and self.document.reviewer:
+                reviewer = self.document.reviewer
+                role = 'Reviewer'
+                
+                # Try to get user's role
+                if hasattr(reviewer, 'userrole_set'):
+                    user_roles = reviewer.userrole_set.filter(is_active=True)
+                    if user_roles.exists():
+                        role = user_roles.first().role.role_name
+                
+                return f"{reviewer.get_full_name() or reviewer.username} ({role})"
+            
+            return "Not assigned"
+            
+        except Exception as e:
+            print(f"Warning: Could not get reviewer: {e}")
             return "N/A"
