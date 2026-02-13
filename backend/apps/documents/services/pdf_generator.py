@@ -326,22 +326,81 @@ class OfficialPDFGenerator:
             raise PDFGenerationError(f"Preserved format conversion failed: {e}")
     
     def _process_existing_pdf(self, document, user):
-        """Process existing PDF document with metadata overlay."""
+        """Process existing PDF document with cover page and appendix for official download."""
         logger.info(f"Processing existing PDF: {document.file_name}")
         
         try:
-            # Read existing PDF
-            with open(document.full_file_path, 'rb') as f:
-                original_pdf_content = f.read()
-            
-            # For now, just return the original PDF
-            # In full implementation, would overlay metadata using PyPDF2
-            logger.info("Existing PDF processed (metadata overlay would be applied)")
-            return original_pdf_content
+            # Check if this is for official PDF with cover page
+            # Only apply for EFFECTIVE, OBSOLETE, SUPERSEDED status
+            if document.status in ['EFFECTIVE', 'OBSOLETE', 'SUPERSEDED']:
+                logger.info(f"Generating official PDF with cover page for {document.status} document")
+                return self._generate_pdf_with_cover_and_appendix(document)
+            else:
+                # For other statuses (DRAFT, etc.), return original PDF
+                logger.info(f"Returning original PDF for {document.status} document (no cover page)")
+                with open(document.full_file_path, 'rb') as f:
+                    original_pdf_content = f.read()
+                return original_pdf_content
             
         except Exception as e:
             logger.error(f"PDF processing failed: {e}")
             raise PDFGenerationError(f"PDF processing failed: {e}")
+    
+    def _generate_pdf_with_cover_and_appendix(self, document):
+        """
+        Generate complete PDF with:
+        - Cover page (Page i)
+        - Original content (Page 1 of N)
+        - Version history appendix (Page A-1, A-2, ...)
+        """
+        logger.info(f"Generating PDF with cover page and appendix for {document.document_number}")
+        
+        try:
+            # Import our new generators
+            from apps.documents.services.pdf_cover_generator import PDFCoverPageGenerator
+            from apps.documents.services.pdf_appendix_generator import PDFAppendixGenerator
+            from apps.documents.services.pdf_merger import EnhancedPDFMerger
+            
+            # Step 1: Generate cover page
+            logger.info("Step 1: Generating cover page...")
+            cover_generator = PDFCoverPageGenerator(document)
+            cover_pdf_bytes = cover_generator.generate()
+            logger.info(f"✅ Cover page generated: {len(cover_pdf_bytes)} bytes")
+            
+            # Step 2: Read original PDF content
+            logger.info("Step 2: Reading original PDF content...")
+            with open(document.full_file_path, 'rb') as f:
+                original_pdf_bytes = f.read()
+            logger.info(f"✅ Original PDF read: {len(original_pdf_bytes)} bytes")
+            
+            # Step 3: Generate version history appendix
+            logger.info("Step 3: Generating version history appendix...")
+            appendix_generator = PDFAppendixGenerator(document)
+            appendix_pdf_bytes = appendix_generator.generate_version_history()
+            logger.info(f"✅ Appendix generated: {len(appendix_pdf_bytes)} bytes")
+            
+            # Step 4: Merge all PDFs with page numbering
+            logger.info("Step 4: Merging PDFs with page numbering...")
+            merger = EnhancedPDFMerger()
+            merged_pdf_bytes = merger.merge_with_cover_and_appendix(
+                cover_pdf_bytes,
+                original_pdf_bytes,
+                appendix_pdf_bytes
+            )
+            logger.info(f"✅ PDFs merged successfully: {len(merged_pdf_bytes)} bytes")
+            
+            logger.info(f"🎉 Complete PDF generated with cover page and appendix!")
+            return merged_pdf_bytes
+            
+        except Exception as e:
+            logger.error(f"Failed to generate PDF with cover/appendix: {e}")
+            import traceback
+            traceback.print_exc()
+            
+            # Fallback: return original PDF if cover page generation fails
+            logger.warning("Falling back to original PDF without cover page")
+            with open(document.full_file_path, 'rb') as f:
+                return f.read()
     
     def _convert_file_to_pdf(self, document, user):
         """Convert other file types to PDF format."""
