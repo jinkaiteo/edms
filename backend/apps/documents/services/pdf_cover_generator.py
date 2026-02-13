@@ -236,13 +236,20 @@ class PDFCoverPageGenerator:
             str: Approver name with role
         """
         try:
-            # Get latest approval from workflow
-            if hasattr(self.document, 'workflow') and self.document.workflow:
-                # This will be implemented when integrating with workflow
-                # For now, return author
-                pass
+            # Check if document has approver field
+            if hasattr(self.document, 'approver') and self.document.approver:
+                approver = self.document.approver
+                role = 'Approver'
+                
+                # Try to get user's role
+                if hasattr(approver, 'userrole_set'):
+                    user_roles = approver.userrole_set.filter(is_active=True)
+                    if user_roles.exists():
+                        role = user_roles.first().role.role_name
+                
+                return f"{approver.get_full_name() or approver.username} ({role})"
             
-            # Fallback to author
+            # Fallback to author if no approver set
             author = self.document.author
             role = 'Author'
             
