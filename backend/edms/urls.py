@@ -23,10 +23,6 @@ from apps.api.system_config_views import (
     delete_logo,
     update_company_name
 )
-from apps.api.user_profile_views import (
-    get_user_profile,
-    update_user_profile
-)
 
 # API URL patterns
 api_urlpatterns = [
@@ -54,10 +50,6 @@ api_urlpatterns = [
     path('system/config/logo/', upload_logo, name='upload-logo'),
     path('system/config/logo/delete/', delete_logo, name='delete-logo'),
     path('system/config/company-name/', update_company_name, name='update-company-name'),
-    
-    # User profile
-    path('auth/profile/', get_user_profile, name='user-profile'),
-    path('auth/profile/update/', update_user_profile, name='update-user-profile'),
     
     # Core modules
     path('documents/', include('apps.documents.urls')),

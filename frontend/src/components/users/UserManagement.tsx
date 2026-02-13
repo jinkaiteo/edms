@@ -591,6 +591,30 @@ const UserManagement: React.FC<UserManagementProps> = ({ className = '' }) => {
                 )}
               </div>
               
+              {/* Department and Position */}
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">Department</label>
+                  <input
+                    type="text"
+                    className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
+                    value={createUserForm.department}
+                    onChange={(e) => setCreateUserForm({...createUserForm, department: e.target.value})}
+                    placeholder="e.g., Quality Assurance"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">Position</label>
+                  <input
+                    type="text"
+                    className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
+                    value={createUserForm.position}
+                    onChange={(e) => setCreateUserForm({...createUserForm, position: e.target.value})}
+                    placeholder="e.g., QA Manager"
+                  />
+                </div>
+              </div>
+              
               {/* Role Selection */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">Assign Roles</label>
@@ -685,6 +709,30 @@ const UserManagement: React.FC<UserManagementProps> = ({ className = '' }) => {
                     className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
                     value={editUserForm.last_name}
                     onChange={(e) => setEditUserForm({...editUserForm, last_name: e.target.value})}
+                  />
+                </div>
+              </div>
+              
+              {/* Department and Position */}
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">Department</label>
+                  <input
+                    type="text"
+                    className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
+                    value={editUserForm.department}
+                    onChange={(e) => setEditUserForm({...editUserForm, department: e.target.value})}
+                    placeholder="e.g., Quality Assurance"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">Position</label>
+                  <input
+                    type="text"
+                    className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
+                    value={editUserForm.position}
+                    onChange={(e) => setEditUserForm({...editUserForm, position: e.target.value})}
+                    placeholder="e.g., QA Manager"
                   />
                 </div>
               </div>
