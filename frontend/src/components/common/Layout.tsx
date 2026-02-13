@@ -627,6 +627,22 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                 {showProfileDropdown && (
                   <div className="absolute right-0 mt-2 w-80 bg-white rounded-md shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none z-50">
                     <div className="py-1">
+                      {/* My Profile Link */}
+                      <div className="px-4 py-3 border-b border-gray-200">
+                        <button
+                          onClick={() => {
+                            navigate('/profile');
+                            setShowProfileDropdown(false);
+                          }}
+                          className="w-full flex items-center px-3 py-2 text-sm text-gray-700 hover:bg-blue-50 rounded-lg transition-colors"
+                        >
+                          <svg className="h-5 w-5 mr-2 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                          </svg>
+                          <span className="font-medium">My Profile</span>
+                        </button>
+                      </div>
+                      
                       {/* About Section */}
                       <div className="px-4 py-3 border-b border-gray-200">
                         <div className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">

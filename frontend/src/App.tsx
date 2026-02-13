@@ -5,6 +5,7 @@ import './App.css';
 import Login from './pages/Login.tsx';
 import DocumentManagement from './pages/DocumentManagement.tsx';
 import AdminDashboard from './pages/AdminDashboard.tsx';
+import UserProfile from './pages/UserProfile.tsx';
 // MyTasksStandalone removed - using document filters instead
 import AuditTrail from './pages/AuditTrail.tsx';
 import Notifications from './pages/Notifications.tsx';
@@ -56,6 +57,7 @@ function AppContent() {
         <Route path="/users" element={<Navigate to="/administration" replace />} />
         <Route path="/reports" element={<Navigate to="/administration" replace />} />
         <Route path="/administration" element={<AdminDashboard />} />
+        <Route path="/profile" element={<UserProfile />} />
         {/* Redirect old /admin route to avoid conflict with backend Django admin */}
         <Route path="/admin" element={<Navigate to="/administration" replace />} />
       </Routes>
