@@ -412,11 +412,6 @@ const UnifiedWorkflowModal: React.FC<UnifiedWorkflowModalProps> = ({
 
   if (!isOpen) return null;
 
-  // Safety check: ensure document.body exists before creating portal
-  if (typeof document === 'undefined' || !document.body) {
-    return null;
-  }
-
   return ReactDOM.createPortal(
     <>
       <div className="fixed inset-0 z-50 overflow-y-auto bg-gray-500 bg-opacity-75">

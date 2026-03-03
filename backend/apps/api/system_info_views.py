@@ -32,7 +32,7 @@ def system_info_view(request):
     django_version = django.get_version()
     
     # Get Python version
-    python_version = f"{sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.release}"
+    python_version = f"{sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro}"
     
     # Get database info
     try:
