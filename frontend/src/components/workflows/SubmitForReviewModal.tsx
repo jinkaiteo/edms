@@ -6,6 +6,7 @@
  */
 
 import React, { useState, useEffect } from 'react';
+import ReactDOM from 'react-dom';
 import { useAuth } from '../../contexts/AuthContext.tsx';
 import apiService from '../../services/api.ts';
 import { triggerBadgeRefresh } from '../../utils/badgeRefresh';
@@ -189,8 +190,8 @@ const SubmitForReviewModal: React.FC<SubmitForReviewModalProps> = ({
 
   if (!isOpen) return null;
 
-  return (
-    <div className="fixed inset-0 overflow-y-auto" style={{ zIndex: 9999 }} bg-gray-500 bg-opacity-75">
+  return ReactDOM.createPortal(
+    <div className="fixed inset-0 z-50 overflow-y-auto bg-gray-500 bg-opacity-75">
       <div className="flex items-center justify-center min-h-screen p-4">
         <div className="bg-white rounded-lg shadow-xl max-w-md w-full my-8 max-h-[90vh] overflow-y-auto">
           
@@ -313,7 +314,8 @@ const SubmitForReviewModal: React.FC<SubmitForReviewModalProps> = ({
           </div>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 };
 

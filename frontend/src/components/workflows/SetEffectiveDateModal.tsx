@@ -6,6 +6,7 @@
  */
 
 import React, { useState, useEffect } from 'react';
+import ReactDOM from 'react-dom';
 import { apiService } from '../../services/api.ts';
 import { 
   XMarkIcon,
@@ -155,7 +156,7 @@ const SetEffectiveDateModal: React.FC<SetEffectiveDateModalProps> = ({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 overflow-y-auto" style={{ zIndex: 9999 }} bg-gray-500 bg-opacity-75 flex items-center justify-center">
+    <div className="fixed inset-0 overflow-y-auto" className="z-50" bg-gray-500 bg-opacity-75 flex items-center justify-center">
       <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full my-8 max-h-[90vh] overflow-y-auto">
         <div className="px-6 py-4 border-b border-gray-200">
           <div className="flex items-center justify-between">

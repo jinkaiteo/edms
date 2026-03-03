@@ -6,6 +6,7 @@
  */
 
 import React, { useState, useEffect } from 'react';
+import ReactDOM from 'react-dom';
 import { Document, WorkflowInstance } from '../../types/api';
 import { useAuth } from '../../contexts/AuthContext.tsx';
 
@@ -601,7 +602,7 @@ const ViewReviewStatus: React.FC<ViewReviewStatusProps> = ({
 
   if (loading) {
     return (
-      <div className="fixed inset-0 overflow-y-auto bg-gray-500 bg-opacity-75 flex items-center justify-center" style={{ zIndex: 9999 }}>
+      <div className="fixed inset-0 overflow-y-auto bg-gray-500 bg-opacity-75 flex items-center justify-center" className="z-50">
         <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
           <div className="flex items-center justify-center">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
@@ -614,7 +615,7 @@ const ViewReviewStatus: React.FC<ViewReviewStatusProps> = ({
 
   if (error) {
     return (
-      <div className="fixed inset-0 overflow-y-auto bg-gray-500 bg-opacity-75 flex items-center justify-center" style={{ zIndex: 9999 }}>
+      <div className="fixed inset-0 overflow-y-auto bg-gray-500 bg-opacity-75 flex items-center justify-center" className="z-50">
         <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
           <div className="text-center">
             <div className="text-red-600 mb-4">
@@ -651,7 +652,7 @@ const ViewReviewStatus: React.FC<ViewReviewStatusProps> = ({
   }
 
   return (
-    <div className="fixed inset-0 overflow-y-auto bg-gray-500 bg-opacity-75" style={{ zIndex: 9999 }}>
+    <div className="fixed inset-0 overflow-y-auto bg-gray-500 bg-opacity-75" className="z-50">
       <div className="flex min-h-full items-center justify-center p-4">
         <div className="bg-white rounded-lg max-w-4xl w-full max-h-[90vh] overflow-hidden">
           {/* Header */}

@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import ReactDOM from 'react-dom';
 import { useAuth } from '../../contexts/AuthContext.tsx';
 import BaseWorkflowModal from './BaseWorkflowModal.tsx';
 import CommentHistory from './CommentHistory.tsx';
@@ -545,7 +546,7 @@ const UnifiedWorkflowInterface: React.FC<UnifiedWorkflowInterfaceProps> = ({
 
         {/* Confirmation Dialog */}
         {showConfirmDialog && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center" style={{ zIndex: 9999 }}>
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center" className="z-50">
             <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
               <h3 className="text-lg font-semibold text-gray-900 mb-4">
                 Confirm {mode === 'review' ? 'Review' : 'Approval'} Submission
