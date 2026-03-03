@@ -7,6 +7,7 @@
  */
 
 import React, { useState, useEffect } from 'react';
+import ReactDOM from 'react-dom';
 import { useAuth } from '../../contexts/AuthContext.tsx';
 import apiService from '../../services/api.ts';
 import { triggerBadgeRefresh } from '../../utils/badgeRefresh';
@@ -201,21 +202,22 @@ const ReviewerInterface: React.FC<ReviewerInterfaceProps> = ({
   };
 
   if (loading) {
-    return (
-      <div className="fixed inset-0 overflow-y-auto" style={{ zIndex: 9999 }} bg-gray-500 bg-opacity-75 flex items-center justify-center">
+    return ReactDOM.createPortal(
+      <div className="fixed inset-0 z-50 overflow-y-auto bg-gray-500 bg-opacity-75 flex items-center justify-center">
         <div className="bg-white rounded-lg p-6">
           <div className="flex items-center space-x-3">
             <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div>
             <span>Loading document for review...</span>
           </div>
         </div>
-      </div>
+      </div>,
+      document.body
     );
   }
 
   if (!document) {
-    return (
-      <div className="fixed inset-0 overflow-y-auto" style={{ zIndex: 9999 }} bg-gray-500 bg-opacity-75 flex items-center justify-center">
+    return ReactDOM.createPortal(
+      <div className="fixed inset-0 z-50 overflow-y-auto bg-gray-500 bg-opacity-75 flex items-center justify-center">
         <div className="bg-white rounded-lg p-6">
           <h3 className="text-lg font-semibold text-red-600 mb-2">Document Not Found</h3>
           <p className="text-gray-600 mb-4">Unable to load document for review.</p>
@@ -226,12 +228,13 @@ const ReviewerInterface: React.FC<ReviewerInterfaceProps> = ({
             Close
           </button>
         </div>
-      </div>
+      </div>,
+      document.body
     );
   }
 
-  return (
-    <div className="fixed inset-0 overflow-y-auto" style={{ zIndex: 9999 }} bg-gray-500 bg-opacity-75">
+  return ReactDOM.createPortal(
+    <div className="fixed inset-0 z-50 overflow-y-auto bg-gray-500 bg-opacity-75">
       <div className="flex items-center justify-center min-h-screen p-4">
         <div className="bg-white rounded-lg shadow-xl max-w-4xl w-full max-h-screen overflow-y-auto">
           
@@ -418,7 +421,7 @@ const ReviewerInterface: React.FC<ReviewerInterfaceProps> = ({
 
           {/* Confirmation Dialog */}
           {showConfirmDialog && (
-            <div className="fixed inset-0 z-60 overflow-y-auto bg-gray-500 bg-opacity-75 flex items-center justify-center">
+            <div className="fixed inset-0 z-50 overflow-y-auto bg-gray-500 bg-opacity-75 flex items-center justify-center">
               <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
                 <h3 className="text-lg font-semibold text-gray-900 mb-4">
                   Confirm Review Submission
@@ -454,7 +457,8 @@ const ReviewerInterface: React.FC<ReviewerInterfaceProps> = ({
           )}
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 };
 
