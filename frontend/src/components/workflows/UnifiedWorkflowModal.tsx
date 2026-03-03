@@ -412,9 +412,9 @@ const UnifiedWorkflowModal: React.FC<UnifiedWorkflowModalProps> = ({
 
   if (!isOpen) return null;
 
-  return (
+  return ReactDOM.createPortal(
     <>
-      <div className="fixed inset-0 overflow-y-auto bg-gray-500 bg-opacity-75" className="z-50">
+      <div className="fixed inset-0 z-50 overflow-y-auto bg-gray-500 bg-opacity-75">
         <div className="flex items-center justify-center min-h-screen p-4">
           <div className="bg-white rounded-lg shadow-xl max-w-md w-full max-h-[90vh] overflow-y-auto">
             
@@ -616,7 +616,8 @@ const UnifiedWorkflowModal: React.FC<UnifiedWorkflowModalProps> = ({
           onClose={() => setShowRejectionHistory(false)}
         />
       )}
-    </>
+    </>,
+    document.body
   );
 };
 
