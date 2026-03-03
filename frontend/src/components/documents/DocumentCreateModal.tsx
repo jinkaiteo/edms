@@ -6,6 +6,7 @@
  */
 
 import React, { useState, useRef, useCallback, useEffect } from 'react';
+import ReactDOM from 'react-dom';
 import { useAuth } from '../../contexts/AuthContext.tsx';
 import apiService from '../../services/api.ts';
 import DocumentSelector from './DocumentSelector.tsx';
@@ -673,7 +674,9 @@ const DocumentCreateModal: React.FC<DocumentCreateModalProps> = ({
 
   if (!isOpen) return null;
 
-  return (
+  // Use React Portal to render at document.body level
+  // This prevents z-index stacking context issues when modal is opened from DocumentViewer
+  return ReactDOM.createPortal(
     <div className="fixed inset-0 z-50 overflow-y-auto bg-gray-500 bg-opacity-75">
       <div className="flex items-center justify-center min-h-screen p-4">
         <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-screen overflow-y-auto">
@@ -1165,7 +1168,8 @@ const DocumentCreateModal: React.FC<DocumentCreateModalProps> = ({
           </div>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body  // Render at body level, outside all parent stacking contexts
   );
 };
 
